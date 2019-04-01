@@ -14,14 +14,7 @@ Introduction
 .. toctree::
    gettingstarted
    examples
-
-API
----
-
-.. toctree::
-   sinabs
-   layers
-   from_keras
+   api
 
 
 Indices and tables

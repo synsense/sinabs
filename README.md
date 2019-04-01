@@ -1,6 +1,11 @@
-# sinabs
+SINABS
+======
 
-Sinabs Is Not A Brain Simulator
+
+Getting started
+---------------
+
+`Sinabs Is Not A Brain Simulator`
 
 `NOTE`: This project is mirrored to gitlab.com/ai-ctx/sinabs
 
@@ -12,7 +17,8 @@ In addition it provides support to import CNN models implemented in keras conven
 
 `NOTE`: This library is an alpha versions and is subject to API changes.
 
-## Installation
+Installation
+------------
 
 Download the package from git:
 
@@ -30,7 +36,8 @@ $ cd path/to/sinabs
 $ pip install -e . --user
 ```
 
-## Documentation
+Documentation
+-------------
 
 You can generate a sphynx documentation for this package by running the the following command.
 

@@ -1,13 +1,2 @@
-Getting started
-===============
-
-
-Installation
-------------
-
-
-
-Basic use
----------
-
+.. include:: ../../README.md
 
