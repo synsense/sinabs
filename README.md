@@ -26,7 +26,7 @@ Download the package from git:
 $ git clone <URLto/sinabs.git>
 ```
 
-NOTE: Replace `<URLto/simabs.git>` with appropriate git url.
+NOTE: Replace `<URLto/sinabs.git>` with appropriate git url.
 
 
 We recommend that you install this package as a development version so that you can update the package without reinstalling the package
@@ -44,6 +44,7 @@ You can generate a sphynx documentation for this package by running the the foll
 ```
 $ cd /path/to/sinabs/docs/
 $ make html
+$ firefox build/html/index.html
 ```
 
 This will build and auto generate html documentation at `sinabs/docs/build/html/index.html`
