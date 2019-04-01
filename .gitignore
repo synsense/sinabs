@@ -1,6 +1,7 @@
 .idea
 output
 venv
+build
 __pycache__
 .ipynb_checkpoints
 .pytest_cache
