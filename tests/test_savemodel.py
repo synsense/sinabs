@@ -43,6 +43,6 @@ def test_Generatesinabs_ModelFile():
     print("--------------------")
     print(dynapcnn.summary().to_string())
 
-    from sinabs.savemodel import generateModelJson
+    from sinabs.savemodel import to_json
 
-    print(generateModelJson(dynapcnn))
+    print(to_json(dynapcnn))

@@ -26,7 +26,7 @@ Download the package from git:
 $ git clone <URLto/sinabs.git>
 ```
 
-NOTE: Replace `<URLto/sinabs.git>` with appropriate git url.
+`NOTE`: Replace `<URLto/sinabs.git>` with appropriate git url.
 
 
 We recommend that you install this package as a development version so that you can update the package without reinstalling the package
@@ -40,6 +40,8 @@ Documentation
 -------------
 
 You can generate a sphynx documentation for this package by running the the following command.
+
+Requirements: sphinx, pandoc, nbsphinx
 
 ```
 $ cd /path/to/sinabs/docs/

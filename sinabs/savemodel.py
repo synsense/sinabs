@@ -3,7 +3,7 @@ import pandas as pd
 import json
 
 
-def generateModelJson(model: Network) -> str:
+def to_json(model: Network) -> str:
     """
     Returns a json descriptor of the model
     """

@@ -348,11 +348,13 @@ class Network(TorchLayer):
     def summary(self) -> pd.DataFrame:
         """
         Generate a summary of this network
+
+        :returns summary: pd.DataFrame
         """
         summary_dataframe = summary(self.spiking_model)
-        summary_dataframe = summary_dataframe.assign(
-            OutLayer=pd.Series([[]] * len(summary_dataframe))
-        )
+        #summary_dataframe = summary_dataframe.assign(
+        #    OutLayer=pd.Series([[]] * len(summary_dataframe))
+        #)
         # Append outbound layer information
         graph = self.graph
         for src in graph.index:
