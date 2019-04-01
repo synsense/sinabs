@@ -1,0 +1,16 @@
+.idea
+output
+venv
+__pycache__
+.ipynb_checkpoints
+.pytest_cache
+*.py~
+*.pyc
+*.egg-info
+
+# Data heavy files
+*.json
+*.h5
+*.npy
+*.npz
+
