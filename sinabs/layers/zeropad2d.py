@@ -11,7 +11,6 @@ class ZeroPad2dLayer(TorchLayer):
     """
     Zero padding layer
     """
-
     def __init__(self, image_shape, padding: ArrayLike, layer_name: str = "zeropad2d"):
         """
         Zero Padding Layer
