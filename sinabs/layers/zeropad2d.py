@@ -9,7 +9,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 class ZeroPad2dLayer(TorchLayer):
     """
-    Zero padding layer
+    Zero padding 2D layer
     """
     def __init__(self, image_shape, padding: ArrayLike, layer_name: str = "zeropad2d"):
         """
