@@ -305,7 +305,7 @@ def from_conv2d_keras_conf(
             torch_analogue_layerActivation = nn.Sigmoid()
             layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
         elif layer_config["config"]["activation"] == "softmax":
-            torch_analogue_layerActivation = nn.Softmax2d()
+            torch_analogue_layerActivation = nn.ReLU()
             layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
         else:
             raise NotImplementedError
@@ -397,7 +397,7 @@ def from_dense_keras_conf(
             torch_analogue_layerActivation = nn.Sigmoid()
             layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
         elif layer_config["config"]["activation"] == "softmax":
-            torch_analogue_layerActivation = nn.Softmax2d()
+            torch_analogue_layerActivation = nn.ReLU()
             layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
         else:
             raise NotImplementedError

@@ -77,6 +77,7 @@ class Network(TorchLayer):
         weight_rescaling: dict = None,
         bias_rescaling: dict = None,
         threshold_rescaling: dict = None,
+        analog: bool = True,
         verbose: bool = False,
     ):
         """
@@ -85,6 +86,7 @@ class Network(TorchLayer):
         :param bias_rescaling: dict of layername as key and multiplication factor as value
         :param weight_rescaling: dict of layername as key and multiplication factor as value
         :param threshold_rescaling: dict of layername as key and multiplication factor as value
+        :param analog: bool to rescale analog model
         :param verbose: bool to print debugging messages
         """
         spiking_params = dict(self.spiking_model.named_parameters())
@@ -104,11 +106,12 @@ class Network(TorchLayer):
                     )
                 param.data = param.data * scale
                 # Rescale analog model parameters
-                key = search_parameter(
-                    analog_params.keys(), strLyr, strEndsWith="weight"
-                )
-                paramAnalog = analog_params[key]
-                paramAnalog.data = paramAnalog.data * scale
+                if analog:
+                    key = search_parameter(
+                        analog_params.keys(), strLyr, strEndsWith="weight"
+                    )
+                    paramAnalog = analog_params[key]
+                    paramAnalog.data = paramAnalog.data * scale
         if bias_rescaling:
             for strLyr, scale in bias_rescaling.items():
                 # Rescale biases for spiking model
@@ -118,9 +121,12 @@ class Network(TorchLayer):
                 param = spiking_params[key]
                 param.data = param.data * scale
                 # Rescale analog model parameters
-                key = search_parameter(analog_params.keys(), strLyr, strEndsWith="bias")
-                param = analog_params[key]
-                param.data = param.data * scale
+                if analog:
+                    key = search_parameter(
+                        analog_params.keys(), strLyr, strEndsWith="bias"
+                    )
+                    param = analog_params[key]
+                    param.data = param.data * scale
         if threshold_rescaling:
             for strLyr, scale in threshold_rescaling.items():
                 # Rescale threshold
@@ -150,6 +156,7 @@ class Network(TorchLayer):
         # If weights are loaded from keras, convert them to pytorch compatible format
         if is_from_keras:
             from .from_keras import transposeKeras2Torch
+
             weights = transposeKeras2Torch(weights)
 
         all_thresholds = {}
@@ -224,6 +231,7 @@ class Network(TorchLayer):
         self.rescale_parameters(
             weight_rescaling=all_weight_scale_factors,
             threshold_rescaling=all_thresholds,
+            analog=False,  # Only auto-rescale spiking model for average pooling.
         )
 
     def forward(self, tsrInput) -> torch.Tensor:
@@ -352,9 +360,9 @@ class Network(TorchLayer):
         :returns summary: pd.DataFrame
         """
         summary_dataframe = summary(self.spiking_model)
-        #summary_dataframe = summary_dataframe.assign(
+        # summary_dataframe = summary_dataframe.assign(
         #    OutLayer=pd.Series([[]] * len(summary_dataframe))
-        #)
+        # )
         # Append outbound layer information
         graph = self.graph
         for src in graph.index:

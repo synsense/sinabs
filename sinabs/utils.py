@@ -86,6 +86,7 @@ def get_activations(torchanalog_model, tsrData, name_list=None):
 
     # Do a forward pass
     with torch.no_grad():
+        torchanalog_model.eval()
         torchanalog_model(tsrData)
 
     # Remove hooks
@@ -125,7 +126,6 @@ def get_network_activations(
     if bRate:
         spike_counts = [(counts / tSim * 1000) for counts in spike_counts]
     return spike_counts
-
 
 
 def summary(model: TorchLayer) -> pd.DataFrame:
