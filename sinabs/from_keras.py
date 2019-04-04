@@ -51,6 +51,7 @@ def from_model(
     keras_model,
     input_shape: Optional[ArrayLike] = None,
     quantize_activation: bool = False,
+    nbit_quantize: Optional[int] = None,
     network=None,
 ) -> Network:
     """
@@ -84,6 +85,7 @@ def from_model(
         weights=kerasWeights,
         is_from_keras=True,
         img_data_format=data_format,
+        nbit_quantize=nbit_quantize,
         auto_rescale=True,
     )
     model.keras_model = keras_model
@@ -365,7 +367,7 @@ def extract_json_weights(strModelFile: str, strPath: str = "./"):
     np.savez(strPath + "/weights/" + model_name, *model_weights)
 
 
-def transposeKeras2Torch(weights: List)->List:
+def transposeKeras2Torch(weights: List) -> List:
     """
     Transpose the shape of keras weights from channels_last format of weights to channels first style
     """

@@ -36,6 +36,7 @@ class Network(TorchLayer):
         keras_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
         quantize_activation: bool = False,
+        nbit_quantize: Optional[int] = None,
     ):
         """
         Network() function initializes the Network object
@@ -56,7 +57,10 @@ class Network(TorchLayer):
             from .from_keras import from_model
 
             from_model(
-                keras_model, quantize_activation=quantize_activation, network=self
+                keras_model,
+                quantize_activation=quantize_activation,
+                nbit_quantize=nbit_quantize,
+                network=self,
             )
 
     @property
@@ -130,7 +134,7 @@ class Network(TorchLayer):
         if threshold_rescaling:
             for strLyr, scale in threshold_rescaling.items():
                 # Rescale threshold
-                lyr = spiking_params[strLyr]
+                lyr = dict(self.spiking_model.named_modules())[strLyr]
                 lyr.threshold = lyr.threshold * scale
                 lyr.threshold_low = lyr.threshold_low * scale
                 lyr.membrane_subtract = lyr.membrane_subtract * scale
