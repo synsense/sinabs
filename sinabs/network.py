@@ -196,7 +196,7 @@ class Network(TorchLayer):
             num_scaler = 1.0
             for strLyrName, lyr in self.layers:
                 if "average_pooling" in strLyrName:
-                    num_scaler = reduce(mul, lyr.pool_size)
+                    num_scaler *= reduce(mul, lyr.pool_size)
                 elif "conv" in strLyrName or "dense" in strLyrName:
                     if num_scaler != 1:
                         all_weight_scale_factors[strLyrName] = 1.0 / num_scaler
