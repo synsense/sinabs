@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -368,12 +370,15 @@ class Network(TorchLayer):
         #    OutLayer=pd.Series([[]] * len(summary_dataframe))
         # )
         # Append outbound layer information
-        graph = self.graph
-        for src in graph.index:
-            row = graph.loc[src, :]
-            destinations = list(row[row == True].index)
-            if len(destinations):
-                summary_dataframe.loc[src, "Layer_output"] = destinations
+        try:
+            graph = self.graph
+            for src in graph.index:
+                row = graph.loc[src, :]
+                destinations = list(row[row == True].index)
+                if len(destinations):
+                    summary_dataframe.loc[src, "Layer_output"] = destinations
+        except AttributeError as e:
+            warnings.warn("Graph couldn't be inferred by sinabs. Perhaps you have defined a custom model.")
         return summary_dataframe
 
     def reset_states(self):
