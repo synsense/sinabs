@@ -1,18 +1,13 @@
 ##
-# iaf_conv2d.py - Torch implementation of a spiking 2D convolutional layer
+# iaf.py - Torch implementation of a integrate-and-fire layer
 ##
 
 import numpy as np
 import torch
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple, Dict
-from operator import mul
-from functools import reduce
 from .layer import TorchLayer
-from .quantize import QuantizeLayer
-from collections import OrderedDict
-from sinabs.cnnutils import conv_output_size, compute_padding
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -92,7 +87,7 @@ class SpikingLayer(TorchLayer):
         time_steps = len(binary_input)
 
         # Compute the synaptic current
-        syn_out = self.synaptic_output(binary_input)
+        syn_out: torch.Tensor = self.synaptic_output(binary_input)
 
         # Local variables
         membrane_subtract = self.membrane_subtract

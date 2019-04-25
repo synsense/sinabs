@@ -2,6 +2,7 @@ from .layer import TorchLayer
 from .crop2d import Cropping2dLayer, from_cropping2d_keras_conf
 from .dropout import from_dropout_keras_conf
 from .flatten import FlattenLayer, from_flatten_keras_conf
+from .iaf import SpikingLayer
 from .iaf_conv2d import (
     SpikingConv2dLayer,
     from_conv2d_keras_conf,

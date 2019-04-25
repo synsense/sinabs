@@ -35,7 +35,7 @@ class SpikingConv2dLayer(SpikingLayer):
         layer_name: str = "conv2d",
     ):
         """
-        Pytorch implementation of a spiking neuron which convolve 2D inputs, with multiple channels
+        Pytorch implementation of a spiking iaf neuron which convolve 2D inputs, with multiple channels
 
         :param channels_in: Number of input channels
         :param image_shape: [Height, Width]
