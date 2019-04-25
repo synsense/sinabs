@@ -9,6 +9,8 @@ from .iaf_conv2d import (
     from_dense_keras_conf,
 )
 
+from .iaf_convtranspose2d import SpikingConvTranspose2dLayer
+
 from .maxpool2d import SpikingMaxPooling2dLayer, from_maxpool2d_keras_conf
 
 # from .iaf_maxpool2d import SpikingMaxPooling2dLayer
