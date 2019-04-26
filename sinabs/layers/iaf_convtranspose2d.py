@@ -29,9 +29,9 @@ class SpikingConvTranspose2dLayer(SpikingLayer):
         padding: ArrayLike = (0, 0, 0, 0),
         output_padding: ArrayLike = (0, 0),
         bias: bool = True,
-        threshold: float = 1,
-        threshold_low: Optional[float] = None,
-        membrane_subtract: Optional[float] = None,
+        threshold: float = 1.,
+        threshold_low: Optional[float] = -1.,
+        membrane_subtract: Optional[float] = 1.,
         membrane_reset: float = 0,
         layer_name: str = "conv2d",
     ):

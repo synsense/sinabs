@@ -17,9 +17,9 @@ class SpikingLayer(TorchLayer):
     def __init__(
         self,
         input_shape: ArrayLike,
-        threshold: float = 1,
-        threshold_low: Optional[float] = None,
-        membrane_subtract: Optional[float] = None,
+        threshold: float = 1.,
+        threshold_low: Optional[float] = -1.,
+        membrane_subtract: Optional[float] = 1.,
         membrane_reset: float = 0,
         layer_name: str = "spiking",
     ):
