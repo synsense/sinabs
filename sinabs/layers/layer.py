@@ -3,6 +3,7 @@ This is a base class for all Torch layers (especially for CNN layers)
 """
 from torch import nn
 import numpy as np
+import pandas as pd
 from typing import Tuple, Optional, Union, List
 from abc import ABC, abstractmethod
 
@@ -57,3 +58,21 @@ class TorchLayer(nn.Module, ABC):
             # Compute output dimensions
             self._output_shape = self.get_output_shape(self.input_shape)
         return self._output_shape
+
+
+    def summary(self) -> pd.Series:
+        """
+        Returns a summary of the current layer
+
+        :return: pandas Series object
+        """
+        summary = pd.Series(
+            {
+                "Type": self.__class__.__name__,
+                "Layer": self.layer_name,
+                "Output_Shape": tuple(self.output_shape),
+                "Input_Shape": tuple(self.input_shape),
+                "Neurons": reduce(mul, list(self.output_shape), 1),
+            }
+        )
+        return summary

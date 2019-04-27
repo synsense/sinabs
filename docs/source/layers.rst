@@ -4,7 +4,7 @@ sinabs.layers
 .. automodule:: sinabs.layers
 .. currentmodule:: sinabs.layers
 
-layers
+Layers
 ------
 
 All the layers implemented in this package can be used similar to `torch.nn` layers in your implementations.
@@ -15,12 +15,21 @@ The layer initialization expects an input shape which follows the below format::
 
 .. note:: The input shape does not include the dimension of batch size.
 
+Abstract layers
+---------------
 
 `TorchLayer`
 ~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: TorchLayer
     :members:
+
+`SpikingLayer`
+~~~~~~~~~~~~~~
+
+.. autoclass:: SpikingLayer
+    :members:
+
 
 `Cropping2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

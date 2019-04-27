@@ -1,5 +1,5 @@
 ##
-# iaf_conv2d.py - Torch implementation of a spiking 2D convolutional layer
+# iaf_convtranspose2d.py - Torch implementation of a spiking 2D convolutional layer
 ##
 
 import numpy as np
@@ -18,7 +18,7 @@ from .iaf import SpikingLayer
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SpikingConv2dLayer(SpikingLayer):
+class SpikingConvTranspose2dLayer(SpikingLayer):
     def __init__(
         self,
         channels_in: int,
@@ -27,6 +27,7 @@ class SpikingConv2dLayer(SpikingLayer):
         kernel_shape: ArrayLike,
         strides: ArrayLike = (1, 1),
         padding: ArrayLike = (0, 0, 0, 0),
+        output_padding: ArrayLike = (0, 0),
         bias: bool = True,
         threshold: float = 1.,
         threshold_low: Optional[float] = -1.,
@@ -35,7 +36,7 @@ class SpikingConv2dLayer(SpikingLayer):
         layer_name: str = "conv2d",
     ):
         """
-        Pytorch implementation of a spiking iaf neuron which convolve 2D inputs, with multiple channels
+        Pytorch implementation of a spiking iaf neuron which deconvolves 2D inputs, with multiple channels
 
         :param channels_in: Number of input channels
         :param image_shape: [Height, Width]
@@ -43,6 +44,7 @@ class SpikingConv2dLayer(SpikingLayer):
         :param kernel_shape: Size of the kernel  (tuple)
         :param strides: Strides in each direction (tuple of size 2)
         :param padding: Padding in each of the 4 directions (left, right, top, bottom)
+        :param output_padding: Padding in each of the 4 directions (pad_height, pad_width)
         :param bias: If this layer has a bias value
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lowerbound for membrane potential
@@ -61,15 +63,19 @@ class SpikingConv2dLayer(SpikingLayer):
             membrane_reset=membrane_reset,
             layer_name=layer_name,
         )
+
+        # Initialize the computational layers
         if padding != (0, 0, 0, 0):
             self.pad = nn.ZeroPad2d(padding)
         else:
             self.pad = None
-        self.conv = nn.Conv2d(
-            channels_in,
-            channels_out,
+
+        self.conv = nn.ConvTranspose2d(
+            in_channels=channels_in,
+            out_channels=channels_out,
             kernel_size=kernel_shape,
             stride=strides,
+            output_padding=output_padding,
             bias=bias,
         )
 
@@ -78,6 +84,7 @@ class SpikingConv2dLayer(SpikingLayer):
         self.channels_out = channels_out
         self.kernel_shape = kernel_shape
         self.padding = padding
+        self.out_padding = output_padding
         self.strides = strides
         self.bias = bias
 
@@ -132,23 +139,29 @@ class SpikingConv2dLayer(SpikingLayer):
         """
         (channels, height, width) = input_shape
 
-        height_out = conv_output_size(
-            height + sum(self.padding[2:]), self.kernel_shape[0], self.strides[0]
+        height_out = (
+            (height + sum(self.padding[2:]) - 1) * self.strides[0]
+            + self.kernel_shape[0]
+            + self.out_padding[0]
         )
-        width_out = conv_output_size(
-            width + sum(self.padding[:2]), self.kernel_shape[1], self.strides[1]
+
+        width_out = (
+            (width + sum(self.padding[:2]) - 1) * self.strides[1]
+            + self.kernel_shape[1]
+            + self.out_padding[1]
         )
+
         return self.channels_out, height_out, width_out
 
 
-def from_conv2d_keras_conf(
+def from_convtranspose2d_keras_conf(
     layer_config: dict,
     input_shape: ArrayLike,
     spiking: bool = False,
     quantize_analog_activation: bool = False,
 ) -> List:
     """
-    Load Convolutional layer from Json configuration
+    Load ConvTranspose2D layer from Json configuration
 
     :param layer_config: keras configuration dictionary for this object
     :param input_shape: input data shape to determine output dimensions (channels, height, width)
@@ -156,6 +169,8 @@ def from_conv2d_keras_conf(
     :param quantize_analog_activation: Whether or not to add a quantization layer for the analog model
     :return: [(layer_name, nn.Module)] Returns a list of layers and their names
     """
+    raise NotImplementedError
+
     # Config depth consistency
     if "config" in layer_config:
         pass
@@ -235,97 +250,6 @@ def from_conv2d_keras_conf(
             raise NotImplementedError
 
         # Create a Quantization layer
-        if quantize_analog_activation:
-            torch_quantize_layer = QuantizeLayer()
-            layer_list.append((layer_name, torch_quantize_layer))
-
-    if len(layer_list) > 1:
-        return [(layer_name, nn.Sequential(OrderedDict(layer_list)))]
-    else:
-        return layer_list
-
-
-def from_dense_keras_conf(
-    layer_config: Dict,
-    input_shape: Tuple,
-    spiking=False,
-    quantize_analog_activation=False,
-) -> List:
-    """
-    Create a Dense layer from keras configuration
-
-    :param layer_config: keras layer configuration
-    :param input_shape: input shape
-    :param spiking: bool True if a spiking layer is to be created
-    :param quantize_analog_activation: True if analog layer's activations are to be quantized
-    :return: [(layer_name, nn.Module)] Returns a list of layers and their names
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-    layer_list = []
-
-    if spiking:
-        channels, height, width = input_shape
-        # Initialize convolutional layer
-        torch_spiking_conv2d = SpikingConv2dLayer(
-            channels_in=channels,
-            image_shape=input_shape[-2:],
-            channels_out=layer_config["config"]["units"],
-            kernel_shape=(height, width),
-            strides=(height, width),
-            padding=(0, 0, 0, 0),
-            bias=layer_config["config"]["use_bias"],
-            threshold=1.0,
-            threshold_low=-1.0,
-            membrane_subtract=1.0,
-            layer_name=layer_name,
-        )
-        torch_spiking_conv2d.input_shape = input_shape
-        layer_list.append((layer_name, torch_spiking_conv2d))
-    else:
-        # Input should have already been flattened
-        try:
-            nInputLength, = input_shape
-        except ValueError as e:
-            raise Exception(
-                "Input shape of a Dense layer should be 1 dimensional (per batch), use Flatten"
-            )
-        nOutputLength = layer_config["config"]["units"]
-        torch_analogue_layer = nn.Linear(
-            nInputLength, nOutputLength, bias=layer_config["config"]["use_bias"]
-        )
-        layer_list.append((layer_name + "_Linear", torch_analogue_layer))
-
-        if quantize_analog_activation:
-            layer_nameActivation = (
-                layer_name + "_" + layer_config["config"]["activation"]
-            )
-        else:
-            layer_nameActivation = layer_name
-
-        # Activation
-        if layer_config["config"]["activation"] == "linear":
-            pass
-        elif layer_config["config"]["activation"] == "relu":
-            torch_analogue_layerActivation = nn.ReLU()
-            layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
-        elif layer_config["config"]["activation"] == "sigmoid":
-            torch_analogue_layerActivation = nn.Sigmoid()
-            layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
-        elif layer_config["config"]["activation"] == "softmax":
-            torch_analogue_layerActivation = nn.ReLU()
-            layer_list.append((layer_nameActivation, torch_analogue_layerActivation))
-        else:
-            raise NotImplementedError
-
         if quantize_analog_activation:
             torch_quantize_layer = QuantizeLayer()
             layer_list.append((layer_name, torch_quantize_layer))

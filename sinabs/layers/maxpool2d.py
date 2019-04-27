@@ -24,6 +24,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         strides: Optional[ArrayLike] = None,
         padding: ArrayLike = (0, 0, 0, 0),
         layer_name: str = "pooling2d",
+        # state_number: int = 16,
     ):
         """
         Torch implementation of SpikingMaxPooling
@@ -41,6 +42,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         else:
             self.pad = nn.ZeroPad2d(padding)
         self.pool = nn.MaxPool2d(kernel_size=pool_size, stride=strides)
+        # self.state_number = state_number
 
         # Blank parameter place holders
         self.spikes_number = None
@@ -57,6 +59,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
 
     def forward(self, binary_input):
         # Determine no. of time steps from input
+        self.reset_states()
         time_steps = len(binary_input)
 
         # Calculate the sum spikes of each neuron
@@ -65,9 +68,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         # Create a vector to hold all output spikes
         if self.spikes_number is None or len(self.spikes_number) != len(binary_input):
             del self.spikes_number  # Free memory just to be sure
-            self.spikes_number = sum_count.new_zeros(
-                time_steps, *sum_count.shape[1:]
-            ).int()
+            self.spikes_number = torch.tensor(())
 
         self.spikes_number.zero_()
         spikes_number = self.spikes_number
@@ -78,35 +79,32 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         state = self.state
         sum_count = torch.add(state, sum_count)
 
+        # max_sum is the pooled sum_count
+        if self.pad is None:
+            max_sum = self.pool(sum_count)
+        else:
+            max_sum = self.pool(self.pad(sum_count))
+
+        # make sure a single spike, how much sum_count it brings, max_input_sum shows that
+        input_sum = sum_count * (binary_input > 0).float()
         # pool all inputs at once
         if self.pad is None:
-            pool_sum_out = self.pool(sum_count)
+            max_input_sum = self.pool(input_sum)
         else:
-            pool_sum_out = self.pool(self.pad(sum_count))
+            max_input_sum = self.pool(self.pad(input_sum))
 
-        # Get through spikes is input_spike
-        input_spike = sum_count * (binary_input > 0).float()
-        # input_spike = sum_count * binary_input  # tsrBinary cannot > 1
-
-        # pool all inputs at once
+        # max of 1 and 0 s from spike train
         if self.pad is None:
-            pool_out = self.pool(input_spike)
+            original_max_input_sum = self.pool(binary_input)
         else:
-            pool_out = self.pool(self.pad(input_spike))
+            original_max_input_sum = self.pool(self.pad(binary_input))
 
-        # pool all inputs at once
-        if self.pad is None:
-            original_pool_out = self.pool(binary_input)
-        else:
-            original_pool_out = self.pool(self.pad(binary_input))
-
-        # Make sure only the max count can pass the input tensor
-        pool_out = (pool_out >= pool_sum_out).float() * original_pool_out
-        # pool_out = (pool_out >= pool_sum_out) # tsrBinary cannot > 1
+        # Make sure the max sum is brought by the single spike from input_sum
+        max_input_sum = (max_input_sum >= max_sum).float() * original_max_input_sum
 
         self.state = sum_count[-1]
-        self.spikes_number = pool_out
-        return pool_out.float()  # Float is just to keep things compatible
+        self.spikes_number = max_input_sum
+        return max_input_sum.float()  # Float is just to keep things compatible
 
     def summary(self):
         """
@@ -148,3 +146,60 @@ class SpikingMaxPooling2dLayer(TorchLayer):
             width + sum(self.padding[:2]), self.pool_size[1], self.strides[1]
         )
         return channels, height_out, width_out
+
+
+def from_maxpool2d_keras_conf(
+    layer_config, input_shape: Tuple, spiking: bool = False
+) -> [(list, nn.Module)]:
+    """
+    Crete a Average pooling layer
+
+    :param layer_config:
+    :param input_shape:
+    :param spiking:
+    :return:
+    """
+    # Config depth consistency
+    if "config" in layer_config:
+        pass
+    else:
+        layer_config = {"config": layer_config}
+
+    try:
+        layer_name = layer_config["name"]
+    except KeyError:
+        layer_name = layer_config["config"]["name"]
+    layer_list = []
+    pool_size = layer_config["config"]["pool_size"]
+    strides = layer_config["config"]["strides"]
+    pad_mod = layer_config["config"]["padding"]
+
+    if pad_mod == "valid":
+        padding = (0, 0, 0, 0)
+    else:
+        # Compute padding
+        padding = compute_padding(pool_size, input_shape, pad_mod)
+
+    if spiking:
+        spike_pool = SpikingMaxPooling2dLayer(
+            image_shape=input_shape[1:],
+            pool_size=pool_size,
+            padding=padding,
+            strides=strides,
+            layer_name=layer_name,
+        )
+        spike_pool.input_shape = input_shape
+        layer_list.append((layer_name, spike_pool))
+    else:
+        # Create a padding layer
+        if padding != (0, 0, 0, 0):
+            torch_layerPad = nn.ZeroPad2d(padding)
+            layer_list.append((layer_name + "_padding", torch_layerPad))
+        # Pooling layer initialization
+        analogue_pool = nn.MaxPool2d(kernel_size=pool_size, stride=strides)
+        layer_list.append((layer_name, analogue_pool))
+
+    if len(layer_list) > 1:
+        return [(layer_name, nn.Sequential(OrderedDict(layer_list)))]
+    else:
+        return layer_list

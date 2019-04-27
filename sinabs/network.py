@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -232,6 +234,8 @@ class Network(TorchLayer):
             param.data = torch.from_numpy(weights[indx]).float()
 
         # Rescale the parameters
+        if all_weight_scale_factors:
+            print(f"Scaling layer weights: {all_weight_scale_factors}")
         self.rescale_parameters(
             weight_rescaling=all_weight_scale_factors,
             threshold_rescaling=all_thresholds,
@@ -364,16 +368,18 @@ class Network(TorchLayer):
         :returns summary: pd.DataFrame
         """
         summary_dataframe = summary(self.spiking_model)
-        # summary_dataframe = summary_dataframe.assign(
-        #    OutLayer=pd.Series([[]] * len(summary_dataframe))
-        # )
         # Append outbound layer information
-        graph = self.graph
-        for src in graph.index:
-            row = graph.loc[src, :]
-            destinations = list(row[row == True].index)
-            if len(destinations):
-                summary_dataframe.loc[src, "Layer_output"] = destinations
+        try:
+            graph = self.graph
+            for src in graph.index:
+                row = graph.loc[src, :]
+                destinations = list(row[row == True].index)
+                if len(destinations):
+                    summary_dataframe.loc[src, "Layer_output"] = destinations
+        except AttributeError as e:
+            warnings.warn(
+                "Graph couldn't be inferred by sinabs. Perhaps you have defined a custom model."
+            )
         return summary_dataframe
 
     def reset_states(self):

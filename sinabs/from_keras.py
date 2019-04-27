@@ -177,6 +177,10 @@ def from_layer_keras_conf(
         layer_list = from_avgpool2d_keras_conf(
             layer_config, input_shape, spiking=spiking
         )
+    elif layer_config["class_name"] == "MaxPooling2D":
+        layer_list = from_maxpool2d_keras_conf(
+            layer_config, input_shape, spiking=spiking
+        )
     elif layer_config["class_name"] == "Dropout":
         layer_list = from_dropout_keras_conf(layer_config, input_shape, spiking=spiking)
     else:

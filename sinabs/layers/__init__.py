@@ -2,12 +2,18 @@ from .layer import TorchLayer
 from .crop2d import Cropping2dLayer, from_cropping2d_keras_conf
 from .dropout import from_dropout_keras_conf
 from .flatten import FlattenLayer, from_flatten_keras_conf
+from .iaf import SpikingLayer
 from .iaf_conv2d import (
     SpikingConv2dLayer,
     from_conv2d_keras_conf,
     from_dense_keras_conf,
 )
-from .iaf_maxpool2d import SpikingMaxPooling2dLayer
+
+from .iaf_convtranspose2d import SpikingConvTranspose2dLayer
+
+from .maxpool2d import SpikingMaxPooling2dLayer, from_maxpool2d_keras_conf
+
+# from .iaf_maxpool2d import SpikingMaxPooling2dLayer
 from .inputlayer import (
     InputLayer,
     get_input_shape_from_keras_conf,

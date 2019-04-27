@@ -1,7 +1,6 @@
 SINABS
 ======
 
-
 Getting started
 ---------------
 
