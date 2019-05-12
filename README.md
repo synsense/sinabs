@@ -6,7 +6,7 @@ Getting started
 
 **Sinabs Is Not A Brain Simulator**
 
-**NOTE**: This project is mirrored to gitlab.com/ai-ctx/sinabs and is managed by aiCTX AG.
+**NOTE**: This project is mirrored to gitlab.com/aiCTX/sinabs and is managed by aiCTX AG.
 
 `sinabs` (pytorch based library) is developed to design and implement Spiking Convolutional Neural Networks (SCNNs).
 The library implements several layers that are `spiking` equivalents of CNN layers.
