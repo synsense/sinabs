@@ -12,8 +12,6 @@ Short answer: fork, make changes, merge request to sinabs.
 
 **Develop from**: `master` branch of sinabs.
 
-**Merge to**: `contrib` branch of sinabs.
-
 
 The most straight-forward workflow to contribute would be to fork the repository and make your changes.
 Once you finalize your changes, please create a merge request.
