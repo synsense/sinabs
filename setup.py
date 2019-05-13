@@ -19,7 +19,7 @@ from distutils.core import setup
 
 setup(
     name="sinabs",
-    version="0.1dev",
+    version="0.1.0",
     packages=["sinabs"],
     license="All rights reserved aiCTX AG",
     install_requires=['numpy', 'pandas', 'tensorflow', 'torch'],
