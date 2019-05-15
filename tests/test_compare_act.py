@@ -22,31 +22,31 @@ strLibPath = sys.path[0] + "/../"
 sys.path.insert(1, strLibPath)
 
 
-def test_compare_keras_spiking():
-    import torch  # Torch must be imported after tensorflow to avoid a crash
-
-    from sinabs.network import Network
-    from sinabs.from_keras import from_model
-
-    # Initialize a Network
-    torchModel = Network()
-
-    # Load face detection model
-    keras_model = createkeras_model()
-    from_model(keras_model, network=torchModel)
-
-    ## Create input
-    modelInput = (torch.rand((10, 1, 260, 346)) > 0.94).float()
-
-    # Compare activity of analog vs spiking
-    act, rates = torchModel.compare_activations(modelInput, with_keras=True)
-
-    assert len(act) == len(rates)
-
-    # Compare shapes of Keras activations to the converted model
-    for idx in range(len(act)):
-        print(act[idx].shape, rates[idx].shape)
-        assert act[idx].shape == rates[idx].shape
+#def test_compare_keras_spiking():
+#    import torch  # Torch must be imported after tensorflow to avoid a crash
+#
+#    from sinabs.network import Network
+#    from sinabs.from_keras import from_model
+#
+#    # Initialize a Network
+#    torchModel = Network()
+#
+#    # Load face detection model
+#    keras_model = createkeras_model()
+#    from_model(keras_model, network=torchModel)
+#
+#    ## Create input
+#    modelInput = (torch.rand((10, 1, 260, 346)) > 0.94).float()
+#
+#    # Compare activity of analog vs spiking
+#    act, rates = torchModel.compare_activations(modelInput, with_keras=True)
+#
+#    assert len(act) == len(rates)
+#
+#    # Compare shapes of Keras activations to the converted model
+#    for idx in range(len(act)):
+#        print(act[idx].shape, rates[idx].shape)
+#        assert act[idx].shape == rates[idx].shape
 
 
 def test_compare_analog_spiking():

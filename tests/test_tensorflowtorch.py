@@ -78,55 +78,55 @@ def test_KerasTorchAnalog_channels_last():
     assert fMeanErr / fMeanVal < 1e-5
 
 
-def test_KerasTorchAnalog_channels_first():
-    from tensorflow import keras
-    import torch
-
-    from sinabs.network import Network
-    from sinabs.from_keras import from_json, infer_data_format
-
-    img_data_format = "channels_first"
-
-    # Create a test model
-    createTestModel(img_data_format=img_data_format)
-
-    keras_model = keras.models.load_model(f"{strLibPath}/models/{modelName}.h5")
-    data_format = infer_data_format(keras_model.get_config())
-    # Initialize a sinabs model
-    dynapModel = Network()
-    with open(f"{strLibPath}/models/{modelName}.json") as jsonfile:
-        for json in jsonfile.readlines():
-            keras_json = json
-    from_json(keras_json=keras_json, network=dynapModel)
-    weights = []
-    data = np.load(f"{strLibPath}/weights/{modelName}.npz")
-    for w in data.files:
-        weights.append(data[w])
-    dynapModel.set_weights(
-        weights=weights, is_from_keras=True, img_data_format=data_format
-    )
-
-    # Create input
-    tsrInp: torch.Tensor = torch.rand((1, 1, *INPUT_SIZE)).float()
-    arrInp = tsrInp.numpy().copy()
-
-    if img_data_format == "channels_last":
-        arrInp = arrInp.transpose((0, 2, 3, 1))
-
-    # Process data through torch model
-    tsrOut = dynapModel.analog_model(tsrInp)
-
-    # Process data through keras model
-    arrOut = keras_model.predict(arrInp)
-
-    assert tsrOut.shape == arrOut.shape
-
-    fMeanErr = np.abs(np.mean(tsrOut.detach().numpy() - arrOut))
-    fMeanVal = 0.5 * np.mean(np.abs(tsrOut.detach().numpy()) + np.abs(arrOut))
-    # assert fMeanErr == 0
-    print(tsrOut, arrOut)
-    print(fMeanErr, fMeanVal)
-    assert fMeanErr / fMeanVal < 1e-5
+#def test_KerasTorchAnalog_channels_first():
+#    from tensorflow import keras
+#    import torch
+#
+#    from sinabs.network import Network
+#    from sinabs.from_keras import from_json, infer_data_format
+#
+#    img_data_format = "channels_first"
+#
+#    # Create a test model
+#    createTestModel(img_data_format=img_data_format)
+#
+#    keras_model = keras.models.load_model(f"{strLibPath}/models/{modelName}.h5")
+#    data_format = infer_data_format(keras_model.get_config())
+#    # Initialize a sinabs model
+#    dynapModel = Network()
+#    with open(f"{strLibPath}/models/{modelName}.json") as jsonfile:
+#        for json in jsonfile.readlines():
+#            keras_json = json
+#    from_json(keras_json=keras_json, network=dynapModel)
+#    weights = []
+#    data = np.load(f"{strLibPath}/weights/{modelName}.npz")
+#    for w in data.files:
+#        weights.append(data[w])
+#    dynapModel.set_weights(
+#        weights=weights, is_from_keras=True, img_data_format=data_format
+#    )
+#
+#    # Create input
+#    tsrInp: torch.Tensor = torch.rand((1, 1, *INPUT_SIZE)).float()
+#    arrInp = tsrInp.numpy().copy()
+#
+#    if img_data_format == "channels_last":
+#        arrInp = arrInp.transpose((0, 2, 3, 1))
+#
+#    # Process data through torch model
+#    tsrOut = dynapModel.analog_model(tsrInp)
+#
+#    # Process data through keras model
+#    arrOut = keras_model.predict(arrInp)
+#
+#    assert tsrOut.shape == arrOut.shape
+#
+#    fMeanErr = np.abs(np.mean(tsrOut.detach().numpy() - arrOut))
+#    fMeanVal = 0.5 * np.mean(np.abs(tsrOut.detach().numpy()) + np.abs(arrOut))
+#    # assert fMeanErr == 0
+#    print(tsrOut, arrOut)
+#    print(fMeanErr, fMeanVal)
+#    assert fMeanErr / fMeanVal < 1e-5
 
 
 def createTestModel(img_data_format="channels_last", use_bias=False):

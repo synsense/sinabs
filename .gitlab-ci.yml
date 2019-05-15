@@ -16,10 +16,12 @@ unittests:
     - master
 
 
-documentation:
+pages:
   tags:
     - python
     - aiCTX
+
+  stage: deploy
 
   script:
     - cd docs
