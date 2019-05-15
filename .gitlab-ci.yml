@@ -1,0 +1,34 @@
+image: aictx/ci-python-arch:latest
+
+before_script:
+  - pip install --upgrade
+  - pip install . --no-cache-dir
+
+unittests:
+  tags:
+    - python
+    - aiCTX
+
+  script:
+    - pytest
+
+  only:
+    - gitlab-ci
+
+
+documentation:
+  tags:
+    - python
+    - aiCTX
+
+  script:
+    - cd docs
+    - make html
+    - mv _build/html/ ../public/
+
+  artifacts:
+    paths:
+    - public
+
+  only:
+    - gitlab-ci
