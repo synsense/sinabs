@@ -34,8 +34,13 @@ $ cd path/to/sinabs
 $ pip install -e . --user
 ```
 
-Documentation
--------------
+Documentation and Examples
+--------------------------
+
+[https://aictx.gitlab.io/sinabs](https://aictx.gitlab.io/sinabs)
+
+
+If you would like to generate documentation locally, you can do that using `sphynx`.
 
 You can generate a sphynx documentation for this package by running the the following command.
 
