@@ -34,9 +34,9 @@ class SpikingLayer(TorchLayer):
     def __init__(
         self,
         input_shape: ArrayLike,
-        threshold: float = 1.,
-        threshold_low: Optional[float] = -1.,
-        membrane_subtract: Optional[float] = 1.,
+        threshold: float = 1.0,
+        threshold_low: Optional[float] = -1.0,
+        membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "spiking",
     ):
@@ -116,15 +116,16 @@ class SpikingLayer(TorchLayer):
         # Create a vector to hold all output spikes
         if self.spikes_number is None or len(self.spikes_number) != time_steps:
             del self.spikes_number  # Free memory just to be sure
-            self.spikes_number = syn_out.new_zeros(
-                time_steps, *syn_out.shape[1:]
-            ).int()
+            self.spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:]).int()
 
         self.spikes_number.zero_()
         spikes_number = self.spikes_number
 
         if self.state is None:
             self.state = syn_out.new_zeros(syn_out.shape[1:])
+        elif self.state.device != syn_out.device:
+            # print(f"Device type state: {self.state.device}, syn_out: {syn_out.device} ")
+            self.state = self.state.to(syn_out.device)
 
         state = self.state
 
