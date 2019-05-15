@@ -25,12 +25,12 @@ from .iaf_conv2d import (
     from_conv2d_keras_conf,
     from_dense_keras_conf,
 )
+from .iaf_conv3d import SpikingConv3dLayer
 
 from .iaf_convtranspose2d import SpikingConvTranspose2dLayer
 
 from .maxpool2d import SpikingMaxPooling2dLayer, from_maxpool2d_keras_conf
 
-# from .iaf_maxpool2d import SpikingMaxPooling2dLayer
 from .inputlayer import (
     InputLayer,
     get_input_shape_from_keras_conf,

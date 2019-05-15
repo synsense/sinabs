@@ -42,12 +42,13 @@ class SpikingConv2dLayer(SpikingLayer):
         image_shape: ArrayLike,
         channels_out: int,
         kernel_shape: ArrayLike,
+        dilation: ArrayLike = (1, 1),
         strides: ArrayLike = (1, 1),
         padding: ArrayLike = (0, 0, 0, 0),
         bias: bool = True,
-        threshold: float = 1.,
-        threshold_low: Optional[float] = -1.,
-        membrane_subtract: Optional[float] = 1.,
+        threshold: float = 1.0,
+        threshold_low: Optional[float] = -1.0,
+        membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "conv2d",
     ):
@@ -57,7 +58,8 @@ class SpikingConv2dLayer(SpikingLayer):
         :param channels_in: Number of input channels
         :param image_shape: [Height, Width]
         :param channels_out: Number of output channels
-        :param kernel_shape: Size of the kernel  (tuple)
+        :param kernel_shape: Size of the kernel  (height, width)
+        :param dilation: kernel dilaiton (vertical_dilation, horizontal_dilation)
         :param strides: Strides in each direction (tuple of size 2)
         :param padding: Padding in each of the 4 directions (left, right, top, bottom)
         :param bias: If this layer has a bias value
@@ -86,6 +88,7 @@ class SpikingConv2dLayer(SpikingLayer):
             channels_in,
             channels_out,
             kernel_size=kernel_shape,
+            dilation=dilation,
             stride=strides,
             bias=bias,
         )
@@ -94,6 +97,7 @@ class SpikingConv2dLayer(SpikingLayer):
         self.channels_in = channels_in
         self.channels_out = channels_out
         self.kernel_shape = kernel_shape
+        self.dilation = dilation
         self.padding = padding
         self.strides = strides
         self.bias = bias
@@ -150,10 +154,14 @@ class SpikingConv2dLayer(SpikingLayer):
         (channels, height, width) = input_shape
 
         height_out = conv_output_size(
-            height + sum(self.padding[2:]), self.kernel_shape[0], self.strides[0]
+            height + sum(self.padding[2:]),
+            (self.dilation[0] * (self.kernel_shape[0] - 1) + 1),
+            self.strides[0],
         )
         width_out = conv_output_size(
-            width + sum(self.padding[:2]), self.kernel_shape[1], self.strides[1]
+            width + sum(self.padding[:2]),
+            (self.dilation[1] * (self.kernel_shape[1] - 1) + 1),
+            self.strides[1]
         )
         return self.channels_out, height_out, width_out
 

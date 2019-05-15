@@ -108,7 +108,7 @@ def test_set_weights_fromNumpy_DenseLayers():
 
     weightfile = strLibPath + "/weights/" + modelname + ".npy"
 
-    torchModel.set_weights(np.load(weightfile), is_from_keras=True)
+    torchModel.set_weights(np.load(weightfile, allow_pickle=True), is_from_keras=True)
 
 
 def test_set_weights_fromNumpy():
@@ -134,7 +134,7 @@ def test_set_weights_fromNumpy():
 
     weightfile = strLibPath + "/weights/" + modelname + ".npy"
 
-    torchModel.set_weights(np.load(weightfile), is_from_keras=True)
+    torchModel.set_weights(np.load(weightfile, allow_pickle=True), is_from_keras=True)
     print(torchModel.summary().to_string())
 
 

@@ -49,6 +49,12 @@ Abstract layers
 .. autoclass:: SpikingConv2dLayer
     :members:
 
+`SpikingConv2dLayer`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: SpikingConv2dLayer
+    :members:
+
 `SpikingMaxPooling2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
