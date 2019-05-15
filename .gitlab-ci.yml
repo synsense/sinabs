@@ -24,7 +24,7 @@ documentation:
   script:
     - cd docs
     - make html
-    - mv _build/html/ ../public/
+    - mv build/html/ ../public/
 
   artifacts:
     paths:
