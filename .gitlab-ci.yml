@@ -13,7 +13,7 @@ unittests:
     - pytest
 
   only:
-    - gitlab-ci
+    - master
 
 
 documentation:
@@ -31,4 +31,4 @@ documentation:
     - public
 
   only:
-    - gitlab-ci
+    - master
