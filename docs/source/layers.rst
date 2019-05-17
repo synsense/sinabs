@@ -43,16 +43,22 @@ Abstract layers
 .. autoclass:: FlattenLayer
     :members:
 
-`SpikingConv2dLayer`
+`SpikingConv1dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. autoclass:: SpikingConv2dLayer
+.. autoclass:: SpikingConv1dLayer
     :members:
 
 `SpikingConv2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: SpikingConv2dLayer
+    :members:
+
+`SpikingConv3dLayer`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: SpikingConv3dLayer
     :members:
 
 `SpikingMaxPooling2dLayer`
