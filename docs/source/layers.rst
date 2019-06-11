@@ -73,6 +73,12 @@ Abstract layers
 .. autoclass:: InputLayer
     :members:
 
+`Img2SpikeLayer`
+~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: Img2SpikeLayer
+    :members:
+
 `QuantizeLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

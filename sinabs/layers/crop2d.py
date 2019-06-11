@@ -45,7 +45,6 @@ class Cropping2dLayer(TorchLayer):
         )
         self.top_crop, self.bottom_crop = cropping[0]
         self.left_crop, self.right_crop = cropping[1]
-        self.input_shape = (None, *image_shape)
 
     def forward(self, binary_input):
         _, self.channels_in, h, w = list(binary_input.shape)

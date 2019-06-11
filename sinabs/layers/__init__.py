@@ -44,3 +44,4 @@ from .sumpool2d import (
     from_avgpool2d_keras_conf,
 )
 from .zeropad2d import ZeroPad2dLayer, from_zeropad2d_keras_conf
+from .img_to_spk import Img2SpikeLayer
