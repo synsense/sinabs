@@ -1,4 +1,4 @@
-#  Copyright (c) 2019-2019     aiCTX AG (Sadique Sheik).
+#  Copyright (c) 2019-2019     aiCTX AG (Sadique Sheik, Massimo Bortone).
 #
 #  This file is part of sinabs
 #
@@ -30,7 +30,6 @@ class SpikingTDSLayer(SpikingLayer):
     def __init__(
             self,
             channels_in: int,
-            image_shape: int,
             channels_out: int,
             delay: int,
             bias: bool = True,
@@ -45,7 +44,6 @@ class SpikingTDSLayer(SpikingLayer):
         where the neuron convolves input at time `t` and time `t-delay` to produce output at time `t`
 
         :param channels_in: Number of input channels
-        :param image_shape: length of input sequence. This parameter name is used to maintain consistency with 2d and 3d layers
         :param channels_out: Number of output channels
         :param delay: int Number of simulations time steps in the past to look for as input,
         :param bias: If this layer has a bias value
@@ -59,7 +57,7 @@ class SpikingTDSLayer(SpikingLayer):
         """
         SpikingLayer.__init__(
             self,
-            input_shape=(channels_in, image_shape),
+            input_shape=(channels_in, 1),
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
@@ -74,6 +72,8 @@ class SpikingTDSLayer(SpikingLayer):
             stride=1,
             bias=bias,
         )
+        # Initialize buffer
+        self.register_buffer("delay_buffer", torch.zeros((1, channels_in, delay)))
 
         # Layer convolutional properties
         self.channels_in = channels_in
@@ -90,7 +90,11 @@ class SpikingTDSLayer(SpikingLayer):
         :return:  torch.Tensor - synaptic output current
         """
         # Convolve all inputs at once
+        input_spikes = torch.transpose(input_spikes, 0, 2)
+        input_spikes = torch.cat((self.delay_buffer, input_spikes), 2)
         syn_out = self.conv(input_spikes)
+        self.delay_buffer = input_spikes[:, : , -self.delay:]
+        syn_out = torch.transpose(syn_out, 0, 2)
         return syn_out
 
     def summary(self) -> pd.Series:
