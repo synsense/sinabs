@@ -75,3 +75,59 @@ def test_gpu():
     out_spikes = tds(inp_spikes)
 
     assert out_spikes.shape == (50, 5, 1)
+
+
+def test_buffer():
+    from sinabs.layers import SpikingTDSLayer
+    import torch
+    import numpy as np
+
+    # Generate input
+    inp = np.arange(20) % 2
+    inp_spikes = torch.from_numpy(inp.reshape(len(inp), 1, 1)).float().to("cuda:0")
+
+    # Init layer
+    tds = SpikingTDSLayer(
+        channels_in=1,
+        channels_out=1,
+        delay=2,
+        bias=True
+    )
+    for (key, param) in tds.named_parameters():
+        if key == "conv.weight":
+            param.data = torch.from_numpy(np.ones((1, 1, 2))).float()
+        if key == "conv.bias":
+            param.data = torch.zeros(1)
+    tds.to("cuda:0")
+    out_spikes = tds(inp_spikes)
+    result = np.array([0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2]).reshape(len(inp), 1, 1)
+    result = torch.from_numpy(result).float().to("cuda:0")
+
+    assert torch.eq(out_spikes, result).all()
+
+
+def test_runtime():
+    from sinabs.layers import SpikingTDSLayer
+    import torch
+    import time
+
+    # Init layer
+    tds = SpikingTDSLayer(
+        channels_in=20,
+        channels_out=5,
+        delay=30,
+        bias=True
+    )
+    tds.to("cuda:0")
+    
+    # Measure average run time
+    avg_run_time = 0
+    for i in range(200):
+        inp_spikes = (torch.rand((100, 20, 1)) > 0.05).float().to("cuda:0")
+        start = time.time()
+        out_spikes = tds(inp_spikes)
+        end = time.time()
+        avg_run_time += end-start
+    avg_run_time /= 200
+
+    assert avg_run_time < 0.01

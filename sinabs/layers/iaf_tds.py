@@ -68,6 +68,7 @@ class SpikingTDSLayer(SpikingLayer):
             channels_in,
             channels_out,
             kernel_size=2,
+            padding=delay,
             dilation=delay,
             stride=1,
             bias=bias,
@@ -94,6 +95,7 @@ class SpikingTDSLayer(SpikingLayer):
         input_spikes = torch.cat((self.delay_buffer, input_spikes), 2)
         syn_out = self.conv(input_spikes)
         self.delay_buffer = input_spikes[:, : , -self.delay:]
+        syn_out = syn_out[:, :, self.delay:-self.delay]
         syn_out = torch.transpose(syn_out, 0, 2)
         return syn_out
 
