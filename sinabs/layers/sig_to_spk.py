@@ -53,8 +53,7 @@ class Sig2SpikeLayer(SpikingLayer):
         self.tw = tw
 
     def synaptic_output(self, input_sig: torch.Tensor) -> torch.Tensor:
-        syn_out = input_sig
-        return syn_out  # (tw, channels, length)
+        return input_sig
 
     def get_output_shape(self, input_shape: Tuple):
         return (self.tw, *input_shape)

@@ -16,27 +16,6 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 
-def test_synapticoutput():
-    import torch
-    from sinabs.layers import Sig2SpikeLayer
-
-    channels = 1
-    length = 3
-    b = 3.0
-    tw = 5
-    thr = b / tw
-
-    lyr = Sig2SpikeLayer(
-        sig_shape=(channels, length), tw=tw, threshold=thr, layer_name="sig2spk"
-    )
-
-    img = torch.tensor([[1.0, 0.5, 0.25]])*b
-
-    syn_out = lyr.synaptic_output(img)
-
-    assert syn_out.shape == (channels, length)
-
-
 def test_forward():
     import torch
     from sinabs.layers import Sig2SpikeLayer
@@ -52,8 +31,8 @@ def test_forward():
     )
 
     sig = torch.tensor([[1.0, 0.5, 0.25]])*b
-    input_sig = torch.stack([sig]*tw, dim=0)
+    sig = torch.stack([sig]*tw, dim=0)
 
-    spk = lyr(input_sig)
+    spk = lyr(sig)
 
     assert spk.shape == (tw, channels, length)
