@@ -51,6 +51,7 @@ class SpikingConv2dLayer(SpikingLayer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "conv2d",
+        negative_spikes: bool = False
     ):
         """
         Pytorch implementation of a spiking iaf neuron which convolve 2D inputs, with multiple channels
@@ -79,6 +80,7 @@ class SpikingConv2dLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
+            negative_spikes=negative_spikes
         )
         if padding != (0, 0, 0, 0):
             self.pad = nn.ZeroPad2d(padding)
