@@ -136,7 +136,6 @@ class SpikingLayer(TorchLayer):
         # Loop over time steps
         for iCurrentTimeStep in range(time_steps):
             state = state + syn_out[iCurrentTimeStep]
-            print(f'Sate before threshold check:  {state}')
             # - Reset or subtract from membrane state after spikes
             if membrane_subtract is not None:
                 if not neg_spikes:
@@ -145,12 +144,10 @@ class SpikingLayer(TorchLayer):
                     spikes_number[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
                 else:
                     n_thresh_crossings = ((state.abs() - threshold) / membrane_subtract).floor().int() + 1
-                    print(f'n_thresh_crossings {n_thresh_crossings}')
                     spikes_number[iCurrentTimeStep] = state.sign().int() * n_thresh_crossings
 
                 # - Subtract from states
                 state -= membrane_subtract * spikes_number[iCurrentTimeStep].float()
-                print(f'Sate after threshold check:  {state}')
             else:
                 if not neg_spikes:
                     # - Check threshold crossings for spikes
