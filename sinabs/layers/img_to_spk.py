@@ -34,6 +34,7 @@ class Img2SpikeLayer(TorchLayer):
         layer_name: str = "img2spk",
         norm=255.0,
         squeeze_batch_dimension=False,
+        negative_spikes: bool = False
     ):
         """
         Layer converts images to spikes
@@ -51,20 +52,24 @@ class Img2SpikeLayer(TorchLayer):
         self.max_rate = max_rate
         self.norm = norm
         self.squeeze = squeeze_batch_dimension
+        self.negative_spikes = negative_spikes
 
     def forward(self, img_input):
         if self.squeeze:
             img_input = img_input.squeeze()
         random_tensor = torch.rand(self.tw, *tuple(img_input.shape)).to(img_input.device)
-        spk_img = (
-            random_tensor < (img_input / self.norm) * (self.max_rate / 1000)
-        ).float()
+        if not self.negative_spikes:
+            firing_probs = (img_input / self.norm) * (self.max_rate / 1000)
+            spk_img = (random_tensor < firing_probs).float()
+        else:
+            firing_probs = (img_input.abs() / self.norm) * (self.max_rate / 1000)
+            spk_img = (random_tensor < firing_probs).float() * img_input.sign().float()
         return spk_img
 
     def get_output_shape(self, input_shape: Tuple):
         if self.squeeze:
             raise NotImplementedError()
-        return (self.tw, *input_shape)
+        return input_shape  # (self.tw, *input_shape)
 
     def summary(self):
         """
