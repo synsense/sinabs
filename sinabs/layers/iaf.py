@@ -19,8 +19,8 @@
 # iaf.py - Torch implementation of a integrate-and-fire layer
 ##
 
-import numpy as np
 import torch
+import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple, Dict
 from .layer import TorchLayer
@@ -103,6 +103,7 @@ class SpikingLayer(TorchLayer):
         pass
 
     def forward(self, binary_input: torch.Tensor):
+        torch.cuda.empty_cache()  # Free memory cache
         # Determine no. of time steps from input
         time_steps = len(binary_input)
         neg_spikes = self.negative_spikes
@@ -119,7 +120,8 @@ class SpikingLayer(TorchLayer):
         # Initialize state as required
         # Create a vector to hold all output spikes
         if self.spikes_number is None or len(self.spikes_number) != time_steps:
-            del self.spikes_number  # Free memory just to be sure
+            del self.spikes_number
+            torch.cuda.empty_cache()  # Free memory cache
             self.spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:]).int()
 
         self.spikes_number.zero_()
