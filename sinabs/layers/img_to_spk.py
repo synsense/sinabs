@@ -67,8 +67,6 @@ class Img2SpikeLayer(TorchLayer):
         return spk_img
 
     def get_output_shape(self, input_shape: Tuple):
-        if self.squeeze:
-            raise NotImplementedError()
         return input_shape  # (self.tw, *input_shape)
 
     def summary(self):
