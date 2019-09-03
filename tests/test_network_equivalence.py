@@ -59,6 +59,15 @@ def test_network_conversion():
     input_shape = (1, 28, 28)
 
     cnn = CNN().eval()
+
+    cnn.sequence[1].running_mean = 2. * torch.rand(16) - 1.
+    cnn.sequence[1].running_var = torch.rand(16) + 1.
+    cnn.sequence[1].weight = nn.Parameter(2 * torch.rand(16) - 1.)
+    cnn.sequence[1].bias = nn.Parameter(2 * torch.rand(16) - 1.)
+
+    cnn.sequence[5].running_mean = 2. * torch.rand(8) - 1.
+    cnn.sequence[5].running_var = torch.rand(8) + 1.
+
     img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.)
     converter = SpkConverter(cnn, input_shape=input_shape,
                              input_conversion_layer=img2spk)

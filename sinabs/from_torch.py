@@ -1,6 +1,8 @@
+import torch
 from torch import nn
 import sinabs.layers as sil
 from warnings import warn
+from copy import deepcopy
 
 
 class ConvertedNet(nn.Module):
@@ -12,6 +14,19 @@ class ConvertedNet(nn.Module):
         for m in self.module_list:
             x = m(x)
         return x
+
+
+class Spk2Rates(sil.TorchLayer):
+    def __init__(self, input_shape=None, layer_name="spk2rates"):
+        sil.TorchLayer.__init__(
+            self, input_shape=input_shape, layer_name=layer_name
+        )
+
+    def forward(self, x):
+        return x.float().mean(0).unsqueeze(0)
+
+    def get_output_shape(self, input_shape):
+        return input_shape
 
 
 class SpkConverter(object):
@@ -36,27 +51,31 @@ class SpkConverter(object):
         self.spk_mod.add_module(name, module)
         self.previous_layer_shape = module.get_output_shape(
             self.previous_layer_shape)
+        print(self.previous_layer_shape)
         self.index += 1
 
     def convert_conv2d(self, conv):
+        pad0, pad1 = conv.padding
         layer = sil.SpikingConv2dLayer(
-                    channels_in=conv.in_channels,
-                    image_shape=self.previous_layer_shape,
-                    kernel_shape=conv.kernel_size,
-                    channels_out=conv.out_channels,
-                    padding=conv.padding,
-                    strides=conv.stride,
-                    bias=conv.bias is not None,
-                    negative_spikes=True
+            channels_in=conv.in_channels,
+            image_shape=self.previous_layer_shape,
+            kernel_shape=conv.kernel_size,
+            channels_out=conv.out_channels,
+            padding=(pad0, pad0, pad1, pad1),
+            strides=conv.stride,
+            bias=conv.bias is not None,
+            negative_spikes=True,
+            threshold_low=None,
         )
 
-        layer.conv.bias = conv.bias
+        if conv.bias is not None:
+            layer.conv.bias.data = torch.tensor(conv.bias.data)
         if self.leftover_rescaling:
-            layer.conv.weight = nn.Parameter(conv.weight *
-                                             self.leftover_rescaling)
+            layer.conv.weight.data = torch.tensor(conv.weight *
+                                                  self.leftover_rescaling)
             self.leftover_rescaling = False
         else:
-            layer.conv.weight = conv.weight
+            layer.conv.weight.data = torch.tensor(conv.weight.data)
 
         self.add(f"conv2d_{self.index}", layer)
 
@@ -64,7 +83,7 @@ class SpkConverter(object):
         layer = sil.SumPooling2dLayer(
             pool_size=(pool.kernel_size, pool.kernel_size),
             strides=(pool.stride, pool.stride),
-            padding=(pool.padding, pool.padding, 0, 0),
+            padding=(pool.padding, 0, pool.padding, 0),
             image_shape=self.previous_layer_shape
         )
         self.leftover_rescaling = 0.25
@@ -89,14 +108,31 @@ class SpkConverter(object):
         factor = gamma / sigmasq.sqrt()
 
         last_convo = self.previous_convo()
-        c_weight = last_convo.conv.weight
-        c_bias = 0. if last_convo.conv.bias is None else last_convo.conv.bias
-        last_convo.conv.weight = nn.Parameter(c_weight *
-                                              factor[:, None, None, None])
+        c_weight = torch.tensor(last_convo.conv.weight.data)
+        c_bias = 0. if last_convo.conv.bias is None else torch.tensor(
+            last_convo.conv.bias.data)
+
+        # assert last_convo.conv.weight.shape == new_weight.shape
+        last_convo.conv.weight.data = c_weight * factor[:, None, None, None]
         last_convo.conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
+
+    def convert_yolo(self, yolo):
+        spk2rates = Spk2Rates(input_shape=self.previous_layer_shape)
+        self.add("output_conversion_for_yolo", spk2rates)
+
+        new_yolo = deepcopy(yolo)
+        new_yolo.img_dim = 416
+        self.spk_mod.add_module(f"yolo_{self.index}", new_yolo)
 
     def convert_relu(self, relu):
         self.previous_convo().negative_spikes = False
+
+    def convert_zeropad2d(self, padlayer):
+        layer = sil.ZeroPad2dLayer(
+            image_shape=self.previous_layer_shape,
+            padding=padlayer.padding
+        )
+        self.add("zeropad2d", layer)
 
     def convert(self):
         for mname, module in self.modules():
@@ -111,8 +147,13 @@ class SpkConverter(object):
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
                 warn("Leaky ReLU not supported. Converted to ReLU.")
+            elif isinstance(module, nn.ZeroPad2d):
+                self.convert_zeropad2d(module)
+            elif type(module).__name__ == "YOLOLayer":
+                self.convert_yolo(module)
+                break
             else:
-                warn(f"Layer '{module.__class__}' is not supported. Skipping!")
+                warn(f"Layer '{type(module).__name__}' is not supported. Skipping!")
 
         if self.leftover_rescaling:
             warn("Caution: the rescaling due to the last average pooling could not be applied!")
