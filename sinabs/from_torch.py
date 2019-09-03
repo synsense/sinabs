@@ -69,13 +69,13 @@ class SpkConverter(object):
         )
 
         if conv.bias is not None:
-            layer.conv.bias.data = torch.tensor(conv.bias.data)
+            layer.conv.bias.data = conv.bias.data.clone().detach()
         if self.leftover_rescaling:
-            layer.conv.weight.data = torch.tensor(conv.weight *
-                                                  self.leftover_rescaling)
+            layer.conv.weight.data = (conv.weight *
+                                      self.leftover_rescaling).clone().detach()
             self.leftover_rescaling = False
         else:
-            layer.conv.weight.data = torch.tensor(conv.weight.data)
+            layer.conv.weight.data = conv.weight.data.clone().detach()
 
         self.add(f"conv2d_{self.index}", layer)
 
@@ -108,9 +108,8 @@ class SpkConverter(object):
         factor = gamma / sigmasq.sqrt()
 
         last_convo = self.previous_convo()
-        c_weight = torch.tensor(last_convo.conv.weight.data)
-        c_bias = 0. if last_convo.conv.bias is None else torch.tensor(
-            last_convo.conv.bias.data)
+        c_weight = last_convo.conv.weight.data.clone().detach()
+        c_bias = 0. if last_convo.conv.bias is None else last_convo.conv.bias.data.clone().detach()
 
         # assert last_convo.conv.weight.shape == new_weight.shape
         last_convo.conv.weight.data = c_weight * factor[:, None, None, None]
