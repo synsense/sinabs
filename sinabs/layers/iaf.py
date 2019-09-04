@@ -104,6 +104,7 @@ class SpikingLayer(TorchLayer):
 
     def forward(self, binary_input: torch.Tensor):
         torch.cuda.empty_cache()  # Free memory cache
+
         # Determine no. of time steps from input
         time_steps = len(binary_input)
         neg_spikes = self.negative_spikes
@@ -117,16 +118,10 @@ class SpikingLayer(TorchLayer):
         threshold_low = self.threshold_low
         membrane_reset = self.membrane_reset
 
-        # Initialize state as required
         # Create a vector to hold all output spikes
-        if self.spikes_number is None or len(self.spikes_number) != time_steps:
-            del self.spikes_number
-            torch.cuda.empty_cache()  # Free memory cache
-            self.spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:]).int()
+        spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:])
 
-        self.spikes_number.zero_()
-        spikes_number = self.spikes_number
-
+        # Initialize state as required
         if self.state is None:
             self.state = syn_out.new_zeros(syn_out.shape[1:])
         elif self.state.device != syn_out.device:
@@ -172,6 +167,7 @@ class SpikingLayer(TorchLayer):
             if threshold_low is not None and not neg_spikes:
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
+
         self.state = state
-        self.spikes_number = spikes_number
-        return spikes_number.float()  # Float to keep things compatible
+        self.spikes_number = spikes_number.sum()
+        return spikes_number
