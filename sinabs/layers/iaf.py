@@ -122,13 +122,11 @@ class SpikingLayer(TorchLayer):
         spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:])
 
         # Initialize state as required
-        if self.state is None:
-            self.state = syn_out.new_zeros(syn_out.shape[1:])
-        elif self.state.device != syn_out.device:
-            # print(f"Device type state: {self.state.device}, syn_out: {syn_out.device} ")
-            self.state = self.state.to(syn_out.device)
+        state = syn_out.new_zeros(syn_out.shape[1:])
 
-        state = self.state
+        if state.device != syn_out.device:
+            # print(f"Device type state: {self.state.device}, syn_out: {syn_out.device} ")
+            state = state.to(syn_out.device)
 
         # Loop over time steps
         for iCurrentTimeStep in range(time_steps):
@@ -167,7 +165,7 @@ class SpikingLayer(TorchLayer):
             if threshold_low is not None and not neg_spikes:
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
-
-        self.state = state
+        self.state = state  # TODO: parhaps this is not necessary and wastes memory?
         self.spikes_number = spikes_number.sum()
+
         return spikes_number
