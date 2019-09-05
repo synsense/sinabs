@@ -45,3 +45,4 @@ from .sumpool2d import (
 )
 from .zeropad2d import ZeroPad2dLayer, from_zeropad2d_keras_conf
 from .img_to_spk import Img2SpikeLayer
+from .yolo import YOLOLayer

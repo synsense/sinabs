@@ -5,19 +5,6 @@ from copy import deepcopy
 from sinabs import Network
 
 
-class Spk2Rates(sil.TorchLayer):
-    def __init__(self, input_shape=None, layer_name="spk2rates"):
-        sil.TorchLayer.__init__(
-            self, input_shape=input_shape, layer_name=layer_name
-        )
-
-    def forward(self, x):
-        return x.float().mean(0).unsqueeze(0)
-
-    def get_output_shape(self, input_shape):
-        return input_shape
-
-
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False):
         self.model = model
@@ -105,12 +92,17 @@ class SpkConverter(object):
         last_convo.conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
 
     def convert_yolo(self, yolo):
-        spk2rates = Spk2Rates(input_shape=self.previous_layer_shape)
-        self.add("output_conversion_for_yolo", spk2rates)
+        # spk2rates = Spk2Rates(input_shape=self.previous_layer_shape)
+        # self.add("output_conversion_for_yolo", spk2rates)
 
-        new_yolo = deepcopy(yolo)
-        new_yolo.img_dim = 416  # TODO
-        new_yolo.return_loss = False
+        new_yolo = sil.YOLOLayer(
+            anchors=yolo.anchors,
+            num_classes=yolo.num_classes,
+            img_dim=416,  # TODO
+            return_loss=False,
+            compute_rate=True
+        )
+
         self.spk_mod.add_module(f"yolo_{self.index}", new_yolo)
 
     def convert_relu(self, relu):
