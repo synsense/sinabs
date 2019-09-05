@@ -1,19 +1,8 @@
-import torch
 from torch import nn
 import sinabs.layers as sil
 from warnings import warn
 from copy import deepcopy
-
-
-class ConvertedNet(nn.Module):
-    def __init__(self, spk_mod):
-        super().__init__()
-        self.module_list = spk_mod
-
-    def forward(self, x):
-        for m in self.module_list:
-            x = m(x)
-        return x
+from sinabs import Network
 
 
 class Spk2Rates(sil.TorchLayer):
@@ -32,7 +21,7 @@ class Spk2Rates(sil.TorchLayer):
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False):
         self.model = model
-        self.spk_mod = nn.ModuleList()
+        self.spk_mod = nn.Sequential()
         self.previous_layer_shape = input_shape
         self.index = 0
         self.leftover_rescaling = False
@@ -158,4 +147,8 @@ class SpkConverter(object):
         if self.leftover_rescaling:
             warn("Caution: the rescaling due to the last average pooling could not be applied!")
 
-        return ConvertedNet(self.spk_mod)
+        network = Network()
+        network.spiking_model = self.spk_mod
+        network.analog_model = self.model
+
+        return network
