@@ -1,8 +1,27 @@
 from torch import nn
 import sinabs.layers as sil
 from warnings import warn
-from copy import deepcopy
 from sinabs import Network
+
+
+def from_model(model, input_shape, input_conversion_layer=False):
+    """
+    Converts a Torch model and returns a Sinabs network object.
+    Only sequential models or module lists are supported, with unpredictable
+    behaviour on non-sequential models. This features currently has limited
+    capability.
+
+    :param model: a Torch model
+    :param input_shape: the shape of the expected input
+    :param input_conversion_layer: a Sinabs layer to be appended at the
+    beginning of the resulting network (typically Img2SpikeLayer or similar)
+    :return network: the Sinabs network object created by conversion.
+    """
+    return SpkConverter(
+        model,
+        input_shape,
+        input_conversion_layer
+    ).convert()
 
 
 class SpkConverter(object):
@@ -16,6 +35,10 @@ class SpkConverter(object):
             self.add("input_conversion", input_conversion_layer)
 
     def modules(self):
+        """
+        Lists all modules in the model, except the model itself,
+        Sequentials and ModuleLists.
+        """
         for mname, m in self.model.named_modules():
             if (isinstance(m, nn.Sequential)
                 or isinstance(m, nn.ModuleList)
@@ -24,6 +47,12 @@ class SpkConverter(object):
             yield (mname, m)
 
     def add(self, name, module):
+        """
+        Adds a layer to the spiking model.
+
+        :param name: the name of the layer
+        :param module: the layer to add
+        """
         self.spk_mod.add_module(name, module)
         self.previous_layer_shape = module.get_output_shape(
             self.previous_layer_shape)
@@ -31,6 +60,12 @@ class SpkConverter(object):
         self.index += 1
 
     def convert_conv2d(self, conv):
+        """
+        Converts a torch.nn.Conv2d layer to spiking and adds it to the spiking
+        model.
+
+        :param conv: the Torch layer to convert.
+        """
         pad0, pad1 = conv.padding
         layer = sil.SpikingConv2dLayer(
             channels_in=conv.in_channels,
@@ -56,6 +91,12 @@ class SpkConverter(object):
         self.add(f"conv2d_{self.index}", layer)
 
     def convert_avgpool(self, pool):
+        """
+        Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
+        spiking model.
+
+        :param pool: the Torch layer to convert.
+        """
         layer = sil.SumPooling2dLayer(
             pool_size=(pool.kernel_size, pool.kernel_size),
             strides=(pool.stride, pool.stride),
@@ -66,6 +107,10 @@ class SpkConverter(object):
         self.add(f"avgpool_{self.index}", layer)
 
     def previous_convo(self):
+        """
+        Identifies the previous convolution in the spiking model.
+        Used to update convolution weights due to batch norm or avg pool.
+        """
         last_layer = self.spk_mod._modules[list(self.spk_mod._modules)[-1]]
         if not isinstance(last_layer, sil.SpikingConv2dLayer):
             raise NotImplementedError(
@@ -73,6 +118,12 @@ class SpkConverter(object):
         return last_layer
 
     def convert_batchnorm(self, bn):
+        """
+        Converts a torch.nn.BatchNorm2d layer to spiking and adds it to the
+        spiking model.
+
+        :param bn: the Torch layer to convert.
+        """
         mu = bn.running_mean
         sigmasq = bn.running_var
 
@@ -87,14 +138,21 @@ class SpkConverter(object):
         c_weight = last_convo.conv.weight.data.clone().detach()
         c_bias = 0. if last_convo.conv.bias is None else last_convo.conv.bias.data.clone().detach()
 
-        # assert last_convo.conv.weight.shape == new_weight.shape
         last_convo.conv.weight.data = c_weight * factor[:, None, None, None]
         last_convo.conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
 
     def convert_yolo(self, yolo):
-        # spk2rates = Spk2Rates(input_shape=self.previous_layer_shape)
-        # self.add("output_conversion_for_yolo", spk2rates)
+        """
+        This feature is experimental.
 
+        Converts a YOLO layer to spiking and adds it to the
+        spiking model. Note that the Sinabs YOLO layer converts
+        spikes to rates and is not a spiking layer. YOLO layers
+        differ in implementation, and this will work only for YOLO
+        layers similar to the Sinabs YOLO layer.
+
+        :param yolo: the YOLO layer to convert.
+        """
         new_yolo = sil.YOLOLayer(
             anchors=yolo.anchors,
             num_classes=yolo.num_classes,
@@ -106,9 +164,21 @@ class SpkConverter(object):
         self.spk_mod.add_module(f"yolo_{self.index}", new_yolo)
 
     def convert_relu(self, relu):
+        """
+        Converts a torch.nn.ReLU layer to spiking, by preventing the
+        previous convolutional layer from emitting negative spikes.
+
+        :param relu: the Torch layer to convert.
+        """
         self.previous_convo().negative_spikes = False
 
     def convert_zeropad2d(self, padlayer):
+        """
+        Converts a torch.nn.ZeroPad2d layer to spiking and adds it to the
+        spiking model.
+
+        :param padlayer: the Torch layer to convert.
+        """
         layer = sil.ZeroPad2dLayer(
             image_shape=self.previous_layer_shape,
             padding=padlayer.padding
@@ -116,6 +186,11 @@ class SpkConverter(object):
         self.add("zeropad2d", layer)
 
     def convert(self):
+        """
+        Converts the Torch model and returns a Sinabs network object.
+
+        :return network: the Sinabs network object created by conversion.
+        """
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):
                 self.convert_conv2d(module)

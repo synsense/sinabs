@@ -29,10 +29,21 @@ from torch import nn
 
 
 class YOLOLayer(nn.Module):
-    """Detection layer"""
-
     def __init__(self, anchors, num_classes, img_dim=416,
                  return_loss=False, compute_rate=False):
+        """
+        An implementation of the YOLO layer. This is not a spiking layer,
+        and the input needs to be converted to rates, unless compute_rate is
+        True.
+
+        :param anchors: A list of tuples, containing the anchor locations
+        :param num_classes: The number of classes to predict
+        :param img_dim: The original size of the network's input image
+        :param return_loss: Kept for backward compatibility only
+        :param compute_rate: If True, average over the time dimension before
+        applying the YOLO operations.
+        :return output: A tensor containing YOLO's predictions
+        """
         super(YOLOLayer, self).__init__()
         self.anchors = anchors
         self.num_anchors = len(anchors)
