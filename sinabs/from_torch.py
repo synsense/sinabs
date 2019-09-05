@@ -120,7 +120,8 @@ class SpkConverter(object):
         self.add("output_conversion_for_yolo", spk2rates)
 
         new_yolo = deepcopy(yolo)
-        new_yolo.img_dim = 416
+        new_yolo.img_dim = 416  # TODO
+        new_yolo.return_loss = False
         self.spk_mod.add_module(f"yolo_{self.index}", new_yolo)
 
     def convert_relu(self, relu):
