@@ -188,10 +188,9 @@ def createTestModel(img_data_format="channels_last", use_bias=False):
     output = x
     keras_model = keras.Model(inputLayer, output)
     weights = keras_model.get_weights()
-    myweights = []
     for w in weights:
         print("Weights :", w.shape, np.mean(w), np.std(w))
-    keras_model.set_weights(myweights)
+    keras_model.set_weights(weights)
     print(keras_model.summary())
     keras_model.save(f"{strLibPath}/models/{modelName}.h5")
 
