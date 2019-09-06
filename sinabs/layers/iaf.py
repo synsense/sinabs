@@ -168,5 +168,5 @@ class SpikingLayer(TorchLayer):
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
         self.state = state
-        self.spikes_number = spikes_number.sum()
+        self.spikes_number = spikes_number.sum().detach()
         return spikes_number
