@@ -5,3 +5,4 @@ API
    sinabs
    layers
    from_keras
+   from_torch
