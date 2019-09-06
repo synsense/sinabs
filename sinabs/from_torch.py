@@ -9,16 +9,16 @@ def from_model(model, input_shape, input_conversion_layer=False,
     """
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
-    behaviour on non-sequential models. This features currently has limited
+    behaviour on non-sequential models. This feature currently has limited
     capability.
 
     :param model: a Torch model
     :param input_shape: the shape of the expected input
-    :param input_conversion_layer: a Sinabs layer to be appended at the
+    :param input_conversion_layer: a Sinabs layer to be appended at the \
     beginning of the resulting network (typically Img2SpikeLayer or similar)
-    :param conv_threshold_low: The lower bound of the potential in
+    :param conv_threshold_low: The lower bound of the potential in \
     convolutional layers (same for all layers).
-    :return network: the Sinabs network object created by conversion.
+    :return: :class:`.network.Network`
     """
     return SpkConverter(
         model,
@@ -196,7 +196,7 @@ class SpkConverter(object):
         """
         Converts the Torch model and returns a Sinabs network object.
 
-        :return network: the Sinabs network object created by conversion.
+        :returns network: the Sinabs network object created by conversion.
         """
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):

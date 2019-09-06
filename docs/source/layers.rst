@@ -91,6 +91,12 @@ Abstract layers
 .. autoclass:: SumPooling2dLayer
     :members:
 
+`YOLOLayer`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: YOLOLayer
+    :members:
+
 `ZeroPad2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 

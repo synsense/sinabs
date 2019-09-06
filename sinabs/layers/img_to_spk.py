@@ -32,8 +32,8 @@ class Img2SpikeLayer(TorchLayer):
         tw: int = 100,
         max_rate: float = 1000,
         layer_name: str = "img2spk",
-        norm=255.0,
-        squeeze_batch_dimension=False,
+        norm: float = 255.0,
+        squeeze: bool = False,
         negative_spikes: bool = False
     ):
         """
@@ -43,7 +43,10 @@ class Img2SpikeLayer(TorchLayer):
         :param tw: int Time window length
         :param max_rate: maximum firing rate of neurons
         :param layer_name: string layer name
-        :param norm: the supposed maximum value of the input (default 255)
+        :param norm: the supposed maximum value of the input (default 255.0)
+        :param squeeze: whether to remove singleton dimensions from the input
+        :param negative_spikes: whether to allow negative spikes in response \
+        to negative input
         """
         TorchLayer.__init__(
             self, input_shape=(None, *image_shape), layer_name=layer_name
@@ -51,7 +54,7 @@ class Img2SpikeLayer(TorchLayer):
         self.tw = tw
         self.max_rate = max_rate
         self.norm = norm
-        self.squeeze = squeeze_batch_dimension
+        self.squeeze = squeeze
         self.negative_spikes = negative_spikes
 
     def forward(self, img_input):

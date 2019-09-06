@@ -40,9 +40,8 @@ class YOLOLayer(nn.Module):
         :param num_classes: The number of classes to predict
         :param img_dim: The original size of the network's input image
         :param return_loss: Kept for backward compatibility only
-        :param compute_rate: If True, average over the time dimension before
+        :param compute_rate: If True, average over the time dimension before \
         applying the YOLO operations.
-        :return output: A tensor containing YOLO's predictions
         """
         super(YOLOLayer, self).__init__()
         self.anchors = anchors
