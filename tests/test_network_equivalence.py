@@ -13,7 +13,7 @@ def test_reconstruct_image():
     # instantiate layer
     spklayer = sil.Img2SpikeLayer(
         image_shape=img_shape, tw=10000, max_rate=1000.,
-        squeeze_batch_dimension=True)
+        squeeze=True)
 
     spikes = spklayer(torch.Tensor(image))
     rates = spikes.mean(0).unsqueeze(0)
@@ -30,7 +30,7 @@ def test_reconstruct_real_numbers():
     # instantiate layer
     spklayer = sil.Img2SpikeLayer(
         image_shape=input_shape, tw=10000, max_rate=1000.,
-        squeeze_batch_dimension=True, negative_spikes=True,
+        squeeze=True, negative_spikes=True,
         norm=1.0)
 
     spikes = spklayer(torch.Tensor(input_data))
