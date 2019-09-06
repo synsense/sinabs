@@ -70,6 +70,9 @@ class Img2SpikeLayer(TorchLayer):
         return spk_img
 
     def get_output_shape(self, input_shape: Tuple):
+        # The time dimension is not included in the shape
+        # NOTE: This is not true if the squeeze is false but input_shape has a batch_size
+        # TODO: Fix this
         return input_shape  # (self.tw, *input_shape)
 
     def summary(self):

@@ -137,7 +137,7 @@ class SpikingLayer(TorchLayer):
             if membrane_subtract is not None:
                 if not neg_spikes:
                     # Calculate number of spikes to be generated
-                    n_thresh_crossings = ((state - threshold) // membrane_subtract).int() + 1
+                    n_thresh_crossings = ((state - threshold) / membrane_subtract).int() + 1
                     spikes_number[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
                 else:
                     n_thresh_crossings = ((state.abs() - threshold) / membrane_subtract).floor().int() + 1

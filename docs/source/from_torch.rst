@@ -1,7 +1,7 @@
 sinabs.from_torch
 ===================
 
-This module provides support for importing models into the sinabs from Torch.
+This module provides support for importing models into the sinabs from pytorch.
 It currently only has limited capability.
 
 

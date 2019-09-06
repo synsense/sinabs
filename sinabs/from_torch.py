@@ -31,6 +31,19 @@ def from_model(model, input_shape, input_conversion_layer=False,
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
                  conv_threshold_low=None):
+        """
+        Converts a Torch model and returns a Sinabs network object.
+        Only sequential models or module lists are supported, with unpredictable
+        behaviour on non-sequential models. This feature currently has limited
+        capability.
+
+        :param model: a Torch model
+        :param input_shape: the shape of the expected input
+        :param input_conversion_layer: a Sinabs layer to be appended at the \
+        beginning of the resulting network (typically Img2SpikeLayer or similar)
+        :param conv_threshold_low: The lower bound of the potential in \
+        convolutional layers (same for all layers).
+        """
         self.model = model
         self.spk_mod = nn.Sequential()
         self.previous_layer_shape = input_shape
