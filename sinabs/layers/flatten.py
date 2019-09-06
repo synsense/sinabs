@@ -46,7 +46,7 @@ class FlattenLayer(TorchLayer):
         # Temporary modify LQ, due to keras weights generation change
         # binary_input = binary_input.permute(0, 2, 3, 1)
         flatten_out = binary_input.contiguous().view(nBatch, -1)
-        self.spikes_number = flatten_out.sum().detach()
+        self.spikes_number = flatten_out.sum()
         return flatten_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:

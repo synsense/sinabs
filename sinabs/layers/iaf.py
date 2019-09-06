@@ -103,8 +103,6 @@ class SpikingLayer(TorchLayer):
         pass
 
     def forward(self, binary_input: torch.Tensor):
-        torch.cuda.empty_cache()  # Free memory cache
-
         # Determine no. of time steps from input
         time_steps = len(binary_input)
         neg_spikes = self.negative_spikes
@@ -168,5 +166,5 @@ class SpikingLayer(TorchLayer):
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
         self.state = state
-        self.spikes_number = spikes_number.sum().detach()
+        self.spikes_number = spikes_number.sum()
         return spikes_number

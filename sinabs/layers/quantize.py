@@ -41,7 +41,7 @@ class QuantizeLayer(TorchLayer):
     def forward(self, tsrInput):
         # Quantize to ints
         tsrOut: torch.Tensor = tsrInput.int().float()
-        self.spikes_number = tsrOut.sum().detach()
+        self.spikes_number = tsrOut.sum()
         return tsrOut
 
     def get_output_shape(self, input_shape: Tuple):
