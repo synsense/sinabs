@@ -31,7 +31,7 @@ def test_forward():
     )
 
     sig = torch.tensor([[1.0, 0.5, 0.25]])*b
-    sig = torch.stack([sig]*tw, dim=0)
+    # sig = torch.stack([sig]*tw, dim=0)
 
     spk = lyr(sig)
 
