@@ -19,8 +19,8 @@
 # iaf.py - Torch implementation of a integrate-and-fire layer
 ##
 
-import numpy as np
 import torch
+import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple, Dict
 from .layer import TorchLayer
@@ -39,6 +39,7 @@ class SpikingLayer(TorchLayer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "spiking",
+        negative_spikes: bool = False
     ):
         """
         Pytorch implementation of a spiking neuron.
@@ -50,6 +51,7 @@ class SpikingLayer(TorchLayer):
         :param membrane_subtract: Upon spiking if the membrane potential is subtracted as opposed to reset, what is its value
         :param membrane_reset: What is the reset membrane potential of the neuron
         :param layer_name: Name of this layer
+        :param negative_spikes: Implement a linear transfer function through negative spiking
 
         NOTE: SUBTRACT superseeds Reset value
         """
@@ -59,6 +61,7 @@ class SpikingLayer(TorchLayer):
         self.membrane_reset = membrane_reset
         self.threshold = threshold
         self.threshold_low = threshold_low
+        self.negative_spikes = negative_spikes
 
         # Blank parameter place holders
         self.spikes_number = None
@@ -102,6 +105,7 @@ class SpikingLayer(TorchLayer):
     def forward(self, binary_input: torch.Tensor):
         # Determine no. of time steps from input
         time_steps = len(binary_input)
+        neg_spikes = self.negative_spikes
 
         # Compute the synaptic current
         syn_out: torch.Tensor = self.synaptic_output(binary_input)
@@ -112,15 +116,10 @@ class SpikingLayer(TorchLayer):
         threshold_low = self.threshold_low
         membrane_reset = self.membrane_reset
 
-        # Initialize state as required
         # Create a vector to hold all output spikes
-        if self.spikes_number is None or len(self.spikes_number) != time_steps:
-            del self.spikes_number  # Free memory just to be sure
-            self.spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:]).int()
+        spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:])
 
-        self.spikes_number.zero_()
-        spikes_number = self.spikes_number
-
+        # Initialize state as required
         if self.state is None:
             self.state = syn_out.new_zeros(syn_out.shape[1:])
         elif self.state.device != syn_out.device:
@@ -132,31 +131,40 @@ class SpikingLayer(TorchLayer):
         # Loop over time steps
         for iCurrentTimeStep in range(time_steps):
             state = state + syn_out[iCurrentTimeStep]
-
             # - Reset or subtract from membrane state after spikes
             if membrane_subtract is not None:
-                # Calculate number of spikes to be generated
-                spikes_number[iCurrentTimeStep] = (state >= threshold).int() + (
-                    state - threshold > 0
-                ).int() * ((state - threshold) / membrane_subtract).int()
+                if not neg_spikes:
+                    # Calculate number of spikes to be generated
+                    n_thresh_crossings = ((state - threshold) / membrane_subtract).int() + 1
+                    spikes_number[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
+                else:
+                    n_thresh_crossings = ((state.abs() - threshold) / membrane_subtract).floor().int() + 1
+                    spikes_number[iCurrentTimeStep] = state.sign().int() * n_thresh_crossings
+
                 # - Subtract from states
-                state = state - (
-                    membrane_subtract * spikes_number[iCurrentTimeStep].float()
-                )
+                state -= membrane_subtract * spikes_number[iCurrentTimeStep].float()
             else:
-                # - Check threshold crossings for spikes
-                spike_record = state >= threshold
-                # - Add to spike counter
-                spikes_number[iCurrentTimeStep] = spike_record
+                if not neg_spikes:
+                    # - Check threshold crossings for spikes
+                    spike_record = state >= threshold
+                    # - Add to spike counter
+                    spikes_number[iCurrentTimeStep] = spike_record
+                else:
+                    # this was not tested
+                    # - Check threshold crossings for spikes
+                    spike_record = state.abs() >= threshold
+                    # - Add to spike counter
+                    spikes_number[iCurrentTimeStep] = spike_record * state.sign().int()
+
                 # - Reset neuron states
                 state = (
                     spike_record.float() * membrane_reset
                     + state * (spike_record ^ 1).float()
                 )
 
-            if threshold_low is not None:
+            if threshold_low is not None and not neg_spikes:
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
         self.state = state
-        self.spikes_number = spikes_number
-        return spikes_number.float()  # Float to keep things compatible
+        self.spikes_number = spikes_number.sum()
+        return spikes_number

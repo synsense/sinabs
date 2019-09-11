@@ -203,3 +203,90 @@ def test_denseLayerFromKeras_non_spiking():
         print(layer_name)
 
     # TODO : Verify dimensions of output ?
+
+
+def test_TorchSpikingConv2dLayer_forward():
+    """
+    Test forward pass of Conv2D layer has desired behaviour
+    :return:
+    """
+    from sinabs.layers import SpikingConv2dLayer
+    import torch
+    from numpy import allclose
+
+    lyr = SpikingConv2dLayer(
+        channels_in=1,
+        image_shape=(2, 2),
+        channels_out=1,
+        kernel_shape=(1, 1),
+        strides=(1, 1),
+        padding=(0, 0, 0, 0),
+        bias=False,
+        threshold=2.2,
+        threshold_low=-2.2,
+        membrane_subtract=2.2,
+        layer_name="conv2d",
+    )
+
+    with torch.no_grad():
+
+        weights = torch.Tensor([[[[1.0]]]])
+        input_signal = torch.Tensor([[[[1., -2.], [-6., 8.]]],
+                                     [[[1., -2.], [-6., 8.]]],
+                                     [[[1., -2.], [-6., 8.]]]])
+        expected_out = torch.Tensor([[[[0, 0], [0, 3]]],
+                                     [[[0, 0], [0, 4]]],
+                                     [[[1, 0], [0, 3]]]])
+        expected_final_state = torch.Tensor([[[.8, -2.2], [-2.2, 2.0]]])
+
+        lyr.conv.weight.data = weights
+
+        out = lyr(input_signal)
+        final_state = lyr.state
+
+    assert allclose(out, expected_out)
+    assert allclose(final_state, expected_final_state)
+
+
+def test_TorchSpikingConv2dLayer_linear():
+    """
+    Test forward pass of Conv2D layer has desired behaviour
+    :return:
+    """
+    from sinabs.layers import SpikingConv2dLayer
+    import torch
+    from numpy import allclose
+
+    lyr = SpikingConv2dLayer(
+        channels_in=1,
+        image_shape=(2, 2),
+        channels_out=1,
+        kernel_shape=(1, 1),
+        strides=(1, 1),
+        padding=(0, 0, 0, 0),
+        bias=False,
+        threshold=2.2,
+        threshold_low=-2.2,
+        membrane_subtract=2.2,
+        layer_name="conv2d",
+        negative_spikes=True
+    )
+
+    with torch.no_grad():
+
+        weights = torch.Tensor([[[[1.0]]]])
+        input_signal = torch.Tensor([[[[1., -2.], [-6., 8.]]],
+                                     [[[1., -2.], [-6., 8.]]],
+                                     [[[1., -2.], [-6., 8.]]]])
+        expected_out = torch.Tensor([[[[0, 0], [-2, 3]]],
+                                     [[[0, -1], [-3, 4]]],
+                                     [[[1, -1], [-3, 3]]]])
+        expected_final_state = torch.Tensor([[[.8, -1.6], [-0.4, 2.0]]])
+
+        lyr.conv.weight.data = weights
+
+        out = lyr(input_signal)
+        final_state = lyr.state
+
+    assert allclose(out, expected_out)
+    assert allclose(final_state, expected_final_state)

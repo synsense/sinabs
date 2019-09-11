@@ -56,7 +56,7 @@ class Cropping2dLayer(TorchLayer):
             self.left_crop : w - self.right_crop,
         ]
         self.out_shape = crop_out.shape[1:]
-        self.spikes_number = crop_out
+        self.spikes_number = crop_out.sum()
         return crop_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:

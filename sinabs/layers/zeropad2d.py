@@ -44,7 +44,7 @@ class ZeroPad2dLayer(TorchLayer):
 
     def forward(self, tsrInput):
         output = self.pad(tsrInput)
-        self.spikes_number = output
+        self.spikes_number = output.sum()
         return output
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
