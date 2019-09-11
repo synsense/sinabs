@@ -48,3 +48,5 @@ from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .iaf_tds import SpikingTDSLayer
 from .yolo import YOLOLayer
+
+from .iaf_linear import SpikingLinearLayer
