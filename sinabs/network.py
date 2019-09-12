@@ -420,8 +420,10 @@ class Network(TorchLayer):
         for nLyrIndx, (layer_name, lyr) in enumerate(self.layers):
             if lyr.__class__.__name__ == "ZeroPad2d":
                 continue
+            if lyr.__class__.__name__ == "YOLOLayer":
+                continue
             spikes_number = lyr.spikes_number
-            nEvs = spikes_number.sum().item()
+            nEvs = spikes_number
             nfanout_prev = lyr.summary()["Fanout_Prev"]
             # lyr.channels_out * lyr.kernel_size[0] * lyr.kernel_size[1]
             # nSynOps = nEvsPrev * nFanOut
@@ -437,8 +439,8 @@ class Network(TorchLayer):
                         "Fanout_Prev": int(nfanout_prev),
                         "SynOps": int(nSynOps),
                         "Events_routed": int(nfanout_prev * nEvsPrev),
-                        "Time_window": len(spikes_number),
-                        "SynOps/s": nSynOps / len(spikes_number) * 1000,
+                        "Time_window": lyr.tw,
+                        "SynOps/s": nSynOps / lyr.tw * 1000,
                     }
                 ),
                 ignore_index=True,

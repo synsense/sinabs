@@ -23,6 +23,8 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, Optional, Union, List
 from abc import ABC, abstractmethod
+from operator import mul
+from functools import reduce
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
