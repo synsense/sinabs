@@ -117,7 +117,7 @@ class SpikingLayer(TorchLayer):
         membrane_reset = self.membrane_reset
 
         # Create a vector to hold all output spikes
-        spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:])
+        spikes = syn_out.new_zeros(time_steps, *syn_out.shape[1:])
 
         # Initialize state as required
         if self.state is None:
@@ -127,6 +127,7 @@ class SpikingLayer(TorchLayer):
             self.state = self.state.to(syn_out.device)
 
         state = self.state
+        self.spikes_number = 0
 
         # Loop over time steps
         for iCurrentTimeStep in range(time_steps):
@@ -136,25 +137,25 @@ class SpikingLayer(TorchLayer):
                 if not neg_spikes:
                     # Calculate number of spikes to be generated
                     n_thresh_crossings = ((state - threshold) / membrane_subtract).int() + 1
-                    spikes_number[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
+                    spikes[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
                 else:
                     n_thresh_crossings = ((state.abs() - threshold) / membrane_subtract).floor().int() + 1
-                    spikes_number[iCurrentTimeStep] = state.sign().int() * n_thresh_crossings
+                    spikes[iCurrentTimeStep] = state.sign().int() * n_thresh_crossings
 
                 # - Subtract from states
-                state -= membrane_subtract * spikes_number[iCurrentTimeStep].float()
+                state -= membrane_subtract * spikes[iCurrentTimeStep].float()
             else:
                 if not neg_spikes:
                     # - Check threshold crossings for spikes
                     spike_record = state >= threshold
                     # - Add to spike counter
-                    spikes_number[iCurrentTimeStep] = spike_record
+                    spikes[iCurrentTimeStep] = spike_record
                 else:
                     # this was not tested
                     # - Check threshold crossings for spikes
                     spike_record = state.abs() >= threshold
                     # - Add to spike counter
-                    spikes_number[iCurrentTimeStep] = spike_record * state.sign().int()
+                    spikes[iCurrentTimeStep] = spike_record * state.sign().int()
 
                 # - Reset neuron states
                 state = (
@@ -165,6 +166,8 @@ class SpikingLayer(TorchLayer):
             if threshold_low is not None and not neg_spikes:
                 state = self.thresh_lower(state)  # Lower bound on the activation
 
+            self.spikes_number += spikes[iCurrentTimeStep].abs().sum()
+
         self.state = state
-        self.spikes_number = spikes_number.sum()
-        return spikes_number
+        self.tw = len(spikes)
+        return spikes

@@ -120,7 +120,8 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         max_input_sum = (max_input_sum >= max_sum).float() * original_max_input_sum
 
         self.state = sum_count[-1]
-        self.spikes_number = max_input_sum.sum()
+        self.spikes_number = max_input_sum.abs().sum()
+        self.tw = len(max_input_sum)
         return max_input_sum.float()  # Float is just to keep things compatible
 
     def summary(self):

@@ -40,7 +40,8 @@ class InputLayer(TorchLayer):
         :param binary_input:
         :return: binary_input
         """
-        self.spikes_number = binary_input.sum()
+        self.spikes_number = binary_input.abs().sum()
+        self.tw = len(binary_input)
         return binary_input
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:

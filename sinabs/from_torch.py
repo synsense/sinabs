@@ -89,7 +89,7 @@ class SpkConverter(object):
         pad0, pad1 = conv.padding
         layer = sil.SpikingConv2dLayer(
             channels_in=conv.in_channels,
-            image_shape=self.previous_layer_shape,
+            image_shape=self.previous_layer_shape[1:],
             kernel_shape=conv.kernel_size,
             channels_out=conv.out_channels,
             padding=(pad0, pad0, pad1, pad1),
@@ -121,7 +121,7 @@ class SpkConverter(object):
             pool_size=(pool.kernel_size, pool.kernel_size),
             strides=(pool.stride, pool.stride),
             padding=(pool.padding, 0, pool.padding, 0),
-            image_shape=self.previous_layer_shape
+            image_shape=self.previous_layer_shape[1:]
         )
         self.leftover_rescaling = 0.25
         self.add(f"avgpool_{self.index}", layer)
@@ -176,6 +176,7 @@ class SpkConverter(object):
         new_yolo = sil.YOLOLayer(
             anchors=yolo.anchors,
             num_classes=yolo.num_classes,
+            input_shape=self.previous_layer_shape[1:],
             img_dim=416,  # TODO
             return_loss=False,
             compute_rate=True
@@ -200,7 +201,7 @@ class SpkConverter(object):
         :param padlayer: the Torch layer to convert.
         """
         layer = sil.ZeroPad2dLayer(
-            image_shape=self.previous_layer_shape,
+            image_shape=self.previous_layer_shape[1:],
             padding=padlayer.padding
         )
         self.add("zeropad2d", layer)

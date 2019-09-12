@@ -49,7 +49,7 @@ class Img2SpikeLayer(TorchLayer):
         to negative input
         """
         TorchLayer.__init__(
-            self, input_shape=(None, *image_shape), layer_name=layer_name
+            self, input_shape=image_shape, layer_name=layer_name
         )
         self.tw = tw
         self.max_rate = max_rate
@@ -67,6 +67,8 @@ class Img2SpikeLayer(TorchLayer):
         else:
             firing_probs = (img_input.abs() / self.norm) * (self.max_rate / 1000)
             spk_img = (random_tensor < firing_probs).float() * img_input.sign().float()
+        self.spikes_number = spk_img.abs().sum()
+        self.tw = len(spk_img)
         return spk_img
 
     def get_output_shape(self, input_shape: Tuple):
@@ -77,7 +79,7 @@ class Img2SpikeLayer(TorchLayer):
 
     def summary(self):
         """
-        Returns a summary of this layer as a pandas Series
+        :return: A summary of this layer as a pandas Series
         """
         summary = pd.Series(
             {
@@ -85,7 +87,10 @@ class Img2SpikeLayer(TorchLayer):
                 "Layer": self.layer_name,
                 "Input_Shape": tuple(self.input_shape),
                 "Output_Shape": tuple(self.output_shape),
+                "Fanout_Prev": 1,
                 "Neurons": 0,
+                "Kernel_Params": 0,
+                "Bias_Params": 0,
             }
         )
         return summary
