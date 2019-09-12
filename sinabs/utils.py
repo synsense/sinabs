@@ -124,9 +124,14 @@ def get_network_activations(
     :param bRate: If true returns the rate, else returns spike count
     :param name_list: list of all layers whose activations need to be compared
     """
-    model(inp)
     spike_counts = []
     tSim = len(inp)
+
+    # Define hook
+    def hook(module, inp, output):
+        arrOut = output.float().sum(0).cpu().numpy()
+        spike_counts.append(arrOut)
+
     # Generate default list of layers
     if name_list is None:
         name_list = ["Input"] + [lyr.layer_name for lyr in model.layers]
@@ -139,7 +144,11 @@ def get_network_activations(
         else:
             # Activity of other layers
             lyr = dict(model.named_modules())[layer_name]
-            spike_counts.append(lyr.spikes_number.float().sum(0).cpu().numpy())
+            lyr.register_forward_hook(hook)
+
+    with torch.no_grad():
+        model(inp)
+
     if bRate:
         spike_counts = [(counts / tSim * 1000) for counts in spike_counts]
     return spike_counts
