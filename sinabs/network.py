@@ -423,7 +423,7 @@ class Network(TorchLayer):
             if lyr.__class__.__name__ == "YOLOLayer":
                 continue
             spikes_number = lyr.spikes_number
-            nEvs = spikes_number
+            nEvs = spikes_number.detach().cpu().item()
             nfanout_prev = lyr.summary()["Fanout_Prev"]
             # lyr.channels_out * lyr.kernel_size[0] * lyr.kernel_size[1]
             # nSynOps = nEvsPrev * nFanOut
