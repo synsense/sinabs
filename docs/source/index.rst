@@ -8,11 +8,12 @@ Welcome to SINABS's documentation!
 
 SINABS - Sinabs Is Not A Brain Simulator
 
-Introduction
-------------
+Table of contents
+-----------------
 
 .. toctree::
    gettingstarted
+   introduction
    examples
    api
 
