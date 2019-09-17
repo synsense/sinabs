@@ -18,7 +18,7 @@
 import torch.nn as nn
 import numpy as np
 import pandas as pd
-from typing import Optional, Union, List, Tuple
+from typing import Union, List, Tuple
 from .layer import TorchLayer
 from operator import mul
 from functools import reduce
@@ -46,7 +46,8 @@ class FlattenLayer(TorchLayer):
         # Temporary modify LQ, due to keras weights generation change
         # binary_input = binary_input.permute(0, 2, 3, 1)
         flatten_out = binary_input.contiguous().view(nBatch, -1)
-        self.spikes_number = flatten_out.sum()
+        self.spikes_number = flatten_out.abs().sum()
+        self.tw = len(flatten_out)
         return flatten_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:

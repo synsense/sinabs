@@ -73,7 +73,8 @@ class SumPooling2dLayer(TorchLayer):
             pool_out = self.pool(binary_input)
         else:
             pool_out = self.pool(self.pad(binary_input))
-        self.spikes_number = pool_out.sum()
+        self.spikes_number = pool_out.abs().sum()
+        self.tw = len(pool_out)
         return pool_out
 
     def summary(self):
