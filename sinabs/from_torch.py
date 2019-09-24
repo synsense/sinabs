@@ -2,6 +2,7 @@ from torch import nn
 import sinabs.layers as sil
 from warnings import warn
 from sinabs import Network
+from numpy import prod
 
 
 def from_model(model, input_shape, input_conversion_layer=False,
@@ -117,24 +118,53 @@ class SpkConverter(object):
 
         :param pool: the Torch layer to convert.
         """
+        if not hasattr(pool.kernel_size, "__len__"):
+            kernel = (pool.kernel_size, pool.kernel_size)
+        else:
+            kernel = pool.kernel_size
+        if not hasattr(pool.stride, "__len__"):
+            stride = (pool.stride, pool.stride)
+        else:
+            stride = pool.stride
+
         layer = sil.SumPooling2dLayer(
-            pool_size=(pool.kernel_size, pool.kernel_size),
-            strides=(pool.stride, pool.stride),
+            pool_size=kernel,
+            strides=stride,
             padding=(pool.padding, 0, pool.padding, 0),
             image_shape=self.previous_layer_shape[1:]
         )
         self.leftover_rescaling = 0.25
         self.add(f"avgpool_{self.index}", layer)
 
-    def previous_convo(self):
+    def convert_linear(self, lin):
+        layer = sil.SpikingLinearLayer(
+            in_features=lin.in_features,
+            out_features=lin.out_features,
+            bias=lin.bias,
+            negative_spikes=True,
+        )
+
+        if lin.bias is not None:
+            layer.conv.bias.data = lin.bias.data.clone().detach()
+        if self.leftover_rescaling:
+            layer.linear.weight.data = (
+                lin.weight * self.leftover_rescaling).clone().detach()
+            self.leftover_rescaling = False
+        else:
+            layer.linear.weight.data = lin.weight.data.clone().detach()
+
+        self.add(f"linear_{self.index}", layer)
+
+    def previous_weighted_layer(self):
         """
         Identifies the previous convolution in the spiking model.
         Used to update convolution weights due to batch norm or avg pool.
         """
         last_layer = self.spk_mod._modules[list(self.spk_mod._modules)[-1]]
-        if not isinstance(last_layer, sil.SpikingConv2dLayer):
+        if not isinstance(last_layer, (sil.SpikingConv2dLayer,
+                                       sil.SpikingLinearLayer)):
             raise NotImplementedError(
-                "Can convert this layer only after a convolution.")
+                "Can convert this layer only after a convolution or linear layer.")
         return last_layer
 
     def convert_batchnorm(self, bn):
@@ -154,8 +184,8 @@ class SpkConverter(object):
 
         factor = gamma / sigmasq.sqrt()
 
-        last_convo = self.previous_convo()
-        c_weight = last_convo.conv.weight.data.clone().detach()
+        last_convo = self.previous_weighted_layer()
+        c_weight = last_convo.conv.weight.data.clone().detach()  # TODO this will give an error after Linear
         c_bias = 0. if last_convo.conv.bias is None else last_convo.conv.bias.data.clone().detach()
 
         last_convo.conv.weight.data = c_weight * factor[:, None, None, None]
@@ -191,7 +221,7 @@ class SpkConverter(object):
 
         :param relu: the Torch layer to convert.
         """
-        self.previous_convo().negative_spikes = False
+        self.previous_weighted_layer().negative_spikes = False
 
     def convert_zeropad2d(self, padlayer):
         """
@@ -217,6 +247,8 @@ class SpkConverter(object):
                 self.convert_conv2d(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
+            elif isinstance(module, nn.Linear):
+                self.convert_linear(module)
             elif isinstance(module, nn.BatchNorm2d):
                 self.convert_batchnorm(module)
             elif isinstance(module, nn.ReLU):
@@ -224,6 +256,8 @@ class SpkConverter(object):
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
                 warn("Leaky ReLU not supported. Converted to ReLU.")
+            elif isinstance(module, nn.Flatten):
+                self.add("flatten", sil.FlattenLayer(self.previous_layer_shape))
             elif isinstance(module, nn.ZeroPad2d):
                 self.convert_zeropad2d(module)
             elif type(module).__name__ == "YOLOLayer":

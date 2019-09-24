@@ -42,6 +42,7 @@ class SpikingLinearLayer(SpikingLayer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "conv1d",
+        negative_spikes: bool = False,
     ):
         """
         Spiking Linear/Densely connected layer
@@ -65,6 +66,7 @@ class SpikingLinearLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
+            negative_spikes=negative_spikes,
         )
         self.linear = nn.Linear(in_features, out_features, bias=bias)
 
@@ -80,6 +82,7 @@ class SpikingLinearLayer(SpikingLayer):
         :param input_spikes: torch.Tensor input to the layer.
         :return:  torch.Tensor - synaptic output current
         """
+
         return self.linear(input_spikes)
 
     def summary(self) -> pd.Series:
@@ -109,4 +112,4 @@ class SpikingLinearLayer(SpikingLayer):
         :param input_shape: (in_features,)
         :return: (out_features, )
         """
-        return self.channels_out
+        return (self.channels_out, )
