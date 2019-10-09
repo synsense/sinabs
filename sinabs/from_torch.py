@@ -2,11 +2,10 @@ from torch import nn
 import sinabs.layers as sil
 from warnings import warn
 from sinabs import Network
-from numpy import prod
 
 
 def from_model(model, input_shape, input_conversion_layer=False,
-               conv_threshold_low=None):
+               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
     """
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
@@ -17,21 +16,27 @@ def from_model(model, input_shape, input_conversion_layer=False,
     :param input_shape: the shape of the expected input
     :param input_conversion_layer: a Sinabs layer to be appended at the \
     beginning of the resulting network (typically Img2SpikeLayer or similar)
-    :param conv_threshold_low: The lower bound of the potential in \
-    convolutional layers (same for all layers).
+    :param threshold: The membrane potential threshold for spiking in \
+    convolutional and linear layers (same for all layers).
+    :param threshold_low: The lower bound of the potential in \
+    convolutional and linear layers (same for all layers).
+    :param membrane_subtract: Value subtracted from the potential upon \
+    spiking for convolutional and linear layers (same for all layers).
     :return: :class:`.network.Network`
     """
     return SpkConverter(
         model,
         input_shape,
         input_conversion_layer,
-        conv_threshold_low
+        threshold,
+        threshold_low,
+        membrane_subtract,
     ).convert()
 
 
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
-                 conv_threshold_low=None):
+                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
         """
         Converts a Torch model and returns a Sinabs network object.
         Only sequential models or module lists are supported, with unpredictable
@@ -42,15 +47,21 @@ class SpkConverter(object):
         :param input_shape: the shape of the expected input
         :param input_conversion_layer: a Sinabs layer to be appended at the \
         beginning of the resulting network (typically Img2SpikeLayer or similar)
-        :param conv_threshold_low: The lower bound of the potential in \
-        convolutional layers (same for all layers).
+        :param threshold: The membrane potential threshold for spiking in \
+        convolutional and linear layers (same for all layers).
+        :param threshold_low: The lower bound of the potential in \
+        convolutional and linear layers (same for all layers).
+        :param membrane_subtract: Value subtracted from the potential upon \
+        spiking for convolutional and linear layers (same for all layers).
         """
         self.model = model
         self.spk_mod = nn.Sequential()
         self.previous_layer_shape = input_shape
         self.index = 0
         self.leftover_rescaling = False
-        self.conv_threshold_low = conv_threshold_low
+        self.threshold_low = threshold_low
+        self.threshold = threshold
+        self.membrane_subtract = membrane_subtract
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -93,11 +104,13 @@ class SpkConverter(object):
             image_shape=self.previous_layer_shape[1:],
             kernel_shape=conv.kernel_size,
             channels_out=conv.out_channels,
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self.membrane_subtract,
             padding=(pad0, pad0, pad1, pad1),
             strides=conv.stride,
             bias=conv.bias is not None,
             negative_spikes=True,
-            threshold_low=self.conv_threshold_low,
         )
 
         if conv.bias is not None:
@@ -140,6 +153,9 @@ class SpkConverter(object):
         layer = sil.SpikingLinearLayer(
             in_features=lin.in_features,
             out_features=lin.out_features,
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self.membrane_subtract,
             bias=lin.bias,
             negative_spikes=True,
         )
