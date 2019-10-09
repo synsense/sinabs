@@ -91,6 +91,7 @@ class SpikingLinearLayer(SpikingLayer):
 
         :return: pandas Series object
         """
+        bias = 0. if self.bias is None else self.bias
         summary = pd.Series(
             {
                 "Type": self.__class__.__name__,
@@ -100,7 +101,7 @@ class SpikingLinearLayer(SpikingLayer):
                 "Fanout_Prev": self.channels_out,
                 "Neurons": self.channels_out,
                 "Kernel_Params": self.channels_in*self.channels_out,
-                "Bias_Params": self.bias * self.channels_out,
+                "Bias_Params": bias * self.channels_out,
             }
         )
         return summary
