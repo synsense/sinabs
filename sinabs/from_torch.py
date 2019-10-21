@@ -269,6 +269,8 @@ class SpkConverter(object):
                 self.convert_batchnorm(module)
             elif isinstance(module, nn.ReLU):
                 self.convert_relu(module)
+            elif type(module).__name__ == "NeuromorphicReLU":
+                self.convert_relu(module)
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
                 warn("Leaky ReLU not supported. Converted to ReLU.")
