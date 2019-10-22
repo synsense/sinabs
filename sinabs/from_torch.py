@@ -5,7 +5,8 @@ from sinabs import Network
 
 
 def from_model(model, input_shape, input_conversion_layer=False,
-               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
+               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+               exclude_negative_spikes=False):
     """
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
@@ -31,12 +32,14 @@ def from_model(model, input_shape, input_conversion_layer=False,
         threshold,
         threshold_low,
         membrane_subtract,
+        exclude_negative_spikes,
     ).convert()
 
 
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
-                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
+                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+                 exclude_negative_spikes=False):
         """
         Converts a Torch model and returns a Sinabs network object.
         Only sequential models or module lists are supported, with unpredictable
@@ -62,6 +65,7 @@ class SpkConverter(object):
         self.threshold_low = threshold_low
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
+        self.exclude_negative_spikes = exclude_negative_spikes
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -110,7 +114,7 @@ class SpkConverter(object):
             padding=(pad0, pad0, pad1, pad1),
             strides=conv.stride,
             bias=conv.bias is not None,
-            negative_spikes=True,
+            negative_spikes=not self.exclude_negative_spikes,
         )
 
         if conv.bias is not None:
@@ -157,7 +161,7 @@ class SpkConverter(object):
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
             bias=lin.bias,
-            negative_spikes=True,
+            negative_spikes=not self.exclude_negative_spikes,
         )
 
         if lin.bias is not None:
