@@ -92,7 +92,7 @@ class SpkConverter(object):
         self.spk_mod.add_module(name, module)
         self.previous_layer_shape = module.get_output_shape(
             self.previous_layer_shape)
-        print(self.previous_layer_shape)
+        print(name, self.previous_layer_shape)
         self.index += 1
 
     def convert_conv2d(self, conv):
@@ -152,6 +152,30 @@ class SpkConverter(object):
         )
         self.leftover_rescaling = 0.25
         self.add(f"avgpool_{self.index}", layer)
+        
+    def convert_sumpool(self, pool):
+        """
+        Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
+        spiking model.
+
+        :param pool: the Torch layer to convert.
+        """
+        if not hasattr(pool.kernel_size, "__len__"):
+            kernel = (pool.kernel_size, pool.kernel_size)
+        else:
+            kernel = pool.kernel_size
+        if not hasattr(pool.stride, "__len__"):
+            stride = (pool.stride, pool.stride)
+        else:
+            stride = pool.stride
+            
+        layer = sil.SumPooling2dLayer(
+            pool_size=kernel,
+            strides=stride,
+            padding=(pool.padding, 0, pool.padding, 0),
+            image_shape=self.previous_layer_shape[1:]
+        )
+        self.add(f"sumpool_{self.index}", layer)
 
     def convert_linear(self, lin):
         layer = sil.SpikingLinearLayer(
@@ -265,6 +289,8 @@ class SpkConverter(object):
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):
                 self.convert_conv2d(module)
+            elif type(module).__name__ == "DynapSumPoolLayer":
+                self.convert_sumpool(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
             elif isinstance(module, nn.Linear):
@@ -274,6 +300,8 @@ class SpkConverter(object):
             elif isinstance(module, nn.ReLU):
                 self.convert_relu(module)
             elif type(module).__name__ == "NeuromorphicReLU":
+                self.convert_relu(module)
+            elif type(module).__name__ == "QuantizeLayer":
                 self.convert_relu(module)
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
