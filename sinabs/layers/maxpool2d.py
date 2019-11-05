@@ -83,7 +83,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         sum_count = torch.cumsum(binary_input, 0)
         # Initialize state as required
         # Create a vector to hold all output spikes
-        if self.spikes_number is None or len(self.spikes_number) != len(binary_input):
+        if self.spikes_number is None:
             del self.spikes_number  # Free memory just to be sure
             self.spikes_number = torch.tensor(())
 
