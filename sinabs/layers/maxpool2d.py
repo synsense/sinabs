@@ -79,11 +79,12 @@ class SpikingMaxPooling2dLayer(TorchLayer):
         self.reset_states()
         time_steps = len(binary_input)
 
-        # Calculate the sum spikes of each neuron
+        # Calculate the cumulative sum spikes of each neuron
         sum_count = torch.cumsum(binary_input, 0)
         # Initialize state as required
         # Create a vector to hold all output spikes
-        if self.spikes_number is None or len(self.spikes_number) != len(binary_input):
+
+        if self.spikes_number is None:
             del self.spikes_number  # Free memory just to be sure
             self.spikes_number = torch.tensor(())
 
@@ -117,6 +118,7 @@ class SpikingMaxPooling2dLayer(TorchLayer):
             original_max_input_sum = self.pool(self.pad(binary_input))
 
         # Make sure the max sum is brought by the single spike from input_sum
+        # (max_input_sum >= max_sum).float() is the gate to pass through spikes
         max_input_sum = (max_input_sum >= max_sum).float() * original_max_input_sum
 
         self.state = sum_count[-1]
