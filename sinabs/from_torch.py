@@ -158,7 +158,7 @@ class SpkConverter(object):
             padding=(pool.padding, 0, pool.padding, 0),
             image_shape=self.previous_layer_shape[1:]
         )
-        self.leftover_rescaling = 0.25
+        self.leftover_rescaling = 1 / (kernel[0] * kernel[1])
         self.add(f"avgpool_{self.index}", layer)
 
     def convert_maxpool2d(self, pool):
