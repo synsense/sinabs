@@ -26,6 +26,7 @@ import torch
 from typing import Optional, Union, List, Tuple, Dict
 from operator import mul
 from functools import reduce
+from collections import OrderedDict
 from .layer import TorchLayer
 from sinabs.cnnutils import conv_output_size, compute_padding
 
