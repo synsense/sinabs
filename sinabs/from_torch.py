@@ -5,12 +5,17 @@ from sinabs import Network
 
 
 def from_model(model, input_shape, input_conversion_layer=False,
-               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
+               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+               exclude_negative_spikes=False):
     """
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
     behaviour on non-sequential models. This feature currently has limited
-    capability.
+    capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
+    BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
+    ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
+    supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
+    DynapSumPoolLayer.
 
     :param model: a Torch model
     :param input_shape: the shape of the expected input
@@ -31,17 +36,23 @@ def from_model(model, input_shape, input_conversion_layer=False,
         threshold,
         threshold_low,
         membrane_subtract,
+        exclude_negative_spikes,
     ).convert()
 
 
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
-                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0):
+                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+                 exclude_negative_spikes=False):
         """
         Converts a Torch model and returns a Sinabs network object.
         Only sequential models or module lists are supported, with unpredictable
         behaviour on non-sequential models. This feature currently has limited
-        capability.
+        capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
+        BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
+        ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
+        supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
+        DynapSumPoolLayer.
 
         :param model: a Torch model
         :param input_shape: the shape of the expected input
@@ -62,6 +73,7 @@ class SpkConverter(object):
         self.threshold_low = threshold_low
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
+        self.exclude_negative_spikes = exclude_negative_spikes
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -88,7 +100,7 @@ class SpkConverter(object):
         self.spk_mod.add_module(name, module)
         self.previous_layer_shape = module.get_output_shape(
             self.previous_layer_shape)
-        print(self.previous_layer_shape)
+        print(name, self.previous_layer_shape)
         self.index += 1
 
     def convert_conv2d(self, conv):
@@ -110,7 +122,7 @@ class SpkConverter(object):
             padding=(pad0, pad0, pad1, pad1),
             strides=conv.stride,
             bias=conv.bias is not None,
-            negative_spikes=True,
+            negative_spikes=not self.exclude_negative_spikes,
         )
 
         if conv.bias is not None:
@@ -146,8 +158,56 @@ class SpkConverter(object):
             padding=(pool.padding, 0, pool.padding, 0),
             image_shape=self.previous_layer_shape[1:]
         )
-        self.leftover_rescaling = 0.25
+        self.leftover_rescaling = 1 / (kernel[0] * kernel[1])
         self.add(f"avgpool_{self.index}", layer)
+
+    def convert_maxpool2d(self, pool):
+        """
+        Converts a torch.nn.MaxPool2d layer to spiking and adds it to the
+        spiking model.
+
+        :param pool: the Torch layer to convert.
+        """
+        if not hasattr(pool.kernel_size, "__len__"):
+            kernel = (pool.kernel_size, pool.kernel_size)
+        else:
+            kernel = pool.kernel_size
+        if not hasattr(pool.stride, "__len__"):
+            stride = (pool.stride, pool.stride)
+        else:
+            stride = pool.stride
+
+        layer = sil.SpikingMaxPooling2dLayer(
+            pool_size=kernel,
+            strides=stride,
+            padding=(pool.padding, 0, pool.padding, 0),
+            image_shape=self.previous_layer_shape[1:]
+        )
+        self.add(f"maxpool_{self.index}", layer)
+
+    def convert_sumpool(self, pool):
+        """
+        Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
+        spiking model.
+
+        :param pool: the Torch layer to convert.
+        """
+        if not hasattr(pool.kernel_size, "__len__"):
+            kernel = (pool.kernel_size, pool.kernel_size)
+        else:
+            kernel = pool.kernel_size
+        if not hasattr(pool.stride, "__len__"):
+            stride = (pool.stride, pool.stride)
+        else:
+            stride = pool.stride
+
+        layer = sil.SumPooling2dLayer(
+            pool_size=kernel,
+            strides=stride,
+            padding=(pool.padding, 0, pool.padding, 0),
+            image_shape=self.previous_layer_shape[1:]
+        )
+        self.add(f"sumpool_{self.index}", layer)
 
     def convert_linear(self, lin):
         layer = sil.SpikingLinearLayer(
@@ -156,12 +216,12 @@ class SpkConverter(object):
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
-            bias=lin.bias,
-            negative_spikes=True,
+            bias=lin.bias is not None,
+            negative_spikes=not self.exclude_negative_spikes,
         )
 
         if lin.bias is not None:
-            layer.conv.bias.data = lin.bias.data.clone().detach()
+            layer.linear.bias.data = lin.bias.data.clone().detach()
         if self.leftover_rescaling:
             layer.linear.weight.data = (
                 lin.weight * self.leftover_rescaling).clone().detach()
@@ -261,14 +321,22 @@ class SpkConverter(object):
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):
                 self.convert_conv2d(module)
+            elif type(module).__name__ == "DynapSumPoolLayer":
+                self.convert_sumpool(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
+            elif isinstance(module, nn.MaxPool2d):
+                self.convert_maxpool2d(module)
             elif isinstance(module, nn.Linear):
                 self.convert_linear(module)
             elif isinstance(module, nn.BatchNorm2d):
                 self.convert_batchnorm(module)
             elif isinstance(module, nn.ReLU):
                 self.convert_relu(module)
+            elif type(module).__name__ == "NeuromorphicReLU":
+                self.convert_relu(module)
+            elif type(module).__name__ == "QuantizeLayer":
+                pass
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
                 warn("Leaky ReLU not supported. Converted to ReLU.")
