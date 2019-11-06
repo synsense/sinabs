@@ -153,6 +153,32 @@ class SpkConverter(object):
         self.leftover_rescaling = 0.25
         self.add(f"avgpool_{self.index}", layer)
         
+        
+    def convert_maxpool2d(self, pool):
+        """
+        Converts a torch.nn.MaxPool2d layer to spiking and adds it to the
+        spiking model.
+
+        :param pool: the Torch layer to convert.
+        """
+        if not hasattr(pool.kernel_size, "__len__"):
+            kernel = (pool.kernel_size, pool.kernel_size)
+        else:
+            kernel = pool.kernel_size
+        if not hasattr(pool.stride, "__len__"):
+            stride = (pool.stride, pool.stride)
+        else:
+            stride = pool.stride
+
+        layer = sil.SpikingMaxPooling2dLayer(
+            pool_size=kernel,
+            strides=stride,
+            padding=(pool.padding, 0, pool.padding, 0),
+            image_shape=self.previous_layer_shape[1:]
+        )
+        self.add(f"maxpool_{self.index}", layer)
+        
+        
     def convert_sumpool(self, pool):
         """
         Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
@@ -184,12 +210,12 @@ class SpkConverter(object):
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
-            bias=lin.bias,
+            bias=lin.bias is not None,
             negative_spikes=not self.exclude_negative_spikes,
         )
 
         if lin.bias is not None:
-            layer.conv.bias.data = lin.bias.data.clone().detach()
+            layer.linear.bias.data = lin.bias.data.clone().detach()
         if self.leftover_rescaling:
             layer.linear.weight.data = (
                 lin.weight * self.leftover_rescaling).clone().detach()
@@ -293,6 +319,8 @@ class SpkConverter(object):
                 self.convert_sumpool(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
+            elif isinstance(module, nn.MaxPool2d):
+                self.convert_maxpool2d(module)
             elif isinstance(module, nn.Linear):
                 self.convert_linear(module)
             elif isinstance(module, nn.BatchNorm2d):
