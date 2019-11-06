@@ -11,7 +11,11 @@ def from_model(model, input_shape, input_conversion_layer=False,
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
     behaviour on non-sequential models. This feature currently has limited
-    capability.
+    capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
+    BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
+    ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
+    supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
+    DynapSumPoolLayer.
 
     :param model: a Torch model
     :param input_shape: the shape of the expected input
@@ -44,7 +48,11 @@ class SpkConverter(object):
         Converts a Torch model and returns a Sinabs network object.
         Only sequential models or module lists are supported, with unpredictable
         behaviour on non-sequential models. This feature currently has limited
-        capability.
+        capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
+        BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
+        ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
+        supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
+        DynapSumPoolLayer.
 
         :param model: a Torch model
         :param input_shape: the shape of the expected input
@@ -152,8 +160,7 @@ class SpkConverter(object):
         )
         self.leftover_rescaling = 0.25
         self.add(f"avgpool_{self.index}", layer)
-        
-        
+
     def convert_maxpool2d(self, pool):
         """
         Converts a torch.nn.MaxPool2d layer to spiking and adds it to the
@@ -177,8 +184,7 @@ class SpkConverter(object):
             image_shape=self.previous_layer_shape[1:]
         )
         self.add(f"maxpool_{self.index}", layer)
-        
-        
+
     def convert_sumpool(self, pool):
         """
         Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
@@ -194,7 +200,7 @@ class SpkConverter(object):
             stride = (pool.stride, pool.stride)
         else:
             stride = pool.stride
-            
+
         layer = sil.SumPooling2dLayer(
             pool_size=kernel,
             strides=stride,
@@ -330,7 +336,7 @@ class SpkConverter(object):
             elif type(module).__name__ == "NeuromorphicReLU":
                 self.convert_relu(module)
             elif type(module).__name__ == "QuantizeLayer":
-                self.convert_relu(module)
+                pass
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
                 warn("Leaky ReLU not supported. Converted to ReLU.")
