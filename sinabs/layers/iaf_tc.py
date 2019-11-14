@@ -20,32 +20,35 @@ from functools import reduce
 from operator import mul
 import torch
 import numpy as np
-import torch.nn as nn
 import pandas as pd
 from typing import Optional, Tuple
-from ..cnnutils import conv_output_size
+from .iaf_conv1d import SpikingConv1dLayer
 
 
-class SpikingTDSLayer(SpikingLayer):
+class SpikingTDSLayer(SpikingConv1dLayer):
     def __init__(
-            self,
-            channels_in: int,
-            channels_out: int,
-            delay: int,
-            bias: bool = True,
-            threshold: float = 1.0,
-            threshold_low: Optional[float] = -1.0,
-            membrane_subtract: Optional[float] = 1.0,
-            membrane_reset: float = 0,
-            layer_name: str = "conv1d",
+        self,
+        channels_in: int,
+        channels_out: int,
+        kernel_shape: int,
+        dilation: int=1,
+        strides: int = 1,
+        bias: bool = True,
+        threshold: float = 1.0,
+        threshold_low: Optional[float] = -1.0,
+        membrane_subtract: Optional[float] = 1.0,
+        membrane_reset: float = 0,
+        layer_name: str = "tc",
     ):
         """
-        Temporal Delay Spiking layer. This layer performs wave net like streaming computation,
-        where the neuron convolves input at time `t` and time `t-delay` to produce output at time `t`
+        Temporal Convolutional Spiking layer. This layer performs wave net like streaming computation,
+        where the neuron convolves input at time `t` , `t-1*dilation` .. `t-kernel_shape*dilation` to produce output at time `t`
 
         :param channels_in: Number of input channels
         :param channels_out: Number of output channels
-        :param delay: int Number of simulations time steps in the past to look for as input,
+        :param kernel_shape: Kernel size for temporal convolution
+        :param dilation: number of time steps between each kernel step,
+        :param stride: Stride length
         :param bias: If this layer has a bias value
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lower bound for membrane potential
@@ -55,47 +58,41 @@ class SpikingTDSLayer(SpikingLayer):
 
         NOTE: SUBTRACT superseeds Reset value
         """
-        SpikingLayer.__init__(
-            self,
-            input_shape=(channels_in, 1),
+        super().__init__(
+            channels_in=channels_in,
+            image_shape=1,
+            channels_out=channels_out,
+            kernel_shape=kernel_shape,
+            dilation=dilation,
+            strides=strides,
+            bias=bias,
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
         )
-        self.conv = nn.Conv1d(
-            channels_in,
-            channels_out,
-            kernel_size=2,
-            padding=delay,
-            dilation=delay,
-            stride=1,
-            bias=bias,
-        )
-        # Initialize buffer
-        self.register_buffer("delay_buffer", torch.zeros((1, channels_in, delay)))
 
-        # Layer convolutional properties
-        self.channels_in = channels_in
-        self.channels_out = channels_out
-        self.kernel_shape = 2
-        self.delay = delay
-        self.bias = bias
+        # Initialize buffer
+        self.len_delay_buffer = ((kernel_shape - 1) * dilation + 1) - 1
+        if self.len_delay_buffer:
+            self.register_buffer(
+                "delay_buffer", torch.zeros((1, channels_in, self.len_delay_buffer))
+            )
 
     def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
         """
         This method convolves the input spikes to compute the synaptic input currents to the neuron states
 
-        :param input_spikes: torch.Tensor input to the layer.
-        :return:  torch.Tensor - synaptic output current
+        :param input_spikes: torch.Tensor input to the layer. [Time, Channel, 1]
+        :return:  torch.Tensor - synaptic output current [Time, Channel, 1]
         """
         # Convolve all inputs at once
         input_spikes = torch.transpose(input_spikes, 0, 2)
-        input_spikes = torch.cat((self.delay_buffer, input_spikes), 2)
+        if self.len_delay_buffer:
+            input_spikes = torch.cat((self.delay_buffer, input_spikes), axis=2)
+            self.delay_buffer = input_spikes[:, :, -self.len_delay_buffer :]
         syn_out = self.conv(input_spikes)
-        self.delay_buffer = input_spikes[:, : , -self.delay:]
-        syn_out = syn_out[:, :, self.delay:-self.delay]
         syn_out = torch.transpose(syn_out, 0, 2)
         return syn_out
 
@@ -115,10 +112,12 @@ class SpikingTDSLayer(SpikingLayer):
                 "Padding": tuple(self.padding),
                 "Stride": self.strides,
                 "Fanout_Prev": self.kernel_shape
-                               / np.array(self.strides)
-                               * self.channels_out,
+                / np.array(self.strides)
+                * self.channels_out,
                 "Neurons": reduce(mul, list(self.output_shape), 1),
-                "Kernel_Params": self.channels_in*self.channels_out*self.kernel_shape,
+                "Kernel_Params": self.channels_in
+                * self.channels_out
+                * self.kernel_shape,
                 "Bias_Params": self.bias * self.channels_out,
             }
         )
@@ -128,16 +127,8 @@ class SpikingTDSLayer(SpikingLayer):
         """
         Returns the shape of output, given an input to this layer
 
-        :param input_shape: (channels, height, width)
-        :return: (channelsOut, height_out, width_out)
+        :param input_shape: (channels_in, length)
+        :return: (channels_out, length)
         """
         (channels, length) = input_shape
-
-        length_out = conv_output_size(
-            length + sum(self.padding[1]),
-            (self.dilation * (self.kernel_shape - 1) + 1),
-            self.strides,
-            )
-        return self.channels_out, length_out
-
-
+        return self.channels_out, length

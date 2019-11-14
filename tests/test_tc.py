@@ -30,7 +30,8 @@ def test_synaptic_output():
     tds = SpikingTDSLayer(
         channels_in=20,
         channels_out=5,
-        delay=30,
+        kernel_shape=2,
+        dilation=30,
         bias=True
     )
     out_current = tds.synaptic_output(inp_spikes)
@@ -49,7 +50,8 @@ def test_conv():
     tds = SpikingTDSLayer(
         channels_in=20,
         channels_out=5,
-        delay=30,
+        kernel_shape=2,
+        dilation=30,
         bias=True
     )
     out_spikes = tds(inp_spikes)
@@ -72,7 +74,8 @@ def test_buffer():
     tds = SpikingTDSLayer(
         channels_in=1,
         channels_out=1,
-        delay=2,
+        kernel_shape=2,
+        dilation=2,
         bias=True
     )
     for (key, param) in tds.named_parameters():
