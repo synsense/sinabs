@@ -20,19 +20,11 @@ def test_forward():
     import torch
     from sinabs.layers import Sig2SpikeLayer
 
-    channels = 1
-    length = 3
-    b = 3.0
+    channels = 4
     tw = 5
-    thr = b / tw
 
-    lyr = Sig2SpikeLayer(
-        sig_shape=(channels, length), tw=tw, threshold=thr, layer_name="sig2spk"
-    )
+    lyr = Sig2SpikeLayer(channels_in=channels, tw=tw, layer_name="sig2spk")
 
-    sig = torch.tensor([[1.0, 0.5, 0.25]])*b
-    # sig = torch.stack([sig]*tw, dim=0)
-
+    sig = torch.tensor([[1.0, 0.5, 0.25]]*channels)
     spk = lyr(sig)
-
-    assert spk.shape == (tw, channels, length)
+    assert spk.shape == (tw*3, channels)

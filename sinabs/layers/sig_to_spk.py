@@ -16,109 +16,51 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
-from .iaf import SpikingLayer
-from typing import Tuple
+from .layer import Layer
+from typing import Tuple, Optional
 import torch
 
 
-class Sig2SpikeLayer(SpikingLayer):
+class Sig2SpikeLayer(Layer):
     """
     Layer to convert analog Signals to Spikes
     """
 
     def __init__(
         self,
-        sig_shape,
-        tw: int = 100,
-        threshold: float = 1.0,
+        channels_in,
+        tw: int = 1,
         layer_name: str = "sig2spk",
     ):
         """
         Layer converts analog signals to spikes
 
-        :param sig_shape: shape of the analog signal (channels, length)
-        :param tw: int Time window length
-        :param threshold: Spiking threshold of the neuron
+        :param channels_in: number of channels in the analog signal
+        :param tw: int number of time steps for each sample of the signal (up sampling)
         :param layer_name: string layer name
+
         """
-        SpikingLayer.__init__(
-            self,
-            input_shape=(None, *sig_shape),
-            threshold=threshold,
-            threshold_low=-threshold,
-            membrane_subtract=threshold,
-            membrane_reset=0.0,
+        self.tw = tw
+        super().__init__(
+            input_shape=(channels_in, None),
             layer_name=layer_name
         )
-        self.tw = tw
 
-    def synaptic_output(self, input_sig: torch.Tensor) -> torch.Tensor:
-        return torch.stack([input_sig]*self.tw, dim=0).float()
-
-    def forward(self, binary_input: torch.Tensor) -> torch.Tensor:
-        # Compute the synaptic current
-        syn_out: torch.Tensor = self.synaptic_output(binary_input)
-
-        # Determine no. of time steps from input
-        time_steps = self.tw
-
-        # Local variables
-        membrane_subtract = self.membrane_subtract
-        threshold = self.threshold
-        threshold_low = self.threshold_low
-        membrane_reset = self.membrane_reset
-
-        # Initialize state as required
-        # Create a vector to hold all output spikes
-        if self.spikes_number is None or len(self.spikes_number) != time_steps:
-            del self.spikes_number  # Free memory just to be sure
-            self.spikes_number = syn_out.new_zeros(time_steps, *syn_out.shape[1:]).int()
-
-        self.spikes_number.zero_()
-        spikes_number = self.spikes_number
-
-        if self.state is None:
-            self.state = syn_out.new_zeros(syn_out.shape[1:])
-        elif self.state.device != syn_out.device:
-            # print(f"Device type state: {self.state.device}, syn_out: {syn_out.device} ")
-            self.state = self.state.to(syn_out.device)
-
-        state = self.state
-
-        # Loop over time steps
-        for iCurrentTimeStep in range(time_steps):
-            state = state + syn_out[iCurrentTimeStep]
-
-            # - Reset or subtract from membrane state after spikes
-            if membrane_subtract is not None:
-                # Calculate number of spikes to be generated
-                spikes_number[iCurrentTimeStep] = (state >= threshold).int() + (
-                    state - threshold > 0
-                ).int() * ((state - threshold) / membrane_subtract).int()
-                # - Subtract from states
-                state = state - (
-                    membrane_subtract * spikes_number[iCurrentTimeStep].float()
-                )
-            else:
-                # - Check threshold crossings for spikes
-                spike_record = state >= threshold
-                # - Add to spike counter
-                spikes_number[iCurrentTimeStep] = spike_record
-                # - Reset neuron states
-                state = (
-                    spike_record.float() * membrane_reset
-                    + state * (spike_record ^ 1).float()
-                )
-
-            if threshold_low is not None:
-                state = self.thresh_lower(state)  # Lower bound on the activation
-
-        self.state = state
-        self.spikes_number = spikes_number
-        return spikes_number.float()  # Float to keep things compatible
 
     def get_output_shape(self, input_shape: Tuple):
-        return (self.tw, *input_shape)
+        channels, time_steps = input_shape
+        return (self.tw*time_steps, channels)
+
+
+    def forward(self, signal):
+        channels, time_steps = signal.shape
+        random_tensor = torch.rand(self.tw*time_steps, channels).to(signal.device)
+        if self.tw != 1:
+            signal = signal.view(-1,1).repeat(1, self.tw).view(channels, -1)
+        signal = signal.transpose(1,0)
+        spk_sig= (random_tensor < signal).float()
+        self.spikes_number = spk_sig.abs().sum()
+        return spk_sig
 
     def summary(self):
         """

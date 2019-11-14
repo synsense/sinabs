@@ -58,7 +58,7 @@ class Layer(nn.Module, ABC):
 
     def evolve(self, tsInput, tDuration: float, time_steps: int, bVerbose: bool):
         """
-        Convenience function for eventual merger/compatibility with NetworksPython
+        Convenience function for eventual merger/compatibility with Rockpool
 
         :param tsInput:
         :param tDuration:
