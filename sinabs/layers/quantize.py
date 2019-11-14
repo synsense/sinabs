@@ -16,54 +16,58 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import torch
-import numpy as np
-import pandas as pd
-from .layer import TorchLayer
-from typing import Optional, Union, List, Tuple
-
-ArrayLike = Union[np.ndarray, List, Tuple]
+import torch.nn as nn
 
 
-class QuantizeLayer(TorchLayer):
+class _Quantize(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, input):
+        return input.floor()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_input = grad_output.clone()
+        return grad_input
+
+
+class QuantizeLayer(nn.Module):
     """
-    Equivalent to keras flatten
+    Layer that quantizes the input, i.e. returns floor(input).
+
+    :param quantize: If False, this layer will do nothing.
     """
+    def __init__(self, quantize=True):
+        super().__init__()
+        self.quantize = quantize
 
-    def __init__(self, layer_name: str = "quantize"):
-        """
-        Torch implementation of Quantizing the output spike count.
+    def forward(self, data):
+        if self.quantize:
+            return _Quantize.apply(data)
+        else:
+            return data
 
-        :param layer_name: str Name of the layer
-        """
-        TorchLayer.__init__(self, input_shape=[])  # Init nn.Module
-        self.layer_name = layer_name
 
-    def forward(self, tsrInput):
-        # Quantize to ints
-        tsrOut: torch.Tensor = tsrInput.int().float()
-        self.spikes_number = tsrOut.sum()
-        return tsrOut
+class NeuromorphicReLU(torch.nn.Module):
+    """
+    NeuromorphicReLU layer. This layer is NOT used for Sinabs networks; it's
+    useful while training analogue pyTorch networks for future use with Sinabs.
 
-    def get_output_shape(self, input_shape: Tuple):
-        """
-        Shape of the input to this layer
+    :param quantize: Whether or not to quantize the output (i.e. floor it to \
+    the integer below), in order to mimic spiking behavior.
+    :param fanout: Useful when computing the number of SynOps of a quantized \
+    NeuromorphicReLU. The activity can be accessed through \
+    NeuromorphicReLU.activity, and is multiplied by the value of fanout.
+    """
+    def __init__(self, quantize=True, fanout=1):
+        super().__init__()
+        self.quantize = quantize
+        self.fanout = fanout
 
-        :param input_shape:
-        :return: The output shape is identical to that of input
-        """
-        return input_shape
+    def forward(self, input):
+        output = torch.nn.functional.relu(input)
 
-    def summary(self) -> pd.Series:
-        """
-        :return: A summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary
+        if self.quantize:
+            output = _Quantize.apply(output)
+
+        self.activity = output.sum() / len(output) * self.fanout
+        return output

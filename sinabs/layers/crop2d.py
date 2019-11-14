@@ -16,7 +16,7 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
-from typing import Optional, Union, List, Tuple
+from typing import Union, List, Tuple
 from .layer import TorchLayer
 import numpy as np
 
@@ -56,7 +56,8 @@ class Cropping2dLayer(TorchLayer):
             self.left_crop : w - self.right_crop,
         ]
         self.out_shape = crop_out.shape[1:]
-        self.spikes_number = crop_out.sum()
+        self.spikes_number = crop_out.abs().sum()
+        self.tw = len(crop_out)
         return crop_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:

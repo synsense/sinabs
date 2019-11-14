@@ -25,11 +25,12 @@
 ##
 
 import torch
-from torch import nn
+from .layer import TorchLayer
+from typing import Tuple
 
 
-class YOLOLayer(nn.Module):
-    def __init__(self, anchors, num_classes, img_dim=416,
+class YOLOLayer(TorchLayer):
+    def __init__(self, anchors, num_classes, input_shape, img_dim=416,
                  return_loss=False, compute_rate=False):
         """
         An implementation of the YOLO layer. This is not a spiking layer,
@@ -43,7 +44,7 @@ class YOLOLayer(nn.Module):
         :param compute_rate: If True, average over the time dimension before \
         applying the YOLO operations.
         """
-        super(YOLOLayer, self).__init__()
+        super(YOLOLayer, self).__init__(input_shape)
         self.anchors = anchors
         self.num_anchors = len(anchors)
         self.num_classes = num_classes
@@ -56,6 +57,15 @@ class YOLOLayer(nn.Module):
         self.grid_size = 0  # grid size
         self.return_loss = return_loss
         self.compute_rate = compute_rate
+
+    def get_output_shape(self, input_shape) -> Tuple:
+        """
+        Returns the shape of output, given an input to this layer
+
+        :param input_shape: (channels, height, width)
+        :return: (channelsOut, height_out, width_out)
+        """
+        return (self.num_classes + 5, self.grid_size, self.grid_size)
 
     def compute_grid_offsets(self, grid_size, cuda=True):
         self.grid_size = grid_size

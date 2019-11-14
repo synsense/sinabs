@@ -37,7 +37,7 @@ from .inputlayer import (
     get_input_shape_from_keras_conf,
     from_input_keras_conf,
 )
-from .quantize import QuantizeLayer
+from .quantize import QuantizeLayer, NeuromorphicReLU
 from .sumpool2d import (
     SumPooling2dLayer,
     from_sumpool2d_keras_conf,
@@ -47,6 +47,5 @@ from .zeropad2d import ZeroPad2dLayer, from_zeropad2d_keras_conf
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .iaf_tds import SpikingTDSLayer
-from .yolo import YOLOLayer
-
 from .iaf_linear import SpikingLinearLayer
+from .yolo import YOLOLayer

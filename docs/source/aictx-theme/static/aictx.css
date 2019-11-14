@@ -18,13 +18,14 @@ div.cell {
 }
 
 h1, h2, h3, h4, h5 {
-    margin: 0px !important;
+    margin: 5px !important;
     padding: 5px !important;
 }
 
 h1 {
     font-family: 'Montserrat', sans-serif;
     font-size: 28pt !important;
+    line-height: 120%;
 }
 
 h2 {
