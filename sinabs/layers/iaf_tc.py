@@ -31,7 +31,7 @@ class SpikingTemporalConv1dLayer(SpikingConv1dLayer):
         channels_in: int,
         channels_out: int,
         kernel_shape: int,
-        dilation: int=1,
+        dilation: int = 1,
         strides: int = 1,
         bias: bool = True,
         threshold: float = 1.0,
