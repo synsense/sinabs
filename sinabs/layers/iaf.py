@@ -104,11 +104,11 @@ class SpikingLayer(Layer):
 
     def forward(self, binary_input: torch.Tensor):
         # Determine no. of time steps from input
-        time_steps = len(binary_input)
         neg_spikes = self.negative_spikes
 
         # Compute the synaptic current
         syn_out: torch.Tensor = self.synaptic_output(binary_input)
+        time_steps = len(syn_out)
 
         # Local variables
         membrane_subtract = self.membrane_subtract
