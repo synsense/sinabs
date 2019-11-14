@@ -31,12 +31,12 @@ from .utils import (
     summary,
     search_parameter,
 )
-from .layers import TorchLayer
+from .layers import Layer
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class Network(TorchLayer):
+class Network(Layer):
     """
     Class of a spiking neural network
 
@@ -66,7 +66,7 @@ class Network(TorchLayer):
         :param quantize_activation: bool, if true, the analog model will be initialized
                            with a quantization layer after each activation
         """
-        TorchLayer.__init__(self, input_shape=input_shape)
+        Layer.__init__(self, input_shape=input_shape)
         self.spiking_model: nn.Module = None
         self.analog_model: nn.Module = None
         self.graph: pd.DataFrame = None

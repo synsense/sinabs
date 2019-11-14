@@ -19,14 +19,14 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 from typing import Union, List, Tuple
-from .layer import TorchLayer
+from .layer import Layer
 from operator import mul
 from functools import reduce
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class FlattenLayer(TorchLayer):
+class FlattenLayer(Layer):
     """
     Equivalent to keras flatten
     """
@@ -35,7 +35,7 @@ class FlattenLayer(TorchLayer):
         """
         Torch implementation of Flatten layer
         """
-        TorchLayer.__init__(
+        Layer.__init__(
             self, input_shape=input_shape, layer_name=layer_name
         )  # Init nn.Module
         self.layer_name = layer_name

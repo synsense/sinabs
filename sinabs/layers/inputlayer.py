@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from .layer import TorchLayer
+from .layer import Layer
 import torch.nn as nn
 import pandas as pd
 import numpy as np
@@ -24,14 +24,14 @@ from typing import Union, List, Tuple
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class InputLayer(TorchLayer):
+class InputLayer(Layer):
     def __init__(self, input_shape: ArrayLike, layer_name="input"):
         """
         Torch implementation of SumPooling using the LPPool2d module
 
         :param image_shape: Input image dimensions
         """
-        TorchLayer.__init__(self, input_shape=input_shape, layer_name=layer_name)
+        Layer.__init__(self, input_shape=input_shape, layer_name=layer_name)
 
     def forward(self, binary_input):
         """

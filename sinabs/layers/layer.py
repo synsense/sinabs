@@ -30,7 +30,7 @@ from functools import reduce
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class TorchLayer(nn.Module, ABC):
+class Layer(nn.Module, ABC):
     def __init__(self, input_shape: ArrayLike, layer_name: str = ""):
         """
         Base class for all torch layers

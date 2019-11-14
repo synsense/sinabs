@@ -19,12 +19,12 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 from typing import Union, List, Tuple
-from .layer import TorchLayer
+from .layer import Layer
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class ZeroPad2dLayer(TorchLayer):
+class ZeroPad2dLayer(Layer):
     """
     Zero padding 2D layer
     """
@@ -36,7 +36,7 @@ class ZeroPad2dLayer(TorchLayer):
         :param padding: No. of pixels to pad on each side (left, right, top, bottom)
         :param layer_name: Name of the layer
         """
-        TorchLayer.__init__(
+        Layer.__init__(
             self, input_shape=(None, *image_shape), layer_name=layer_name
         )
         self.padding = padding

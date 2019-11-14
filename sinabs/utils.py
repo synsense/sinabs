@@ -20,7 +20,7 @@ import torch.nn as nn
 import numpy as np
 import os
 import pandas as pd
-from .layers import TorchLayer
+from .layers import Layer
 from typing import Iterable, List
 
 
@@ -154,7 +154,7 @@ def get_network_activations(
     return spike_counts
 
 
-def summary(model: TorchLayer) -> pd.DataFrame:
+def summary(model: Layer) -> pd.DataFrame:
     """
     This method returns the summary of a model
     :param model:

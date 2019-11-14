@@ -17,13 +17,13 @@
 
 import pandas as pd
 from typing import Union, List, Tuple
-from .layer import TorchLayer
+from .layer import Layer
 import numpy as np
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class Cropping2dLayer(TorchLayer):
+class Cropping2dLayer(Layer):
     """
     Torch implementation of SumPooling2d for spiking neurons
     """
@@ -40,7 +40,7 @@ class Cropping2dLayer(TorchLayer):
         :param image_shape: Input image dimensions
         :param layer_name: str Layer name
         """
-        TorchLayer.__init__(
+        Layer.__init__(
             self, input_shape=(None, *image_shape), layer_name=layer_name
         )
         self.top_crop, self.bottom_crop = cropping[0]

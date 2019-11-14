@@ -16,18 +16,18 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 def test_import():
-    from sinabs.layers import SpikingTDSLayer
+    from sinabs.layers import SpikingTemporalConv1dLayer
 
 
 def test_synaptic_output():
-    from sinabs.layers import SpikingTDSLayer
+    from sinabs.layers import SpikingTemporalConv1dLayer
     import torch
 
     # Generate input
     inp_spikes = (torch.rand((50, 20, 1)) > 0.05).float()
 
     # Init layer
-    tds = SpikingTDSLayer(
+    tds = SpikingTemporalConv1dLayer(
         channels_in=20,
         channels_out=5,
         kernel_shape=2,
@@ -40,14 +40,14 @@ def test_synaptic_output():
 
 
 def test_conv():
-    from sinabs.layers import SpikingTDSLayer
+    from sinabs.layers import SpikingTemporalConv1dLayer
     import torch
 
     # Generate input
     inp_spikes = (torch.rand((50, 20, 1)) > 0.05).float()
 
     # Init layer
-    tds = SpikingTDSLayer(
+    tds = SpikingTemporalConv1dLayer(
         channels_in=20,
         channels_out=5,
         kernel_shape=2,
@@ -62,7 +62,7 @@ def test_conv():
 
 
 def test_buffer():
-    from sinabs.layers import SpikingTDSLayer
+    from sinabs.layers import SpikingTemporalConv1dLayer
     import torch
     import numpy as np
 
@@ -71,7 +71,7 @@ def test_buffer():
     inp_spikes = torch.from_numpy(inp.reshape(len(inp), 1, 1)).float()
 
     # Init layer
-    tds = SpikingTDSLayer(
+    tds = SpikingTemporalConv1dLayer(
         channels_in=1,
         channels_out=1,
         kernel_shape=2,

@@ -23,14 +23,14 @@ import torch
 import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple, Dict
-from .layer import TorchLayer
+from .layer import Layer
 from abc import abstractmethod
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SpikingLayer(TorchLayer):
+class SpikingLayer(Layer):
     def __init__(
         self,
         input_shape: ArrayLike,
@@ -55,7 +55,7 @@ class SpikingLayer(TorchLayer):
 
         NOTE: SUBTRACT superseeds Reset value
         """
-        TorchLayer.__init__(self, input_shape=input_shape, layer_name=layer_name)
+        Layer.__init__(self, input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
         self.membrane_subtract = membrane_subtract
         self.membrane_reset = membrane_reset

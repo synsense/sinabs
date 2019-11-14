@@ -25,7 +25,7 @@ from typing import Optional, Tuple
 from .iaf_conv1d import SpikingConv1dLayer
 
 
-class SpikingTDSLayer(SpikingConv1dLayer):
+class SpikingTemporalConv1dLayer(SpikingConv1dLayer):
     def __init__(
         self,
         channels_in: int,

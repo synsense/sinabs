@@ -26,13 +26,13 @@ from operator import mul
 from functools import reduce
 from collections import OrderedDict
 from typing import Optional, Union, List, Tuple
-from .layer import TorchLayer
+from .layer import Layer
 from sinabs.cnnutils import conv_output_size, compute_padding
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SumPooling2dLayer(TorchLayer):
+class SumPooling2dLayer(Layer):
     """
     Torch implementation of SumPooling2d for spiking neurons
     """
@@ -54,7 +54,7 @@ class SumPooling2dLayer(TorchLayer):
         :param padding:
         :param layer_name:
         """
-        TorchLayer.__init__(
+        Layer.__init__(
             self, input_shape=(None, *image_shape), layer_name=layer_name
         )
         self.padding = padding

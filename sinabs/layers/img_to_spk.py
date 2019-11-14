@@ -16,12 +16,12 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
-from .layer import TorchLayer
+from .layer import Layer
 from typing import Tuple
 import torch
 
 
-class Img2SpikeLayer(TorchLayer):
+class Img2SpikeLayer(Layer):
     """
     Layer to convert Images to Spikes
     """
@@ -48,7 +48,7 @@ class Img2SpikeLayer(TorchLayer):
         :param negative_spikes: whether to allow negative spikes in response \
         to negative input
         """
-        TorchLayer.__init__(
+        Layer.__init__(
             self, input_shape=image_shape, layer_name=layer_name
         )
         self.tw = tw

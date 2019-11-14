@@ -25,11 +25,11 @@
 ##
 
 import torch
-from .layer import TorchLayer
+from .layer import Layer
 from typing import Tuple
 
 
-class YOLOLayer(TorchLayer):
+class YOLOLayer(Layer):
     def __init__(self, anchors, num_classes, input_shape, img_dim=416,
                  return_loss=False, compute_rate=False):
         """

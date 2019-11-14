@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from .layer import TorchLayer
+from .layer import Layer
 from .crop2d import Cropping2dLayer, from_cropping2d_keras_conf
 from .dropout import from_dropout_keras_conf
 from .flatten import FlattenLayer, from_flatten_keras_conf
@@ -46,6 +46,6 @@ from .sumpool2d import (
 from .zeropad2d import ZeroPad2dLayer, from_zeropad2d_keras_conf
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
-from .iaf_tc import SpikingTDSLayer
+from .iaf_tc import SpikingTemporalConv1dLayer
 from .iaf_linear import SpikingLinearLayer
 from .yolo import YOLOLayer
