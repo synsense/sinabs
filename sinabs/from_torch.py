@@ -6,7 +6,7 @@ from sinabs import Network
 
 def from_model(model, input_shape, input_conversion_layer=False,
                threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
-               exclude_negative_spikes=False):
+               exclude_negative_spikes=False, bias_rescaling=1.0):
     """
     Converts a Torch model and returns a Sinabs network object.
     Only sequential models or module lists are supported, with unpredictable
@@ -37,13 +37,14 @@ def from_model(model, input_shape, input_conversion_layer=False,
         threshold_low,
         membrane_subtract,
         exclude_negative_spikes,
+        bias_rescaling,
     ).convert()
 
 
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
                  threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
-                 exclude_negative_spikes=False):
+                 exclude_negative_spikes=False, bias_rescaling=1.0):
         """
         Converts a Torch model and returns a Sinabs network object.
         Only sequential models or module lists are supported, with unpredictable
@@ -74,6 +75,7 @@ class SpkConverter(object):
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
         self.exclude_negative_spikes = exclude_negative_spikes
+        self.bias_rescaling = bias_rescaling
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -126,7 +128,7 @@ class SpkConverter(object):
         )
 
         if conv.bias is not None:
-            layer.conv.bias.data = conv.bias.data.clone().detach()
+            layer.conv.bias.data = conv.bias.data.clone().detach() / self.bias_rescaling
         if self.leftover_rescaling:
             layer.conv.weight.data = (conv.weight *
                                       self.leftover_rescaling).clone().detach()
@@ -221,7 +223,7 @@ class SpkConverter(object):
         )
 
         if lin.bias is not None:
-            layer.linear.bias.data = lin.bias.data.clone().detach()
+            layer.linear.bias.data = lin.bias.data.clone().detach() / self.bias_rescaling
         if self.leftover_rescaling:
             layer.linear.weight.data = (
                 lin.weight * self.leftover_rescaling).clone().detach()
@@ -263,9 +265,10 @@ class SpkConverter(object):
         last_convo = self.previous_weighted_layer()
         c_weight = last_convo.conv.weight.data.clone().detach()  # TODO this will give an error after Linear
         c_bias = 0. if last_convo.conv.bias is None else last_convo.conv.bias.data.clone().detach()
+        c_bias *= self.bias_rescaling  # put it back to normal to simplify
 
         last_convo.conv.weight.data = c_weight * factor[:, None, None, None]
-        last_convo.conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
+        last_convo.conv.bias = nn.Parameter((beta + (c_bias - mu) * factor) / self.bias_rescaling)
 
     def convert_yolo(self, yolo):
         """
