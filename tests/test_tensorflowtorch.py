@@ -32,7 +32,7 @@ def test_KerasTorchAnalog_channels_last():
     import torch
 
     from sinabs.network import Network
-    from sinabs.from_keras import from_json, infer_data_format
+    from sinabs.from_keras.from_keras import from_json, infer_data_format
 
     img_data_format = "channels_last"
 
@@ -194,7 +194,7 @@ def createTestModel(img_data_format="channels_last", use_bias=False):
     print(keras_model.summary())
     keras_model.save(f"{strLibPath}/models/{modelName}.h5")
 
-    from sinabs.from_keras import extract_json_weights
+    from sinabs.from_keras.from_keras import extract_json_weights
 
     # Extract json and weight files from the model
     extract_json_weights(

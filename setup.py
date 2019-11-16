@@ -22,5 +22,5 @@ setup(
     version="0.1.0",
     packages=["sinabs", "sinabs.layers"],
     license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
-    install_requires=['numpy', 'pandas', 'tensorflow<2.0', 'torch'],
+    install_requires=['numpy', 'pandas', 'torch'],
 )

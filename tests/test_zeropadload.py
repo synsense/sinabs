@@ -16,7 +16,6 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import sys
-import pytest
 
 strLibPath = sys.path[0]
 sys.path.insert(1, strLibPath)
@@ -27,7 +26,7 @@ def test_loadkeras_modelZeroPadding():
     Test the functionality of loading the model from a keras file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_model
+    from sinabs.from_keras.from_keras import from_model
     from tensorflow import keras
 
     # Initialize a Network
@@ -80,7 +79,7 @@ def test_inferDataFormat():
     output = x
     model = keras.Model(inputs=[inputData], outputs=[output])
 
-    from sinabs.from_keras import infer_data_format
+    from sinabs.from_keras.from_keras import infer_data_format
 
     dataFormat = infer_data_format(model.get_config())
     assert dataFormat == "channels_last"

@@ -16,7 +16,6 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 from .layer import TorchLayer
-import torch.nn as nn
 import pandas as pd
 import numpy as np
 from typing import Union, List, Tuple
@@ -72,43 +71,3 @@ class InputLayer(TorchLayer):
         return summary
 
 
-def from_input_keras_conf(
-    layer_config, input_shape=None, spiking=False
-) -> [(str, nn.Module)]:
-    """
-    Load input layer from Json configuration
-    :param layer_config: configuration dictionary
-    :param input_shape: This parameter is here only for API consistency
-    :param spiking: bool True if spiking layer needs to be loaded
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-
-    layer_list = [
-        (layer_name, InputLayer(input_shape=input_shape, layer_name=layer_name))
-    ]
-    return layer_list
-
-
-def get_input_shape_from_keras_conf(layer_config) -> Tuple:
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-    input_shape = layer_config["config"]["batch_input_shape"]
-    # Input dimensions ignoring batch information
-    return input_shape[1:]

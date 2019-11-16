@@ -72,31 +72,3 @@ class ZeroPad2dLayer(TorchLayer):
         return summary
 
 
-def from_zeropad2d_keras_conf(
-    layer_config, input_shape: Tuple, spiking: bool = False
-) -> [(str, nn.Module)]:
-    """
-    Load ZeroPadding layer from Json configuration
-
-    :param layer_config: configuration dictionary
-    :param input_shape: input data shape to determine output dimensions
-    :param spiking: bool True if spiking layer needs to be loaded (This parameter is immaterial for this layer)
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-    # Determing output dims
-    tb, lr = layer_config["config"]["padding"]
-
-    torch_layer = ZeroPad2dLayer(
-        image_shape=input_shape[1:], padding=(*lr, *tb), layer_name=layer_name
-    )
-    torch_layer.input_shape = input_shape
-    return [(layer_name, torch_layer)]

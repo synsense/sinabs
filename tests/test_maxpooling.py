@@ -21,7 +21,7 @@ def test_maxpool2d():
     kerasLayer = keras.layers.MaxPooling2D(pool_size=(3, 3), strides=None)
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_maxpool2d_keras_conf
+    from sinabs.from_keras.from_keras import from_maxpool2d_keras_conf
 
     # Create spiking layers
     layer_list = from_maxpool2d_keras_conf(

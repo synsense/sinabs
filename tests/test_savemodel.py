@@ -51,7 +51,7 @@ def test_Generatesinabs_ModelFile():
 
     # Load model into library
     from sinabs.network import Network
-    from sinabs.from_keras import from_model
+    from sinabs.from_keras.from_keras import from_model
 
     # Initialize a Network
     dynapcnn = Network()

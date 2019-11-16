@@ -73,7 +73,7 @@ class Network(TorchLayer):
         self.input_shape = input_shape
         self.quantize_activation = quantize_activation
         if keras_model is not None:
-            from .from_keras import from_model
+            from sinabs.from_keras.from_keras import from_model
 
             from_model(
                 keras_model,
@@ -178,7 +178,7 @@ class Network(TorchLayer):
         """
         # If weights are loaded from keras, convert them to pytorch compatible format
         if is_from_keras:
-            from .from_keras import transposeKeras2Torch
+            from sinabs.from_keras.from_keras import transposeKeras2Torch
 
             weights = transposeKeras2Torch(weights)
 
@@ -297,7 +297,7 @@ class Network(TorchLayer):
             print("Comparing activations for {0}".format(name_list))
 
         if with_keras:
-            from .from_keras import infer_data_format
+            from sinabs.from_keras.from_keras import infer_data_format
 
             # Calculate activations for keras model
             keras_model = self.keras_model

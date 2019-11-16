@@ -21,7 +21,7 @@ def test_dropout():
     kerasLayer = keras.layers.Dropout(rate=0.5)
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_dropout_keras_conf
+    from sinabs.from_keras.from_keras import from_dropout_keras_conf
 
     # Create spiking layers
     layer_list = from_dropout_keras_conf(

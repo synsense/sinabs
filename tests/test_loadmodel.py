@@ -31,7 +31,7 @@ def test_createModelFromkeras_config_Sequential():
     print(input_shape)
     print(keras_config)
     print(keras_model.to_json())
-    from sinabs.from_keras import from_model_keras_config
+    from sinabs.from_keras.from_keras import from_model_keras_config
 
     # Load non spiking model
     myModel = from_model_keras_config(
@@ -78,7 +78,7 @@ def test_createModelFromkeras_config_Model():
 
     print(keras_config)
 
-    from sinabs.from_keras import from_model_keras_config
+    from sinabs.from_keras.from_keras import from_model_keras_config
 
     # Load non spiking model
     myModel = from_model_keras_config(
@@ -130,7 +130,7 @@ def test_createModelFromkeras_config_channels_last():
 
     print(keras_config)
 
-    from sinabs.from_keras import from_model_keras_config
+    from sinabs.from_keras.from_keras import from_model_keras_config
 
     # Load non spiking model
     myModel = from_model_keras_config(
