@@ -53,6 +53,12 @@ class Sig2SpikeLayer(Layer):
 
 
     def forward(self, signal):
+        """
+        Convert a signal to the corresponding spikes
+
+        :param signal: [Channel, Sample(t)]
+        :return:
+        """
         channels, time_steps = signal.shape
         random_tensor = torch.rand(self.tw*time_steps, channels).to(signal.device)
         if self.tw != 1:
