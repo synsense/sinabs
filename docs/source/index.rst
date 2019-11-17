@@ -12,10 +12,13 @@ Table of contents
 -----------------
 
 .. toctree::
+   :maxdepth: 2
+
    gettingstarted
    introduction
    examples
-   api
+   howto/howto.rst
+   api/api.rst
 
 
 Indices and tables
