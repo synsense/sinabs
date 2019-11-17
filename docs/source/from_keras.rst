@@ -10,6 +10,6 @@ This module provides support for importing models into the sinabs from Keras
 
 
 
-.. py:currentmodule:: sinabs.from_keras
-.. automodule:: sinabs.from_keras
+.. py:currentmodule:: sinabs.from_keras.from_keras
+.. automodule:: sinabs.from_keras.from_keras
     :members:

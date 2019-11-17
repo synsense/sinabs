@@ -30,7 +30,7 @@ def test_loadFromJson():
 
     filename = strLibPath + "/models/" + modelname + ".json"
 
-    from sinabs.from_keras import from_model_keras_config
+    from sinabs.from_keras.from_keras import from_model_keras_config
     import json
 
     with open(filename) as fp:
@@ -50,7 +50,7 @@ def test_loadFromJsonSpiking():
 
     filename = strLibPath + "/models/" + modelname + ".json"
 
-    from sinabs.from_keras import from_model_keras_config
+    from sinabs.from_keras.from_keras import from_model_keras_config
     import json
 
     with open(filename) as fp:
@@ -65,7 +65,7 @@ def test_instantiate_sinabs_from_Json():
     Test the functionality of loading the model from a json file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_json
+    from sinabs.from_keras.from_keras import from_json
 
     createkeras_model()
     modelname = "testModelWithJson"
@@ -89,7 +89,7 @@ def test_set_weights_fromNumpy_DenseLayers():
     Test loading weights from a numpy pickle file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_json
+    from sinabs.from_keras.from_keras import from_json
     import numpy as np
 
     createkeras_model()
@@ -116,7 +116,7 @@ def test_set_weights_fromNumpy():
     Test loading weights from a numpy pickle file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_json
+    from sinabs.from_keras.from_keras import from_json
     import numpy as np
 
     # Initialize a Network
@@ -237,7 +237,6 @@ def createkeras_model():
 
     filename = strLibPath + "/models/" + modelname + ".h5"
     keras_model.save(filename)
-    import json
 
     filename = strLibPath + "/models/" + modelname + ".json"
     with open(filename, "w") as fp:

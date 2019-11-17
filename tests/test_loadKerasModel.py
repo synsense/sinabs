@@ -26,7 +26,7 @@ def test_loadkeras_model():
     Test the functionality of loading the model from a keras file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_model
+    from sinabs.from_keras.from_keras import from_model
 
     # Initialize a Network
     torchModel = Network()
@@ -57,7 +57,7 @@ def test_loadkeras_modelSamePadding():
     Test the functionality of loading the model from a keras file
     """
     from sinabs.network import Network
-    from sinabs.from_keras import from_model
+    from sinabs.from_keras.from_keras import from_model
 
     # Initialize a Network
     torchModel = Network()
@@ -105,7 +105,7 @@ def test_loadkeras_modelSequential():
     keras_model = keras.Sequential([inputLayer, crop, conv1, conv2, pool])
 
     from sinabs.network import Network
-    from sinabs.from_keras import from_json
+    from sinabs.from_keras.from_keras import from_json
 
     # Initialize a Network
     torchModel = Network()

@@ -27,7 +27,7 @@ def test_quantize():
     )
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_conv2d_keras_conf
+    from sinabs.from_keras.from_keras import from_conv2d_keras_conf
 
     # Create spiking layers
     layer_list = from_conv2d_keras_conf(

@@ -2,6 +2,8 @@ image: aictx/ci-python-arch:latest
 
 before_script:
   - pip install --upgrade pip
+  - pip install --upgrade --force-reinstall torch
+  - pip install tensorflow==1.15
   - pip install . --no-cache-dir
   - pip install m2r
 

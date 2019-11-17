@@ -24,10 +24,9 @@ import numpy as np
 import pandas as pd
 from operator import mul
 from functools import reduce
-from collections import OrderedDict
 from typing import Optional, Union, List, Tuple
 from .layer import Layer
-from sinabs.cnnutils import conv_output_size, compute_padding
+from sinabs.cnnutils import conv_output_size
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
@@ -119,73 +118,3 @@ class SumPooling2dLayer(Layer):
         return channels, height_out, width_out
 
 
-def from_avgpool2d_keras_conf(
-    layer_config, input_shape: Tuple, spiking: bool = False
-) -> [(list, nn.Module)]:
-    """
-    Crete a Average pooling layer
-
-    :param layer_config:
-    :param input_shape:
-    :param spiking:
-    :return:
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-    layer_list = []
-    pool_size = layer_config["config"]["pool_size"]
-    strides = layer_config["config"]["strides"]
-    pad_mod = layer_config["config"]["padding"]
-
-    if pad_mod == "valid":
-        padding = (0, 0, 0, 0)
-    else:
-        # Compute padding
-        padding = compute_padding(pool_size, input_shape, pad_mod)
-
-    if spiking:
-        spike_pool = SumPooling2dLayer(
-            image_shape=input_shape[1:],
-            pool_size=pool_size,
-            padding=padding,
-            strides=strides,
-            layer_name=layer_name,
-        )
-        spike_pool.input_shape = input_shape
-        layer_list.append((layer_name, spike_pool))
-    else:
-        # Create a padding layer
-        if padding != (0, 0, 0, 0):
-            torch_layerPad = nn.ZeroPad2d(padding)
-            layer_list.append((layer_name + "_padding", torch_layerPad))
-        # Pooling layer initialization
-        analogue_pool = nn.AvgPool2d(kernel_size=pool_size, stride=strides)
-        layer_list.append((layer_name, analogue_pool))
-
-    if len(layer_list) > 1:
-        return [(layer_name, nn.Sequential(OrderedDict(layer_list)))]
-    else:
-        return layer_list
-
-
-def from_sumpool2d_keras_conf(
-    layer_config, input_shape: Tuple, spiking: bool = False
-) -> [(list, nn.Module)]:
-    """
-    Creates AveragePooling layer from keras configuration file
-    This is actually a proxy to SumPooling2dLayer in case of spiking version
-
-    :param layer_config:
-    :param input_shape:
-    :param spiking: The spiking and non spiking layers act the same for sum pooling, so this option is ignored
-    :return: [(layer_name, nn.Module)] Returns a list of layers and their names
-    """
-    return from_avgpool2d_keras_conf(layer_config, input_shape, spiking=True)

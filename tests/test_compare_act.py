@@ -50,11 +50,10 @@ sys.path.insert(1, strLibPath)
 
 
 def test_compare_analog_spiking():
-    from tensorflow import keras
     import torch  # Torch must be imported after tensorflow to avoid a crash
 
     from sinabs.network import Network
-    from sinabs.from_keras import from_model
+    from sinabs.from_keras.from_keras import from_model
 
     # Initialize a Network
     torchModel = Network()

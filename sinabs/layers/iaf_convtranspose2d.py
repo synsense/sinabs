@@ -16,7 +16,7 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 ##
-# iaf_convtranspose2d.py - Torch implementation of a spiking 2D convolutional layer
+# iaf_convtranspose2d.py - Torch implementation of a spiking 2D de-convolutional layer
 ##
 
 import numpy as np

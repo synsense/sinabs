@@ -19,7 +19,6 @@ def test_import():
     """
     Basic syntax check test
     """
-    from sinabs.layers import SpikingConv2dLayer
 
 
 def test_TorchSpikingConv2dLayer_initialization():
@@ -103,7 +102,7 @@ def test_createConv2dFromKeras():
     )
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_conv2d_keras_conf
+    from sinabs.from_keras.from_keras import from_conv2d_keras_conf
 
     # Create spiking layers
     layer_list = from_conv2d_keras_conf(
@@ -143,7 +142,7 @@ def test_createLayerFromConf():
 
     keras_config = keras_model.get_config()
 
-    from sinabs.from_keras import from_layer_keras_conf
+    from sinabs.from_keras.from_keras import from_layer_keras_conf
 
     # Create non spiking layers
     layer_list = from_layer_keras_conf(
@@ -175,7 +174,7 @@ def test_denseLayerFromKeras_spiking():
     kerasLayer = keras.layers.Dense(30, activation="relu", use_bias=True)
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_dense_keras_conf
+    from sinabs.from_keras.from_keras import from_dense_keras_conf
 
     layer_list = from_dense_keras_conf(
         keras_config, input_shape=(3, 8, 8), spiking=True
@@ -195,7 +194,7 @@ def test_denseLayerFromKeras_non_spiking():
     kerasLayer = keras.layers.Dense(30, activation="relu", use_bias=True)
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_dense_keras_conf
+    from sinabs.from_keras.from_keras import from_dense_keras_conf
 
     layer_list = from_dense_keras_conf(keras_config, input_shape=(50,), spiking=False)
 

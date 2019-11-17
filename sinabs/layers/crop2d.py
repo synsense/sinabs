@@ -99,37 +99,3 @@ class Cropping2dLayer(Layer):
         return summary
 
 
-def from_cropping2d_keras_conf(
-    layer_config: dict, input_shape: ArrayLike, spiking=False
-) -> List:
-    """
-    Load cropping 2d layer from Json configuration
-
-    :param layer_config: keras configuration dictionary for this object
-    :param input_shape: input data shape to determine output dimensions (channels, height, width)
-    :param spiking: bool, is irrelevant for cropping layer. Only here for consistency
-    :return: [(layer_name, nn.Module)] Returns a list of layers and their names
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-
-    # Determine output dims
-    cropping = layer_config["config"]["cropping"]
-
-    # Initialize cropping layer
-    torch_layer = Cropping2dLayer(
-        image_shape=input_shape[1:], cropping=cropping, layer_name=layer_name
-    )
-
-    # Set input shape
-    torch_layer.input_shape = input_shape
-
-    return [(layer_name, torch_layer)]

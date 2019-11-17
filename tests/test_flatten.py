@@ -21,7 +21,7 @@ def test_flatten():
     kerasLayer = keras.layers.Flatten()
     keras_config = kerasLayer.get_config()
 
-    from sinabs.layers import from_flatten_keras_conf
+    from sinabs.from_keras.from_keras import from_flatten_keras_conf
 
     # Create spiking layers
     layer_list = from_flatten_keras_conf(

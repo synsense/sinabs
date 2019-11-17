@@ -15,12 +15,16 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from distutils.core import setup
-
-setup(
-    name="sinabs",
-    version="0.1.0",
-    packages=["sinabs", "sinabs.layers", "sinabs.from_keras"],
-    license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
-    install_requires=['numpy', 'pandas', 'torch'],
+from .from_keras import (
+    from_json,
+    from_model,
+    infer_data_format,
+    all_data_formats,
+    from_layer_keras_conf,
+    from_model_keras_config,
+    extract_graph_from_keras_config,
+    build_model,
+    where,
+    extract_json_weights,
+    transposeKeras2Torch,
 )

@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-import torch.nn as nn
 import numpy as np
 import pandas as pd
 from typing import Union, List, Tuple
@@ -72,32 +71,3 @@ class FlattenLayer(Layer):
         return summary
 
 
-def from_flatten_keras_conf(
-    layer_config: dict, input_shape: ArrayLike, spiking=False
-) -> [(str, nn.Module)]:
-    """
-    Load Flatten layer from keras configuration
-    :param layer_config: configuration dictionary
-    :param input_shape: input data shape to determine output dimensions
-    :param spiking: bool True if spiking layer needs to be loaded
-    """
-    # Config depth consistency
-    if "config" in layer_config:
-        pass
-    else:
-        layer_config = {"config": layer_config}
-
-    try:
-        layer_name = layer_config["name"]
-    except KeyError:
-        layer_name = layer_config["config"]["name"]
-
-    if spiking:
-        # For a spiking layer, the next convolutional layer automatically re-formats the data structure
-        return []
-    else:
-        # Determine output dims
-        torch_layer = FlattenLayer(input_shape=input_shape, layer_name=layer_name)
-        torch_layer.input_shape = input_shape
-
-    return [(layer_name, torch_layer)]
