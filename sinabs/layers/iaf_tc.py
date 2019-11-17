@@ -19,13 +19,13 @@ from .iaf import SpikingLayer
 from functools import reduce
 from operator import mul
 import torch
+import torch.nn as nn
 import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
-from .iaf_conv1d import SpikingConv1dLayer
 
 
-class SpikingTemporalConv1dLayer(SpikingConv1dLayer):
+class SpikingTemporalConv1dLayer(SpikingLayer):
     def __init__(
         self,
         channels_in: int,
@@ -59,13 +59,7 @@ class SpikingTemporalConv1dLayer(SpikingConv1dLayer):
         NOTE: SUBTRACT superseeds Reset value
         """
         super().__init__(
-            channels_in=channels_in,
-            image_shape=1,
-            channels_out=channels_out,
-            kernel_shape=kernel_shape,
-            dilation=dilation,
-            strides=strides,
-            bias=bias,
+            channels_out,
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
@@ -73,27 +67,36 @@ class SpikingTemporalConv1dLayer(SpikingConv1dLayer):
             layer_name=layer_name,
         )
 
+        self.conv = nn.Conv1d(
+            channels_in,
+            channels_out,
+            kernel_size=kernel_shape,
+            dilation=dilation,
+            stride=strides,
+            bias=bias,
+        )
+
         # Initialize buffer
         self.len_delay_buffer = ((kernel_shape - 1) * dilation + 1) - 1
         if self.len_delay_buffer:
             self.register_buffer(
-                "delay_buffer", torch.zeros((1, channels_in, self.len_delay_buffer))
+                "delay_buffer", torch.zeros((channels_in, self.len_delay_buffer))
             )
 
     def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
         """
         This method convolves the input spikes to compute the synaptic input currents to the neuron states
 
-        :param input_spikes: torch.Tensor input to the layer. [Time, Channel, 1]
-        :return:  torch.Tensor - synaptic output current [Time, Channel, 1]
+        :param input_spikes: torch.Tensor input to the layer. [Time, Channel]
+        :return:  torch.Tensor - synaptic output current [Time, Channel]
         """
         # Convolve all inputs at once
-        input_spikes = torch.transpose(input_spikes, 0, 2)
+        input_spikes = torch.transpose(input_spikes, 0, 1)
         if self.len_delay_buffer:
-            input_spikes = torch.cat((self.delay_buffer, input_spikes), axis=2)
-            self.delay_buffer = input_spikes[:, :, -self.len_delay_buffer :]
-        syn_out = self.conv(input_spikes)
-        syn_out = torch.transpose(syn_out, 0, 2)
+            input_spikes = torch.cat((self.delay_buffer, input_spikes), axis=1)
+            self.delay_buffer = input_spikes[:, -self.len_delay_buffer :]
+        syn_out = self.conv(input_spikes.unsqueeze(0))  # Add a batch
+        syn_out = torch.transpose(syn_out[0], 0, 1)  # Remove the batch and transpose to [Time, Channel]
         return syn_out
 
     def summary(self) -> pd.Series:

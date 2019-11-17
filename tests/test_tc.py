@@ -24,7 +24,7 @@ def test_synaptic_output():
     import torch
 
     # Generate input
-    inp_spikes = (torch.rand((50, 20, 1)) > 0.05).float()
+    inp_spikes = (torch.rand((50, 20)) > 0.05).float()
 
     # Init layer
     tds = SpikingTemporalConv1dLayer(
@@ -36,7 +36,7 @@ def test_synaptic_output():
     )
     out_current = tds.synaptic_output(inp_spikes)
 
-    assert out_current.shape == (50, 5, 1)
+    assert out_current.shape == (50, 5)
 
 
 def test_conv():
@@ -44,7 +44,7 @@ def test_conv():
     import torch
 
     # Generate input
-    inp_spikes = (torch.rand((50, 20, 1)) > 0.05).float()
+    inp_spikes = (torch.rand((50, 20)) > 0.05).float()
 
     # Init layer
     tds = SpikingTemporalConv1dLayer(
@@ -56,7 +56,7 @@ def test_conv():
     )
     out_spikes = tds(inp_spikes)
 
-    assert out_spikes.shape == (50, 5, 1)
+    assert out_spikes.shape == (50, 5)
 
 
 
@@ -68,7 +68,7 @@ def test_buffer():
 
     # Generate input
     inp = np.arange(20) % 2
-    inp_spikes = torch.from_numpy(inp.reshape(len(inp), 1, 1)).float()
+    inp_spikes = torch.from_numpy(inp.reshape(len(inp), 1)).float()
 
     # Init layer
     tds = SpikingTemporalConv1dLayer(
@@ -84,7 +84,7 @@ def test_buffer():
         if key == "conv.bias":
             param.data = torch.zeros(1)
     out_spikes = tds(inp_spikes)
-    result = np.array([0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2]).reshape(len(inp), 1, 1)
+    result = np.array([0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2]).reshape(len(inp), 1)
     result = torch.from_numpy(result).float()
 
     assert torch.eq(out_spikes, result).all()

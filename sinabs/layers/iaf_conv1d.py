@@ -46,6 +46,7 @@ class SpikingConv1dLayer(SpikingLayer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "conv1d",
+        negative_spikes: bool = False,
     ):
         """
         Spiking 1D convolutional layer
@@ -66,7 +67,7 @@ class SpikingConv1dLayer(SpikingLayer):
 
         NOTE: SUBTRACT superseeds Reset value
         """
-        SpikingLayer.__init__(
+        super().__init__(
             self,
             input_shape=(channels_in, image_shape),
             threshold=threshold,
@@ -74,6 +75,7 @@ class SpikingConv1dLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
+            negative_spikes=negative_spikes,
         )
         self.conv = nn.Conv1d(
             channels_in,
@@ -129,7 +131,9 @@ class SpikingConv1dLayer(SpikingLayer):
                 / np.array(self.strides)
                 * self.channels_out,
                 "Neurons": reduce(mul, list(self.output_shape), 1),
-                "Kernel_Params": self.channels_in*self.channels_out*self.kernel_shape,
+                "Kernel_Params": self.channels_in
+                * self.channels_out
+                * self.kernel_shape,
                 "Bias_Params": self.bias * self.channels_out,
             }
         )
@@ -144,7 +148,7 @@ class SpikingConv1dLayer(SpikingLayer):
         """
         (channels, length) = input_shape
 
-        length_out= conv_output_size(
+        length_out = conv_output_size(
             length + sum(self.padding[1]),
             (self.dilation * (self.kernel_shape - 1) + 1),
             self.strides,
