@@ -21,8 +21,21 @@ import torch.nn as nn
 
 class _Quantize(torch.autograd.Function):
     @staticmethod
-    def forward(ctx, input):
-        return input.floor()
+    def forward(ctx, inp):
+        return inp.floor()
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_input = grad_output.clone()
+        return grad_input
+
+class _StochasticRounding(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, inp):
+        frac = inp - inp.floor()
+        output = inp.floor() + (torch.rand_like(inp) < frac).float()
+        return output
+
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -58,16 +71,19 @@ class NeuromorphicReLU(torch.nn.Module):
     NeuromorphicReLU. The activity can be accessed through \
     NeuromorphicReLU.activity, and is multiplied by the value of fanout.
     """
-    def __init__(self, quantize=True, fanout=1):
+    def __init__(self, quantize=True, fanout=1, stochastic_rounding=False):
         super().__init__()
         self.quantize = quantize
+        self.stochastic_rounding = stochastic_rounding
         self.fanout = fanout
 
-    def forward(self, input):
-        output = torch.nn.functional.relu(input)
-
+    def forward(self, inp):
+        output = torch.nn.functional.relu(inp)
         if self.quantize:
-            output = _Quantize.apply(output)
+            if self.stochastic_rounding:
+                output = _StochasticRounding.apply(output)
+            else:
+                output = _Quantize.apply(output)
 
         self.activity = output.sum() / len(output) * self.fanout
         return output

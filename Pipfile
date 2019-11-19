@@ -4,11 +4,11 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-tensorflow = "==1.15"
 sphinx = "*"
 nbsphinx = "*"
 m2r = "*"
 pandoc = "*"
+pytest = "*"
 
 [packages]
 torch = "*"
