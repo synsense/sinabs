@@ -30,6 +30,7 @@ class Sig2SpikeLayer(Layer):
         self,
         channels_in,
         tw: int = 1,
+        norm_level: float = 1,
         layer_name: str = "sig2spk",
     ):
         """
@@ -40,17 +41,13 @@ class Sig2SpikeLayer(Layer):
         :param layer_name: string layer name
 
         """
+        super().__init__(input_shape=(channels_in, None), layer_name=layer_name)
         self.tw = tw
-        super().__init__(
-            input_shape=(channels_in, None),
-            layer_name=layer_name
-        )
-
+        self.norm_level = norm_level
 
     def get_output_shape(self, input_shape: Tuple):
         channels, time_steps = input_shape
-        return (self.tw*time_steps, channels)
-
+        return (self.tw * time_steps, channels)
 
     def forward(self, signal):
         """
@@ -60,11 +57,14 @@ class Sig2SpikeLayer(Layer):
         :return:
         """
         channels, time_steps = signal.shape
-        random_tensor = torch.rand(self.tw*time_steps, channels).to(signal.device)
+        random_tensor = (
+            torch.rand(self.tw * time_steps, channels).to(signal.device)
+            * self.norm_level
+        )
         if self.tw != 1:
-            signal = signal.view(-1,1).repeat(1, self.tw).view(channels, -1)
-        signal = signal.transpose(1,0)
-        spk_sig= (random_tensor < signal).float()
+            signal = signal.view(-1, 1).repeat(1, self.tw).view(channels, -1)
+        signal = signal.transpose(1, 0)
+        spk_sig = (random_tensor < signal).float()
         self.spikes_number = spk_sig.abs().sum()
         return spk_sig
 
