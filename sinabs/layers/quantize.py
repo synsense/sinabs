@@ -85,8 +85,11 @@ class NeuromorphicReLU(torch.nn.Module):
     def forward(self, inp):
         output = torch.nn.functional.relu(inp)
         if self.quantize:
-            if self.stochastic_rounding and self.training:
-                output = _StochasticRounding.apply(output)
+            if self.stochastic_rounding:
+                if self.training:
+                    output = _StochasticRounding.apply(output)
+                else:
+                    output = output.round()
             else:
                 output = _Quantize.apply(output)
 
