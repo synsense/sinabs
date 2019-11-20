@@ -29,13 +29,14 @@ class _Quantize(torch.autograd.Function):
         grad_input = grad_output.clone()
         return grad_input
 
+
 class _StochasticRounding(torch.autograd.Function):
     @staticmethod
     def forward(ctx, inp):
-        frac = inp - inp.floor()
-        output = inp.floor() + (torch.rand_like(inp) < frac).float()
+        int_val = inp.floor()
+        frac = inp - int_val
+        output = int_val + (torch.rand_like(inp) < frac).float()
         return output
-
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -49,6 +50,7 @@ class QuantizeLayer(nn.Module):
 
     :param quantize: If False, this layer will do nothing.
     """
+
     def __init__(self, quantize=True):
         super().__init__()
         self.quantize = quantize
@@ -70,7 +72,10 @@ class NeuromorphicReLU(torch.nn.Module):
     :param fanout: Useful when computing the number of SynOps of a quantized \
     NeuromorphicReLU. The activity can be accessed through \
     NeuromorphicReLU.activity, and is multiplied by the value of fanout.
+    :param stochastic_rounding: Upon quantization, should the value be rounded stochastically or floored
+    Only done during training. During evaluation mode, the value is simply floored
     """
+
     def __init__(self, quantize=True, fanout=1, stochastic_rounding=False):
         super().__init__()
         self.quantize = quantize
@@ -80,7 +85,7 @@ class NeuromorphicReLU(torch.nn.Module):
     def forward(self, inp):
         output = torch.nn.functional.relu(inp)
         if self.quantize:
-            if self.stochastic_rounding:
+            if self.stochastic_rounding and self.training:
                 output = _StochasticRounding.apply(output)
             else:
                 output = _Quantize.apply(output)
