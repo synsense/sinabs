@@ -59,10 +59,33 @@ The `Pipfile` essentially replace `requirements.txt` for `pipenv`.
 
 You can checkout the `Pipfile` of `sinabs` to get a feel for it.
 
+PEW: Quick access
+=================
+
+You would have noticed that to activate your shell you need to navigate to your project directory.
+This might get a bit tiresome if you have your project hidden in a deep directory structure, or if you just don't know where it is located on this machine.
+
+In order to activate your virtual environment from an arbitrary file path in your terminal, you can use a tool called `pew`.
+To list all available virtual environments, run::
+
+    $ pew workon
+
+This should list a set of virtual environments available on your system. Let's say your project's env. was called `MySinabsProject-sdfgaa`.
+You can activate your project's virtual environment as::
+
+    $ pew workon MySinabsProject-sdfgaa
+
+This will activate a shell for your project and take you to the project directory.
+
+.. Tip::
+
+    You might have noticed that there is no indication of the current virtual environment when you use `pew` as we did above.
+    This can be remedied by adding the following line to your .bashrc/.zshrc file: `source $(pew shell_config)` .
+
 Checkout the links in the references section below for detailed explanations and tutorials.
 
-Quick steps for a project using `sinabs`
-========================================
+TL;DR : Quick steps for a project using `sinabs`
+================================================
 
 Make sure you have `pipenv` and `pyenv` installed on your system.
 
