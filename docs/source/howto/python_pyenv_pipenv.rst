@@ -68,7 +68,7 @@ This might get a bit tiresome if you have your project hidden in a deep director
 In order to activate your virtual environment from an arbitrary file path in your terminal, you can use a tool called `pew`.
 To list all available virtual environments, run::
 
-    $ pew workon
+    $ pew ls
 
 This should list a set of virtual environments available on your system. Let's say your project's env. was called `MySinabsProject-sdfgaa`.
 You can activate your project's virtual environment as::
