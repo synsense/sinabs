@@ -99,6 +99,14 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
         syn_out = torch.transpose(syn_out[0], 0, 1)  # Remove the batch and transpose to [Time, Channel]
         return syn_out
 
+    def clear_buffer(self):
+        """
+        Clear the buffer for this layer ie. zero the delay_buffer
+        """
+        if self.len_delay_buffer:
+            self.delay_buffer.zero_()
+
+
     def summary(self) -> pd.Series:
         """
         Returns a summary of the current layer
