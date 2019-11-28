@@ -32,6 +32,7 @@ class Sig2SpikeLayer(Layer):
         tw: int = 1,
         norm_level: float = 1,
         layer_name: str = "sig2spk",
+        spk_out: bool = True,
     ):
         """
         Layer converts analog signals to spikes
@@ -44,6 +45,7 @@ class Sig2SpikeLayer(Layer):
         super().__init__(input_shape=(channels_in, None), layer_name=layer_name)
         self.tw = tw
         self.norm_level = norm_level
+        self.spk_out = spk_out
 
     def get_output_shape(self, input_shape: Tuple):
         channels, time_steps = input_shape
@@ -57,14 +59,19 @@ class Sig2SpikeLayer(Layer):
         :return:
         """
         channels, time_steps = signal.shape
-        random_tensor = (
-            torch.rand(self.tw * time_steps, channels).to(signal.device)
-            * self.norm_level
-        )
         if self.tw != 1:
             signal = signal.view(-1, 1).repeat(1, self.tw).view(channels, -1)
         signal = signal.transpose(1, 0)
-        spk_sig = (random_tensor < signal).float()
+        if self.spk_out:
+            random_tensor = (
+                torch.rand(self.tw * time_steps, channels).to(signal.device)
+                * self.norm_level
+            )
+            spk_sig = (random_tensor < signal).float()
+        else:
+            # If there is no conversion to spikes, just replicate the signal as current injection
+            spk_sig = signal
+
         self.spikes_number = spk_sig.abs().sum()
         return spk_sig
 
