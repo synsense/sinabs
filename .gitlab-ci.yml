@@ -44,8 +44,6 @@ dist_build:
   only:
     - master
 
-  dependencies:
-    - unittests
 
   before_script:
     - pip install --upgrade pip
@@ -73,5 +71,5 @@ pypi_deploy:
     - pip install --uprade twine
 
   script:
-    - python -m twine upload dist/*
-_
+          - python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+
