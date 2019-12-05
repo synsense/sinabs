@@ -42,7 +42,7 @@ dist_build:
   stage: build
 
   only:
-    - master
+    - pip
 
 
   before_script:
@@ -61,7 +61,7 @@ pypi_deploy:
   when: manual
 
   only:
-    - master
+    - pip
 
   dependencies:
     - dist_build
