@@ -17,16 +17,16 @@
 
 from setuptools import setup
 
-with open("README.md", 'r') as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setup(
     name="sinabs",
-    version="0.1.dev2",
+    version="0.1.dev3",
     description="A spiking deep neural network simulator",
     long_description=long_description,
     packages=["sinabs", "sinabs.layers", "sinabs.from_keras"],
     license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
-    install_requires=['numpy', 'pandas', 'torch'],
-    python_requires=">3.0"
+    install_requires=["numpy", "pandas", "torch"],
+    python_requires=">3.0",
 )
