@@ -22,11 +22,18 @@ with open("README.md", "r") as fh:
 
 setup(
     name="sinabs",
-    version="0.1.dev3",
-    description="A spiking deep neural network simulator",
+    author="aiCTX AG",
+    author_email="sadique.sheik@aictx.ai"
+    version="0.1.dev4",
+    description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",
     long_description=long_description,
+    long_description_content_type="text/markdown",
     packages=["sinabs", "sinabs.layers", "sinabs.from_keras"],
     license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
     install_requires=["numpy", "pandas", "torch"],
-    python_requires=">3.0",
+    python_requires=">=3.6",
+    project_urls={
+        'Source': 'https://gitlab.com/aiCTX/sinabs/',
+        'Documentation': 'https://aictx.gitlab.io/sinabs',
+                    
 )
