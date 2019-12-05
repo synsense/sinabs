@@ -23,7 +23,7 @@ with open("README.md", "r") as fh:
 setup(
     name="sinabs",
     author="aiCTX AG",
-    author_email="sadique.sheik@aictx.ai"
+    author_email="sadique.sheik@aictx.ai",
     version="0.1.dev4",
     description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",
     long_description=long_description,
@@ -35,5 +35,6 @@ setup(
     project_urls={
         'Source': 'https://gitlab.com/aiCTX/sinabs/',
         'Documentation': 'https://aictx.gitlab.io/sinabs',
+    }
                     
 )
