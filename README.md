@@ -19,20 +19,23 @@ In addition it provides support to import CNN models implemented in keras conven
 Installation
 ------------
 
-Download the package from git:
+You can install `sinabs` with pip:
 
 ```
-$ git clone <URLto/sinabs.git>
+pip install sinabs
 ```
 
-**NOTE**: Replace `<URLto/sinabs.git>` with appropriate git url.
-
-We recommend that you install this package as a development version so that you can update the package without reinstalling the package
+If you want to develop or have access to source code of sinabs, download the package from the git repository:
 
 ```
-$ cd path/to/sinabs
+$ cd <to/your/software/folder>
+$ git clone https://gitlab.com/aiCTX/sinabs.git>
+$ cd sinabs
 $ pip install -e . --user
 ```
+
+For developers, we recommend that you install this package as a development version so that you can update the package without reinstalling the package.
+Checkout our quick instructional on how to create a project based on `sinabs` within a virtual environment using [pyenv+pipenv](https://aictx.gitlab.io/sinabs/howto/python_pyenv_pipenv.html)
 
 Documentation and Examples
 --------------------------

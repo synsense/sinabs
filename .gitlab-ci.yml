@@ -37,3 +37,41 @@ pages:
 
   only:
     - master
+
+dist_build:
+  stage: build
+
+  only:
+    - master
+
+  dependencies:
+    - unittests
+
+  before_script:
+    - pip install --upgrade pip
+    - pip install wheel
+
+  script:
+    - python setup.py sdist bdist_wheel
+
+  artifacts:
+    paths:
+      - dist
+
+pypi_deploy:
+  stage: deploy
+  when: manual
+
+  only:
+    - master
+
+  dependencies:
+    - dist_build
+
+  before_script:
+    - pip install --upgrade pip
+    - pip install --uprade twine
+
+  script:
+    - python -m twine upload dist/*
+_
