@@ -24,7 +24,7 @@ setup(
     name="sinabs",
     author="aiCTX AG",
     author_email="sadique.sheik@aictx.ai",
-    version="0.1.dev4",
+    version="0.1.dev5",
     description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -33,8 +33,11 @@ setup(
     install_requires=["numpy", "pandas", "torch"],
     python_requires=">=3.6",
     project_urls={
-        'Source': 'https://gitlab.com/aiCTX/sinabs/',
-        'Documentation': 'https://aictx.gitlab.io/sinabs',
-    }
-                    
+        "Source": "https://gitlab.com/aiCTX/sinabs/",
+        "Documentation": "https://aictx.gitlab.io/sinabs",
+    },
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    ],
 )
