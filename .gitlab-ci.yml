@@ -76,7 +76,7 @@ pypi_deploy:
 
   before_script:
     - pip install --upgrade pip
-    - pip install --uprade twine
+    - pip install --upgrade twine
 
   script:
           - python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
