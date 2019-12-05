@@ -72,4 +72,3 @@ pypi_deploy:
 
   script:
           - python -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
-
