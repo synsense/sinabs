@@ -1,3 +1,6 @@
+![PyPI - Package](https://img.shields.io/pypi/v/rockpool.svg) [![Documentation Status](https://img.shields.io/badge/docs-ok-green)](https://aictx.gitlab.io/sinabs) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sinabs?logo=python) ![Black - formatter](https://img.shields.io/badge/code%20style-black-black) ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
+
+
 SINABS
 ======
 
