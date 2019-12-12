@@ -58,8 +58,12 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
 
         NOTE: SUBTRACT superseeds Reset value
         """
+        self.channels_in = channels_in
+        self.channels_out = channels_out
+        self.kernel_shape = kernel_shape
+        self.bias = bias
         super().__init__(
-            channels_out,
+            (channels_in, None),
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
@@ -75,6 +79,7 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
             stride=strides,
             bias=bias,
         )
+
 
         # Initialize buffer
         self.len_delay_buffer = ((kernel_shape - 1) * dilation + 1) - 1
@@ -120,12 +125,8 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
                 "Output_Shape": self.output_shape,
                 "Input_Shape": self.input_shape,
                 "Kernel": self.kernel_shape,
-                "Padding": tuple(self.padding),
-                "Stride": self.strides,
-                "Fanout_Prev": self.kernel_shape
-                / np.array(self.strides)
-                * self.channels_out,
-                "Neurons": reduce(mul, list(self.output_shape), 1),
+                "Fanout_Prev": self.kernel_shape*self.channels_out,
+                "Neurons": self.channels_out,
                 "Kernel_Params": self.channels_in
                 * self.channels_out
                 * self.kernel_shape,

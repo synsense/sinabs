@@ -55,7 +55,7 @@ class SpikingLayer(Layer):
 
         NOTE: SUBTRACT superseeds Reset value
         """
-        Layer.__init__(self, input_shape=input_shape, layer_name=layer_name)
+        super().__init__(input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
         self.membrane_subtract = membrane_subtract
         self.membrane_reset = membrane_reset
