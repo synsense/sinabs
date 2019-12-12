@@ -189,7 +189,7 @@ class SpkConverter(object):
 
     def convert_sumpool(self, pool):
         """
-        Converts a torch.nn.AvgPool2d layer to spiking and adds it to the
+        Converts a sinabs.layers.SumPool2d layer to spiking and adds it to the
         spiking model.
 
         :param pool: the Torch layer to convert.
@@ -324,7 +324,7 @@ class SpkConverter(object):
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):
                 self.convert_conv2d(module)
-            elif type(module).__name__ == "DynapSumPoolLayer":
+            elif isinstance(module, sil.SumPool2d):
                 self.convert_sumpool(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
