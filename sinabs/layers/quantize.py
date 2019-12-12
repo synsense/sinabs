@@ -71,3 +71,27 @@ class NeuromorphicReLU(torch.nn.Module):
 
         self.activity = output.sum() / len(output) * self.fanout
         return output
+
+
+class DynapSumPoolLayer(torch.nn.AvgPool2d):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, data):
+        if not hasattr(self.kernel_size, "__len__"):
+            kernel = (self.kernel_size, self.kernel_size)
+        else:
+            kernel = self.kernel_size
+        return super().forward(data) * kernel[0] * kernel[1]
+
+
+class ScaledDropout2d(torch.nn.Dropout2d):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def forward(self, data):
+        if self.training:
+            scale_factor = (1 - self.p)
+        else:
+            scale_factor = 1
+        return super().forward(data) * scale_factor

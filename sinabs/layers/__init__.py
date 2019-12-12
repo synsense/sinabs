@@ -32,7 +32,7 @@ from .maxpool2d import SpikingMaxPooling2dLayer
 from .inputlayer import (
     InputLayer,
 )
-from .quantize import QuantizeLayer, NeuromorphicReLU
+from .quantize import QuantizeLayer, NeuromorphicReLU, DynapSumPoolLayer, ScaledDropout2d
 from .sumpool2d import (
     SumPooling2dLayer,
 )
