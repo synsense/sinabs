@@ -3,6 +3,17 @@ from sinabs.layers import NeuromorphicReLU
 
 
 class SynOpCounter(object):
+    """
+    Counter for the synaptic operations emitted by all Neuromorphic ReLUs in a model.
+
+    Usage:
+        counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)
+        output = MyTorchModule(input)  # forward pass
+        synop_count = counter()
+
+    :param modules: list of modules, e.g. MyTorchModel.modules()
+    :param sum_activations: If True (default), returns a single number of synops, otherwise a list of layer synops.
+    """
 
     def __init__(self, modules, sum_activations=True):
         self.modules = []
