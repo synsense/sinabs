@@ -85,7 +85,7 @@ class NeuromorphicReLU(torch.nn.Module):
 #         return super().forward(data) * kernel[0] * kernel[1]
 
 
-class SumPool2d(torch.nn.LPPool1d):
+class SumPool2d(torch.nn.LPPool2d):
     """
     Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to torch.nn.LPPool2d with p=1.
 

@@ -206,7 +206,7 @@ class SpkConverter(object):
         layer = sil.SumPooling2dLayer(
             pool_size=kernel,
             strides=stride,
-            padding=(pool.padding, 0, pool.padding, 0),
+            padding=(0, 0, 0, 0),
             image_shape=self.previous_layer_shape[1:]
         )
         self.add(f"sumpool_{self.index}", layer)
