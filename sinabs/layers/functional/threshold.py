@@ -8,7 +8,7 @@ class ThresholdSubtract(torch.autograd.Function):
 
     @staticmethod
     def forward(ctx, data, threshold=1, window=0.5):
-        ctx.save_for_backward(data)
+        ctx.save_for_backward(data.clone())
         ctx.threshold = threshold
         ctx.window = window
         return (data >= ctx.threshold) * (data // ctx.threshold).float()
