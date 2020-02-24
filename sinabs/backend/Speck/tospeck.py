@@ -18,10 +18,57 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
     config = sd.configuration.SpeckConfiguration()
 
     if isinstance(snn, Network):
-        for layer in snn.spiking_model.children():
-            config[layer.layer_name] = to_speck_config(layer)
-            # Populate source/destination layers here
-            # Consolidate pooling and conv layers here
+        layers = snn.spiking_model.children()
+
+        i_layer = 0
+        i_layer_speck = 0
+
+        # - Iterate over layers from model
+        while i_layer < len(layers):
+
+            # - Set configuration for current layer
+            lyr_curr = layers[i_layer]
+
+            if isinstance(lyr_curr, sl.SpikingConv2dLayer):
+                layer_config = spiking_conv2d_to_speck(snn)
+                speck_layer = config.cnn_layers[i_layer_speck]
+                speck_layer.set_dimensions(layer_config["dimensions"])
+                speck_layer.set_weights(layer_config["weights"])
+                speck_layer.set_biases(layer_config["biases"])
+                for param, value in layer_config["layer_params"]:
+                    setattr(speck_layer, param, value)
+
+                # Consolidate pooling from following layers
+                i_next = i_layer + 1
+                lyr_next = layers[i_next]
+                pooling = 1
+                while isinstance(lyr_next, sl.SumPooling2dLayer):
+                    # Extract pooling details and set as destination
+                    pooling *= get_sumpool2d_pooling(lyr_next)
+                    i_next += 1
+                    try:
+                        lyr_next = layers[i_next]
+                    except IndexError:
+                        # No more layers
+                        lyr_next = None
+                        break
+
+                # - Destination for CNN layer... make sure that is cnn or sum pooling?
+
+                if lyr_next is not None:
+                    # Set destination layer
+                    speck_layer.destination[0].enable = True
+                    speck_layer.destination[0].layer = i_layer_speck + 1
+                    speck_layer.destination[0].pooling = pooling
+
+                    i_layer = i_next
+                else:
+                    print("Finished configuration of Speck.")
+                    break
+
+            elif isinstance(lyr_curr, sl.SumPooling2dLayer):
+                ...
+
     elif isinstance(snn, sl.TorchLayer):
         # TODO: Do your thing for config
         ...
@@ -40,6 +87,25 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
             setattr(speck_layer, param, value)
 
     return config
+
+
+def get_sumpool2d_pooling(layer):
+    summary = layer.summary()
+    if any(pad != 0 for pad in summary["Padding"]):
+        warn(
+            f"Sum pooling layer `{layer.layer_name}`: Padding is not supported for pooling layers."
+        )
+    if summary["Pooling"][0] != summary["Pooling"][1]:
+        warn(
+            f"Sum pooling layer `{layer.layer_name}`: Horizontal and Vertical pooling "
+            + "must be the same. Will use vertical value for both directions."
+        )
+    pooling = summary["Pooling"][0]  # Is this the vertical dimension?
+    if any(stride != pooling for stride in summary["Stride"]):
+        warn(
+            f"Sum pooling layer `{layer.layer_name}`: Stride size is always same as pooling size."
+        )
+    return pooling
 
 
 def spiking_conv2d_to_speck(layer):
@@ -128,8 +194,8 @@ def spiking_conv2d_to_speck(layer):
         return_to_zero=return_to_zero,
         threshold_high=layer.threshold_high,
         threshold_low=layer.threshold_low,
-        monitor_enable=...,  # What is this?
-        leak_enable=...,  # Leak in sinabs?
+        monitor_enable=True,  # Yes or no?
+        leak_enable=True,  # Or only if (bias != 0).any()?
     )
 
     return {
