@@ -3,10 +3,15 @@ from warnings import warn
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
-from typing import Dict, Union
+from typing import Dict, List, Tuple, Union
 import samna
 
 import speckdemo as sd
+
+## -- Parameters
+SPECK_DVS_POOLING_SIZES = [1, 2, 4]
+SPECK_CNN_POOLING_SIZES = [1, 2, 4, 8]
+SPECK_CNN_STRIDE_SIZES = [1, 2, 4, 8]
 
 
 def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
@@ -30,10 +35,11 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
             lyr_curr = layers[i_layer]
 
             if isinstance(lyr_curr, sl.SpikingConv2dLayer):
-                # Extract configuration specs from layer object
-                layer_config = spiking_conv2d_to_speck(snn)
                 # Object representing Speck layer
                 speck_layer = config.cnn_layers[i_layer_speck]
+
+                # Extract configuration specs from layer object
+                layer_config = spiking_conv2d_to_speck(snn)
                 # Update configuration of the Speck layer
                 speck_layer.set_dimensions(layer_config["dimensions"])
                 speck_layer.set_weights(layer_config["weights"])
@@ -42,37 +48,46 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                     setattr(speck_layer, param, value)
 
                 # - Consolidate pooling from subsequent layers
-                i_next = i_layer + 1
-                lyr_next = layers[i_next]
-                pooling = 1
-                # Test whether destination layer is pooling
-                while isinstance(lyr_next, sl.SumPooling2dLayer):
-                    # Update pooling size
-                    pooling *= get_sumpool2d_pooling(lyr_next)
-                    i_next += 1
-                    try:
-                        lyr_next = layers[i_next]
-                    except IndexError:
-                        # No more layers
-                        lyr_next = None
-                        break
+                pooling, i_next = consolidate_pooling(layers[i_layer + 1 :])
 
                 # - Destination for CNN layer... make sure that is cnn or sum pooling?
 
-                if lyr_next is not None:
+                # For now: Sequential model, second destination always disabled
+                speck_layer.destination[1].enable = False
+
+                if i_next is not None:
                     # Set destination layer
-                    speck_layer.destination[0].enable = True
                     speck_layer.destination[0].layer = i_layer_speck + 1
                     speck_layer.destination[0].pooling = pooling
+                    speck_layer.destination[0].enable = True
 
-                    i_layer = i_next
+                    # Add 1 to i_layer to go to next layer, + i_next for number
+                    # of consolidated pooling layers
+                    i_layer += 1 + i_next
+                    i_layer_speck += 1
+
                 else:
-                    # TODO: How to route to readout layer?
-                    print("Finished configuration of Speck.")
+                    speck_layer.destination[0].enable = False
+                    # TODO: How to route to readout layer? Does destination need to be set?
                     break
 
             elif isinstance(lyr_curr, sl.SumPooling2dLayer):
-                ...
+                # This case can only happen when `layers` starts with a pooling layer,
+                # because all other pooling layers should get consolidated. Assume that
+                # input then comes from DVS
+
+                # Object representing Speck DVS
+                dvs = config.dvs_layer
+                pooling, i_next = consolidate_pooling(layers[i_layer:], dvs=True)
+                dvs.pooling.y, dvs.pooling.x = pooling
+                if i_next is not None:
+                    dvs.destinations[0].layer = i_layer_speck
+                    dvs.destinations[0].enable = True
+                else:
+                    break
+
+        # TODO: Does anything need to be done after iterating over layers?
+        print("Finished configuration of Speck.")
 
     elif isinstance(snn, sl.TorchLayer):
         # TODO: Do your thing for config
@@ -94,30 +109,86 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
     return config
 
 
-def consolidate_subsequent_pooling(layers):
-    ...
+def consolidate_pooling(
+    layers, dvs: bool = False
+) -> Tuple[Union[int, Tuple[int], None], int]:
+    """
+    TODO: Handle case where resulting pooling would be too large
+    consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in `layers`
+                          until the first object of different type.
+    :param layers:  Iterable, containing `SumPooling2dLayer`s and other objects.
+    :param dvs:     bool, if True, x- and y- pooling may be different and a
+                          Tuple is returned instead of an integer.
+    :return:
+        int or tuple, consolidated pooling size. Tuple if `dvs` is `True`.
+        int or None, index of first object in `layers` that is not a
+                     `SumPooling2dLayer`, or `None`, if all objects in `layers`
+                     are `SumPooling2dLayer`s.
+    """
+
+    pooling = 1 if dvs else (1, 1)
+
+    for i_next, lyr in enumerate(layers):
+        if isinstance(lyr, sl.SumPooling2dLayer):
+            # Update pooling size
+            new_pooling = get_sumpool2d_pooling_config(lyr)
+            if dvs:
+                pooling[0] *= new_pooling[0]
+                pooling[1] *= new_pooling[1]
+            else:
+                pooling *= new_pooling
+        else:
+            return pooling, i_next
+
+    # If this line is reached, all objects in `layers` are `SumPooling2dLayer`s.
+    return pooling, None
 
 
-def get_sumpool2d_pooling(layer):
+def get_sumpool2d_pooling_config(layer, dvs: bool = True) -> Union[int, Tuple[int]]:
     summary = layer.summary()
     if any(pad != 0 for pad in summary["Padding"]):
         warn(
-            f"Sum pooling layer `{layer.layer_name}`: Padding is not supported for pooling layers."
+            f"SumPooling2dLayer `{layer.layer_name}`: Padding is not supported for pooling layers."
         )
-    if summary["Pooling"][0] != summary["Pooling"][1]:
-        warn(
-            f"Sum pooling layer `{layer.layer_name}`: Horizontal and Vertical pooling "
-            + "must be the same. Will use vertical value for both directions."
-        )
-    pooling = summary["Pooling"][0]  # Is this the vertical dimension?
-    if any(stride != pooling for stride in summary["Stride"]):
-        warn(
-            f"Sum pooling layer `{layer.layer_name}`: Stride size is always same as pooling size."
-        )
-    return pooling
+
+    if dvs:
+        pooling_y, pooling_x = summary["Pooling"]
+        # Check pooling size
+        if pooling_y not in SPECK_DVS_POOLING_SIZES:
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Vertical pooling dimension for DVS must be in [1, 2, 4]."
+            )
+        if pooling_x not in SPECK_DVS_POOLING_SIZES:
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Horizontal pooling dimension for DVS must be in [1, 2, 4]."
+            )
+        # Check whether pooling and strides match
+        if summary["Stride"][0] != pooling_y or summary["Stride"][1] != pooling_x:
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Stride size must be the same as pooling size."
+            )
+        return (pooling_y, pooling_x)
+    else:
+        pooling = summary["Pooling"][0]  # Is this the vertical dimension?
+        # Check whether pooling is symmetric
+        if pooling != summary["Pooling"][1]:
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Pooling must be symmetric for CNN layers."
+            )
+        # Check whether pooling and strides match
+        if any(stride != pooling for stride in summary["Stride"]):
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Stride size must be the same as pooling size."
+            )
+        # Check pooling size
+        if pooling not in SPECK_CNN_POOLING_SIZES:
+            raise ValueError(
+                f"SumPooling2dLayer `{layer.layer_name}`: Vertical pooling dimension for CNN layers must be in [1, 2, 4, 8]."
+            )
+        return pooling
 
 
-def spiking_conv2d_to_speck(layer):
+def spiking_conv2d_to_speck(layer: sl.SpikingConv2dLayer) -> Dict:
     summary = layer.summary()
     dimensions = sd.configuration.CNNLayerDimensions()
 
@@ -148,16 +219,16 @@ def spiking_conv2d_to_speck(layer):
 
     # - Stride
     stride_y, stride_x = summary["Stride"]
-    if stride_x not in [1, 2, 4, 8]:
+    if stride_x not in SPECK_CNN_STRIDE_SIZES:
         raise ValueError(
             f"SpikingConv2dLayer `{layer.layer_name}`: Horizontal stride must be in [1, 2, 4, 8]."
         )
-    if stride_y not in [1, 2, 4, 8]:
+    if stride_y not in SPECK_CNN_STRIDE_SIZES:
         raise ValueError(
             f"SpikingConv2dLayer `{layer.layer_name}`: Vertical stride must be in [1, 2, 4, 8]."
         )
-    dimensions.x = stride_x
-    dimensions.y = stride_y
+    dimensions.stride.x = stride_x
+    dimensions.stride.y = stride_y
 
     # - Kernel size
     kernel_size = summary["Kernel"][0]
@@ -216,6 +287,47 @@ def spiking_conv2d_to_speck(layer):
         "biases": biases,
         "neuron_states": neuron_states,
     }
+
+
+def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
+    """
+    identity_dimensions - Return `CNNLayerDimensions` for Speck such that the layer
+                          performs an identity operation.
+    :param input_shape:   Tuple with feature_count, vertical and horizontal size of
+                          input to the layer.
+    :return:
+        CNNLayerDimensions corresponding to identity operation.
+    """
+    dimensions = sd.configuration.CNNLayerDimensions()
+    # No padding
+    dimensions.padding.x = 0
+    dimensions.padding.y = 0
+    # Stride 1
+    dimensions.stride.x = 1
+    dimensions.stride.y = 1
+    # Input shape
+    dimensions.input_shape.feature_count = input_shape[0]
+    dimensions.input_shape.y = input_shape[1]
+    dimensions.input_shape.x = input_shape[2]
+    # Output shape
+    dimensions.output_shape.feature_count = input_shape[0]
+    dimensions.output_shape.y = input_shape[1]
+    dimensions.output_shape.x = input_shape[2]
+
+    return dimensions
+
+
+def identity_weights(feature_count: int) -> List[List[List[List[int]]]]:
+    """
+    identity_weights - Return weights that correspond to identity operation,
+                       assuming that feature_count and channel_count are the same.
+    :param feature_count:  int  Number of input features
+    :return:
+        list    Weights for identity operation
+    """
+    return [
+        [[[int(i == j)]] for j in range(feature_count)] for i in range(feature_count)
+    ]
 
 
 def write_to_device(config: Dict, device: samna.SpeckModel, weights=None):
