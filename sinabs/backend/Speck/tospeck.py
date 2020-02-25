@@ -1,12 +1,14 @@
 from warnings import warn
 
+import torch
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
 from typing import Dict, List, Tuple, Union
-import samna
 
-import speckdemo as sd
+# import samna
+
+from ctxctl_speck import speckdemo as sd
 
 
 def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
@@ -18,7 +20,7 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
     config = sd.configuration.SpeckConfiguration()
 
     if isinstance(snn, Network):
-        layers = snn.spiking_model.children()
+        layers = list(snn.spiking_model.children())
 
         i_layer = 0
         i_layer_speck = 0
@@ -42,13 +44,13 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                 # - Destination for CNN layer... make sure that is cnn or sum pooling?
 
                 # For now: Sequential model, second destination always disabled
-                speck_layer.destination[1].enable = False
+                speck_layer.destinations[1].enable = False
 
                 if i_next is not None:
                     # Set destination layer
-                    speck_layer.destination[0].layer = i_layer_speck + 1
-                    speck_layer.destination[0].pooling = pooling
-                    speck_layer.destination[0].enable = True
+                    speck_layer.destinations[0].layer = i_layer_speck + 1
+                    speck_layer.destinations[0].pooling = pooling
+                    speck_layer.destinations[0].enable = True
 
                     # Add 1 to i_layer to go to next layer, + i_next for number
                     # of consolidated pooling layers
@@ -56,14 +58,14 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                     i_layer_speck += 1
 
                 else:
-                    speck_layer.destination[0].enable = False
+                    speck_layer.destinations[0].enable = False
                     # TODO: How to route to readout layer? Does destination need to be set?
                     break
 
             elif isinstance(lyr_curr, sl.SumPooling2dLayer):
-                # This case can only happen when `layers` starts with a pooling layer,
-                # because all other pooling layers should get consolidated. Assume that
-                # input then comes from DVS
+                # This case can only happen when `layers` starts with a pooling layer, or
+                # input layer because all other pooling layers should get consolidated.
+                # Assume that input comes from DVS.
 
                 # Object representing Speck DVS
                 dvs = config.dvs_layer
@@ -72,8 +74,23 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                 if i_next is not None:
                     dvs.destinations[0].layer = i_layer_speck
                     dvs.destinations[0].enable = True
+                    i_layer += i_next
                 else:
                     break
+
+            elif isinstance(lyr_curr, sl.InputLayer):
+                if i_layer > 0:
+                    raise TypeError(
+                        f"Only first layer can be of type {type(lyr_curr)}."
+                    )
+                output_shape = lyr_curr.output_shape
+                # - Cut DVS output to match output shape of `lyr_curr`
+                dvs = config.dvs_layer
+                dvs.cut.y = output_shape[1]
+                dvs.cut.x = output_shape[2]
+                # TODO: How to deal with feature count?
+
+                i_layer += 1
 
             else:
                 raise TypeError(
@@ -108,7 +125,9 @@ def spiking_conv2d_to_speck(
     speck_layer.set_dimensions(**layer_config["dimensions"])
     speck_layer.set_weights(layer_config["weights"])
     speck_layer.set_biases(layer_config["biases"])
-    for param, value in layer_config["layer_params"]:
+    if layer_config["neurons_state"] is not None:
+        speck_layer.set_neurons_state(layer_config["neurons_state"])
+    for param, value in layer_config["layer_params"].items():
         setattr(speck_layer, param, value)
 
 
@@ -128,12 +147,12 @@ def consolidate_pooling(
                      are `SumPooling2dLayer`s.
     """
 
-    pooling = 1 if dvs else (1, 1)
+    pooling = (1, 1) if dvs else 1
 
     for i_next, lyr in enumerate(layers):
         if isinstance(lyr, sl.SumPooling2dLayer):
             # Update pooling size
-            new_pooling = get_sumpool2d_pooling_size(lyr)
+            new_pooling = get_sumpool2d_pooling_size(lyr, dvs=dvs)
             if dvs:
                 pooling[0] *= new_pooling[0]
                 pooling[1] *= new_pooling[1]
@@ -146,7 +165,9 @@ def consolidate_pooling(
     return pooling, None
 
 
-def get_sumpool2d_pooling_size(layer, dvs: bool = True) -> Union[int, Tuple[int]]:
+def get_sumpool2d_pooling_size(
+    layer: sl.SumPooling2dLayer, dvs: bool = True
+) -> Union[int, Tuple[int]]:
     """
     get_sumpool2d_pooling_size - Determine the pooling size of a `SumPooling2dLayer` object.
     :param layer:  `SumPooling2dLayer` object
@@ -220,6 +241,10 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
 
     # - Kernel size
     dimensions["kernel_size"] = summary["Kernel"][0]
+    if dimensions["kernel_size"] != summary["Kernel"][1]:
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}` Kernel must have same height and width."
+        )
 
     # - Input and output shapes
     dimensions["channel_count"] = summary["Input_Shape"][0]
@@ -233,11 +258,11 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     weights, biases = layer.parameters()
     if not layer.bias:
         biases *= 0
-    weights = weights.tolist()
-    biases = biases.tolist()
+    weights = discretize(weights).tolist()
+    biases = discretize(biases).tolist()
 
     # - Neuron states
-    neuron_states = layer.state.tolist()
+    neurons_state = layer.state.tolist() if layer.state is not None else None
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -245,15 +270,17 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         warn(
             f"SpikingConv2dLayer `{layer.layer_name}`: Resetting of membrane potential is always to 0."
         )
-    elif (not return_to_zero) and layer.membrane_subtract != layer.threshold_high:
+    elif (not return_to_zero) and layer.membrane_subtract != layer.threshold:
         warn(
             f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
         )
 
     layer_params = dict(
         return_to_zero=return_to_zero,
-        threshold_high=layer.threshold_high,
-        threshold_low=layer.threshold_low,
+        threshold_high=int(
+            layer.threshold
+        ),  # TODO: Correct discretization of thresholds
+        threshold_low=int(layer.threshold_low),
         monitor_enable=True,  # Yes or no?
         leak_enable=True,  # Or only if (bias != 0).any()?
     )
@@ -263,8 +290,13 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         "dimensions": dimensions,
         "weights": weights,
         "biases": biases,
-        "neuron_states": neuron_states,
+        "neurons_state": neurons_state,
     }
+
+
+def discretize(obj: torch.Tensor):
+    # TODO: Provide acutal discretization
+    return torch.round(obj).int()
 
 
 def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
@@ -308,23 +340,23 @@ def identity_weights(feature_count: int) -> List[List[List[List[int]]]]:
     ]
 
 
-def write_to_device(config: Dict, device: samna.SpeckModel, weights=None):
-    """
-    Write your model configuration to dict
+# def write_to_device(config: Dict, device: samna.SpeckModel, weights=None):
+#     """
+#     Write your model configuration to dict
 
-    :param config:
-    :param device:
-    :return:
-    """
-    device.set_config(to_speck_config(config))
-    if weights:
-        device.set_weights(weights)
-    device.apply()
+#     :param config:
+#     :param device:
+#     :return:
+#     """
+#     device.set_config(to_speck_config(config))
+#     if weights:
+#         device.set_weights(weights)
+#     device.apply()
 
 
-def to_speck_config(config: Dict) -> samna.SpeckConfig:
-    speck_config = samna.SpeckConfig()
-    # TODO
+# def to_speck_config(config: Dict) -> samna.SpeckConfig:
+#     speck_config = samna.SpeckConfig()
+#     # TODO
 
-    # Populate the config
-    return speck_config
+#     # Populate the config
+#     return speck_config
