@@ -26,24 +26,28 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
         # - Iterate over layers from model
         while i_layer < len(layers):
 
-            # - Set configuration for current layer
+            # Layer to be ported to Speck
             lyr_curr = layers[i_layer]
 
             if isinstance(lyr_curr, sl.SpikingConv2dLayer):
+                # Extract configuration specs from layer object
                 layer_config = spiking_conv2d_to_speck(snn)
+                # Object representing Speck layer
                 speck_layer = config.cnn_layers[i_layer_speck]
+                # Update configuration of the Speck layer
                 speck_layer.set_dimensions(layer_config["dimensions"])
                 speck_layer.set_weights(layer_config["weights"])
                 speck_layer.set_biases(layer_config["biases"])
                 for param, value in layer_config["layer_params"]:
                     setattr(speck_layer, param, value)
 
-                # Consolidate pooling from following layers
+                # - Consolidate pooling from subsequent layers
                 i_next = i_layer + 1
                 lyr_next = layers[i_next]
                 pooling = 1
+                # Test whether destination layer is pooling
                 while isinstance(lyr_next, sl.SumPooling2dLayer):
-                    # Extract pooling details and set as destination
+                    # Update pooling size
                     pooling *= get_sumpool2d_pooling(lyr_next)
                     i_next += 1
                     try:
@@ -63,6 +67,7 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
 
                     i_layer = i_next
                 else:
+                    # TODO: How to route to readout layer?
                     print("Finished configuration of Speck.")
                     break
 
@@ -87,6 +92,10 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
             setattr(speck_layer, param, value)
 
     return config
+
+
+def consolidate_subsequent_pooling(layers):
+    ...
 
 
 def get_sumpool2d_pooling(layer):
@@ -116,25 +125,23 @@ def spiking_conv2d_to_speck(layer):
     padding_x, padding_y = summary["Padding"][0], summary["Padding"][2]
     if padding_x != summary["Padding"][1]:
         warn(
-            "Left and right padding must be the same. "
+            f"SpikingConv2dLayer `{layer.layer_name}`: "
+            + "Left and right padding must be the same. "
             + "Will ignore value provided for right padding."
         )
     if padding_y != summary["Padding"][3]:
         warn(
-            "Top and bottom padding must be the same. "
+            f"SpikingConv2dLayer `{layer.layer_name}`: "
+            + "Top and bottom padding must be the same. "
             + "Will ignore value provided for bottom padding."
         )
     if not 0 <= padding_x < 8:
-        padding_x = max(min(padding_x, 7), 0)
-        warn(
-            "Horizontal padding must be between 0 and 7. "
-            + "Values outside of this range are clipped."
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Horizontal padding must be between 0 and 7"
         )
     if not 0 <= padding_y < 8:
-        padding_y = max(min(padding_y, 7), 0)
-        warn(
-            "Vertical padding must be between 0 and 7. "
-            + "Values outside of this range are clipped."
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Vertical padding must be between 0 and 7"
         )
     dimensions.padding.x = padding_x
     dimensions.padding.y = padding_y
@@ -142,24 +149,26 @@ def spiking_conv2d_to_speck(layer):
     # - Stride
     stride_y, stride_x = summary["Stride"]
     if stride_x not in [1, 2, 4, 8]:
-        raise ValueError("Horizontal stride must be in [1, 2, 4, 8].")
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Horizontal stride must be in [1, 2, 4, 8]."
+        )
     if stride_y not in [1, 2, 4, 8]:
-        raise ValueError("Vertical stride must be in [1, 2, 4, 8].")
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Vertical stride must be in [1, 2, 4, 8]."
+        )
     dimensions.x = stride_x
     dimensions.y = stride_y
 
     # - Kernel size
     kernel_size = summary["Kernel"][0]
     if kernel_size != summary["Kernel"][1]:
-        warn(
-            "Width and height of kernel must be the same. "
-            + "Will use value provided for width."
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Width and height of kernel must be the same."
         )
     if not 1 <= kernel_size < 17:
         kernel_size = max(min(kernel_size, 16), 1)
-        warn(
-            "Kernel size must be between 1 and 16. "
-            + "Values outside of this range are clipped."
+        raise ValueError(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Kernel size must be between 1 and 16."
         )
     dimensions.kernel_size = kernel_size
 
@@ -170,8 +179,6 @@ def spiking_conv2d_to_speck(layer):
     dimensions.output_shape.feature_count = summary["Output_Shape"][0]
     dimensions.output_shape.size.y = summary["Output_Shape"][1]
     dimensions.output_shape.size.x = summary["Output_Shape"][2]
-    # Is output shape not dependent on other values? Why can it be set?
-    # Maybe better to pass dict instead of dimensions object
 
     # - Weights and biases
     weights, biases = layer.parameters()
@@ -186,9 +193,13 @@ def spiking_conv2d_to_speck(layer):
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
     if return_to_zero and layer.membrane_reset != 0:
-        warn("Resetting of membrane potential is always to 0.")
+        warn(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Resetting of membrane potential is always to 0."
+        )
     elif (not return_to_zero) and layer.membrane_subtract != layer.threshold_high:
-        warn("Subtraction of membrane potential is always by high threshold.")
+        warn(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+        )
 
     layer_params = dict(
         return_to_zero=return_to_zero,
