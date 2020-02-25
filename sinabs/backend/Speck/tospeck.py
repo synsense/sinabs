@@ -8,11 +8,6 @@ import samna
 
 import speckdemo as sd
 
-## -- Parameters
-SPECK_DVS_POOLING_SIZES = [1, 2, 4]
-SPECK_CNN_POOLING_SIZES = [1, 2, 4, 8]
-SPECK_CNN_STRIDE_SIZES = [1, 2, 4, 8]
-
 
 def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
     """
@@ -38,14 +33,8 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                 # Object representing Speck layer
                 speck_layer = config.cnn_layers[i_layer_speck]
 
-                # Extract configuration specs from layer object
-                layer_config = spiking_conv2d_to_speck(snn)
-                # Update configuration of the Speck layer
-                speck_layer.set_dimensions(layer_config["dimensions"])
-                speck_layer.set_weights(layer_config["weights"])
-                speck_layer.set_biases(layer_config["biases"])
-                for param, value in layer_config["layer_params"]:
-                    setattr(speck_layer, param, value)
+                # Extract configuration specs from layer object and update Speck config
+                spiking_conv2d_to_speck(lyr_curr, speck_layer)
 
                 # - Consolidate pooling from subsequent layers
                 pooling, i_next = consolidate_pooling(layers[i_layer + 1 :])
@@ -86,6 +75,11 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                 else:
                     break
 
+            else:
+                raise TypeError(
+                    f"Layers of type {type(lyr_curr)} are currently not supported."
+                )
+
         # TODO: Does anything need to be done after iterating over layers?
         print("Finished configuration of Speck.")
 
@@ -94,33 +88,41 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
         ...
     elif isinstance(snn, sl.SpikingConv2dLayer):
 
-        # TODO: Need info about next layer type
+        # TODO: Next layer??
         destinations = (...,)
-        layer_idx = ...
+        # TODO: which speck layer?
+        speck_layer = ...
 
-        layer_config = spiking_conv2d_to_speck(snn)
-        speck_layer = config.cnn_layers[layer_idx]
-        speck_layer.set_dimensions(layer_config["dimensions"])
-        speck_layer.set_weights(layer_config["weights"])
-        speck_layer.set_biases(layer_config["biases"])
-        for param, value in layer_config["layer_params"]:
-            setattr(speck_layer, param, value)
+        spiking_conv2d_to_speck(snn, speck_layer)
 
     return config
+
+
+def spiking_conv2d_to_speck(
+    layer: sl.SpikingConv2dLayer, speck_layer: sd.configuration.CNNLayerConfig
+) -> Dict:
+
+    # Extract configuration specs from layer object
+    layer_config = spiking_conv2d_to_dict(layer)
+    # Update configuration of the Speck layer
+    speck_layer.set_dimensions(**layer_config["dimensions"])
+    speck_layer.set_weights(layer_config["weights"])
+    speck_layer.set_biases(layer_config["biases"])
+    for param, value in layer_config["layer_params"]:
+        setattr(speck_layer, param, value)
 
 
 def consolidate_pooling(
     layers, dvs: bool = False
 ) -> Tuple[Union[int, Tuple[int], None], int]:
     """
-    TODO: Handle case where resulting pooling would be too large
     consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in `layers`
                           until the first object of different type.
     :param layers:  Iterable, containing `SumPooling2dLayer`s and other objects.
     :param dvs:     bool, if True, x- and y- pooling may be different and a
                           Tuple is returned instead of an integer.
     :return:
-        int or tuple, consolidated pooling size. Tuple if `dvs` is `True`.
+        int or tuple, consolidated pooling size. Tuple if `dvs` is true.
         int or None, index of first object in `layers` that is not a
                      `SumPooling2dLayer`, or `None`, if all objects in `layers`
                      are `SumPooling2dLayer`s.
@@ -131,7 +133,7 @@ def consolidate_pooling(
     for i_next, lyr in enumerate(layers):
         if isinstance(lyr, sl.SumPooling2dLayer):
             # Update pooling size
-            new_pooling = get_sumpool2d_pooling_config(lyr)
+            new_pooling = get_sumpool2d_pooling_size(lyr)
             if dvs:
                 pooling[0] *= new_pooling[0]
                 pooling[1] *= new_pooling[1]
@@ -144,7 +146,15 @@ def consolidate_pooling(
     return pooling, None
 
 
-def get_sumpool2d_pooling_config(layer, dvs: bool = True) -> Union[int, Tuple[int]]:
+def get_sumpool2d_pooling_size(layer, dvs: bool = True) -> Union[int, Tuple[int]]:
+    """
+    get_sumpool2d_pooling_size - Determine the pooling size of a `SumPooling2dLayer` object.
+    :param layer:  `SumPooling2dLayer` object
+    :param dvs:    bool - If True, pooling does not need to be symmetric.
+    :return:
+        int or tuple - pooling size. If `dvs` is true, then return a tuple with
+                       sizes for y- and x-pooling.
+    """
     summary = layer.summary()
     if any(pad != 0 for pad in summary["Padding"]):
         warn(
@@ -174,9 +184,19 @@ def get_sumpool2d_pooling_config(layer, dvs: bool = True) -> Union[int, Tuple[in
         return pooling
 
 
-def spiking_conv2d_to_speck(layer: sl.SpikingConv2dLayer) -> Dict:
+def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
+    """
+    spiking_conv2d_to_dict - Extract a dict with parameters from a `SpikingConv2dLayer`
+                             so that they can be written to a Speck configuration.
+    :param layer:   SpikingConv2dLayer whose parameters should be extracted
+    :return:
+        Dict    Parameters of `layer`
+    """
+
     summary = layer.summary()
-    dimensions = sd.configuration.CNNLayerDimensions()
+
+    # - Layer dimension parameters
+    dimensions = dict()
 
     # - Padding
     padding_x, padding_y = summary["Padding"][0], summary["Padding"][2]
@@ -192,22 +212,22 @@ def spiking_conv2d_to_speck(layer: sl.SpikingConv2dLayer) -> Dict:
             + "Top and bottom padding must be the same. "
             + "Will ignore value provided for bottom padding."
         )
-    dimensions.padding.x = padding_x
-    dimensions.padding.y = padding_y
+    dimensions["padding_x"] = padding_x
+    dimensions["padding_y"] = padding_y
 
     # - Stride
-    dimensions.stride.y, dimensions.stride.x = summary["Stride"]
+    dimensions["stride_y"], dimensions["stride_x"] = summary["Stride"]
 
     # - Kernel size
-    dimensions.kernel_size = summary["Kernel"][0]
+    dimensions["kernel_size"] = summary["Kernel"][0]
 
     # - Input and output shapes
-    dimensions.input_shape.feature_count = summary["Input_Shape"][0]
-    dimensions.input_shape.size.y = summary["Input_Shape"][1]
-    dimensions.input_shape.size.x = summary["Input_Shape"][2]
-    dimensions.output_shape.feature_count = summary["Output_Shape"][0]
-    dimensions.output_shape.size.y = summary["Output_Shape"][1]
-    dimensions.output_shape.size.x = summary["Output_Shape"][2]
+    dimensions["channel_count"] = summary["Input_Shape"][0]
+    dimensions["input_size_y"] = summary["Input_Shape"][1]
+    dimensions["input_size_x"] = summary["Input_Shape"][2]
+    dimensions["output_feature_count"] = summary["Output_Shape"][0]
+    dimensions["output_size_y"] = summary["Output_Shape"][1]
+    dimensions["output_size_x"] = summary["Output_Shape"][2]
 
     # - Weights and biases
     weights, biases = layer.parameters()
