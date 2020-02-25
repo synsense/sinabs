@@ -153,15 +153,6 @@ def get_sumpool2d_pooling_config(layer, dvs: bool = True) -> Union[int, Tuple[in
 
     if dvs:
         pooling_y, pooling_x = summary["Pooling"]
-        # Check pooling size
-        if pooling_y not in SPECK_DVS_POOLING_SIZES:
-            raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Vertical pooling dimension for DVS must be in [1, 2, 4]."
-            )
-        if pooling_x not in SPECK_DVS_POOLING_SIZES:
-            raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Horizontal pooling dimension for DVS must be in [1, 2, 4]."
-            )
         # Check whether pooling and strides match
         if summary["Stride"][0] != pooling_y or summary["Stride"][1] != pooling_x:
             raise ValueError(
@@ -179,11 +170,6 @@ def get_sumpool2d_pooling_config(layer, dvs: bool = True) -> Union[int, Tuple[in
         if any(stride != pooling for stride in summary["Stride"]):
             raise ValueError(
                 f"SumPooling2dLayer `{layer.layer_name}`: Stride size must be the same as pooling size."
-            )
-        # Check pooling size
-        if pooling not in SPECK_CNN_POOLING_SIZES:
-            raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Vertical pooling dimension for CNN layers must be in [1, 2, 4, 8]."
             )
         return pooling
 
@@ -206,42 +192,14 @@ def spiking_conv2d_to_speck(layer: sl.SpikingConv2dLayer) -> Dict:
             + "Top and bottom padding must be the same. "
             + "Will ignore value provided for bottom padding."
         )
-    if not 0 <= padding_x < 8:
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Horizontal padding must be between 0 and 7"
-        )
-    if not 0 <= padding_y < 8:
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Vertical padding must be between 0 and 7"
-        )
     dimensions.padding.x = padding_x
     dimensions.padding.y = padding_y
 
     # - Stride
-    stride_y, stride_x = summary["Stride"]
-    if stride_x not in SPECK_CNN_STRIDE_SIZES:
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Horizontal stride must be in [1, 2, 4, 8]."
-        )
-    if stride_y not in SPECK_CNN_STRIDE_SIZES:
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Vertical stride must be in [1, 2, 4, 8]."
-        )
-    dimensions.stride.x = stride_x
-    dimensions.stride.y = stride_y
+    dimensions.stride.y, dimensions.stride.x = summary["Stride"]
 
     # - Kernel size
-    kernel_size = summary["Kernel"][0]
-    if kernel_size != summary["Kernel"][1]:
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Width and height of kernel must be the same."
-        )
-    if not 1 <= kernel_size < 17:
-        kernel_size = max(min(kernel_size, 16), 1)
-        raise ValueError(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Kernel size must be between 1 and 16."
-        )
-    dimensions.kernel_size = kernel_size
+    dimensions.kernel_size = summary["Kernel"][0]
 
     # - Input and output shapes
     dimensions.input_shape.feature_count = summary["Input_Shape"][0]
