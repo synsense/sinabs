@@ -111,4 +111,4 @@ print(
 )
 
 plt.plot(weights_speck.flatten())
-plt.plot(weights_orig.flatten())
+plt.plot(weights_orig.flatten() * scale)
