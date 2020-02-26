@@ -4,11 +4,15 @@ import torch
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 # import samna
 
 from ctxctl_speck import speckdemo as sd
+
+
+SPECK_WEIGHT_PRECISION_BITS = 8
+SPECK_STATE_PRECISION_BITS = 16
 
 
 def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
@@ -254,13 +258,6 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     dimensions["output_size_y"] = summary["Output_Shape"][1]
     dimensions["output_size_x"] = summary["Output_Shape"][2]
 
-    # - Weights and biases
-    weights, biases = layer.parameters()
-    if not layer.bias:
-        biases *= 0
-    weights = discretize(weights).tolist()
-    biases = discretize(biases).tolist()
-
     # - Neuron states
     neurons_state = layer.state.tolist() if layer.state is not None else None
 
@@ -275,28 +272,65 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
             f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
         )
 
+    # - Weights and biases
+    weights, biases = layer.parameters()
+    thresholds = torch.tensor((layer.threshold_low, layer.threshold))
+
+    # - Scaling of weights, biases and thresholds
+    scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
+    scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
+    scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
+    scaling = min(scaling_w, scaling_b, scaling_t)
+    weights = discretize(weights, scaling)
+    biases = discretize(biases, scaling)
+    threshold_low, threshold_high = discretize(thresholds, scaling)
+
     layer_params = dict(
         return_to_zero=return_to_zero,
-        threshold_high=int(
-            layer.threshold
-        ),  # TODO: Correct discretization of thresholds
-        threshold_low=int(layer.threshold_low),
+        threshold_high=threshold_high,
+        threshold_low=threshold_low,
         monitor_enable=True,  # Yes or no?
-        leak_enable=True,  # Or only if (bias != 0).any()?
+        leak_enable=layer.bias,
     )
 
     return {
         "layer_params": layer_params,
         "dimensions": dimensions,
-        "weights": weights,
-        "biases": biases,
+        "weights": weights.tolist(),
+        "biases": biases.tolist(),
         "neurons_state": neurons_state,
     }
 
 
-def discretize(obj: torch.Tensor):
-    # TODO: Provide acutal discretization
-    return torch.round(obj).int()
+def determine_discretization_scale(obj: torch.Tensor, bit_precision: int):
+    # Discrete range
+    min_val_disc = 2 ** (bit_precision - 1)
+    max_val_disc = 2 ** (bit_precision - 1) - 1
+
+    # Range in which values lie
+    min_val_obj = torch.min(obj)
+    max_val_obj = torch.max(obj)
+
+    # Determine if negative or positive values are to be considered for scaling
+    # Take into account that range for diescrete negative values is slightly larger than for positive
+    min_max_ratio_disc = abs(min_val_disc / max_val_disc)
+    if abs(min_val_obj) <= abs(max_val_obj) * min_max_ratio_disc:
+        scaling = abs(max_val_disc / max_val_obj)
+    else:
+        scaling = abs(min_val_disc / min_val_obj)
+
+    return scaling
+
+
+def discretize(obj: torch.Tensor, scaling: float):
+
+    # Scale the values
+    obj_scaled = obj * scaling
+
+    # Round and cast to integers
+    obj_scaled_rounded = torch.round(obj_scaled).int()
+
+    return obj_scaled_rounded
 
 
 def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
