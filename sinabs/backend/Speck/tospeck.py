@@ -274,13 +274,17 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
 
     # - Weights and biases
     weights, biases = layer.parameters()
+    # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
 
     # - Scaling of weights, biases and thresholds
+    # Determine by which common factor weights, biases and thresholds can be scaled
+    # such each they matches its precision specificaitons.
     scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
     scaling = min(scaling_w, scaling_b, scaling_t)
+    # Scale weights, biases and thresholds with common scaling factor and discretize
     weights = discretize(weights, scaling)
     biases = discretize(biases, scaling)
     threshold_low, threshold_high = discretize(thresholds, scaling)
@@ -303,6 +307,15 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
 
 
 def determine_discretization_scale(obj: torch.Tensor, bit_precision: int):
+    """
+    determine_discretization_scale - Determine how much the values of a torch tensor
+                                     can be scaled in order to fit the given precision
+    :param obj:            torch.Tensor that is to be scaled
+    :param bit_precision:  int - The precision in bits
+    :return:
+        float   The scaling factor
+    """
+
     # Discrete range
     min_val_disc = 2 ** (bit_precision - 1)
     max_val_disc = 2 ** (bit_precision - 1) - 1
@@ -323,6 +336,13 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int):
 
 
 def discretize(obj: torch.Tensor, scaling: float):
+    """
+    discretize - Scale a torch.Tensor and cast it to discrete integer values
+    :param obj:         torch.Tensor that is to be discretized
+    :param scaling:     float - Scaling factor to be applied before discretization
+    :return:
+        torch.Tensor - Scaled and discretized copy of `obj`.
+    """
 
     # Scale the values
     obj_scaled = obj * scaling
