@@ -94,15 +94,16 @@ class SpikingLayer(Layer):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
-    @abstractmethod
+
     def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
         """
         This method needs to be overridden/defined by the child class
+        Default implementation is pass through
 
         :param input_spikes: torch.Tensor input to the layer.
         :return:  torch.Tensor - synaptic output current
         """
-        pass
+        return input_spikes
 
     def forward(self, binary_input: torch.Tensor):
         # Determine no. of time steps from input
@@ -140,3 +141,12 @@ class SpikingLayer(Layer):
         all_spikes = torch.stack(spikes)
         self.spikes_number = all_spikes.abs().sum()
         return all_spikes
+
+    def get_output_shape(self, in_shape):
+        """
+        Returns the output shape for passthrough implementation
+
+        :param in_shape:
+        :return: out_shape
+        """
+        return in_shape
