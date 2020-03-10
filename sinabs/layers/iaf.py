@@ -39,7 +39,7 @@ class SpikingLayer(TorchLayer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "spiking",
-        negative_spikes: bool = False
+        negative_spikes: bool = False,
     ):
         """
         Pytorch implementation of a spiking neuron.
@@ -57,7 +57,7 @@ class SpikingLayer(TorchLayer):
         """
         TorchLayer.__init__(self, input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
-        self.membrane_subtract = membrane_subtract
+        self._membrane_subtract = membrane_subtract  # Avoid setter method here
         self.membrane_reset = membrane_reset
         self.threshold = threshold
         self.threshold_low = threshold_low
@@ -136,10 +136,16 @@ class SpikingLayer(TorchLayer):
             if membrane_subtract is not None:
                 if not neg_spikes:
                     # Calculate number of spikes to be generated
-                    n_thresh_crossings = ((state - threshold) / membrane_subtract).int() + 1
-                    spikes[iCurrentTimeStep] = (state >= threshold).int() * n_thresh_crossings
+                    n_thresh_crossings = (
+                        (state - threshold) / membrane_subtract
+                    ).int() + 1
+                    spikes[iCurrentTimeStep] = (
+                        state >= threshold
+                    ).int() * n_thresh_crossings
                 else:
-                    n_thresh_crossings = ((state.abs() - threshold) / membrane_subtract).floor().int() + 1
+                    n_thresh_crossings = (
+                        (state.abs() - threshold) / membrane_subtract
+                    ).floor().int() + 1
                     spikes[iCurrentTimeStep] = state.sign().int() * n_thresh_crossings
 
                 # - Subtract from states
@@ -171,3 +177,27 @@ class SpikingLayer(TorchLayer):
         self.state = state
         self.tw = len(spikes)
         return spikes
+
+    @property
+    def membrane_subtract(self):
+        return self._membrane_subtract
+
+    @membrane_subtract.setter
+    def membrane_subtract(self, new_val):
+        if new_val is None and self.membrane_reset is None:
+            raise TypeError(
+                "'membrane_reset' and 'membrane_subtract' cannot both be 'None'."
+            )
+        self._membrane_subtract = new_val
+
+    @property
+    def membrane_reset(self):
+        return self._membrane_reset
+
+    @membrane_reset.setter
+    def membrane_reset(self, new_val):
+        if new_val is None and self.membrane_subtract is None:
+            raise TypeError(
+                "'membrane_reset' and 'membrane_subtract' cannot both be 'None'."
+            )
+        self._membrane_reset = new_val
