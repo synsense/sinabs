@@ -8,8 +8,7 @@ from typing import Dict, List, Tuple, Union, Optional
 
 # import samna
 
-# import speckdemo as sd
-from ctxctl_speck import speckdemo as sd
+import speckdemo as sd
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
