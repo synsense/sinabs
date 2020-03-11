@@ -8,9 +8,7 @@ from typing import Dict, List, Tuple, Union
 
 # import samna
 
-# import speckdemo as sd
-from ctxctl_speck import speckdemo as sd
-
+import speckdemo as sd
 from .discretize import discretize
 
 
@@ -265,6 +263,8 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     # - Neuron states
     if layer.state is not None:
         neurons_state = layer.state.transpose(2, 3).int().tolist()
+    else:
+        neurons_state = None
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -282,7 +282,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         weights, biases = layer.parameters()
     else:
         weights, = layer.parameters()
-        biases = torch.zeros(layer.output_channels)
+        biases = torch.zeros(layer.channels_out)
     # Transpose last two dimensions of weights to match cortexcontrol
     weights = weights.transpose(2, 3)
 
