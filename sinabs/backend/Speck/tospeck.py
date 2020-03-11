@@ -9,7 +9,8 @@ from typing import Dict, List, Tuple, Union
 # import samna
 
 import speckdemo as sd
-from .discretize import discretize
+
+from .discretize import discretize_sl
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -218,7 +219,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     :return:
         Dict    Parameters of `layer`
     """
-    layer = discretize(layer)
+    layer = discretize_sl(layer)
 
     summary = layer.summary()
 
