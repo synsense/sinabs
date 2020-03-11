@@ -8,7 +8,8 @@ from typing import Dict, List, Tuple, Union, Optional
 
 # import samna
 
-import speckdemo as sd
+# import speckdemo as sd
+from ctxctl_speck import speckdemo as sd
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -261,6 +262,8 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     # - Neuron states
     if layer.state is not None:
         neurons_state = layer.state.transpose(2, 3).tolist()
+    else:
+        neurons_state = None
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -278,7 +281,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         weights, biases = layer.parameters()
     else:
         weights, = layer.parameters()
-        biases = torch.zeros(layer.output_channels)
+        biases = torch.zeros(layer.channels_out)
     # Transpose last two dimensions of weights to match cortexcontrol
     weights = weights.transpose(2, 3)
 
@@ -291,14 +294,18 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-    scaling_n = determine_discretization_scale(
-        neurons_state, SPECK_STATE_PRECISION_BITS
-    )
-    scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
+    if neurons_state is not None:
+        scaling_n = determine_discretization_scale(
+            neurons_state, SPECK_STATE_PRECISION_BITS
+        )
+        # Scale neuron states with common scaling factor and discretize
+        scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
+        neurons_state = discretize(neurons_state, scaling)
+    else:
+        scaling = min(scaling_w, scaling_b, scaling_t)
     # Scale weights, biases and thresholds with common scaling factor and discretize
     weights = discretize(weights, scaling)
     biases = discretize(biases, scaling)
-    neurons_state = discretize(neurons_state, scaling)
     threshold_low, threshold_high = discretize(thresholds, scaling)
 
     layer_params = dict(
