@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Union, Optional
 
 # import samna
 
-from ctxctl_speck import speckdemo as sd
+import speckdemo as sd
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -259,7 +259,10 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     dimensions["output_size_x"] = summary["Output_Shape"][2]
 
     # - Neuron states
-    neurons_state = layer.state.tolist() if layer.state is not None else None
+    if layer.state is None:
+        neurons_state = None
+    else:
+        neurons_state = layer.state.transpose(2, 3).tolist()
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -273,8 +276,13 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         )
 
     # - Weights and biases
-    weights, biases = layer.parameters()
+    if layer.bias:
+        weights, biases = layer.parameters()
+    else:
+        weights, = layer.parameters()
+        biases = torch.zeros(layer.channels_out)
     # Transpose last two dimensions of weights to match cortexcontrol
+    weights.detach_()
     weights.transpose_(2, 3)
 
     # - Lower and upper thresholds in a tensor for easier handling
