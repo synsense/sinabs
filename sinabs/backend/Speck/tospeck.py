@@ -8,7 +8,7 @@ from typing import Dict, List, Tuple, Union, Optional
 
 # import samna
 
-import speckdemo as sd
+from ctxctl_speck import speckdemo as sd
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -273,11 +273,10 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         )
 
     # - Weights and biases
-    if layer.bias:
-        weights, biases = layer.parameters()
-    else:
-        weights, = layer.parameters()
-        biases = torch.zeros(layer.channels_out)
+    weights, biases = layer.parameters()
+    # Transpose last two dimensions of weights to match cortexcontrol
+    weights.transpose_(2, 3)
+
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
 
