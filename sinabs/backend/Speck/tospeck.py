@@ -263,10 +263,8 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     dimensions["output_size_x"] = summary["Output_Shape"][2]
 
     # - Neuron states
-    if layer.state is None:
-        neurons_state = torch.zeros(layer.output_shape)
-    else:
-        neurons_state = layer.state.transpose(2, 3)
+    if layer.state is not None:
+        neurons_state = layer.state.transpose(2, 3).int().tolist()
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -284,7 +282,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         weights, biases = layer.parameters()
     else:
         weights, = layer.parameters()
-        biases = torch.zeros(layer.output_shape)
+        biases = torch.zeros(layer.output_channels)
     # Transpose last two dimensions of weights to match cortexcontrol
     weights = weights.transpose(2, 3)
 
@@ -301,7 +299,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         "dimensions": dimensions,
         "weights": weights.int().tolist(),
         "biases": biases.int().tolist(),
-        "neurons_state": neurons_state.int().tolist(),
+        "neurons_state": neurons_state,
     }
 
 
