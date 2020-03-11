@@ -50,7 +50,11 @@ def _discretize_SC2D_(layer: sl.TorchLayer):
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
     # - Weights and biases
-    weights, biases = layer.parameters()
+    if layer.bias:
+        weights, biases = layer.parameters()
+    else:
+        weights, = layer.parameters()
+        biases = torch.zeros(layer.channels_out)
 
     # - Scaling of weights, biases, thresholds and neuron states
     # Determine by which common factor weights, biases and thresholds can be scaled
