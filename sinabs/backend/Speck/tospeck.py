@@ -260,9 +260,9 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
 
     # - Neuron states
     if layer.state is None:
-        neurons_state = None
+        neurons_state = torch.zeros(layer.output_shape)
     else:
-        neurons_state = layer.state.transpose(2, 3).tolist()
+        neurons_state = layer.state.transpose(2, 3)
 
     # - Resetting vs returning to 0
     return_to_zero = layer.membrane_subtract is not None
@@ -280,10 +280,9 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         weights, biases = layer.parameters()
     else:
         weights, = layer.parameters()
-        biases = torch.zeros(layer.channels_out)
+        biases = torch.zeros(layer.output_shape)
     # Transpose last two dimensions of weights to match cortexcontrol
-    weights.detach_()
-    weights.transpose_(2, 3)
+    weights = weights.transpose(2, 3)
 
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
@@ -294,10 +293,14 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-    scaling = min(scaling_w, scaling_b, scaling_t)
+    scaling_n = determine_discretization_scale(
+        neurons_state, SPECK_STATE_PRECISION_BITS
+    )
+    scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
     # Scale weights, biases and thresholds with common scaling factor and discretize
     weights = discretize(weights, scaling)
     biases = discretize(biases, scaling)
+    neurons_state = discretize(neurons_state, scaling)
     threshold_low, threshold_high = discretize(thresholds, scaling)
 
     layer_params = dict(
@@ -313,7 +316,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         "dimensions": dimensions,
         "weights": weights.tolist(),
         "biases": biases.tolist(),
-        "neurons_state": neurons_state,
+        "neurons_state": neurons_state.tolist(),
     }
 
 

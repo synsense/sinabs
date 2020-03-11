@@ -75,7 +75,7 @@ biases_orig = biases_orig.detach().numpy()
 threshold_low_orig = snn.spiking_model.conv1.threshold_low
 threshold_high_orig = snn.spiking_model.conv1.threshold
 
-weights_speck = np.array(speck_config.cnn_layers[0].get_weights())
+weights_speck = np.array(speck_config.cnn_layers[0].get_weights()).transpose(0, 1, 3, 2)
 biases_speck = np.array(speck_config.cnn_layers[0].get_biases())
 threshold_low_speck = speck_config.cnn_layers[0].threshold_low
 threshold_high_speck = speck_config.cnn_layers[0].threshold_high
