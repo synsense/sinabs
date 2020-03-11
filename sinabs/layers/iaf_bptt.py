@@ -30,6 +30,7 @@ from .functional import threshold_subtract
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
 
+window = 1.0
 
 class SpikingLayer(Layer):
     def __init__(
@@ -40,7 +41,8 @@ class SpikingLayer(Layer):
         membrane_subtract: Optional[float] = 1.0,
         membrane_reset: float = 0,
         layer_name: str = "spiking",
-        negative_spikes: bool = False
+        negative_spikes: bool = False,
+        batch_size: Optional[int] = None,
     ):
         """
         Pytorch implementation of a spiking neuron with learning enabled.
@@ -67,6 +69,7 @@ class SpikingLayer(Layer):
         self.register_buffer("state", torch.zeros(1))
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
+        self.batch_size = batch_size
 
     @property
     def threshold_low(self):
@@ -84,12 +87,17 @@ class SpikingLayer(Layer):
             # Relu on the layer
             self.thresh_lower = nn.Threshold(new_threshold_low, new_threshold_low)
 
-    def reset_states(self, shape=None):
+    def reset_states(self, shape=None, randomize=False):
         """
         Reset the state of all neurons in this layer
         """
+        device = self.state.device
         if shape is None:
             shape = self.state.shape
+
+        if randomize:
+            self.state = torch.rand(shape, device=device)
+            self.activations = torch.rand(shape, device=device)
         else:
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
@@ -111,6 +119,9 @@ class SpikingLayer(Layer):
 
         # Compute the synaptic current
         syn_out: torch.Tensor = self.synaptic_output(binary_input)
+
+        if self.batch_size:
+            syn_out = syn_out.reshape((-1, self.batch_size, *syn_out.shape[1:]))
         time_steps = len(syn_out)
 
         # Local variables
@@ -118,8 +129,8 @@ class SpikingLayer(Layer):
         threshold_low = self.threshold_low
 
         # Initialize state as required
-        if self.state.shape != syn_out.shape[1:]:
-            self.reset_states(shape=syn_out.shape[1:])
+        #if self.state.shape != syn_out.shape[1:]:
+        #    self.reset_states(shape=syn_out.shape[1:])
         state = self.state
         activations = self.activations
         spikes = []
@@ -130,9 +141,9 @@ class SpikingLayer(Layer):
                 state = self.thresh_lower(state)
             # generate spikes
             if neg_spikes:
-                activations = threshold_subtract(state.abs(), threshold, threshold/2)*state.sign().int()
+                activations = threshold_subtract(state.abs(), threshold, threshold*window)*state.sign().int()
             else:
-                activations = threshold_subtract(state, threshold, threshold / 2)
+                activations = threshold_subtract(state, threshold, threshold*window)
             spikes.append(activations)
 
         self.state = state
@@ -140,6 +151,10 @@ class SpikingLayer(Layer):
         self.activations = activations
         all_spikes = torch.stack(spikes)
         self.spikes_number = all_spikes.abs().sum()
+
+        if self.batch_size:
+            all_spikes = all_spikes.reshape((-1, *all_spikes.shape[2:]))
+
         return all_spikes
 
     def get_output_shape(self, in_shape):
