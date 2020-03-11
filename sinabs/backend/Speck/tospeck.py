@@ -4,11 +4,12 @@ import torch
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Dict, List, Tuple, Union
 
 # import samna
 
 import speckdemo as sd
+from .discretize import discretize_sl
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -121,7 +122,7 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
 
 def spiking_conv2d_to_speck(
     layer: sl.SpikingConv2dLayer, speck_layer: sd.configuration.CNNLayerConfig
-) -> Dict:
+):
 
     # Extract configuration specs from layer object
     layer_config = spiking_conv2d_to_dict(layer)
@@ -217,6 +218,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     :return:
         Dict    Parameters of `layer`
     """
+    layer = discretize_sl(layer)
 
     summary = layer.summary()
 
@@ -260,7 +262,7 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
 
     # - Neuron states
     if layer.state is not None:
-        neurons_state = layer.state.transpose(2, 3).tolist()
+        neurons_state = layer.state.transpose(2, 3).int().tolist()
     else:
         neurons_state = None
 
@@ -284,33 +286,10 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     # Transpose last two dimensions of weights to match cortexcontrol
     weights = weights.transpose(2, 3)
 
-    # - Lower and upper thresholds in a tensor for easier handling
-    thresholds = torch.tensor((layer.threshold_low, layer.threshold))
-
-    # - Scaling of weights, biases and thresholds
-    # Determine by which common factor weights, biases and thresholds can be scaled
-    # such each they matches its precision specificaitons.
-    scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
-    scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
-    scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-    if neurons_state is not None:
-        scaling_n = determine_discretization_scale(
-            neurons_state, SPECK_STATE_PRECISION_BITS
-        )
-        # Scale neuron states with common scaling factor and discretize
-        scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
-        neurons_state = discretize(neurons_state, scaling)
-    else:
-        scaling = min(scaling_w, scaling_b, scaling_t)
-    # Scale weights, biases and thresholds with common scaling factor and discretize
-    weights = discretize(weights, scaling)
-    biases = discretize(biases, scaling)
-    threshold_low, threshold_high = discretize(thresholds, scaling)
-
     layer_params = dict(
         return_to_zero=return_to_zero,
-        threshold_high=threshold_high,
-        threshold_low=threshold_low,
+        threshold_high=layer.threshold,
+        threshold_low=layer.threshold_low,
         monitor_enable=True,  # Yes or no?
         leak_enable=layer.bias,
     )
@@ -318,57 +297,10 @@ def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     return {
         "layer_params": layer_params,
         "dimensions": dimensions,
-        "weights": weights.tolist(),
-        "biases": biases.tolist(),
+        "weights": weights.int().tolist(),
+        "biases": biases.int().tolist(),
         "neurons_state": neurons_state,
     }
-
-
-def determine_discretization_scale(obj: torch.Tensor, bit_precision: int):
-    """
-    determine_discretization_scale - Determine how much the values of a torch tensor
-                                     can be scaled in order to fit the given precision
-    :param obj:            torch.Tensor that is to be scaled
-    :param bit_precision:  int - The precision in bits
-    :return:
-        float   The scaling factor
-    """
-
-    # Discrete range
-    min_val_disc = 2 ** (bit_precision - 1)
-    max_val_disc = 2 ** (bit_precision - 1) - 1
-
-    # Range in which values lie
-    min_val_obj = torch.min(obj)
-    max_val_obj = torch.max(obj)
-
-    # Determine if negative or positive values are to be considered for scaling
-    # Take into account that range for diescrete negative values is slightly larger than for positive
-    min_max_ratio_disc = abs(min_val_disc / max_val_disc)
-    if abs(min_val_obj) <= abs(max_val_obj) * min_max_ratio_disc:
-        scaling = abs(max_val_disc / max_val_obj)
-    else:
-        scaling = abs(min_val_disc / min_val_obj)
-
-    return scaling
-
-
-def discretize(obj: torch.Tensor, scaling: float):
-    """
-    discretize - Scale a torch.Tensor and cast it to discrete integer values
-    :param obj:         torch.Tensor that is to be discretized
-    :param scaling:     float - Scaling factor to be applied before discretization
-    :return:
-        torch.Tensor - Scaled and discretized copy of `obj`.
-    """
-
-    # Scale the values
-    obj_scaled = obj * scaling
-
-    # Round and cast to integers
-    obj_scaled_rounded = torch.round(obj_scaled).int()
-
-    return obj_scaled_rounded
 
 
 def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
