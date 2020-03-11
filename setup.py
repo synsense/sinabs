@@ -19,8 +19,8 @@ from distutils.core import setup
 
 setup(
     name="sinabs",
-    version="0.1.0",
-    packages=["sinabs", "sinabs.layers", "sinabs.from_keras"],
+    version="0.1.dev6",
+    packages=["sinabs", "sinabs.layers", "sinabs.layers.functional","sinabs.from_keras"],
     license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
     install_requires=['numpy', 'pandas', 'torch'],
 )
