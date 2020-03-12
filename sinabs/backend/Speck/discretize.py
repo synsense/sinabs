@@ -10,27 +10,30 @@ SPECK_STATE_PRECISION_BITS = 16
 
 
 def discretize_sl(
-    snn: Union[nn.Module, sl.TorchLayer]
+    snn: Union[nn.Module, sl.TorchLayer],
+    to_int: bool = True
 ) -> Union[nn.Module, sl.TorchLayer]:
     """
     discretize - Return a copy of the provided model or layer with discretized,
                  weights, biases, neuron states, and thresholds.
     :param snn:  The model or layer that is to be discretized
+    :param to_int: If False, round the values, but don't cast to Int. (Default True).
     """
     model_copy = deepcopy(snn)
-    return discretize_sl_(model_copy)
+    return discretize_sl_(model_copy, to_int=to_int)
 
 
 def discretize_sl_(
-    snn: Union[nn.Module, sl.TorchLayer], inplace=False
+    snn: Union[nn.Module, sl.TorchLayer], to_int: bool = True
 ) -> Union[nn.Module, sl.TorchLayer]:
     """
     discretize_sl_ - Discretize the weights, biases, neuron states, and thresholds
-                     of the provided layer's.
+                     of the provided layers.
     :param snn:  The model or layer that is to be discretized
+    :param to_int: If False, round the values, but don't cast to Int. (Default True).
     """
     if isinstance(snn, sl.SpikingConv2dLayer):
-        return _discretize_SC2D_(snn)
+        return _discretize_SC2D_(snn, to_int=to_int)
 
     elif isinstance(snn, (sl.InputLayer, sl.SumPooling2dLayer)):
         # - Do not discretize `InputLayer` and `SumPooling2dLayer`
@@ -39,14 +42,14 @@ def discretize_sl_(
     elif isinstance(snn, nn.Module):
         # - For every other type of `Module`s, try discretizing its children
         for lyr in snn.children():
-            discretize_sl_(lyr)
+            discretize_sl_(lyr, to_int=to_int)
         return snn
 
     else:
         raise ValueError(f"Objects of type `{type(snn)}` are not supported.")
 
 
-def _discretize_SC2D_(layer: sl.TorchLayer):
+def _discretize_SC2D_(layer: sl.TorchLayer, to_int: bool):
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
     # - Weights and biases
@@ -68,13 +71,16 @@ def _discretize_SC2D_(layer: sl.TorchLayer):
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize
-        layer.state = discretize_tensor(layer.state, scaling)
+        layer.state = discretize_tensor(layer.state, scaling, to_int=to_int)
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
+
     # Scale weights, biases and thresholds with common scaling factor and discretize
-    weights.data = discretize_tensor(weights, scaling)
-    biases.data = discretize_tensor(biases, scaling)
-    layer.threshold_low, layer.threshold = discretize_tensor(thresholds, scaling)
+    weights.data = discretize_tensor(weights, scaling, to_int=to_int)
+    biases.data = discretize_tensor(biases, scaling, to_int=to_int)
+    layer.threshold_low, layer.threshold = discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+    layer.membrane_subtract = discretize_scalar(layer.membrane_subtract, scaling)
+    layer.membrane_reset = discretize_scalar(layer.membrane_reset, scaling)
 
     return layer
 
@@ -108,11 +114,12 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     return scaling
 
 
-def discretize_tensor(obj: torch.Tensor, scaling: float) -> torch.Tensor:
+def discretize_tensor(obj: torch.Tensor, scaling: float, to_int: bool = True) -> torch.Tensor:
     """
     discretize_tensor - Scale a torch.Tensor and cast it to discrete integer values
     :param obj:         torch.Tensor that is to be discretized
     :param scaling:     float - Scaling factor to be applied before discretization
+    :param to_int: If False, round the values, but don't cast to Int. (Default True).
     :return:
         torch.Tensor - Scaled and discretized copy of `obj`.
     """
@@ -121,6 +128,25 @@ def discretize_tensor(obj: torch.Tensor, scaling: float) -> torch.Tensor:
     obj_scaled = obj * scaling
 
     # Round and cast to integers
-    obj_scaled_rounded = torch.round(obj_scaled).int()
+    obj_scaled_rounded = torch.round(obj_scaled)
+
+    if to_int:
+        obj_scaled_rounded = obj_scaled_rounded.int()
 
     return obj_scaled_rounded
+
+
+def discretize_scalar(obj: float, scaling: float) -> int:
+    """
+    discretize_tensor - Scale a float and cast it to discrete integer values
+    :param obj:         float that is to be discretized
+    :param scaling:     float - Scaling factor to be applied before discretization
+    :return:
+        int - Scaled and discretized copy of `obj`.
+    """
+
+    # Scale the values
+    obj_scaled = obj * scaling
+
+    # Round and cast to integers
+    return int(obj_scaled)
