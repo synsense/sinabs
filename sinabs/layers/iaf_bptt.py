@@ -22,7 +22,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from .layer import Layer
 from abc import abstractmethod
 from .functional import threshold_subtract
@@ -38,8 +38,7 @@ class SpikingLayer(Layer):
         input_shape: ArrayLike,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = 1.0,
-        membrane_reset: float = 0,
+        membrane_subtract: bool = True,
         layer_name: str = "spiking",
         negative_spikes: bool = False,
         batch_size: Optional[int] = None,
@@ -52,15 +51,13 @@ class SpikingLayer(Layer):
         :param input_shape: Input data shape
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lowerbound for membrane potential
-        :param membrane_subtract: Upon spiking if the membrane potential is subtracted as opposed to reset, what is its value
-        :param membrane_reset: Only here for compatibility with other layers
+        :param membrane_subtract: bool Upon spiking if the membrane potential is subtracted (True) as opposed to reset(False)
         :param layer_name: Name of this layer
         :param negative_spikes: Implement a linear transfer function through negative spiking
         """
         super().__init__(input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
-        assert (membrane_subtract is not None)
-        self.membrane_subtract = membrane_subtract
+        assert membrane_subtract
         self.threshold = threshold
         self.threshold_low = threshold_low
         self.negative_spikes = negative_spikes
@@ -128,9 +125,6 @@ class SpikingLayer(Layer):
         threshold = self.threshold
         threshold_low = self.threshold_low
 
-        # Initialize state as required
-        #if self.state.shape != syn_out.shape[1:]:
-        #    self.reset_states(shape=syn_out.shape[1:])
         state = self.state
         activations = self.activations
         spikes = []
