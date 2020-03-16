@@ -29,3 +29,10 @@ def test_iaf_inference_vs_bptt():
             return input_spikes
 
     sl = SpikingPassthrough(input_shape=(n_inp,), threshold=1, threshold_low=-1)
+
+    with torch.no_grad():
+        out = sl(inp)
+        out_bptt = sl_bptt(inp)
+        print(out.sum(), out_bptt.sum())
+
+        assert (out == out_bptt).all()
