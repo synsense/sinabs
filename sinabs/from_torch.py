@@ -5,7 +5,7 @@ from sinabs import Network
 
 
 def from_model(model, input_shape, input_conversion_layer=False,
-               threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+               threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                exclude_negative_spikes=False, bias_rescaling=1.0,
                all_2d_conv=False):
     """
@@ -47,7 +47,7 @@ def from_model(model, input_shape, input_conversion_layer=False,
 
 class SpkConverter(object):
     def __init__(self, model, input_shape, input_conversion_layer=False,
-                 threshold=1.0, threshold_low=-1.0, membrane_subtract=1.0,
+                 threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                  exclude_negative_spikes=False, bias_rescaling=1.0,
                  all_2d_conv=False):
         """
