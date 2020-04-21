@@ -19,7 +19,7 @@ def test_import():
     from sinabs.layers import SpikingTemporalConv1dLayer
 
 
-def test_synaptic_output():
+def test_synaptic_output_shape():
     from sinabs.layers import SpikingTemporalConv1dLayer
     import torch
 
@@ -39,7 +39,7 @@ def test_synaptic_output():
     assert out_current.shape == (50, 5)
 
 
-def test_conv():
+def test_conv_dims():
     from sinabs.layers import SpikingTemporalConv1dLayer
     import torch
 
@@ -68,24 +68,23 @@ def test_buffer():
 
     # Generate input
     inp = np.arange(20) % 2
-    inp_spikes = torch.from_numpy(inp.reshape(len(inp), 1)).float()
+    inp_spikes = torch.from_numpy(inp).float().unsqueeze(dim=1)
 
     # Init layer
     tds = SpikingTemporalConv1dLayer(
         channels_in=1,
         channels_out=1,
         kernel_shape=2,
+        strides=1,
         dilation=2,
-        bias=True
+        bias=False
     )
     for (key, param) in tds.named_parameters():
         if key == "conv.weight":
-            param.data = torch.from_numpy(np.ones((1, 1, 2))).float()
+            param.data = torch.ones_like(param.data)
         if key == "conv.bias":
-            param.data = torch.zeros(1)
+            param.data = torch.zeros_like(param.data)
     out_spikes = tds(inp_spikes)
-    result = np.array([0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2]).reshape(len(inp), 1)
-    result = torch.from_numpy(result).float()
-
+    result = torch.tensor([0, 1, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2, 0, 2]).unsqueeze(dim=1)
     assert torch.eq(out_spikes, result).all()
 

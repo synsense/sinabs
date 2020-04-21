@@ -4,7 +4,7 @@ before_script:
   - pip install --upgrade pip
   - pip install tensorflow==1.15
   - pip install . --no-cache-dir
-  - pip install m2r
+  - pip install --upgrade 'm2r@git+https://github.com/crossnox/m2r@dev#egg=m2r'
 
 unittests:
   tags:
@@ -36,3 +36,46 @@ pages:
 
   only:
     - master
+
+dist_build:
+  tags:
+    - python
+    - aiCTX
+
+  stage: build
+
+  only:
+    - master
+
+
+  before_script:
+    - pip install --upgrade pip
+    - pip install wheel
+
+  script:
+    - python setup.py sdist bdist_wheel
+
+  artifacts:
+    paths:
+      - dist
+
+pypi_deploy:
+  tags:
+    - python
+    - aiCTX
+  
+  stage: deploy
+  when: manual
+
+  only:
+    - master
+
+  dependencies:
+    - dist_build
+
+  before_script:
+    - pip install --upgrade pip
+    - pip install --upgrade twine
+
+  script:
+          - twine upload dist/*

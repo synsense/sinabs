@@ -46,8 +46,8 @@ class SpikingConv2dLayer(SpikingLayer):
         bias: bool = True,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = 1.0,
-        membrane_reset: float = 0,
+        membrane_subtract: Optional[float] = None,
+        membrane_reset: Optional[float] = None,
         layer_name: str = "conv2d",
         negative_spikes: bool = False
     ):
@@ -70,8 +70,6 @@ class SpikingConv2dLayer(SpikingLayer):
         :param layer_name: Name of this layer
         :param negative_spikes: whether to allow negative spikes (for a \
         layer with a linear response to input)
-
-        NOTE: SUBTRACT superseeds Reset value
         """
         SpikingLayer.__init__(
             self,
@@ -167,5 +165,3 @@ class SpikingConv2dLayer(SpikingLayer):
             self.strides[1]
         )
         return self.channels_out, height_out, width_out
-
-

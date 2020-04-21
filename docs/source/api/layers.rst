@@ -31,6 +31,10 @@ Abstract layers
     :members:
 
 
+Full implementations
+--------------------
+
+
 `Cropping2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -73,12 +77,6 @@ Abstract layers
 .. autoclass:: InputLayer
     :members:
 
-`Img2SpikeLayer`
-~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: Img2SpikeLayer
-    :members:
-
 `QuantizeLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -91,15 +89,40 @@ Abstract layers
 .. autoclass:: SumPooling2dLayer
     :members:
 
-`YOLOLayer`
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: YOLOLayer
-    :members:
-
 `ZeroPad2dLayer`
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. autoclass:: ZeroPad2dLayer
     :members:
 
+Hybrid layers
+-------------
+
+The hybrid layers have inputs and outputs of different formats (eg. take analog values as inputs and produce spikes as outputs.)
+
+`Img2SpikeLayer`
+~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: Img2SpikeLayer
+    :members:
+
+`YOLOLayer`
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: YOLOLayer
+    :members:
+
+ANN layers
+-----------------
+
+`NeuromorphicReLU`
+~~~~~~~~~~~~~~~~~~
+
+.. autoclass:: NeuromorphicReLU
+    :members:
+
+`SumPool2d`
+~~~~~~~~~~~
+
+.. autoclass:: SumPool2d
+    :members:

@@ -36,9 +36,10 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
         bias: bool = True,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = 1.0,
-        membrane_reset: float = 0,
+        membrane_subtract: Optional[float] = None,
+        membrane_reset: Optional[float] = None,
         layer_name: str = "tc",
+        negative_spikes: bool = False
     ):
         """
         Temporal Convolutional Spiking layer. This layer performs wave net like streaming computation,
@@ -69,6 +70,7 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
+            negative_spikes=negative_spikes
         )
 
         self.conv = nn.Conv1d(
@@ -100,6 +102,7 @@ class SpikingTemporalConv1dLayer(SpikingLayer):
         if self.len_delay_buffer:
             input_spikes = torch.cat((self.delay_buffer, input_spikes), axis=1)
             self.delay_buffer = input_spikes[:, -self.len_delay_buffer :]
+        print(input_spikes)
         syn_out = self.conv(input_spikes.unsqueeze(0))  # Add a batch
         syn_out = torch.transpose(syn_out[0], 0, 1)  # Remove the batch and transpose to [Time, Channel]
         return syn_out

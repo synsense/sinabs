@@ -95,3 +95,39 @@ class NeuromorphicReLU(torch.nn.Module):
 
         self.activity = output.sum() / len(output) * self.fanout
         return output
+
+
+# class DynapSumPoolLayer(torch.nn.AvgPool2d):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#
+#     def forward(self, data):
+#         if not hasattr(self.kernel_size, "__len__"):
+#             kernel = (self.kernel_size, self.kernel_size)
+#         else:
+#             kernel = self.kernel_size
+#         return super().forward(data) * kernel[0] * kernel[1]
+
+
+class SumPool2d(torch.nn.LPPool2d):
+    """
+    Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to torch.nn.LPPool2d with p=1.
+
+    :param kernel_size: the size of the window
+    :param stride: the stride of the window. Default value is kernel_size
+    :param ceil_mode: when True, will use ceil instead of floor to compute the output shape
+    """
+    def __init__(self, kernel_size, stride=None, ceil_mode=False):
+        super().__init__(1, kernel_size, stride, ceil_mode)
+
+
+# class ScaledDropout2d(torch.nn.Dropout2d):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#
+#     def forward(self, data):
+#         if self.training:
+#             scale_factor = (1 - self.p)
+#         else:
+#             scale_factor = 1
+#         return super().forward(data) * scale_factor

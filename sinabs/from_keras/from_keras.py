@@ -532,7 +532,7 @@ def from_conv2d_keras_conf(
             bias=layer_config["config"]["use_bias"],
             threshold=1.0,
             threshold_low=-1.0,
-            membrane_subtract=1.0,
+            membrane_subtract=None,
             layer_name=layer_name,
         )
 
@@ -623,7 +623,7 @@ def from_dense_keras_conf(
             bias=layer_config["config"]["use_bias"],
             threshold=1.0,
             threshold_low=-1.0,
-            membrane_subtract=1.0,
+            membrane_subtract=None,
             layer_name=layer_name,
         )
         torch_spiking_conv2d.input_shape = input_shape

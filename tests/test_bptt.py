@@ -17,7 +17,7 @@ def test_iaf_inference_vs_bptt():
                 threshold=threshold,
                 threshold_low=threshold_low,
                 membrane_subtract=threshold,
-                membrane_reset=0,
+                membrane_reset=None, # Do subtraction
                 layer_name="passthrough",
                 negative_spikes=False,
             )

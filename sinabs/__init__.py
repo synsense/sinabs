@@ -16,6 +16,7 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 from .network import Network
+from .synopcounter import SynOpCounter
 
 from .utils import (
     get_keras_activations,
