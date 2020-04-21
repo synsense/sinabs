@@ -46,9 +46,7 @@ class SpikingMaxPooling2dLayer(Layer):
         """
         Torch implementation of SpikingMaxPooling
         """
-        Layer.__init__(
-            self, input_shape=(None, *image_shape), layer_name=layer_name
-        )
+        super().__init__(input_shape=(None, *image_shape), layer_name=layer_name)
         self.padding = padding
         self.pool_size = pool_size
         if strides is None:
@@ -139,5 +137,3 @@ class SpikingMaxPooling2dLayer(Layer):
             width + sum(self.padding[:2]), self.pool_size[1], self.strides[1]
         )
         return channels, height_out, width_out
-
-

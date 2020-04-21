@@ -25,6 +25,7 @@ from typing import Tuple, Optional, Union, List
 from abc import ABC, abstractmethod
 from operator import mul
 from functools import reduce
+import warnings
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -95,3 +96,8 @@ class Layer(nn.Module, ABC):
             }
         )
         return summary
+
+class TorchLayer(Layer):
+    def __init__(self, input_shape: ArrayLike, layer_name: str = ""):
+        warnings.warn("TorchLayer is depricated and renamed to Layer", DeprecationWarning, stacklevel=2)
+        super().__init__(input_shape=input_shape, layer_name=layer_name)

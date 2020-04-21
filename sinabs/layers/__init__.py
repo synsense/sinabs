@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from .layer import Layer
+from .layer import Layer, TorchLayer
 from .crop2d import Cropping2dLayer
 from .flatten import FlattenLayer
 from .iaf import SpikingLayer
