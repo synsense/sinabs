@@ -26,7 +26,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 class InputLayer(Layer):
     def __init__(self, input_shape: ArrayLike, layer_name="input"):
         """
-        Torch implementation of SumPooling using the LPPool2d module
+        Place holder layer, used typically to acquire some statistics on the input
 
         :param image_shape: Input image dimensions
         """

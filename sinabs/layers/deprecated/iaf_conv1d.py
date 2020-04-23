@@ -1,4 +1,4 @@
-#  Copyright (c) 2019-2019     aiCTX AG (Sadique Sheik).
+#  Copyright (c) 2019-2019     aiCTX AG (Sadique Sheik, Qian Liu).
 #
 #  This file is part of sinabs
 #
@@ -16,22 +16,31 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import torch
+import warnings
 import torch.nn as nn
 import numpy as np
 import pandas as pd
-from .iaf import SpikingLayer
+from functools import reduce
+from operator import mul
+from sinabs.layers.iaf import SpikingLayer
 from typing import Optional, Union, List, Tuple
-
+from sinabs.cnnutils import conv_output_size
+from torch.nn import functional
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SpikingLinearLayer(SpikingLayer):
+class SpikingConv1dLayer(SpikingLayer):
     def __init__(
         self,
-        in_features: int,
-        out_features: int,
+        channels_in: int,
+        image_shape: int,
+        channels_out: int,
+        kernel_shape: int,
+        dilation: int = 1,
+        strides: int = 1,
+        padding: ArrayLike = (0, 0),
         bias: bool = True,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
@@ -41,10 +50,15 @@ class SpikingLinearLayer(SpikingLayer):
         negative_spikes: bool = False,
     ):
         """
-        Spiking Linear/Densely connected layer
+        Spiking 1D convolutional layer
 
-        :param in_features: Number of input channels
-        :param out_features: Number of output channels
+        :param channels_in: Number of input channels
+        :param image_shape: length of input sequence. This parameter name is used to maintain consistency with 2d and 3d layers
+        :param channels_out: Number of output channels
+        :param kernel_shape: int Size of the kernel
+        :param dilation: int kernel dilaiton,
+        :param strides: Strides in length
+        :param padding: Padding in each of the 6 directions (left, right)
         :param bias: If this layer has a bias value
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lower bound for membrane potential
@@ -54,9 +68,8 @@ class SpikingLinearLayer(SpikingLayer):
         If not None, the membrane potential is reset instead of subtracted on spiking.
         :param layer_name: Name of this layer
         """
-        SpikingLayer.__init__(
-            self,
-            input_shape=(in_features,),
+        super().__init__(
+            input_shape=(channels_in, image_shape),
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
@@ -64,11 +77,27 @@ class SpikingLinearLayer(SpikingLayer):
             layer_name=layer_name,
             negative_spikes=negative_spikes,
         )
-        self.linear = nn.Linear(in_features, out_features, bias=bias)
+        warnings.warn(
+            "SpikingConv1dLayer deprecated. Use nn.Conv1d + SpikingLayer instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self.conv = nn.Conv1d(
+            channels_in,
+            channels_out,
+            kernel_size=kernel_shape,
+            dilation=dilation,
+            stride=strides,
+            bias=bias,
+        )
 
         # Layer convolutional properties
-        self.channels_in = in_features
-        self.channels_out = out_features
+        self.channels_in = channels_in
+        self.channels_out = channels_out
+        self.kernel_shape = kernel_shape
+        self.dilation = dilation
+        self.padding = padding
+        self.strides = strides
         self.bias = bias
 
     def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
@@ -78,8 +107,15 @@ class SpikingLinearLayer(SpikingLayer):
         :param input_spikes: torch.Tensor input to the layer.
         :return:  torch.Tensor - synaptic output current
         """
-
-        return self.linear(input_spikes)
+        # Convolve all inputs at once
+        if self.padding == (0, 0):
+            syn_out = self.conv(input_spikes)
+        else:
+            # Zeropadded input
+            syn_out = self.conv(
+                functional.pad(input_spikes, self.padding, mode="constant", value=0)
+            )
+        return syn_out
 
     def summary(self) -> pd.Series:
         """
@@ -87,17 +123,23 @@ class SpikingLinearLayer(SpikingLayer):
 
         :return: pandas Series object
         """
-        bias = 0. if self.bias is None else self.bias
         summary = pd.Series(
             {
                 "Type": self.__class__.__name__,
                 "Layer": self.layer_name,
                 "Output_Shape": self.output_shape,
                 "Input_Shape": self.input_shape,
-                "Fanout_Prev": self.channels_out,
-                "Neurons": self.channels_out,
-                "Kernel_Params": self.channels_in*self.channels_out,
-                "Bias_Params": bias * self.channels_out,
+                "Kernel": self.kernel_shape,
+                "Padding": tuple(self.padding),
+                "Stride": self.strides,
+                "Fanout_Prev": self.kernel_shape
+                / np.array(self.strides)
+                * self.channels_out,
+                "Neurons": reduce(mul, list(self.output_shape), 1),
+                "Kernel_Params": self.channels_in
+                * self.channels_out
+                * self.kernel_shape,
+                "Bias_Params": self.bias * self.channels_out,
             }
         )
         return summary
@@ -106,7 +148,14 @@ class SpikingLinearLayer(SpikingLayer):
         """
         Returns the shape of output, given an input to this layer
 
-        :param input_shape: (in_features,)
-        :return: (out_features, )
+        :param input_shape: (channels, height, width)
+        :return: (channelsOut, height_out, width_out)
         """
-        return (self.channels_out, )
+        (channels, length) = input_shape
+
+        length_out = conv_output_size(
+            length + sum(self.padding[1]),
+            (self.dilation * (self.kernel_shape - 1) + 1),
+            self.strides,
+        )
+        return self.channels_out, length_out

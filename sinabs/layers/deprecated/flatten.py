@@ -15,54 +15,57 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-import torch.nn as nn
-import pandas as pd
 import numpy as np
+import pandas as pd
 from typing import Union, List, Tuple
-from .layer import Layer
+from sinabs.layers.layer import Layer
+from operator import mul
+from functools import reduce
+import warnings
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class ZeroPad2dLayer(Layer):
+class FlattenLayer(Layer):
     """
-    Zero padding 2D layer
+    Equivalent to keras flatten
     """
-    def __init__(self, image_shape, padding: ArrayLike, layer_name: str = "zeropad2d"):
-        """
-        Zero Padding Layer
 
-        :param image_shape: Shape of the input image (height, width)
-        :param padding: No. of pixels to pad on each side (left, right, top, bottom)
-        :param layer_name: Name of the layer
+    def __init__(self, input_shape, layer_name="flatten"):
         """
-        Layer.__init__(
-            self, input_shape=(None, *image_shape), layer_name=layer_name
+        Torch implementation of Flatten layer
+        """
+        super().__init__(input_shape=input_shape, layer_name=layer_name)  # Init nn.Module
+        warnings.warn(
+            "sinabs.layers.FlattenLayer deprecated. Use torch.nn.Flatten instead",
+            DeprecationWarning,
+            stacklevel=2,
         )
-        self.padding = padding
-        self.pad = nn.ZeroPad2d(padding)
+        self.layer_name = layer_name
+        # TODO: should add ability to switch between channels first or channels last
 
-    def forward(self, tsrInput):
-        output = self.pad(tsrInput)
-        self.spikes_number = output.abs().sum()
-        self.tw = len(output)
-        return output
+    def forward(self, binary_input):
+        nBatch = len(binary_input)
+        # Temporary modify LQ, due to keras weights generation change
+        # binary_input = binary_input.permute(0, 2, 3, 1)
+        flatten_out = binary_input.contiguous().view(nBatch, -1)
+        self.spikes_number = flatten_out.abs().sum()
+        self.tw = len(flatten_out)
+        return flatten_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
-        channels, height, width = input_shape
-        return (channels, height + sum(self.padding[2:]), width + sum(self.padding[:2]))
+        return (reduce(mul, self.input_shape),)
 
     def summary(self):
         """
-        Returns the summary of this layer as a pandas Series
+        Returns a summary of this layer as a pandas Series
         """
         summary = pd.Series(
             {
                 "Type": self.__class__.__name__,
                 "Layer": self.layer_name,
-                "Output_Shape": (tuple(self.output_shape)),
                 "Input_Shape": (tuple(self.input_shape)),
-                "Padding": tuple(self.padding),
+                "Output_Shape": (tuple(self.output_shape)),
                 "Fanout_Prev": 1,
                 "Neurons": 0,
                 "Kernel_Params": 0,
@@ -70,5 +73,3 @@ class ZeroPad2dLayer(Layer):
             }
         )
         return summary
-
-

@@ -18,7 +18,7 @@
 ##
 # iaf_convtranspose2d.py - Torch implementation of a spiking 2D de-convolutional layer
 ##
-
+import warnings
 import numpy as np
 import pandas as pd
 import torch
@@ -26,10 +26,10 @@ import torch.nn as nn
 from typing import Optional, Union, List, Tuple
 from operator import mul
 from functools import reduce
-from .quantize import QuantizeLayer
+from sinabs.layers.quantize import QuantizeLayer
 from collections import OrderedDict
 from sinabs.cnnutils import compute_padding
-from .iaf import SpikingLayer
+from sinabs.layers.iaf import SpikingLayer
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -81,6 +81,11 @@ class SpikingConvTranspose2dLayer(SpikingLayer):
             membrane_reset=membrane_reset,
             layer_name=layer_name,
             negative_spikes=negative_spikes
+        )
+        warnings.warn(
+            "SpikingConvTranspose2dLayer deprecated. Use nn.ConvTranspose2d + SpikingLayer instead",
+            DeprecationWarning,
+            stacklevel=2,
         )
 
         # Initialize the computational layers

@@ -25,7 +25,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 class Cropping2dLayer(Layer):
     """
-    Torch implementation of SumPooling2d for spiking neurons
+    Crop input image by
     """
 
     def __init__(
@@ -35,9 +35,10 @@ class Cropping2dLayer(Layer):
         layer_name="crop2d",
     ):
         """
-        Torch implementation of SumPooling using the LPPool2d module
+        Crop input to the the rectangle dimensions
 
         :param image_shape: Input image dimensions
+        :param cropping: ((top, bottom), (left, right))
         :param layer_name: str Layer name
         """
         Layer.__init__(

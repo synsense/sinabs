@@ -20,14 +20,15 @@
 ##
 
 import torch
+import warnings
 import torch.nn as nn
 import numpy as np
 import pandas as pd
 from functools import reduce
 from operator import mul
-from .iaf import SpikingLayer
+from sinabs.layers.iaf import SpikingLayer
 from typing import Optional, Union, List, Tuple
-from ..cnnutils import conv_output_size
+from sinabs.cnnutils import conv_output_size
 from torch.nn import functional
 
 # - Type alias for array-like objects
@@ -78,6 +79,11 @@ class SpikingConv3dLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
+        )
+        warnings.warn(
+            "SpikingConv3dLayer deprecated. Use nn.Conv3d + SpikingLayer instead",
+            DeprecationWarning,
+            stacklevel=2,
         )
         self.conv = nn.Conv3d(
             channels_in,

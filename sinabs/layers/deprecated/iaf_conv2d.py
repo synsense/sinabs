@@ -19,15 +19,16 @@
 # iaf_conv2d.py - Torch implementation of a spiking 2D convolutional layer
 ##
 
+import torch
+import warnings
+import torch.nn as nn
 import numpy as np
 import pandas as pd
-import torch
-import torch.nn as nn
 from typing import Optional, Union, List, Tuple
 from operator import mul
 from functools import reduce
 from sinabs.cnnutils import conv_output_size
-from .iaf import SpikingLayer
+from sinabs.layers.iaf import SpikingLayer
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -49,7 +50,7 @@ class SpikingConv2dLayer(SpikingLayer):
         membrane_subtract: Optional[float] = None,
         membrane_reset: Optional[float] = None,
         layer_name: str = "conv2d",
-        negative_spikes: bool = False
+        negative_spikes: bool = False,
     ):
         """
         Pytorch implementation of a spiking iaf neuron which convolve 2D inputs, with multiple channels
@@ -79,7 +80,12 @@ class SpikingConv2dLayer(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
             layer_name=layer_name,
-            negative_spikes=negative_spikes
+            negative_spikes=negative_spikes,
+        )
+        warnings.warn(
+            "SpikingConv2dLayer deprecated. Use nn.Conv2d + SpikingLayer instead",
+            DeprecationWarning,
+            stacklevel=2,
         )
         if padding != (0, 0, 0, 0):
             self.pad = nn.ZeroPad2d(padding)
@@ -162,6 +168,6 @@ class SpikingConv2dLayer(SpikingLayer):
         width_out = conv_output_size(
             width + sum(self.padding[:2]),
             (self.dilation[1] * (self.kernel_shape[1] - 1) + 1),
-            self.strides[1]
+            self.strides[1],
         )
         return self.channels_out, height_out, width_out

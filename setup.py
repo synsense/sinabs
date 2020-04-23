@@ -23,7 +23,13 @@ with open("README.md", "r") as fh:
 setup(
     name="sinabs",
     version="0.1.dev7",
-    packages=["sinabs", "sinabs.layers", "sinabs.layers.functional","sinabs.from_keras"],
+    packages=[
+        "sinabs",
+        "sinabs.layers",
+        "sinabs.layers.functional",
+        "sinabs.layers.deprecated",
+        "sinabs.from_keras",
+    ],
     author="aiCTX AG",
     author_email="sadique.sheik@aictx.ai",
     description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",

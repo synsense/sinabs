@@ -25,7 +25,7 @@ import pandas as pd
 from operator import mul
 from functools import reduce
 from typing import Optional, Union, List, Tuple
-from .layer import Layer
+from sinabs.layers.layer import Layer
 from sinabs.cnnutils import conv_output_size
 
 ArrayLike = Union[np.ndarray, List, Tuple]

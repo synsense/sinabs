@@ -79,7 +79,6 @@ class Layer(nn.Module, ABC):
             self._output_shape = self.get_output_shape(self.input_shape)
         return self._output_shape
 
-
     def summary(self) -> pd.Series:
         """
         Returns a summary of the current layer
@@ -97,7 +96,12 @@ class Layer(nn.Module, ABC):
         )
         return summary
 
+
 class TorchLayer(Layer):
     def __init__(self, input_shape: ArrayLike, layer_name: str = ""):
-        warnings.warn("TorchLayer is depricated and renamed to Layer", DeprecationWarning, stacklevel=2)
+        warnings.warn(
+            "TorchLayer is deprecated and renamed to Layer",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         super().__init__(input_shape=input_shape, layer_name=layer_name)
