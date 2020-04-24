@@ -25,6 +25,7 @@ from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .iaf_tc import SpikingTemporalConv1dLayer
 from .yolo import YOLOLayer
+from .iaf_bptt import SpikingLayer as SpikingLayerBPTT
 
 # Deprecated
 
