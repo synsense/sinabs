@@ -1,5 +1,6 @@
+import copy
 from torch import nn
-import sinabs.layers as sil
+import sinabs.layers as sl
 from warnings import warn
 from sinabs import Network
 
@@ -121,28 +122,29 @@ class SpkConverter(object):
         :param conv: the Torch layer to convert.
         """
         pad0, pad1 = conv.padding
-        layer = sil.SpikingConv2dLayer(
-            channels_in=conv.in_channels,
-            image_shape=self.previous_layer_shape[1:],
-            kernel_shape=conv.kernel_size,
-            channels_out=conv.out_channels,
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self.membrane_subtract,
-            padding=(pad0, pad0, pad1, pad1),
-            strides=conv.stride,
-            bias=conv.bias is not None,
-            negative_spikes=not self.exclude_negative_spikes,
-        )
+        #layer = sl.SpikingConv2dLayer(
+        #    channels_in=conv.in_channels,
+        #    image_shape=self.previous_layer_shape[1:],
+        #    kernel_shape=conv.kernel_size,
+        #    channels_out=conv.out_channels,
+        #    threshold=self.threshold,
+        #    threshold_low=self.threshold_low,
+        #    membrane_subtract=self.membrane_subtract,
+        #    padding=(pad0, pad0, pad1, pad1),
+        #    strides=conv.stride,
+        #    bias=conv.bias is not None,
+        #    negative_spikes=not self.exclude_negative_spikes,
+        #)
+        layer = copy.deepcopy(conv)
 
         if conv.bias is not None:
-            layer.conv.bias.data = conv.bias.data.clone().detach() / self.bias_rescaling
+            layer.bias.data = layer.bias.data / self.bias_rescaling
         if self.leftover_rescaling:
-            layer.conv.weight.data = (conv.weight *
-                                      self.leftover_rescaling).clone().detach()
+            layer.weight.data = (layer.weight.data * self.leftover_rescaling)
             self.leftover_rescaling = False
         else:
-            layer.conv.weight.data = conv.weight.data.clone().detach()
+            #layer.conv.weight.data = conv.weight.data.clone().detach()
+            pass
 
         self.add(f"conv2d_{self.index}", layer)
 
@@ -162,7 +164,7 @@ class SpkConverter(object):
         else:
             stride = pool.stride
 
-        layer = sil.SumPooling2dLayer(
+        layer = sl.SumPooling2dLayer(
             pool_size=kernel,
             strides=stride,
             padding=(pool.padding, 0, pool.padding, 0),
@@ -187,7 +189,7 @@ class SpkConverter(object):
         else:
             stride = pool.stride
 
-        layer = sil.SpikingMaxPooling2dLayer(
+        layer = sl.SpikingMaxPooling2dLayer(
             pool_size=kernel,
             strides=stride,
             padding=(pool.padding, 0, pool.padding, 0),
@@ -211,7 +213,7 @@ class SpkConverter(object):
         else:
             stride = pool.stride
 
-        layer = sil.SumPooling2dLayer(
+        layer = sl.SumPooling2dLayer(
             pool_size=kernel,
             strides=stride,
             padding=(0, 0, 0, 0),
@@ -220,31 +222,32 @@ class SpkConverter(object):
         self.add(f"sumpool_{self.index}", layer)
 
     def convert_linear(self, lin):
-        layer = sil.SpikingLinearLayer(
-            in_features=lin.in_features,
-            out_features=lin.out_features,
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self.membrane_subtract,
-            bias=lin.bias is not None,
-            negative_spikes=not self.exclude_negative_spikes,
-        )
+        #layer = sl.SpikingLinearLayer(
+        #    in_features=lin.in_features,
+        #    out_features=lin.out_features,
+        #    threshold=self.threshold,
+        #    threshold_low=self.threshold_low,
+        #    membrane_subtract=self.membrane_subtract,
+        #    bias=lin.bias is not None,
+        #    negative_spikes=not self.exclude_negative_spikes,
+        #)
+        layer = copy.deepcopy(lin)
 
         if lin.bias is not None:
-            layer.linear.bias.data = lin.bias.data.clone().detach() / self.bias_rescaling
+            layer.bias.data = layer.bias.data / self.bias_rescaling
         if self.leftover_rescaling:
-            layer.linear.weight.data = (
-                lin.weight * self.leftover_rescaling).clone().detach()
+            layer.weight.data = layer.weight.data * self.leftover_rescaling
             self.leftover_rescaling = False
         else:
-            layer.linear.weight.data = lin.weight.data.clone().detach()
+            #layer.linear.weight.data = lin.weight.data.clone().detach()
+            pass
 
         self.add(f"linear_{self.index}", layer)
 
     def convert_linear_to_conv(self, lin):
         in_chan, in_h, in_w = self.previous_layer_shape
         assert lin.in_features == in_chan * in_h * in_w
-        layer = sil.SpikingConv2dLayer(
+        layer = sl.SpikingConv2dLayer(
             channels_in=in_chan,
             image_shape=(in_h, in_w),
             kernel_shape=(in_h, in_w),
@@ -275,8 +278,8 @@ class SpkConverter(object):
         Used to update convolution weights due to batch norm or avg pool.
         """
         last_layer = self.spk_mod._modules[list(self.spk_mod._modules)[-1]]
-        if not isinstance(last_layer, (sil.SpikingConv2dLayer,
-                                       sil.SpikingLinearLayer)):
+        if not isinstance(last_layer, (sl.SpikingConv2dLayer,
+                                       sl.SpikingLinearLayer)):
             raise NotImplementedError(
                 "Can convert this layer only after a convolution or linear layer.")
         return last_layer
@@ -318,7 +321,7 @@ class SpkConverter(object):
 
         :param yolo: the YOLO layer to convert.
         """
-        new_yolo = sil.YOLOLayer(
+        new_yolo = sl.YOLOLayer(
             anchors=yolo.anchors,
             num_classes=yolo.num_classes,
             input_shape=self.previous_layer_shape[1:],
@@ -345,7 +348,7 @@ class SpkConverter(object):
 
         :param padlayer: the Torch layer to convert.
         """
-        layer = sil.ZeroPad2dLayer(
+        layer = sl.ZeroPad2dLayer(
             image_shape=self.previous_layer_shape[1:],
             padding=padlayer.padding
         )
@@ -360,7 +363,7 @@ class SpkConverter(object):
         for mname, module in self.modules():
             if isinstance(module, nn.Conv2d):
                 self.convert_conv2d(module)
-            elif isinstance(module, sil.SumPool2d):
+            elif isinstance(module, sl.SumPool2d):
                 self.convert_sumpool(module)
             elif isinstance(module, nn.AvgPool2d):
                 self.convert_avgpool(module)
@@ -375,9 +378,9 @@ class SpkConverter(object):
                 self.convert_batchnorm(module)
             elif isinstance(module, nn.ReLU):
                 self.convert_relu(module)
-            elif isinstance(module, sil.NeuromorphicReLU):
+            elif isinstance(module, sl.NeuromorphicReLU):
                 self.convert_relu(module)
-            elif isinstance(module, sil.QuantizeLayer):
+            elif isinstance(module, sl.QuantizeLayer):
                 pass
             elif isinstance(module, nn.LeakyReLU):
                 self.convert_relu(module)
@@ -386,7 +389,7 @@ class SpkConverter(object):
                 if self.all_2d_conv:
                     pass
                 else:
-                    self.add("flatten", sil.FlattenLayer(self.previous_layer_shape))
+                    self.add("flatten", sl.FlattenLayer(self.previous_layer_shape))
             elif isinstance(module, nn.ZeroPad2d):
                 self.convert_zeropad2d(module)
             elif type(module).__name__ == "YOLOLayer":
