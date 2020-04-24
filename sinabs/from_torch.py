@@ -77,7 +77,7 @@ class SpkConverter(object):
         :param all_2d_conv: Whether to convert Flatten and Linear layers to convolutions.
         """
         if input_shape is not None:
-            logging.warn("Input shape is now determined automatically and has no effect")
+            logging.warning("Input shape is now determined automatically and has no effect")
         if bias_rescaling != 1.0:
             logging.error("Bias rescaling not supported yet.")
         if all_2d_conv:
@@ -96,7 +96,6 @@ class SpkConverter(object):
 
     def relu2spiking(self):
         return sl.SpikingLayerBPTT(
-            input_shape= (0, 0, 0),  # TODO!
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract= self.threshold,  # TODO!

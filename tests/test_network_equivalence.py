@@ -2,7 +2,7 @@ import torch
 import sinabs.layers as sil
 import numpy as np
 from torch import nn
-from sinabs.from_torch import SpkConverter
+from sinabs.from_torch import from_model
 
 
 def test_reconstruct_image():
@@ -69,14 +69,13 @@ def test_network_conversion():
     cnn.sequence[5].running_var = torch.rand(8) + 1.
 
     img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.)
-    converter = SpkConverter(cnn, input_shape=input_shape,
-                             input_conversion_layer=img2spk)
-    snn = converter.convert()
+    snn = from_model(cnn, input_shape=input_shape)
 
     img = torch.Tensor(np.random.random(size=input_shape))
 
     with torch.no_grad():
-        snn_res = snn(img).mean(0)
+        spk_img = img2spk(img)
+        snn_res = snn(spk_img).mean(0)
         cnn_res = cnn(img.unsqueeze(0))
 
     # import matplotlib.pyplot as plt
