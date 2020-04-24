@@ -7,7 +7,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 
-def from_model(model, input_shape, input_conversion_layer=False,
+def from_model(model, input_shape=None, input_conversion_layer=False,
                threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                exclude_negative_spikes=False, bias_rescaling=1.0,
                all_2d_conv=False, batch_size=1):
@@ -49,7 +49,7 @@ def from_model(model, input_shape, input_conversion_layer=False,
 
 
 class SpkConverter(object):
-    def __init__(self, input_shape, input_conversion_layer=False,
+    def __init__(self, input_shape=None, input_conversion_layer=False,
                  threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                  exclude_negative_spikes=False, bias_rescaling=1.0,
                  all_2d_conv=False, batch_size=1):
@@ -76,13 +76,19 @@ class SpkConverter(object):
         :param bias_rescaling: Biases are divided by this value.
         :param all_2d_conv: Whether to convert Flatten and Linear layers to convolutions.
         """
-        self.previous_layer_shape = input_shape
+        if input_shape is not None:
+            logging.warn("Input shape is now determined automatically and has no effect")
+        if bias_rescaling != 1.0:
+            logging.error("Bias rescaling not supported yet.")
+        if all_2d_conv:
+            logging.error("Turning linear into conv not supported yet.")
+
         self.threshold_low = threshold_low
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
         self.exclude_negative_spikes = exclude_negative_spikes
-        self.bias_rescaling = bias_rescaling
-        self.all_2d_conv = all_2d_conv
+        # self.bias_rescaling = bias_rescaling
+        # self.all_2d_conv = all_2d_conv
         self.batch_size = batch_size
 
         if input_conversion_layer:
