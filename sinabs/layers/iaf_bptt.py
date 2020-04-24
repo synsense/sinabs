@@ -32,10 +32,11 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 window = 1.0
 
+
 class SpikingLayer(Layer):
     def __init__(
         self,
-        input_shape: ArrayLike,
+        input_shape: Optional[ArrayLike] = None,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
         membrane_subtract: bool = True,
@@ -99,7 +100,6 @@ class SpikingLayer(Layer):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
-
     def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
         """
         This method needs to be overridden/defined by the child class
@@ -111,19 +111,26 @@ class SpikingLayer(Layer):
         return input_spikes
 
     def forward(self, binary_input: torch.Tensor):
-        # Determine no. of time steps from input
-        neg_spikes = self.negative_spikes
 
         # Compute the synaptic current
         syn_out: torch.Tensor = self.synaptic_output(binary_input)
 
+        # Reshape data to appropriate dimensions
         if self.batch_size:
             syn_out = syn_out.reshape((-1, self.batch_size, *syn_out.shape[1:]))
+        # Ensure the neuron state are initialized
+        try:
+            assert self.state.shape == syn_out.shape[1:]
+        except AssertionError as e:
+            self.reset_states(shape=syn_out.shape[1:], randomize=False)
+
+        # Determine no. of time steps from input
         time_steps = len(syn_out)
 
         # Local variables
         threshold = self.threshold
         threshold_low = self.threshold_low
+        neg_spikes = self.negative_spikes
 
         state = self.state
         activations = self.activations
@@ -135,9 +142,12 @@ class SpikingLayer(Layer):
                 state = self.thresh_lower(state)
             # generate spikes
             if neg_spikes:
-                activations = threshold_subtract(state.abs(), threshold, threshold*window)*state.sign().int()
+                activations = (
+                    threshold_subtract(state.abs(), threshold, threshold * window)
+                    * state.sign().int()
+                )
             else:
-                activations = threshold_subtract(state, threshold, threshold*window)
+                activations = threshold_subtract(state, threshold, threshold * window)
             spikes.append(activations)
 
         self.state = state

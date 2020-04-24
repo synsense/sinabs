@@ -15,6 +15,7 @@ torch = "*"
 pandas = "*"
 numpy = "*"
 ipython = "*"
+torchvision = "*"
 
 [requires]
 python_version = "3.7"
