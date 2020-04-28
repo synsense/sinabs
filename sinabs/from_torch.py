@@ -89,7 +89,7 @@ class SpkConverter(object):
         return sl.SpikingLayerBPTT(
             threshold=self.threshold,
             threshold_low=self.threshold_low,
-            membrane_subtract= self.threshold,  # TODO!
+            membrane_subtract=self.membrane_subtract,
             layer_name="spiking",
             negative_spikes=False,
             batch_size=self.batch_size,

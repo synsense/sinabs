@@ -24,7 +24,6 @@ import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple
 from .layer import Layer
-from abc import abstractmethod
 from .functional import threshold_subtract
 
 # - Type alias for array-like objects
@@ -39,10 +38,11 @@ class SpikingLayer(Layer):
         input_shape: Optional[ArrayLike] = None,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: bool = True,
+        membrane_subtract: Optional[float] = None,
         layer_name: str = "spiking",
         negative_spikes: bool = False,
         batch_size: Optional[int] = None,
+        membrane_reset=None,
     ):
         """
         Pytorch implementation of a spiking neuron with learning enabled.
@@ -58,16 +58,19 @@ class SpikingLayer(Layer):
         """
         super().__init__(input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
-        assert membrane_subtract
         self.threshold = threshold
         self.threshold_low = threshold_low
         self.negative_spikes = negative_spikes
+        self._membrane_subtract = membrane_subtract
 
         # Blank parameter place holders
         self.register_buffer("state", torch.zeros(1))
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
         self.batch_size = batch_size
+
+        if membrane_reset is not None:
+            raise NotImplementedError("Membrane reset is no longer supported.")
 
     @property
     def threshold_low(self):
@@ -84,6 +87,17 @@ class SpikingLayer(Layer):
         else:
             # Relu on the layer
             self.thresh_lower = nn.Threshold(new_threshold_low, new_threshold_low)
+
+    @property
+    def membrane_subtract(self):
+        if self._membrane_subtract is not None:
+            return self._membrane_subtract
+        else:
+            return self.threshold
+
+    @membrane_subtract.setter
+    def membrane_subtract(self, new_val):
+        self._membrane_subtract = new_val
 
     def reset_states(self, shape=None, randomize=False):
         """
@@ -121,7 +135,7 @@ class SpikingLayer(Layer):
         # Ensure the neuron state are initialized
         try:
             assert self.state.shape == syn_out.shape[1:]
-        except AssertionError as e:
+        except AssertionError:
             self.reset_states(shape=syn_out.shape[1:], randomize=False)
 
         # Determine no. of time steps from input
