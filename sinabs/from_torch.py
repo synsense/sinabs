@@ -2,9 +2,7 @@ import copy
 from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
-import logging
-
-# logging.basicConfig(level=logging.DEBUG)
+import warnings
 
 
 def from_model(model, input_shape=None, input_conversion_layer=False,
@@ -13,27 +11,23 @@ def from_model(model, input_shape=None, input_conversion_layer=False,
                all_2d_conv=False, batch_size=1):
     """
     Converts a Torch model and returns a Sinabs network object.
-    Only sequential models or module lists are supported, with unpredictable
-    behaviour on non-sequential models. This feature currently has limited
-    capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
-    BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
-    ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
-    supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
-    DynapSumPoolLayer.
+    The modules in the model are analyzed, and a copy with the following
+    substitutions is returned:
+    - ReLUs, LeakyReLUs and NeuromorphicReLUs are turned into SpikingLayers
+    - ...
 
     :param model: a Torch model
-    :param input_shape: the shape of the expected input
-    :param input_conversion_layer: a Sinabs layer to be appended at the \
-    beginning of the resulting network (typically Img2SpikeLayer or similar)
+    :param input_shape: No effect. Backward compatibility only.
+    :param input_conversion_layer: No longer supported.
     :param threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
     :param threshold_low: The lower bound of the potential in \
     convolutional and linear layers (same for all layers).
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
-    :param bias_rescaling: Biases are divided by this value.
-    :param all_2d_conv: Whether to convert Flatten and Linear layers to convolutions.
-    :return: :class:`.network.Network`
+    :param bias_rescaling: Biases are divided by this value. Currently not supported.
+    :param all_2d_conv: Whether to convert Flatten and Linear layers to \
+    convolutions. Currently not supported.
     """
     return SpkConverter(
         input_shape=input_shape,
@@ -55,34 +49,30 @@ class SpkConverter(object):
                  all_2d_conv=False, batch_size=1):
         """
         Converts a Torch model and returns a Sinabs network object.
-        Only sequential models or module lists are supported, with unpredictable
-        behaviour on non-sequential models. This feature currently has limited
-        capability. Supported layers are: Conv2d, AvgPool2d, MaxPool2d, Linear,
-        BatchNorm2d (only if just after Linear or Conv2d), ReLU, Flatten,
-        ZeroPad2d. LeakyReLUs are turned into ReLUs. Non-native torch layers
-        supported are QuantizeLayer, YOLOLayer, NeuromorphicReLU, and
-        DynapSumPoolLayer.
+        The modules in the model are analyzed, and substitutions are made:
+        - ReLUs, LeakyReLUs and NeuromorphicReLUs are turned into SpikingLayers
+        - ...
 
-        :param model: a Torch model
-        :param input_shape: the shape of the expected input
-        :param input_conversion_layer: a Sinabs layer to be appended at the \
-        beginning of the resulting network (typically Img2SpikeLayer or similar)
+        :param input_shape: No effect. Backward compatibility only.
+        :param input_conversion_layer: No longer supported.
         :param threshold: The membrane potential threshold for spiking in \
         convolutional and linear layers (same for all layers).
         :param threshold_low: The lower bound of the potential in \
         convolutional and linear layers (same for all layers).
         :param membrane_subtract: Value subtracted from the potential upon \
         spiking for convolutional and linear layers (same for all layers).
-        :param bias_rescaling: Biases are divided by this value.
-        :param all_2d_conv: Whether to convert Flatten and Linear layers to convolutions.
+        :param bias_rescaling: Biases are divided by this value. Currently not supported.
+        :param all_2d_conv: Whether to convert Flatten and Linear layers to \
+        convolutions. Currently not supported.
         """
         if input_shape is not None:
-            logging.warning("Input shape is now determined automatically and has no effect")
-        if bias_rescaling != 1.0:
-            logging.error("Bias rescaling not supported yet.")
-        if all_2d_conv:
-            logging.error("Turning linear into conv not supported yet.")
-        logging.warning("Negative spikes are no longer supported.")
+            warnings.warn("Input shape is now determined automatically and has no effect")
+        if bias_rescaling != 1.0:  # TODO
+            raise NotImplementedError("Bias rescaling not supported yet.")
+        if all_2d_conv:  # TODO
+            raise NotImplementedError("Turning linear into conv not supported yet.")
+        if input_conversion_layer is not False:
+            raise NotImplementedError("Input conversion layer no longer supported.")
 
         self.threshold_low = threshold_low
         self.threshold = threshold
@@ -113,11 +103,12 @@ class SpkConverter(object):
         """
         spk_model = copy.deepcopy(model)
 
-        logging.debug("## ORIGINAL MODEL")
-        logging.debug(spk_model)
-        self.convert_module(spk_model)
-        logging.debug("## CONVERTED MODEL")
-        logging.debug(spk_model)
+        # import logging
+        # logging.debug("## ORIGINAL MODEL")
+        # logging.debug(spk_model)
+        # self.convert_module(spk_model)
+        # logging.debug("## CONVERTED MODEL")
+        # logging.debug(spk_model)
 
         network = Network()
         network.spiking_model = spk_model
@@ -127,7 +118,7 @@ class SpkConverter(object):
 
     def convert_module(self, module):
         if hasattr(module, "__len__"):
-            # if sequential or similar, we iterate over it to access them by index
+            # if sequential or similar, we iterate over it to access by index
             submodules = enumerate(module)
         else:
             # otherwise, we look at the named_children and access by name
