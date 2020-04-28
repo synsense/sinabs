@@ -4,7 +4,7 @@ import sinabs.layers as sl
 from sinabs import Network
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.DEBUG)
 
 
 def from_model(model, input_shape=None, input_conversion_layer=False,
@@ -82,6 +82,7 @@ class SpkConverter(object):
             logging.error("Bias rescaling not supported yet.")
         if all_2d_conv:
             logging.error("Turning linear into conv not supported yet.")
+        logging.warning("Negative spikes are no longer supported.")
 
         self.threshold_low = threshold_low
         self.threshold = threshold
@@ -100,7 +101,7 @@ class SpkConverter(object):
             threshold_low=self.threshold_low,
             membrane_subtract= self.threshold,  # TODO!
             layer_name="spiking",
-            negative_spikes=not self.exclude_negative_spikes,
+            negative_spikes=False,
             batch_size=self.batch_size,
         )
 
