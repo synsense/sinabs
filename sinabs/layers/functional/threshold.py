@@ -1,5 +1,5 @@
 import torch
-
+from torch.onnx.symbolic_opset9 import floor_divide
 
 class ThresholdSubtract(torch.autograd.Function):
     """
@@ -18,6 +18,14 @@ class ThresholdSubtract(torch.autograd.Function):
         (data,) = ctx.saved_tensors
         grad_input = grad_output * ((data >= (ctx.threshold - ctx.window)).float())
         return grad_input, None, None
+
+    def symbolic(g, data, threshold=1, window=0.5):
+        pos = g.op("Greater", data, torch.tensor(0))
+        x = floor_divide(g, data, torch.tensor(threshold))
+        return g.op("Mul", x, pos)
+
+
+
 
 
 threshold_subtract = ThresholdSubtract().apply
