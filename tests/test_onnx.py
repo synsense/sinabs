@@ -60,3 +60,10 @@ def test_graph_generation_ann():
     print_onnx_model(onnx_model)
 
 
+def test_onnx_vs_sinabs_equivalence():
+    net = build_model()
+    inp = (torch.rand((50, 2, 32, 32)) > 0.5).float()
+
+    out_torch = net.spiking_model(inp)
+    print(net)
+    print(out_torch)
