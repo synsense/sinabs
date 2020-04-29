@@ -1,5 +1,7 @@
 import torch
-from torch.onnx.symbolic_opset9 import floor_divide
+import torch.onnx.symbolic_helper as sym_help
+from torch.onnx.symbolic_opset9 import floor, div, relu
+
 
 class ThresholdSubtract(torch.autograd.Function):
     """
@@ -11,7 +13,7 @@ class ThresholdSubtract(torch.autograd.Function):
         ctx.save_for_backward(data.clone())
         ctx.threshold = threshold
         ctx.window = window
-        return (data >= ctx.threshold) * (data // ctx.threshold).float()
+        return (data > 0) * (data // ctx.threshold).float()
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -20,12 +22,10 @@ class ThresholdSubtract(torch.autograd.Function):
         return grad_input, None, None
 
     def symbolic(g, data, threshold=1, window=0.5):
-        pos = g.op("Greater", data, torch.tensor(0))
-        x = floor_divide(g, data, torch.tensor(threshold))
-        return g.op("Mul", x, pos)
-
-
-
+        x = relu(g, data)
+        x = div(g, x, torch.tensor(threshold))
+        x = floor(g, x)
+        return x
 
 
 threshold_subtract = ThresholdSubtract().apply

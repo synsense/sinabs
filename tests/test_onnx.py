@@ -34,7 +34,7 @@ def test_sinabs_model_to_onnx():
         fname,
         input_names=["tchw_input"],
         output_names=["tchw_output"],
-        dynamic_axes={"tchw_input": [0], "tchw_output": {0: "time"}},
+        dynamic_axes={"tchw_input": [0], "tchw_output": [0]},
         verbose=False,
     )
     snn_model = onnx.load(fname)
@@ -60,10 +60,76 @@ def test_graph_generation_ann():
     print_onnx_model(onnx_model)
 
 
-def test_onnx_vs_sinabs_equivalence():
-    net = build_model()
+def test_onnx_sinabs_SpikingLayer():
+    import numpy as np
+    from sinabs.from_torch import from_model
+
+    layers = [
+        nn.ReLU(),
+    ]
+
+    ann = nn.Sequential(*layers)
+    net = from_model(ann)
     inp = (torch.rand((50, 2, 32, 32)) > 0.5).float()
+    dummy = torch.zeros_like(inp)
+
+    net.spiking_model(dummy)
+
+    fname = "test_spk.onnx"
+    torch.onnx.export(
+        net.spiking_model,
+        (dummy,),
+        fname,
+        export_params=True,
+        input_names=["tchw_input"],
+        output_names=["tchw_output"],
+        dynamic_axes={"tchw_input": [0], "tchw_output": [0]},
+        verbose=False,
+    )
+
+    # Run torch model
+    out_torch = net.spiking_model(inp)
+
+    # Run onnx model
+    import onnxruntime
+
+    session = onnxruntime.InferenceSession(fname)
+    ort_inputs = {session.get_inputs()[0].name: inp.numpy()}
+    ort_outs = session.run(None, ort_inputs)
+
+    np.testing.assert_allclose(
+        out_torch.detach().numpy(), ort_outs[0], rtol=1e-3, atol=1e-5
+    )
+
+
+def test_onnx_vs_sinabs_equivalence():
+    import numpy as np
+    net = build_model()
+
+    inp = (torch.rand((50, 2, 32, 32)) > 0.5).float()
+    dummy = torch.zeros_like(inp)
+
+    net.spiking_model(dummy)
+
+    fname = "test_spk_net.onnx"
+    torch.onnx.export(
+        net.spiking_model,
+        (dummy,),
+        fname,
+        export_params=True,
+        input_names=["tchw_input"],
+        output_names=["tchw_output"],
+        dynamic_axes={"tchw_input": [0], "tchw_output": [0]},
+        verbose=False,
+    )
 
     out_torch = net.spiking_model(inp)
-    print(net)
-    print(out_torch)
+
+    import onnxruntime
+    session = onnxruntime.InferenceSession(fname)
+    ort_inputs = {session.get_inputs()[0].name: inp.numpy()}
+    ort_outs = session.run(None, ort_inputs)
+
+    np.testing.assert_allclose(
+        out_torch.detach().numpy(), ort_outs[0], atol=1e-5
+    )
