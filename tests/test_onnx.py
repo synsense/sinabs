@@ -26,7 +26,7 @@ def test_sinabs_model_to_onnx():
     net = build_model()
     dummy_input = torch.zeros([1, 2, 64, 64])  # One time step
     net(dummy_input)  # first pass to create all state variables
-    fname = "snn.onnx"
+    fname = "models/snn.onnx"
 
     torch.onnx.export(
         net.spiking_model,
@@ -52,7 +52,7 @@ def test_graph_generation_ann():
 
     model = torchvision.models.resnet18()
     dummy_input = torch.zeros([1, 3, 224, 224])
-    fname = "resnet18.onnx"
+    fname = "models/resnet18.onnx"
 
     torch.onnx.export(model, dummy_input, fname)
     onnx_model = onnx.load(fname)
@@ -75,7 +75,7 @@ def test_onnx_sinabs_SpikingLayer():
 
     net.spiking_model(dummy)
 
-    fname = "test_spk.onnx"
+    fname = "models/test_spk.onnx"
     torch.onnx.export(
         net.spiking_model,
         (dummy,),
@@ -111,7 +111,7 @@ def test_onnx_vs_sinabs_equivalence():
 
     net.spiking_model(dummy)
 
-    fname = "test_spk_net.onnx"
+    fname = "models/test_spk_net.onnx"
     torch.onnx.export(
         net.spiking_model,
         (dummy,),

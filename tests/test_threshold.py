@@ -16,7 +16,7 @@ def test_threshold_subtract_onnx_eq():
 
     torch_out = model(inp)
     print(inp, "\nTorch:",torch_out)
-    fname = "threshold_subtract.onnx"
+    fname = "models/threshold_subtract.onnx"
 
     torch.onnx.export(model, (inp,), fname, export_params=True,
                       input_names=["t_input"],
