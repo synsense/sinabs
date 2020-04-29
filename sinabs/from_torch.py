@@ -106,7 +106,7 @@ class SpkConverter(object):
         # import logging
         # logging.debug("## ORIGINAL MODEL")
         # logging.debug(spk_model)
-        # self.convert_module(spk_model)
+        self.convert_module(spk_model)
         # logging.debug("## CONVERTED MODEL")
         # logging.debug(spk_model)
 
