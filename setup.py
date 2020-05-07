@@ -22,7 +22,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="sinabs",
-    version="0.1.dev7",
+    version="0.2.dev",
     packages=[
         "sinabs",
         "sinabs.layers",
