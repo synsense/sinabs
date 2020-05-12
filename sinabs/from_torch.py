@@ -125,7 +125,8 @@ class SpkConverter(object):
         # logging.debug(spk_model)
 
         network = Network()
-        network.spiking_model = spk_model
+        device = next(model.parameters()).device
+        network.spiking_model = spk_model.to(device)
         network.analog_model = model
 
         return network
