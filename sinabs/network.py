@@ -72,15 +72,15 @@ class Network(Layer):
         self.graph: pd.DataFrame = None
         self.input_shape = input_shape
         self.quantize_activation = quantize_activation
-        if keras_model is not None:
-            from sinabs.from_keras.from_keras import from_model
-
-            from_model(
-                keras_model,
-                quantize_activation=quantize_activation,
-                nbit_quantize=nbit_quantize,
-                network=self,
-            )
+        # if keras_model is not None:
+        #     from sinabs.from_keras.from_keras import from_model
+        #
+        #     from_model(
+        #         keras_model,
+        #         quantize_activation=quantize_activation,
+        #         nbit_quantize=nbit_quantize,
+        #         network=self,
+        #     )
 
     @property
     def layers(self):
@@ -409,41 +409,29 @@ class Network(Layer):
             except AttributeError:
                 pass
 
-    def get_synops(self, num_evs_in: int) -> pd.DataFrame:
-        """
-        :param num_evs_in: int Number of input spikes to compute network synOps
-        :returns: the total synOps of neurons in each layer of the network
-        """
-        vnSynOps = []
-        nEvsPrev = num_evs_in
-        SynOps_dataframe = pd.DataFrame()
-        for nLyrIndx, (layer_name, lyr) in enumerate(self.layers):
-            if lyr.__class__.__name__ == "ZeroPad2d":
-                continue
-            if lyr.__class__.__name__ == "YOLOLayer":
-                continue
-            spikes_number = lyr.spikes_number
-            nEvs = spikes_number.detach().cpu().item()
-            nfanout_prev = lyr.summary()["Fanout_Prev"]
-            # lyr.channels_out * lyr.kernel_size[0] * lyr.kernel_size[1]
-            # nSynOps = nEvsPrev * nFanOut
-            nSynOps = nEvsPrev * nfanout_prev * (lyr.summary()["Kernel_Params"] != 0)
+    def get_synops(self, num_evs_in=None) -> pd.DataFrame:
+        if num_evs_in is not None:
+            warnings.warn("num_evs_in is deprecated and has no effect")
 
-            vnSynOps.append(nSynOps)
-            SynOps_dataframe = SynOps_dataframe.append(
-                pd.Series(
-                    {
-                        "Layer": lyr.layer_name,
-                        "In": int(nEvsPrev),
-                        "Out": int(nEvs),
-                        "Fanout_Prev": int(nfanout_prev),
-                        "SynOps": int(nSynOps),
-                        "Events_routed": int(nfanout_prev * nEvsPrev),
-                        "Time_window": lyr.tw,
-                        "SynOps/s": nSynOps / lyr.tw * 1000,
-                    }
-                ),
-                ignore_index=True,
-            )
-            nEvsPrev = nEvs
+        SynOps_dataframe = pd.DataFrame()
+        for (layer_name, lyr) in self.spiking_model.named_modules():
+            print(layer_name)
+            if hasattr(lyr, 'synops'):
+                print(layer_name)
+                SynOps_dataframe = SynOps_dataframe.append(
+                    pd.Series(
+                        {
+                            "Layer": layer_name,
+                            "In": lyr.tot_in,
+                            "Out": lyr.tot_out,
+                            "Fanout_Prev": lyr.fanout,
+                            "SynOps": lyr.synops,
+                            "Events_routed": lyr.fanout * lyr.tot_in,
+                            "Time_window": lyr.tw,
+                            "SynOps/s": lyr.synops / lyr.tw * 1000,
+                        }
+                    ),
+                    ignore_index=True,
+                )
+        SynOps_dataframe.set_index("Layer", inplace=True)
         return SynOps_dataframe

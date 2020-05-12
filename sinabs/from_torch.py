@@ -3,12 +3,22 @@ from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
 import warnings
+from numpy import product
+
+
+def synops_hook(layer, inp, out):
+    assert len(inp) == 1, "Multiple inputs not supported for synops hook"
+    inp = inp[0]
+    layer.tot_in = inp.sum().item()
+    layer.tot_out = out.sum().item()
+    layer.synops = layer.tot_in * layer.fanout
+    layer.tw = inp.shape[0]
 
 
 def from_model(model, input_shape=None, input_conversion_layer=False,
                threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                exclude_negative_spikes=False, bias_rescaling=1.0,
-               all_2d_conv=False, batch_size=1):
+               all_2d_conv=False, batch_size=1, synops=True):
     """
     Converts a Torch model and returns a Sinabs network object.
     The modules in the model are analyzed, and a copy with the following
@@ -25,9 +35,11 @@ def from_model(model, input_shape=None, input_conversion_layer=False,
     convolutional and linear layers (same for all layers).
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
-    :param bias_rescaling: Biases are divided by this value. Currently not supported.
+    :param bias_rescaling: Biases are divided by this value.
     :param all_2d_conv: Whether to convert Flatten and Linear layers to \
     convolutions. Currently not supported.
+    :param synops: If True (default), register hooks for counting synaptic \
+    operations during foward passes.
     """
     return SpkConverter(
         input_shape=input_shape,
@@ -39,6 +51,7 @@ def from_model(model, input_shape=None, input_conversion_layer=False,
         bias_rescaling=bias_rescaling,
         all_2d_conv=all_2d_conv,
         batch_size=batch_size,
+        synops=synops,
     ).convert(model)
 
 
@@ -46,7 +59,7 @@ class SpkConverter(object):
     def __init__(self, input_shape=None, input_conversion_layer=False,
                  threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
                  exclude_negative_spikes=False, bias_rescaling=1.0,
-                 all_2d_conv=False, batch_size=1):
+                 all_2d_conv=False, batch_size=1, synops=True):
         """
         Converts a Torch model and returns a Sinabs network object.
         The modules in the model are analyzed, and substitutions are made:
@@ -61,14 +74,14 @@ class SpkConverter(object):
         convolutional and linear layers (same for all layers).
         :param membrane_subtract: Value subtracted from the potential upon \
         spiking for convolutional and linear layers (same for all layers).
-        :param bias_rescaling: Biases are divided by this value. Currently not supported.
+        :param bias_rescaling: Biases are divided by this value.
         :param all_2d_conv: Whether to convert Flatten and Linear layers to \
         convolutions. Currently not supported.
+        :param synops: If True (default), register hooks for counting synaptic \
+        operations during foward passes.
         """
         if input_shape is not None:
             warnings.warn("Input shape is now determined automatically and has no effect")
-        if bias_rescaling != 1.0:  # TODO
-            raise NotImplementedError("Bias rescaling not supported yet.")
         if all_2d_conv:  # TODO
             raise NotImplementedError("Turning linear into conv not supported yet.")
         if input_conversion_layer is not False:
@@ -78,9 +91,10 @@ class SpkConverter(object):
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
         self.exclude_negative_spikes = exclude_negative_spikes
-        # self.bias_rescaling = bias_rescaling
+        self.bias_rescaling = bias_rescaling
         # self.all_2d_conv = all_2d_conv
         self.batch_size = batch_size
+        self.synops = synops
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -130,10 +144,25 @@ class SpkConverter(object):
             if isinstance(subm, (nn.ReLU, sl.NeuromorphicReLU)):
                 module[name] = self.relu2spiking()
 
+            elif isinstance(subm, nn.Linear) and self.synops:
+                subm.fanout = subm.out_features
+                subm.register_forward_hook(synops_hook)
+                if subm.bias is not None:
+                    subm.bias.data = subm.bias.data.clone().detach() / self.bias_rescaling
+            elif isinstance(subm, nn.Conv2d) and self.synops:
+                subm.fanout = (
+                    subm.out_channels
+                    * product(subm.kernel_size)
+                    / product(subm.stride)
+                )
+                subm.register_forward_hook(synops_hook)
+                if subm.bias is not None:
+                    subm.bias.data = subm.bias.data.clone().detach() / self.bias_rescaling
+
             # if in turn it has children, go iteratively inside
             elif len(list(subm.named_children())):
                 self.convert_module(subm)
 
             # otherwise we have a base layer of the non-interesting ones
             else:
-                pass
+                pass  # yes this is useless but it's for clarity
