@@ -53,6 +53,7 @@ class Network(Layer):
     def __init__(
         self,
         keras_model: Optional = None,
+        spiking_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
         quantize_activation: bool = False,
         nbit_quantize: Optional[int] = None,
@@ -67,11 +68,14 @@ class Network(Layer):
                            with a quantization layer after each activation
         """
         Layer.__init__(self, input_shape=input_shape)
-        self.spiking_model: nn.Module = None
-        self.analog_model: nn.Module = None
+        self.spiking_model: nn.Module = spiking_model
+        self.analog_model: nn.Module = keras_model
         self.graph: pd.DataFrame = None
         self.input_shape = input_shape
         self.quantize_activation = quantize_activation
+
+        if input_shape is not None and spiking_model is not None:
+            self._compute_shapes(input_shape)
         # if keras_model is not None:
         #     from sinabs.from_keras.from_keras import from_model
         #
@@ -94,6 +98,25 @@ class Network(Layer):
         :return:
         """
         return self.layers[-1][1].output_shape
+
+    def _compute_shapes(self, input_shape, batch_size=1):
+        def hook(module, inp, out):
+            module.out_shape = out.shape[1:]
+
+        hook_list = []
+        for layer in self.spiking_model.modules():
+            this_hook = layer.register_forward_hook(hook)
+            hook_list.append(this_hook)
+
+        # do a forward pass
+        dummy_input = torch.zeros(
+            [batch_size] + list(input_shape),
+            requires_grad=False
+        )
+        self(dummy_input)
+
+        [this_hook.remove() for this_hook in hook_list]
+
 
     def rescale_parameters(
         self,

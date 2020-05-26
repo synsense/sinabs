@@ -80,8 +80,6 @@ class SpkConverter(object):
         :param synops: If True (default), register hooks for counting synaptic \
         operations during foward passes.
         """
-        if input_shape is not None:
-            warnings.warn("Input shape is now determined automatically and has no effect")
         if all_2d_conv:  # TODO
             raise NotImplementedError("Turning linear into conv not supported yet.")
         if input_conversion_layer is not False:
@@ -95,6 +93,7 @@ class SpkConverter(object):
         # self.all_2d_conv = all_2d_conv
         self.batch_size = batch_size
         self.synops = synops
+        self.input_shape = input_shape
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -124,10 +123,12 @@ class SpkConverter(object):
         # logging.debug("## CONVERTED MODEL")
         # logging.debug(spk_model)
 
-        network = Network()
         device = next(model.parameters()).device
-        network.spiking_model = spk_model.to(device)
-        network.analog_model = model
+        network = Network(
+            model,
+            spk_model.to(device),
+            input_shape=self.input_shape
+        )
 
         return network
 
