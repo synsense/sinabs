@@ -52,24 +52,15 @@ class Network(Layer):
 
     def __init__(
         self,
-        keras_model: Optional = None,
+        analog_model: Optional = None,
         spiking_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
         quantize_activation: bool = False,
         nbit_quantize: Optional[int] = None,
     ):
-        """
-        Network() function initializes the Network object
-
-
-        :param keras_model: Initialize `Network` from keras model (object)
-        :param input_shape: Tuple, shape of input
-        :param quantize_activation: bool, if true, the analog model will be initialized
-                           with a quantization layer after each activation
-        """
         Layer.__init__(self, input_shape=input_shape)
         self.spiking_model: nn.Module = spiking_model
-        self.analog_model: nn.Module = keras_model
+        self.analog_model: nn.Module = analog_model
         self.graph: pd.DataFrame = None
         self.input_shape = input_shape
         self.quantize_activation = quantize_activation

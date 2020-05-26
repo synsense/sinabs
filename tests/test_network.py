@@ -46,7 +46,7 @@ def test_Network_init():
     from sinabs import Network
 
     # Test initialize model
-    spkModel = Network(keras_model=keras_model)
+    spkModel = Network(analog_model=keras_model)
 
 
 def test_Network_summary():
@@ -75,6 +75,6 @@ def test_Network_summary():
     from sinabs import Network
 
     # Test initialize model
-    spkModel = Network(keras_model=keras_model)
+    spkModel = Network(analog_model=keras_model)
 
     print(spkModel.summary().to_string())

@@ -2,7 +2,6 @@ import copy
 from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
-import warnings
 from numpy import product
 
 
