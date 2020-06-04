@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
+from sinabs.cnnutils import conv_output_size
 from typing import Dict, List, Tuple, Union
 
 # import samna
@@ -209,96 +210,138 @@ def get_sumpool2d_pooling_size(
             )
         return pooling
 
+def spiking_conv_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, inp_shape: dict):
+    config = conv2d_to_dict(conv_lyr)
+    config.update(spiking_to_dict(spike_lyr)
+    
+    # - Input and output shapes
+    dimensions = config["dimensions"]
+    dimensions["channel_count"] = inp_shape[0]
+    dimensions["input_size_y"] = inp_shape[1]
+    dimensions["input_size_x"] = inp_shape[2]
 
-def spiking_conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
+    conv2d_shape_out = (dimensions["output_feature_count"], ) + conv2d_output_shape(inp_shape)
+    spiking_shape_out = spike_lyr.get_output_shape(conv2d_shape_out)
+
+    dimensions["output_feature_count"] = spiking_shape_out[0]
+    dimensions["output_size_y"] = spiking_shape_out[1]
+    dimensions["output_size_x"] = spiking_shape_out[2]
+
+    # - Handle biases
+    if config["biases"] is None:
+        config["layer_params"]["leak_enable"] = False
+        config["biaes"] = [0 for _ in dimensions["output_feature_ount"]]
+    else:
+        config["layer_params"]["leak_enable"] = True
+
+    return config
+
+def conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     """
-    spiking_conv2d_to_dict - Extract a dict with parameters from a `SpikingConv2dLayer`
-                             so that they can be written to a Speck configuration.
-    :param layer:   SpikingConv2dLayer whose parameters should be extracted
+    conv2d_to_dict - Extract a dict with parameters from a `Conv2dLayer`
+                     so that they can be written to a Speck configuration.
+    :param layer:    Conv2dLayer whose parameters should be extracted
     :return:
         Dict    Parameters of `layer`
     """
+    # Not necessary for conv?
     layer = discretize_sl(layer)
-
-    summary = layer.summary()
 
     # - Layer dimension parameters
     dimensions = dict()
 
     # - Padding
-    padding_x, padding_y = summary["Padding"][0], summary["Padding"][2]
-    if padding_x != summary["Padding"][1]:
-        warn(
-            f"SpikingConv2dLayer `{layer.layer_name}`: "
-            + "Left and right padding must be the same. "
-            + "Will ignore value provided for right padding."
-        )
-    if padding_y != summary["Padding"][3]:
-        warn(
-            f"SpikingConv2dLayer `{layer.layer_name}`: "
-            + "Top and bottom padding must be the same. "
-            + "Will ignore value provided for bottom padding."
-        )
-    dimensions["padding_x"] = padding_x
-    dimensions["padding_y"] = padding_y
-
+    dimensions["padding_y"], dimensions["padding_x"] = layer.padding
+    
     # - Stride
-    dimensions["stride_y"], dimensions["stride_x"] = summary["Stride"]
+    dimensions["stride_y"], dimensions["stride_x"] = layer.stride
 
     # - Kernel size
-    dimensions["kernel_size"] = summary["Kernel"][0]
-    if dimensions["kernel_size"] != summary["Kernel"][1]:
+    dimensions["kernel_size"] = layer.kernel_size[0]
+    if dimensions["kernel_size"] != layer.kernel_size[1]:
         raise ValueError(
             f"SpikingConv2dLayer `{layer.layer_name}` Kernel must have same height and width."
         )
 
-    # - Input and output shapes
-    dimensions["channel_count"] = summary["Input_Shape"][0]
-    dimensions["input_size_y"] = summary["Input_Shape"][1]
-    dimensions["input_size_x"] = summary["Input_Shape"][2]
-    dimensions["output_feature_count"] = summary["Output_Shape"][0]
-    dimensions["output_size_y"] = summary["Output_Shape"][1]
-    dimensions["output_size_x"] = summary["Output_Shape"][2]
+    # - Output channels
+    dimensions["output_feature_count"] = layer.out_channels
 
-    # - Neuron states
-    if layer.state is not None:
-        neurons_state = layer.state.transpose(2, 3).int().tolist()
-    else:
-        neurons_state = None
-
-    # - Resetting vs returning to 0
-    return_to_zero = layer.membrane_subtract is not None
-    if return_to_zero and layer.membrane_reset != 0:
-        warn(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Resetting of membrane potential is always to 0."
-        )
-    elif (not return_to_zero) and layer.membrane_subtract != layer.threshold:
-        warn(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
-        )
+    # TODO: Is dilation supported??
 
     # - Weights and biases
     if layer.bias:
         weights, biases = layer.parameters()
+        biases = biases.int().tolist()
     else:
         weights, = layer.parameters()
-        biases = torch.zeros(layer.channels_out)
+        biases = None
+    # TODO: Is transposing weights still necessary?
     # Transpose last two dimensions of weights to match cortexcontrol
     weights = weights.transpose(2, 3)
+    weights = weights.int().tolist()
+
+    return {
+        "dimensons": dimensions,
+        "weights": weights,
+        "biases": biases,
+    }
+
+def conv2d_output_shape(input_shape: Tuple[int], layer_dims: dict) -> Tuple:
+    """
+    Returns the shape of output, given an input to this layer
+
+    :param input_shape: (channels, height, width)
+    :param layer_dims: Dict with kernel_size, padding, and stride of layer
+    :return: (channelsOut, height_out, width_out)
+    """
+    (channels, height, width) = input_shape
+
+    height_out = conv_output_size(
+        height + 2 * layer_dims["padding_y"],
+        # (self.dilation[0] * (self.kernel_shape[0] - 1) + 1),
+        layer_dims["kernel_size"],
+        layer_dims["stride_y"]
+    )
+    width_out = conv_output_size(
+        height + 2 * layer_dims["padding_x"],
+        # (self.dilation[1] * (self.kernel_shape[1] - 1) + 1),
+        layer_dims["kernel_size"],
+        layer_dims["stride_x"]
+    )
+    return height_out, width_out
+
+
+def spiking_to_dict(layer: sl.SpikingLayer) -> Dict:
+    """
+    spiking_to_dict - Extract a dict with parameters from a `SpikingLayer`
+                      so that they can be written to a Speck configuration.
+    :param layer:   SpikingLayer whose parameters should be extracted
+    :return:
+        Dict    Parameters of `layer`
+    """
+    layer = discretize_sl(layer)
+
+    # - Neuron states
+    if layer.state is None or len(layer.state.shape) == 1:
+        neurons_state = None
+    else:
+        # TODO: Is this still necessary?
+        neurons_state = layer.state.transpose(2, 3).int().tolist()
+
+    # - Warn if membrane_subtract does not match threshold
+    if layer.membrane_subtract != layer.threshold:
+        warn(
+            f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+        )
 
     layer_params = dict(
-        return_to_zero=return_to_zero,
         threshold_high=layer.threshold,
         threshold_low=layer.threshold_low,
-        monitor_enable=True,  # Yes or no?
-        leak_enable=layer.bias,
+        monitor_enable=False,  # Yes or no?
     )
 
     return {
         "layer_params": layer_params,
-        "dimensions": dimensions,
-        "weights": weights.int().tolist(),
-        "biases": biases.int().tolist(),
         "neurons_state": neurons_state,
     }
 
