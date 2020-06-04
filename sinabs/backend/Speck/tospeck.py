@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Union
 # import samna
 
 import speckdemo as sd
-from .discretize import discretize_sl
+from .discretize import discretize_sl, discretize_conv_spike
 
 
 SPECK_WEIGHT_PRECISION_BITS = 8
@@ -24,9 +24,13 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer], input_shape: Optional[
     :param snn: sinabs.Network or sinabs.layers.TorchLayer instance
     """
     config = sd.configuration.SpeckConfiguration()
-
-    if isinstance(snn, Network):
-        layers = list(snn.spiking_model.children())
+    
+    # TODO: More useful type test - start with specific layer types
+    if isinstance(snn, nn.Module):
+        try:
+            layers = list(snn.spiking_model.seq)
+        except AttributeError:
+            raise ValueError("`snn` must contain a sequential spiking model.")
 
         i_layer = 0
         i_layer_speck = 0
@@ -58,13 +62,13 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer], input_shape: Optional[
 
                 # Next layer needs to be spiking
                 lyr_next = layers[i_layer + 1]
-                if not isinstance(lyr_next, sl.SpikingLayer):
+                if not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
                     raise TypeError(
                         "Convolutional layer must be followed by spiking layer."
                     )
 
                 # Extract configuration specs from layer objects and update Speck config
-                input_shape = spiking_conv2d_to_speck(lyr_curr, speck_layer)
+                input_shape = spiking_conv2d_to_speck(lyr_curr, lyr_next, speck_layer)
 
                 # - Consolidate pooling from subsequent layers
                 pooling, input_shape, i_next = consolidate_pooling(layers[i_layer + 2 :], input_shape)
@@ -135,14 +139,14 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer], input_shape: Optional[
 
 
 def spiking_conv2d_to_speck(
-    inp_shape: dict,
+    input_shape: dict,
     conv_lyr: nn.Conv2d,
-    spike_lyr: sl.SpikingLayer,
+    spike_lyr: sl.iaf_bptt.SpikingLayer,
     speck_layer: sd.configuration.CNNLayerConfig
 ) -> Tuple[int]:
 
     # Extract configuration specs from layer object
-    layer_config = spiking_conv2d_to_dict(conv_lyr, spike_lyr, inp_shape)
+    layer_config = spiking_conv2d_to_dict(conv_lyr, spike_lyr, input_shape)
 
     # Update configuration of the Speck layer
     speck_layer.set_dimensions(**layer_config["dimensions"])
@@ -249,21 +253,22 @@ def get_sumpool2d_pooling_size(
             raise ValueError(
                 f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
             )
+        # TODO: infer_output_shape does not work with discretized
         return pooling, infer_output_shape(layer, input_shape)
 
-def spiking_conv_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, inp_shape: dict):
+def spiking_conv2d_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, input_shape: dict):
     # - Discretize layers
-    conv_lyr, spike_lyr = discretize_sl(conv_lyr, spike_lyr)
+    conv_lyr, spike_lyr = discretize_conv_spike(conv_lyr, spike_lyr)
 
     # - Extract configuration info
     config = conv2d_to_dict(conv_lyr)
-    config.update(spiking_to_dict(spike_lyr)
+    config.update(spiking_to_dict(spike_lyr))
     
     # - Input and output shapes
     dimensions = config["dimensions"]
-    dimensions["channel_count"] = inp_shape[0]
-    dimensions["input_size_y"] = inp_shape[1]
-    dimensions["input_size_x"] = inp_shape[2]
+    dimensions["channel_count"] = input_shape[0]
+    dimensions["input_size_y"] = input_shape[1]
+    dimensions["input_size_x"] = input_shape[2]
 
     conv2d_shape_out = infer_output_shape(conv_lyr, input_shape)
     spiking_shape_out = spike_lyr.get_output_shape(conv2d_shape_out)
@@ -275,7 +280,7 @@ def spiking_conv_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, inp_sh
     # - Handle biases
     if config["biases"] is None:
         config["layer_params"]["leak_enable"] = False
-        config["biaes"] = [0 for _ in dimensions["output_feature_ount"]]
+        config["biaes"] = [0 for _ in dimensions["output_feature_count"]]
     else:
         config["layer_params"]["leak_enable"] = True
 
@@ -320,12 +325,12 @@ def conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     weights = weights.int().tolist()
 
     return {
-        "dimensons": dimensions,
+        "dimensions": dimensions,
         "weights": weights,
         "biases": biases,
     }
 
-def spiking_to_dict(layer: sl.SpikingLayer) -> Dict:
+def spiking_to_dict(layer: sl.iaf_bptt.SpikingLayer) -> Dict:
     """
     spiking_to_dict - Extract a dict with parameters from a `SpikingLayer`
                       so that they can be written to a Speck configuration.

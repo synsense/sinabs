@@ -10,9 +10,9 @@ SPECK_STATE_PRECISION_BITS = 16
 
 def discretize_conv_spike(
         conv_lyr: nn.Conv2d,
-        spike_lyr: sl.SpikingLayer,
+        spike_lyr: sl.iaf_bptt.SpikingLayer,
         to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayer):
+) -> (nn.Conv2d, sl.iaf_bptt.SpikingLayer):
     conv_lyr_copy = deepcopy(conv_lyr)
     spike_lyr_copy = deepcopy(spike_lyr)
     return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
@@ -20,13 +20,13 @@ def discretize_conv_spike(
 
 def discretize_conv_spike_(
         conv_lyr: nn.Conv2d,
-        spike_lyr: sl.SpikingLayer,
+        spike_lyr: sl.iaf_bptt.SpikingLayer,
         to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayer):
+) -> (nn.Conv2d, sl.iaf_bptt.SpikingLayer):
 
     if not isinstance(conv_lyr, nn.Conv2d):
         raise TypeError("`conv_lyr` must be of type `Conv2d`")
-    if not isinstance(spike_lyr, sl.SpikingLayer):
+    if not isinstance(spike_lyr, sl.iaf_bptt.SpikingLayer):
         raise TypeError("`spike_lyr` must be of type `SpikingLayer`")
     
     return _discretize_conv_spk_(conv_lyr, spike_lyr, to_int=to_int)
@@ -71,7 +71,7 @@ def discretize_sl_(
         raise ValueError(f"Objects of type `{type(snn)}` are not supported.")
 
 
-def _discretize_conv_spk_(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool):
+def _discretize_conv_spk_(conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool):
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
     # - Weights and biases
