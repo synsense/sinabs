@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from sinabs import Network
 import sinabs.layers as sl
-from sinabs.cnnutils import conv_output_size
+from sinabs.cnnutils import infer_output_shape
 from typing import Dict, List, Tuple, Union
 
 # import samna
@@ -17,7 +17,7 @@ SPECK_WEIGHT_PRECISION_BITS = 8
 SPECK_STATE_PRECISION_BITS = 16
 
 
-def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
+def to_speck_config(snn: Union[nn.Module, sl.TorchLayer], input_shape: Optional[Tuple[int]] = None) -> Dict:
     """
     Build a configuration object of a given module
 
@@ -31,21 +31,43 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
         i_layer = 0
         i_layer_speck = 0
 
+        # - Input to start with
+        if isinstance(layers[0], sl.InputLayer):
+            input_shape = layers[0].output_shape
+            i_layer += 1
+        elif input_shape is None:
+            raise ValueError(
+                "`input_shape` must be provided if first layer is not `InputLayer`."
+            )
+        if dvs_input:
+            # - Cut DVS output to match output shape of `lyr_curr`
+            dvs = config.dvs_layer
+            dvs.cut.y = output_shape[1]
+            dvs.cut.x = output_shape[2]
+            # TODO: How to deal with feature count?
+
         # - Iterate over layers from model
         while i_layer < len(layers):
 
             # Layer to be ported to Speck
             lyr_curr = layers[i_layer]
 
-            if isinstance(lyr_curr, sl.SpikingConv2dLayer):
+            if isinstance(lyr_curr, nn.Conv2d):
                 # Object representing Speck layer
                 speck_layer = config.cnn_layers[i_layer_speck]
 
-                # Extract configuration specs from layer object and update Speck config
-                spiking_conv2d_to_speck(lyr_curr, speck_layer)
+                # Next layer needs to be spiking
+                lyr_next = layers[i_layer + 1]
+                if not isinstance(lyr_next, sl.SpikingLayer):
+                    raise TypeError(
+                        "Convolutional layer must be followed by spiking layer."
+                    )
+
+                # Extract configuration specs from layer objects and update Speck config
+                input_shape = spiking_conv2d_to_speck(lyr_curr, speck_layer)
 
                 # - Consolidate pooling from subsequent layers
-                pooling, i_next = consolidate_pooling(layers[i_layer + 1 :])
+                pooling, input_shape, i_next = consolidate_pooling(layers[i_layer + 2 :], input_shape)
 
                 # - Destination for CNN layer... make sure that is cnn or sum pooling?
 
@@ -58,9 +80,9 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                     speck_layer.destinations[0].pooling = pooling
                     speck_layer.destinations[0].enable = True
 
-                    # Add 1 to i_layer to go to next layer, + i_next for number
+                    # Add 2 to i_layer to go to next layer, + i_next for number
                     # of consolidated pooling layers
-                    i_layer += 1 + i_next
+                    i_layer += 2 + i_next
                     i_layer_speck += 1
 
                 else:
@@ -85,18 +107,9 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
                     break
 
             elif isinstance(lyr_curr, sl.InputLayer):
-                if i_layer > 0:
-                    raise TypeError(
-                        f"Only first layer can be of type {type(lyr_curr)}."
-                    )
-                output_shape = lyr_curr.output_shape
-                # - Cut DVS output to match output shape of `lyr_curr`
-                dvs = config.dvs_layer
-                dvs.cut.y = output_shape[1]
-                dvs.cut.x = output_shape[2]
-                # TODO: How to deal with feature count?
-
-                i_layer += 1
+                raise TypeError(
+                    f"Only first layer can be of type {type(lyr_curr)}."
+                )
 
             else:
                 raise TypeError(
@@ -122,11 +135,15 @@ def to_speck_config(snn: Union[nn.Module, sl.TorchLayer]) -> Dict:
 
 
 def spiking_conv2d_to_speck(
-    layer: sl.SpikingConv2dLayer, speck_layer: sd.configuration.CNNLayerConfig
-):
+    inp_shape: dict,
+    conv_lyr: nn.Conv2d,
+    spike_lyr: sl.SpikingLayer,
+    speck_layer: sd.configuration.CNNLayerConfig
+) -> Tuple[int]:
 
     # Extract configuration specs from layer object
-    layer_config = spiking_conv2d_to_dict(layer)
+    layer_config = spiking_conv2d_to_dict(conv_lyr, spike_lyr, inp_shape)
+
     # Update configuration of the Speck layer
     speck_layer.set_dimensions(**layer_config["dimensions"])
     speck_layer.set_weights(layer_config["weights"])
@@ -136,9 +153,18 @@ def spiking_conv2d_to_speck(
     for param, value in layer_config["layer_params"].items():
         setattr(speck_layer, param, value)
 
+    # Output shape with given input
+    dimensions = layer_config["dimensions"]
+    output_shape = (
+        dimensions["output_feature_count"],
+        dimensions["output_shape_y"],
+        dimensions["output_shape_x"],
+    )
+    return output_shape
+
 
 def consolidate_pooling(
-    layers, dvs: bool = False
+        layers, input_shape: Tuple[int], dvs: bool = False
 ) -> Tuple[Union[int, Tuple[int], None], int]:
     """
     consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in `layers`
@@ -156,61 +182,80 @@ def consolidate_pooling(
     pooling = (1, 1) if dvs else 1
 
     for i_next, lyr in enumerate(layers):
-        if isinstance(lyr, sl.SumPooling2dLayer):
+        if isinstance(lyr, nn.AvgPool2d):
             # Update pooling size
-            new_pooling = get_sumpool2d_pooling_size(lyr, dvs=dvs)
+            new_pooling, input_shape = get_sumpool2d_pooling_size(lyr, input_shape, dvs=dvs)
             if dvs:
                 pooling[0] *= new_pooling[0]
                 pooling[1] *= new_pooling[1]
             else:
                 pooling *= new_pooling
         else:
-            return pooling, i_next
+            return pooling, input_shape, i_next
 
     # If this line is reached, all objects in `layers` are `SumPooling2dLayer`s.
-    return pooling, None
-
+    return pooling, input_shape, None
 
 def get_sumpool2d_pooling_size(
-    layer: sl.SumPooling2dLayer, dvs: bool = True
+    layer: nn.AvgPool2d, input_shape: Tuple[int], dvs: bool = True
 ) -> Union[int, Tuple[int]]:
     """
     get_sumpool2d_pooling_size - Determine the pooling size of a `SumPooling2dLayer` object.
-    :param layer:  `SumPooling2dLayer` object
+    :param layer:  `AvgPool2d` object
     :param dvs:    bool - If True, pooling does not need to be symmetric.
     :return:
         int or tuple - pooling size. If `dvs` is true, then return a tuple with
                        sizes for y- and x-pooling.
     """
-    summary = layer.summary()
-    if any(pad != 0 for pad in summary["Padding"]):
+    if (
+        # Warn if there is non-zero padding.
+        # Padding can be either int or tuple of ints
+        (isinstance(layer.padding, int) and layer.padding != 0)
+        or any(pad != 0 for pad in summary["Padding"])
+    ):
         warn(
             f"SumPooling2dLayer `{layer.layer_name}`: Padding is not supported for pooling layers."
         )
+    
+    # - Pooling and stride
+    pooling = layer.kernel_size
+    pooling_y, pooling_x = (
+        (pooling, pooling) if isinstance(pooling, int)
+        else pooling
+    )
 
+    stride = layer.stride
+    stride_y, stride_x = (
+        (stride, stride) if isinstance(stride, int)
+        else stride
+    )
+   
     if dvs:
-        pooling_y, pooling_x = summary["Pooling"]
         # Check whether pooling and strides match
-        if summary["Stride"][0] != pooling_y or summary["Stride"][1] != pooling_x:
+        if stride_y != pooling_y or stride_x != pooling_x:
             raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Stride size must be the same as pooling size."
+                f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
             )
-        return (pooling_y, pooling_x)
+        return (pooling_y, pooling_x), infer_output_shape(layer, input_shape)
     else:
-        pooling = summary["Pooling"][0]  # Is this the vertical dimension?
         # Check whether pooling is symmetric
-        if pooling != summary["Pooling"][1]:
+        if pooling_x != pooling_y:
             raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Pooling must be symmetric for CNN layers."
+                f"AvgPool2d `{layer.layer_name}`: Pooling must be symmetric for CNN layers."
             )
+        pooling = pooling_x  # Is this the vertical dimension?
         # Check whether pooling and strides match
-        if any(stride != pooling for stride in summary["Stride"]):
+        if any(stride != pooling for stride in (stride_x, stride_y)):
             raise ValueError(
-                f"SumPooling2dLayer `{layer.layer_name}`: Stride size must be the same as pooling size."
+                f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
             )
-        return pooling
+        return pooling, infer_output_shape(layer, input_shape)
 
 def spiking_conv_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, inp_shape: dict):
+    # - Discretize layers
+    conv_lyr, spike_lyr = discretize_sl(conv_lyr, spike_lyr)
+
+    # - Extract configuration info
     config = conv2d_to_dict(conv_lyr)
     config.update(spiking_to_dict(spike_lyr)
     
@@ -220,7 +265,7 @@ def spiking_conv_to_dict(conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, inp_sh
     dimensions["input_size_y"] = inp_shape[1]
     dimensions["input_size_x"] = inp_shape[2]
 
-    conv2d_shape_out = (dimensions["output_feature_count"], ) + conv2d_output_shape(inp_shape)
+    conv2d_shape_out = infer_output_shape(conv_lyr, input_shape)
     spiking_shape_out = spike_lyr.get_output_shape(conv2d_shape_out)
 
     dimensions["output_feature_count"] = spiking_shape_out[0]
@@ -244,9 +289,6 @@ def conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
     :return:
         Dict    Parameters of `layer`
     """
-    # Not necessary for conv?
-    layer = discretize_sl(layer)
-
     # - Layer dimension parameters
     dimensions = dict()
 
@@ -262,9 +304,6 @@ def conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         raise ValueError(
             f"SpikingConv2dLayer `{layer.layer_name}` Kernel must have same height and width."
         )
-
-    # - Output channels
-    dimensions["output_feature_count"] = layer.out_channels
 
     # TODO: Is dilation supported??
 
@@ -285,31 +324,6 @@ def conv2d_to_dict(layer: sl.SpikingConv2dLayer) -> Dict:
         "weights": weights,
         "biases": biases,
     }
-
-def conv2d_output_shape(input_shape: Tuple[int], layer_dims: dict) -> Tuple:
-    """
-    Returns the shape of output, given an input to this layer
-
-    :param input_shape: (channels, height, width)
-    :param layer_dims: Dict with kernel_size, padding, and stride of layer
-    :return: (channelsOut, height_out, width_out)
-    """
-    (channels, height, width) = input_shape
-
-    height_out = conv_output_size(
-        height + 2 * layer_dims["padding_y"],
-        # (self.dilation[0] * (self.kernel_shape[0] - 1) + 1),
-        layer_dims["kernel_size"],
-        layer_dims["stride_y"]
-    )
-    width_out = conv_output_size(
-        height + 2 * layer_dims["padding_x"],
-        # (self.dilation[1] * (self.kernel_shape[1] - 1) + 1),
-        layer_dims["kernel_size"],
-        layer_dims["stride_x"]
-    )
-    return height_out, width_out
-
 
 def spiking_to_dict(layer: sl.SpikingLayer) -> Dict:
     """

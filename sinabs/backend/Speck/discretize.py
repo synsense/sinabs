@@ -8,6 +8,28 @@ import sinabs.layers as sl
 SPECK_WEIGHT_PRECISION_BITS = 8
 SPECK_STATE_PRECISION_BITS = 16
 
+def discretize_conv_spike(
+        conv_lyr: nn.Conv2d,
+        spike_lyr: sl.SpikingLayer,
+        to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
+    conv_lyr_copy = deepcopy(conv_lyr)
+    spike_lyr_copy = deepcopy(spike_lyr)
+    return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
+
+
+def discretize_conv_spike(
+        conv_lyr: nn.Conv2d,
+        spike_lyr: sl.SpikingLayer,
+        to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
+
+    if not isinstance(conv_lyr, nn.Conv2d):
+        raise TypeError("`conv_lyr` must be of type `Conv2d`")
+    if not isinstance(spike_lyr, sl.SpikingLayer):
+        raise TypeError("`spike_lyr` must be of type `SpikingLayer`")
+
+
 
 def discretize_sl(
     snn: Union[nn.Module, sl.TorchLayer],
@@ -47,6 +69,42 @@ def discretize_sl_(
 
     else:
         raise ValueError(f"Objects of type `{type(snn)}` are not supported.")
+
+
+def _discretize_conv_spk(conv_layer: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool):
+    # - Lower and upper thresholds in a tensor for easier handling
+    thresholds = torch.tensor((layer.threshold_low, layer.threshold))
+    # - Weights and biases
+    if layer.bias:
+        weights, biases = layer.parameters()
+    else:
+        weights, = layer.parameters()
+        biases = torch.zeros(layer.channels_out)
+
+    # - Scaling of weights, biases, thresholds and neuron states
+    # Determine by which common factor weights, biases and thresholds can be scaled
+    # such each they matches its precision specificaitons.
+    scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
+    scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
+    scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
+    if layer.state is not None:
+        scaling_n = determine_discretization_scale(
+            layer.state, SPECK_STATE_PRECISION_BITS
+        )
+        scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
+        # Scale neuron state with common scaling factor and discretize
+        layer.state = discretize_tensor(layer.state, scaling, to_int=to_int)
+    else:
+        scaling = min(scaling_w, scaling_b, scaling_t)
+
+    # Scale weights, biases and thresholds with common scaling factor and discretize
+    weights.data = discretize_tensor(weights, scaling, to_int=to_int)
+    biases.data = discretize_tensor(biases, scaling, to_int=to_int)
+    layer.threshold_low, layer.threshold = discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+    layer.membrane_subtract = discretize_scalar(layer.membrane_subtract, scaling)
+    layer.membrane_reset = discretize_scalar(layer.membrane_reset, scaling)
+
+    return layer
 
 
 def _discretize_SC2D_(layer: sl.TorchLayer, to_int: bool):
