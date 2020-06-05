@@ -5,10 +5,7 @@ import sinabs.layers as sl
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
-import numpy as np
-from pprint import pprint
-
-# import samna
+import samna as sd
 
 # import speckdemo as sd
 from .discretize import discretize_sl, discretize_conv_spike
@@ -28,7 +25,7 @@ def to_speck_config(
 
     :param snn: sinabs.Network or sinabs.layers.TorchLayer instance
     """
-    # config = sd.configuration.SpeckConfiguration()
+    config = sd.configuration.SpeckConfiguration()
 
     # TODO: Currently only spiking seq. models are supported
     try:
@@ -49,10 +46,9 @@ def to_speck_config(
         )
     if dvs_input:
         # - Cut DVS output to match output shape of `lyr_curr`
-        # dvs = config.dvs_layer
-        # dvs.cut.y = input_shape[1]
-        # dvs.cut.x = input_shape[2]
-        pass
+        dvs = config.dvs_layer
+        dvs.cut.y = input_shape[1]
+        dvs.cut.x = input_shape[2]
         # TODO: How to deal with feature count?
 
     # - Iterate over layers from model
@@ -63,8 +59,8 @@ def to_speck_config(
 
         if isinstance(lyr_curr, nn.Conv2d):
             # Object representing Speck layer
-            # speck_layer = config.cnn_layers[i_layer_speck]
-            print(f"Setting up speck layer {i_layer_speck}")
+            speck_layer = config.cnn_layers[i_layer_speck]
+            # print(f"Setting up speck layer {i_layer_speck}")
 
             # Next layer needs to be spiking
             lyr_next = layers[i_layer + 1]
@@ -75,8 +71,8 @@ def to_speck_config(
 
             # Extract configuration specs from layer objects and update Speck config
             input_shape = spiking_conv2d_to_speck(
-                input_shape, lyr_curr, lyr_next, None
-            )  # speck_layer)
+                input_shape, lyr_curr, lyr_next, speck_layer
+            )
 
             # - Consolidate pooling from subsequent layers
             pooling, input_shape, i_next = consolidate_pooling(
@@ -86,14 +82,14 @@ def to_speck_config(
             # - Destination for CNN layer... make sure that is cnn or sum pooling?
 
             # For now: Sequential model, second destination always disabled
-            # speck_layer.destinations[1].enable = False
+            speck_layer.destinations[1].enable = False
 
             if i_next is not None:
                 # Set destination layer
-                # speck_layer.destinations[0].layer = i_layer_speck + 1
-                # speck_layer.destinations[0].pooling = pooling
-                # speck_layer.destinations[0].enable = True
-                print(f"Setting up destination as speck layer {i_layer_speck + 1}")
+                speck_layer.destinations[0].layer = i_layer_speck + 1
+                speck_layer.destinations[0].pooling = pooling
+                speck_layer.destinations[0].enable = True
+                # print(f"Setting up destination as speck layer {i_layer_speck + 1}")
 
                 # Add 2 to i_layer to go to next layer, + i_next for number
                 # of consolidated pooling layers
@@ -101,8 +97,8 @@ def to_speck_config(
                 i_layer_speck += 1
 
             else:
-                # speck_layer.destinations[0].enable = False
-                print("Final layer")
+                speck_layer.destinations[0].enable = False
+                # print("Final layer")
                 # TODO: How to route to readout layer? Does destination need to be set?
                 break
 
@@ -112,12 +108,12 @@ def to_speck_config(
             # Assume that input comes from DVS.
 
             # Object representing Speck DVS
-            # dvs = config.dvs_layer
+            dvs = config.dvs_layer
             pooling, i_next = consolidate_pooling(layers[i_layer:], dvs=True)
-            # dvs.pooling.y, dvs.pooling.x = pooling
+            dvs.pooling.y, dvs.pooling.x = pooling
             if i_next is not None:
-                # dvs.destinations[0].layer = i_layer_speck
-                # dvs.destinations[0].enable = True
+                dvs.destinations[0].layer = i_layer_speck
+                dvs.destinations[0].enable = True
                 i_layer += i_next
             else:
                 break
@@ -131,9 +127,10 @@ def to_speck_config(
             )
 
     # TODO: Does anything need to be done after iterating over layers?
-    print("Finished configuration of Speck.")
 
-    # return config
+    # print("Finished configuration of Speck.")
+
+    return config
 
 
 def spiking_conv2d_to_speck(
@@ -147,19 +144,19 @@ def spiking_conv2d_to_speck(
     layer_config = spiking_conv2d_to_dict(conv_lyr, spike_lyr, input_shape)
 
     # Update configuration of the Speck layer
-    print("Setting dimensions:")
-    pprint(layer_config["dimensions"])
-    print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
-    print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
-    # speck_layer.set_dimensions(**layer_config["dimensions"])
-    # speck_layer.set_weights(layer_config["weights"])
-    # speck_layer.set_biases(layer_config["biases"])
+    # print("Setting dimensions:")
+    # pprint(layer_config["dimensions"])
+    # print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
+    # print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
+    speck_layer.set_dimensions(**layer_config["dimensions"])
+    speck_layer.set_weights(layer_config["weights"])
+    speck_layer.set_biases(layer_config["biases"])
     if layer_config["neurons_state"] is not None:
-        print("Setting state:", layer_config["neurons_state"])
+        # print("Setting state:", layer_config["neurons_state"])
         speck_layer.set_neurons_state(layer_config["neurons_state"])
     for param, value in layer_config["layer_params"].items():
-        print(f"Setting parameter {param}: {value}")
-        # setattr(speck_layer, param, value)
+        # print(f"Setting parameter {param}: {value}")
+        setattr(speck_layer, param, value)
 
     # Output shape with given input
     dimensions = layer_config["dimensions"]
@@ -202,13 +199,13 @@ def consolidate_pooling(
             else:
                 pooling *= new_pooling
         else:
-            print("Pooling:", pooling)
-            print("Output shape:", input_shape)
+            # print("Pooling:", pooling)
+            # print("Output shape:", input_shape)
             return pooling, input_shape, i_next
 
     # If this line is reached, all objects in `layers` are `SumPooling2dLayer`s.
-    print("Pooling:", pooling)
-    print("Output shape:", input_shape)
+    # print("Pooling:", pooling)
+    # print("Output shape:", input_shape)
     return pooling, input_shape, None
 
 
