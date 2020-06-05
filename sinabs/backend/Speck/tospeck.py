@@ -5,6 +5,9 @@ import sinabs.layers as sl
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
+import numpy as np
+from pprint import pprint
+
 # import samna
 
 # import speckdemo as sd
@@ -144,9 +147,10 @@ def spiking_conv2d_to_speck(
     layer_config = spiking_conv2d_to_dict(conv_lyr, spike_lyr, input_shape)
 
     # Update configuration of the Speck layer
-    print("Setting dimensions:", layer_config["dimensions"])
-    print("Setting weights:", layer_config["weights"])
-    print("Setting biases:", layer_config["biases"])
+    print("Setting dimensions:")
+    pprint(layer_config["dimensions"])
+    print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
+    print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
     # speck_layer.set_dimensions(**layer_config["dimensions"])
     # speck_layer.set_weights(layer_config["weights"])
     # speck_layer.set_biases(layer_config["biases"])
@@ -154,7 +158,7 @@ def spiking_conv2d_to_speck(
         print("Setting state:", layer_config["neurons_state"])
         speck_layer.set_neurons_state(layer_config["neurons_state"])
     for param, value in layer_config["layer_params"].items():
-        print("fSetting parameter {param}: {value}")
+        print(f"Setting parameter {param}: {value}")
         # setattr(speck_layer, param, value)
 
     # Output shape with given input
@@ -198,9 +202,13 @@ def consolidate_pooling(
             else:
                 pooling *= new_pooling
         else:
+            print("Pooling:", pooling)
+            print("Output shape:", input_shape)
             return pooling, input_shape, i_next
 
     # If this line is reached, all objects in `layers` are `SumPooling2dLayer`s.
+    print("Pooling:", pooling)
+    print("Output shape:", input_shape)
     return pooling, input_shape, None
 
 
@@ -351,7 +359,7 @@ def spiking_to_dict(layer: sl.iaf_bptt.SpikingLayer) -> Dict:
     # - Warn if membrane_subtract does not match threshold
     if layer.membrane_subtract != layer.threshold:
         warn(
-            f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+            f"SpikingLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
         )
 
     layer_params = dict(
