@@ -8,32 +8,30 @@ import sinabs.layers as sl
 SPECK_WEIGHT_PRECISION_BITS = 8
 SPECK_STATE_PRECISION_BITS = 16
 
+
 def discretize_conv_spike(
-        conv_lyr: nn.Conv2d,
-        spike_lyr: sl.iaf_bptt.SpikingLayer,
-        to_int: bool = True,
+    conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool = True,
 ) -> (nn.Conv2d, sl.iaf_bptt.SpikingLayer):
-    conv_lyr_copy = deepcopy(conv_lyr)
-    spike_lyr_copy = deepcopy(spike_lyr)
-    return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
+    # conv_lyr_copy = deepcopy(conv_lyr)
+    # spike_lyr_copy = deepcopy(spike_lyr)
+    # return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
+    return discretize_conv_spike_(conv_lyr, spike_lyr, to_int=to_int)
 
 
 def discretize_conv_spike_(
-        conv_lyr: nn.Conv2d,
-        spike_lyr: sl.iaf_bptt.SpikingLayer,
-        to_int: bool = True,
+    conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool = True,
 ) -> (nn.Conv2d, sl.iaf_bptt.SpikingLayer):
 
     if not isinstance(conv_lyr, nn.Conv2d):
         raise TypeError("`conv_lyr` must be of type `Conv2d`")
     if not isinstance(spike_lyr, sl.iaf_bptt.SpikingLayer):
         raise TypeError("`spike_lyr` must be of type `SpikingLayer`")
-    
+
     return _discretize_conv_spk_(conv_lyr, spike_lyr, to_int=to_int)
 
+
 def discretize_sl(
-    snn: Union[nn.Module, sl.TorchLayer],
-    to_int: bool = True
+    snn: Union[nn.Module, sl.TorchLayer], to_int: bool = True
 ) -> Union[nn.Module, sl.TorchLayer]:
     """
     discretize - Return a copy of the provided model or layer with discretized,
@@ -41,8 +39,9 @@ def discretize_sl(
     :param snn:  The model or layer that is to be discretized
     :param to_int: If False, round the values, but don't cast to Int. (Default True).
     """
-    model_copy = deepcopy(snn)
-    return discretize_sl_(model_copy, to_int=to_int)
+    # model_copy = deepcopy(snn)
+    # return discretize_sl_(model_copy, to_int=to_int)
+    return discretize_sl_(snn, to_int=to_int)
 
 
 def discretize_sl_(
@@ -71,14 +70,16 @@ def discretize_sl_(
         raise ValueError(f"Objects of type `{type(snn)}` are not supported.")
 
 
-def _discretize_conv_spk_(conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool):
+def _discretize_conv_spk_(
+    conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool
+):
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
     # - Weights and biases
     if conv_lyr.bias:
         weights, biases = conv_lyr.parameters()
     else:
-        weights, = conv_lyr.parameters()
+        (weights,) = conv_lyr.parameters()
         biases = torch.zeros(conv_lyr.out_channels)
 
     # - Scaling of weights, biases, thresholds and neuron states
@@ -100,8 +101,12 @@ def _discretize_conv_spk_(conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLay
     # Scale weights, biases and thresholds with common scaling factor and discretize
     weights.data = discretize_tensor(weights, scaling, to_int=to_int)
     biases.data = discretize_tensor(biases, scaling, to_int=to_int)
-    spike_lyr.threshold_low, spike_lyr.threshold = discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
-    spike_lyr.membrane_subtract = discretize_scalar(spike_lyr.membrane_subtract, scaling)
+    spike_lyr.threshold_low, spike_lyr.threshold = (
+        discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+    )
+    spike_lyr.membrane_subtract = discretize_scalar(
+        spike_lyr.membrane_subtract, scaling
+    )
 
     return conv_lyr, spike_lyr
 
@@ -113,7 +118,7 @@ def _discretize_SC2D_(layer: sl.TorchLayer, to_int: bool):
     if layer.bias:
         weights, biases = layer.parameters()
     else:
-        weights, = layer.parameters()
+        (weights,) = layer.parameters()
         biases = torch.zeros(layer.channels_out)
 
     # - Scaling of weights, biases, thresholds and neuron states
@@ -135,7 +140,9 @@ def _discretize_SC2D_(layer: sl.TorchLayer, to_int: bool):
     # Scale weights, biases and thresholds with common scaling factor and discretize
     weights.data = discretize_tensor(weights, scaling, to_int=to_int)
     biases.data = discretize_tensor(biases, scaling, to_int=to_int)
-    layer.threshold_low, layer.threshold = discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+    layer.threshold_low, layer.threshold = (
+        discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+    )
     layer.membrane_subtract = discretize_scalar(layer.membrane_subtract, scaling)
     layer.membrane_reset = discretize_scalar(layer.membrane_reset, scaling)
 
@@ -171,7 +178,9 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     return scaling
 
 
-def discretize_tensor(obj: torch.Tensor, scaling: float, to_int: bool = True) -> torch.Tensor:
+def discretize_tensor(
+    obj: torch.Tensor, scaling: float, to_int: bool = True
+) -> torch.Tensor:
     """
     discretize_tensor - Scale a torch.Tensor and cast it to discrete integer values
     :param obj:         torch.Tensor that is to be discretized
