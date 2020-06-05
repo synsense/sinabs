@@ -49,19 +49,12 @@ class SmartDoorClassifier(nn.Module):
         return self.seq(x)
 
 
-def test_uninitialized_network():
-    # of an uninitialized network
-    cnn = SmartDoorClassifier()
-    snn = from_model(cnn)
-
-    speck_config = to_speck_config(snn)
-
-
 def test_initialized_network():
-    cnn = SmartDoorClassifier()
+    input_shape = (4, 64, 64)
+    cnn = SmartDoorClassifier(n_channels_in=input_shape[0])
     snn = from_model(cnn)
 
-    input = torch.rand((1, 2, 64, 64))
+    input = torch.rand((1, *input_shape))
     snn(input)  # forward pass
-    
-    speck_config = to_speck_config(snn)
+
+    speck_config = to_speck_config(snn, input_shape=input_shape)

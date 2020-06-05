@@ -5,14 +5,10 @@ import sinabs.layers as sl
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
-import samna as sd
+import samna.speck as sd
 
 # import speckdemo as sd
 from .discretize import discretize_sl, discretize_conv_spike
-
-
-SPECK_WEIGHT_PRECISION_BITS = 8
-SPECK_STATE_PRECISION_BITS = 16
 
 
 def to_speck_config(
@@ -148,12 +144,13 @@ def spiking_conv2d_to_speck(
     # pprint(layer_config["dimensions"])
     # print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
     # print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
-    speck_layer.set_dimensions(**layer_config["dimensions"])
-    speck_layer.set_weights(layer_config["weights"])
-    speck_layer.set_biases(layer_config["biases"])
+    speck_layer.dimensions = layer_config["dimensions"]
+    speck_layer.weights = layer_config["weights"]
+    speck_layer.biases = layer_config["biases"]
     if layer_config["neurons_state"] is not None:
+        breakpoint()
         # print("Setting state:", layer_config["neurons_state"])
-        speck_layer.set_neurons_state(layer_config["neurons_state"])
+        speck_layer.neurons_initial_value = layer_config["neurons_state"]
     for param, value in layer_config["layer_params"].items():
         # print(f"Setting parameter {param}: {value}")
         setattr(speck_layer, param, value)
