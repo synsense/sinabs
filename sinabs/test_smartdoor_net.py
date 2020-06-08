@@ -18,15 +18,11 @@ class SmartDoorClassifier(nn.Module):
             nn.Conv2d(in_channels=n_channels_in, out_channels=8,
                       kernel_size=(3, 3), bias=False),
             nn.ReLU(),
-            sl.SumPooling2dLayer(
-                image_shape=(64, 64), pool_size=(2, 2), layer_name="pool1"
-            ),
+            nn.AvgPool2d(stride=2, kernel_size=2),
             nn.Conv2d(in_channels=8, out_channels=12,
                       kernel_size=(3, 3), bias=False),
             nn.ReLU(),
-            sl.SumPooling2dLayer(
-                image_shape=(64, 64), pool_size=(2, 2), layer_name="pool1"
-            ),
+            nn.AvgPool2d(stride=2, kernel_size=2),
             nn.Conv2d(in_channels=12, out_channels=12,
                       kernel_size=(3, 3), bias=False),
             nn.ReLU(),
@@ -49,12 +45,12 @@ class SmartDoorClassifier(nn.Module):
         return self.seq(x)
 
 
-def test_initialized_network():
-    input_shape = (4, 64, 64)
-    cnn = SmartDoorClassifier(n_channels_in=input_shape[0])
-    snn = from_model(cnn)
+input_shape = (4, 64, 64)
+cnn = SmartDoorClassifier(n_channels_in=input_shape[0])
+snn = from_model(cnn)
 
-    input = torch.rand((1, *input_shape))
-    snn(input)  # forward pass
+input = torch.rand((1, *input_shape)) * 1000
+snn_out = snn(input)  # forward pass
 
-    speck_config = SpeckCompatibleNetwork(snn, input_shape=input_shape).get_config()
+speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape)
+speck_out = speck_net(input)

@@ -8,7 +8,7 @@ from typing import Dict, Tuple, Union, Optional
 import samna.speck as sd
 
 # import speckdemo as sd
-from .discretize import discretize_sl, discretize_conv_spike
+from .SpeckLayer import SpeckLayer
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -23,6 +23,8 @@ class SpeckCompatibleNetwork(nn.Module):
 
         :param snn: sinabs.Network or sinabs.layers.TorchLayer instance
         """
+        super().__init__()
+
         config = sd.configuration.SpeckConfiguration()
 
         # TODO: Currently only spiking seq. models are supported
@@ -30,6 +32,8 @@ class SpeckCompatibleNetwork(nn.Module):
             layers = list(snn.spiking_model.seq)
         except AttributeError:
             raise ValueError("`snn` must contain a sequential spiking model.")
+
+        compatible_layers = []
 
         i_layer = 0
         i_layer_speck = 0
@@ -58,7 +62,6 @@ class SpeckCompatibleNetwork(nn.Module):
             if isinstance(lyr_curr, nn.Conv2d):
                 # Object representing Speck layer
                 speck_layer = config.cnn_layers[i_layer_speck]
-                # print(f"Setting up speck layer {i_layer_speck}")
 
                 # Next layer needs to be spiking
                 lyr_next = layers[i_layer + 1]
@@ -68,14 +71,18 @@ class SpeckCompatibleNetwork(nn.Module):
                     )
 
                 # Extract configuration specs from layer objects and update Speck config
-                input_shape = self.spiking_conv2d_to_speck(
-                    input_shape, lyr_curr, lyr_next, speck_layer
-                )
+                # input_shape = self.spiking_conv2d_to_speck(
+                #     input_shape, lyr_curr, lyr_next, speck_layer
+                # )
 
                 # - Consolidate pooling from subsequent layers
                 pooling, input_shape, i_next = self.consolidate_pooling(
                     layers[i_layer + 2 :], input_shape
                 )
+
+                compatible_object = SpeckLayer(conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape)
+                compatible_layers.append(compatible_object)
+                input_shape = self.write_speck_config(input_shape, compatible_object.config_dict, speck_layer)
 
                 # - Destination for CNN layer... make sure that is cnn or sum pooling?
 
@@ -109,6 +116,10 @@ class SpeckCompatibleNetwork(nn.Module):
                 dvs = config.dvs_layer
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
                 dvs.pooling.y, dvs.pooling.x = pooling
+                compatible_layers.append(
+                    nn.AvgPool2d(kernel_size=pooling, stride=pooling)
+                )
+
                 if i_next is not None:
                     dvs.destinations[0].layer = i_layer_speck
                     dvs.destinations[0].enable = True
@@ -128,44 +139,45 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # print("Finished configuration of Speck.")
 
-        self.config = config
+        self._config = config
+        self.sequence = nn.Sequential(*compatible_layers)
 
-    def get_config(self):
-        return self.config
+    @property
+    def config(self):
+        return self._config
 
-    def spiking_conv2d_to_speck(
+    def forward(self, x):
+        return self.sequence(x)
+
+    def write_speck_config(
         self,
         input_shape: dict,
-        conv_lyr: nn.Conv2d,
-        spike_lyr: sl.iaf_bptt.SpikingLayer,
+        config_dict: dict,
         speck_layer,  #: sd.configuration.CNNLayerConfig,
     ) -> Tuple[int]:
-
-        # Extract configuration specs from layer object
-        layer_config = self.spiking_conv2d_to_dict(conv_lyr, spike_lyr, input_shape)
-
         # Update configuration of the Speck layer
         # print("Setting dimensions:")
         # pprint(layer_config["dimensions"])
         # print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
         # print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
-        speck_layer.dimensions = layer_config["dimensions"]
-        speck_layer.weights = layer_config["weights"]
-        speck_layer.biases = layer_config["biases"]
-        if layer_config["neurons_state"] is not None:
-            breakpoint()
+        speck_layer.dimensions = config_dict["dimensions"]
+        speck_layer.weights = config_dict["weights"]
+        speck_layer.biases = config_dict["biases"]
+        if config_dict["neurons_state"] is not None:
+            pass
             # print("Setting state:", layer_config["neurons_state"])
-            speck_layer.neurons_initial_value = layer_config["neurons_state"]
-        for param, value in layer_config["layer_params"].items():
+            # TODO unclear why error
+            # speck_layer.neurons_initial_value = layer_config["neurons_state"]
+        for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")
             setattr(speck_layer, param, value)
 
         # Output shape with given input
-        dimensions = layer_config["dimensions"]
+        dimensions = config_dict["dimensions"]
         output_shape = (
             dimensions["output_feature_count"],
-            dimensions["output_shape_y"],
-            dimensions["output_shape_x"],
+            dimensions["output_size_y"],
+            dimensions["output_size_x"],
         )
         print("Output shape:", output_shape)
         return output_shape
@@ -191,9 +203,7 @@ class SpeckCompatibleNetwork(nn.Module):
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):
                 # Update pooling size
-                new_pooling, input_shape = self.get_sumpool2d_pooling_size(
-                    lyr, input_shape, dvs=dvs
-                )
+                new_pooling, input_shape = self.get_pooling_size(lyr, input_shape, dvs=dvs)
                 if dvs:
                     pooling[0] *= new_pooling[0]
                     pooling[1] *= new_pooling[1]
@@ -209,7 +219,7 @@ class SpeckCompatibleNetwork(nn.Module):
         # print("Output shape:", input_shape)
         return pooling, input_shape, None
 
-    def get_sumpool2d_pooling_size(
+    def get_pooling_size(
         self, layer: nn.AvgPool2d, input_shape: Tuple[int], dvs: bool = True
     ) -> Union[int, Tuple[int]]:
         """
@@ -260,112 +270,112 @@ class SpeckCompatibleNetwork(nn.Module):
             # TODO: infer_output_shape does not work with discretized
             return pooling, infer_output_shape(layer, input_shape)
 
-    def spiking_conv2d_to_dict(
-        self, conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, input_shape: dict
-    ):
-        # - Discretize layers
-        conv_lyr, spike_lyr = discretize_conv_spike(conv_lyr, spike_lyr, to_int=False)
+    # def spiking_conv2d_to_dict(
+    #     self, conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, input_shape: dict
+    # ):
+    #     # - Discretize layers
+    #     conv_lyr, spike_lyr = discretize_conv_spike(conv_lyr, spike_lyr, to_int=False)
+    #
+    #     # - Extract configuration info
+    #     config = self.conv2d_to_dict(conv_lyr)
+    #     config.update(self.spiking_to_dict(spike_lyr))
+    #     config["layer_params"]["leak_enable"] = config.pop("leak_enable")
+    #
+    #     # - Input and output shapes
+    #     conv2d_shape_out = infer_output_shape(conv_lyr, input_shape)
+    #     spiking_shape_out = spike_lyr.get_output_shape(conv2d_shape_out)
+    #
+    #     dimensions = config["dimensions"]
+    #     dimensions["channel_count"] = input_shape[0]
+    #     dimensions["input_shape_y"] = input_shape[1]
+    #     dimensions["input_shape_x"] = input_shape[2]
+    #
+    #     dimensions["output_feature_count"] = spiking_shape_out[0]
+    #     dimensions["output_shape_y"] = spiking_shape_out[1]
+    #     dimensions["output_shape_x"] = spiking_shape_out[2]
+    #
+    #     return config
+    #
+    # def conv2d_to_dict(self, layer: nn.Conv2d) -> Dict:
+    #     """
+    #     conv2d_to_dict - Extract a dict with parameters from a `Conv2dLayer`
+    #                      so that they can be written to a Speck configuration.
+    #     :param layer:    Conv2dLayer whose parameters should be extracted
+    #     :return:
+    #         Dict    Parameters of `layer`
+    #     """
+    #     # - Layer dimension parameters
+    #     dimensions = dict()
+    #
+    #     # - Padding
+    #     dimensions["padding_y"], dimensions["padding_x"] = layer.padding
+    #
+    #     # - Stride
+    #     dimensions["stride_y"], dimensions["stride_x"] = layer.stride
+    #
+    #     # - Kernel size
+    #     dimensions["kernel_size"] = layer.kernel_size[0]
+    #     if dimensions["kernel_size"] != layer.kernel_size[1]:
+    #         raise ValueError(
+    #             f"SpikingConv2dLayer `{layer.layer_name}` Kernel must have same height and width."
+    #         )
+    #
+    #     # TODO: Is dilation supported??
+    #
+    #     # - Weights and biases
+    #     if layer.bias:
+    #         weights, biases = layer.parameters()
+    #         biases = biases.int().tolist()
+    #         leak_enable = True
+    #     else:
+    #         (weights,) = layer.parameters()
+    #         biases = [0 for _ in range(layer.out_channels)]
+    #         leak_enable = False
+    #     # TODO: Is transposing weights still necessary?
+    #     # Transpose last two dimensions of weights to match cortexcontrol
+    #     weights = weights.transpose(2, 3)
+    #     weights = weights.int().tolist()
+    #
+    #     return {
+    #         "dimensions": dimensions,
+    #         "weights": weights,
+    #         "biases": biases,
+    #         "leak_enable": leak_enable,
+    #     }
 
-        # - Extract configuration info
-        config = self.conv2d_to_dict(conv_lyr)
-        config.update(self.spiking_to_dict(spike_lyr))
-        config["layer_params"]["leak_enable"] = config.pop("leak_enable")
-
-        # - Input and output shapes
-        conv2d_shape_out = infer_output_shape(conv_lyr, input_shape)
-        spiking_shape_out = spike_lyr.get_output_shape(conv2d_shape_out)
-
-        dimensions = config["dimensions"]
-        dimensions["channel_count"] = input_shape[0]
-        dimensions["input_shape_y"] = input_shape[1]
-        dimensions["input_shape_x"] = input_shape[2]
-
-        dimensions["output_feature_count"] = spiking_shape_out[0]
-        dimensions["output_shape_y"] = spiking_shape_out[1]
-        dimensions["output_shape_x"] = spiking_shape_out[2]
-
-        return config
-
-    def conv2d_to_dict(self, layer: nn.Conv2d) -> Dict:
-        """
-        conv2d_to_dict - Extract a dict with parameters from a `Conv2dLayer`
-                         so that they can be written to a Speck configuration.
-        :param layer:    Conv2dLayer whose parameters should be extracted
-        :return:
-            Dict    Parameters of `layer`
-        """
-        # - Layer dimension parameters
-        dimensions = dict()
-
-        # - Padding
-        dimensions["padding_y"], dimensions["padding_x"] = layer.padding
-
-        # - Stride
-        dimensions["stride_y"], dimensions["stride_x"] = layer.stride
-
-        # - Kernel size
-        dimensions["kernel_size"] = layer.kernel_size[0]
-        if dimensions["kernel_size"] != layer.kernel_size[1]:
-            raise ValueError(
-                f"SpikingConv2dLayer `{layer.layer_name}` Kernel must have same height and width."
-            )
-
-        # TODO: Is dilation supported??
-
-        # - Weights and biases
-        if layer.bias:
-            weights, biases = layer.parameters()
-            biases = biases.int().tolist()
-            leak_enable = True
-        else:
-            (weights,) = layer.parameters()
-            biases = [0 for _ in range(layer.out_channels)]
-            leak_enable = False
-        # TODO: Is transposing weights still necessary?
-        # Transpose last two dimensions of weights to match cortexcontrol
-        weights = weights.transpose(2, 3)
-        weights = weights.int().tolist()
-
-        return {
-            "dimensions": dimensions,
-            "weights": weights,
-            "biases": biases,
-            "leak_enable": leak_enable,
-        }
-
-    def spiking_to_dict(self, layer: sl.iaf_bptt.SpikingLayer) -> Dict:
-        """
-        spiking_to_dict - Extract a dict with parameters from a `SpikingLayer`
-                          so that they can be written to a Speck configuration.
-        :param layer:   SpikingLayer whose parameters should be extracted
-        :return:
-            Dict    Parameters of `layer`
-        """
-        layer = discretize_sl(layer)
-
-        # - Neuron states
-        if layer.state is None or len(layer.state.shape) == 1:
-            neurons_state = None
-        else:
-            # TODO: Is this still necessary?
-            neurons_state = layer.state.transpose(2, 3).int().tolist()
-
-        # - Warn if membrane_subtract does not match threshold
-        if layer.membrane_subtract != layer.threshold:
-            warn(
-                f"SpikingLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
-            )
-
-        layer_params = dict(
-            threshold_high=layer.threshold,
-            threshold_low=layer.threshold_low,
-            monitor_enable=False,  # Yes or no?
-        )
-
-        return {
-            "layer_params": layer_params,
-            "neurons_state": neurons_state,
-        }
+    # def spiking_to_dict(self, layer: sl.iaf_bptt.SpikingLayer) -> Dict:
+    #     """
+    #     spiking_to_dict - Extract a dict with parameters from a `SpikingLayer`
+    #                       so that they can be written to a Speck configuration.
+    #     :param layer:   SpikingLayer whose parameters should be extracted
+    #     :return:
+    #         Dict    Parameters of `layer`
+    #     """
+    #     layer = discretize_sl(layer)
+    #
+    #     # - Neuron states
+    #     if layer.state is None or len(layer.state.shape) == 1:
+    #         neurons_state = None
+    #     else:
+    #         # TODO: Is this still necessary?
+    #         neurons_state = layer.state.transpose(2, 3).int().tolist()
+    #
+    #     # - Warn if membrane_subtract does not match threshold
+    #     if layer.membrane_subtract != layer.threshold:
+    #         warn(
+    #             f"SpikingLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+    #         )
+    #
+    #     layer_params = dict(
+    #         threshold_high=layer.threshold,
+    #         threshold_low=layer.threshold_low,
+    #         monitor_enable=False,  # Yes or no?
+    #     )
+    #
+    #     return {
+    #         "layer_params": layer_params,
+    #         "neurons_state": neurons_state,
+    #     }
 
 
 # def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
