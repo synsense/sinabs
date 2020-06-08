@@ -1,7 +1,12 @@
+import samna
+# this is necessary as a workaround because of a problem
+# that occurs when samna is imported after torch
+
 from torch import nn
+import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
-from backend.Speck import tospeck
+from backend.Speck.tospeck import SpeckCompatibleNetwork
 
 
 class SmartDoorClassifier(nn.Module):
@@ -49,4 +54,10 @@ class SmartDoorClassifier(nn.Module):
 sdc = SmartDoorClassifier()
 snn = from_model(sdc)
 
-tospeck.to_speck_config(snn, input_shape=(2, 100, 100))
+# at the moment, a forward pass is needed
+input_shape = (2, 64, 64)
+input = torch.rand((1, *input_shape)) * 1000
+snn_out = snn(input)  # forward pass
+
+speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape)
+speck_out = speck_net(input)
