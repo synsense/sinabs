@@ -2,7 +2,7 @@ import samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after other libraries
 
-from sinabs.backend.Speck import to_speck_config
+from sinabs.backend.Speck import SpeckCompatibleNetwork
 from torch import nn
 from sinabs.from_torch import from_model
 import sinabs.layers as sl
@@ -57,4 +57,4 @@ def test_initialized_network():
     input = torch.rand((1, *input_shape))
     snn(input)  # forward pass
 
-    speck_config = to_speck_config(snn, input_shape=input_shape)
+    speck_config = SpeckCompatibleNetwork(snn, input_shape=input_shape).get_config()
