@@ -6,8 +6,6 @@ import sinabs
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
-from samna.speck.configuration import SpeckConfiguration
-
 # import speckdemo as sd
 from .SpeckLayer import SpeckLayer
 
@@ -33,9 +31,6 @@ class SpeckCompatibleNetwork(nn.Module):
         """
         super().__init__()
 
-
-        self.config = SpeckConfiguration()
-
         # this holds the SpeckLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = []
@@ -52,17 +47,14 @@ class SpeckCompatibleNetwork(nn.Module):
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
             input_shape = layers[0].output_shape
+            self.compatible_layers.append(layers[0])
             i_layer += 1
         elif input_shape is None:
             raise ValueError(
                 "`input_shape` must be provided if first layer is not `InputLayer`."
             )
-        if dvs_input:
-            # - Cut DVS output to match output shape of `lyr_curr`
-            dvs = self.config.dvs_layer
-            dvs.cut.y = input_shape[1]
-            dvs.cut.x = input_shape[2]
-            # TODO: How to deal with feature count?
+        self._dvs_input = dvs_input
+        self._external_input_shape = input_shape
 
         # - Iterate over layers from model
         while i_layer < len(layers):
@@ -89,18 +81,14 @@ class SpeckCompatibleNetwork(nn.Module):
                 # This case can only happen when `layers` starts with a pooling layer, or
                 # input layer because all other pooling layers should get consolidated.
                 # Assume that input comes from DVS.
+                # TODO test
 
-                # Object representing Speck DVS
-                dvs = self.config.dvs_layer
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
-                dvs.pooling.y, dvs.pooling.x = pooling
                 self.compatible_layers.append(
                     nn.AvgPool2d(kernel_size=pooling, stride=pooling)
                 )
 
                 if i_next is not None:
-                    dvs.destinations[0].layer = i_layer_speck
-                    dvs.destinations[0].enable = True
                     i_layer += i_next
                 else:
                     break
@@ -128,12 +116,56 @@ class SpeckCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
+    def make_config(self, speck_layers_ordering=range(9)):
+        from samna.speck.configuration import SpeckConfiguration
+
+        config = SpeckConfiguration()
+
+        if self._dvs_input:
+            # - Cut DVS output to match output shape of `lyr_curr`
+            dvs = config.dvs_layer
+            dvs.cut.y = self._external_input_shape[1]
+            dvs.cut.x = self._external_input_shape[2]
+            # TODO: How to deal with feature count?
+
+        i_layer_speck = 0
+        for i, speck_equivalent_layer in enumerate(self.sequence):
+            # happens when the network starts with pooling
+            if isinstance(speck_equivalent_layer, nn.AvgPool2d):
+                # Object representing Speck DVS
+                dvs = config.dvs_layer
+                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
+                dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
+                dvs.destinations[0].enable = True
+
+            elif isinstance(speck_equivalent_layer, SpeckLayer):
+                # Object representing Speck layer
+                speck_layer = config.cnn_layers[speck_layers_ordering[i_layer_speck]]
+                # read the configuration dictionary from SpeckLayer
+                # and write it to the speck configuration object
+                self.write_speck_config(speck_equivalent_layer.config_dict, speck_layer)
+
+                # For now: Sequential model, second destination always disabled
+                speck_layer.destinations[1].enable = False
+
+                if i == len(self.sequence) - 1:
+                    # last layer
+                    speck_layer.destinations[0].enable = False
+                else:
+                    # Set destination layer
+                    speck_layer.destinations[0].layer = speck_layers_ordering[i_layer_speck + 1]
+                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[0].enable = True
+
+                i_layer_speck += 1
+            else:
+                # in our generated network there is a spurious layer...
+                # should never happen
+                raise TypeError("Unexpected layer in generated network")
+        return config
+
     def _handle_conv2d_layer(self, layers, input_shape, i_layer_speck):
-
         lyr_curr = layers[0]
-
-        # Object representing Speck layer
-        speck_layer = self.config.cnn_layers[i_layer_speck]
 
         # Next layer needs to be spiking
         try:
@@ -154,29 +186,15 @@ class SpeckCompatibleNetwork(nn.Module):
         compatible_object = SpeckLayer(conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape)
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
-        # read the configuration dictionary from SpeckLayer and move it to speck config
-        input_shape = self.write_speck_config(input_shape, compatible_object.config_dict, speck_layer)
+        output_shape = compatible_object.output_shape
 
-        # For now: Sequential model, second destination always disabled
-        speck_layer.destinations[1].enable = False
-
-        if i_next is not None:
-            # Set destination layer
-            speck_layer.destinations[0].layer = i_layer_speck + 1
-            speck_layer.destinations[0].pooling = pooling
-            speck_layer.destinations[0].enable = True
-
-        else:
-            speck_layer.destinations[0].enable = False
-
-        return i_next, input_shape
+        return i_next, output_shape
 
     def forward(self, x):
         return self.sequence(x)
 
     def write_speck_config(
         self,
-        input_shape: dict,
         config_dict: dict,
         speck_layer,  #: sd.configuration.CNNLayerConfig,
     ) -> Tuple[int]:

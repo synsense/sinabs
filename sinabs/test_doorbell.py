@@ -1,4 +1,5 @@
 import samna
+samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
 
@@ -61,3 +62,4 @@ snn_out = snn(input)  # forward pass
 
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape)
 speck_out = speck_net(input)
+speck_config = speck_net.make_config(speck_layers_ordering=[8, 5, 4, 1, 3])
