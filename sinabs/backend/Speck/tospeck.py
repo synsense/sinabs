@@ -2,10 +2,11 @@ from warnings import warn
 
 import torch.nn as nn
 import sinabs.layers as sl
+import sinabs
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
-import samna.speck as sd
+from samna.speck.configuration import SpeckConfiguration
 
 # import speckdemo as sd
 from .SpeckLayer import SpeckLayer
@@ -14,19 +15,29 @@ from .SpeckLayer import SpeckLayer
 class SpeckCompatibleNetwork(nn.Module):
     def __init__(
         self,
-        snn: Union[nn.Module, sl.TorchLayer],
+        snn: Union[nn.Module, sinabs.Network],
         input_shape: Optional[Tuple[int]] = None,
         dvs_input: bool = True,
     ) -> Dict:
         """
-        Build a configuration object of a given module
+        Given a sinabs spiking network, prepare a speck-compatible network.
+        In particular, the following will be done:
+        - multiple pooling layers in a row will be consolidated into one
+        - checks are performed on layer hyperparameter compatibility with speck
+        - checks are performed on network structure compatibility with speck
+        - linear layers are turned into convolutional layers
+        - dropout layers are ignored
+        - weights, biases and thresholds are discretized according to speck requirements
 
-        :param snn: sinabs.Network or sinabs.layers.TorchLayer instance
+        :param snn: sinabs.Network or torch.nn.Module instance
         """
         super().__init__()
 
-        self.config = sd.configuration.SpeckConfiguration()
 
+        self.config = SpeckConfiguration()
+
+        # this holds the SpeckLayer objects which can be used for testing
+        # and also deal with single-layer-level configuration issues
         self.compatible_layers = []
 
         # TODO: Currently only spiking seq. models are supported
@@ -60,7 +71,7 @@ class SpeckCompatibleNetwork(nn.Module):
             lyr_curr = layers[i_layer]
 
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
-                # Object representing Speck layer
+                # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape = self._handle_conv2d_layer(
                     layers[i_layer:], input_shape, i_layer_speck,
                 )
@@ -94,19 +105,9 @@ class SpeckCompatibleNetwork(nn.Module):
                 else:
                     break
 
-            elif isinstance(lyr_curr, nn.Dropout2d):
-                # - Ignore dropout layers
+            elif isinstance(lyr_curr, (nn.Dropout2d, nn.Flatten)):
+                # - Ignore dropout and flatten layers
                 i_layer += 1
-
-            elif isinstance(lyr_curr, nn.Flatten):
-                # input_shape = infer_output_shape(lyr_curr, input_shape)
-                # if len(input_shape) < 3:
-                #     # - Fill shape with 1's to match expected dimensions
-                #     input_shape += (3 - len(input_shape)) * (1,)
-                i_layer += 1
-
-                # if i_layer == len(layers):
-                #     raise TypeError("Final layer cannot be of type `Flatten`")
 
             elif isinstance(lyr_curr, sl.InputLayer):
                 raise TypeError(f"Only first layer can be of type {type(lyr_curr)}.")
@@ -144,16 +145,16 @@ class SpeckCompatibleNetwork(nn.Module):
         if reached_end or not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
             raise TypeError("Convolutional layer must be followed by spiking layer.")
 
-        # Extract configuration specs from layer objects and update Speck config
-        # input_shape = self.spiking_conv2d_to_speck(
-        #     input_shape, lyr_curr, lyr_next, speck_layer
-        # )
-
         # - Consolidate pooling from subsequent layers
+        # TODO is the input_shape calculation needed here?
         pooling, _, i_next = self.consolidate_pooling(layers[2:], input_shape)
 
+        # The SpeckLayer object knows how to turn the conv-spk-pool trio to
+        # a speck layer, and has a forward method, and computes the output shape
         compatible_object = SpeckLayer(conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape)
+        # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
+        # read the configuration dictionary from SpeckLayer and move it to speck config
         input_shape = self.write_speck_config(input_shape, compatible_object.config_dict, speck_layer)
 
         # For now: Sequential model, second destination always disabled
@@ -171,10 +172,7 @@ class SpeckCompatibleNetwork(nn.Module):
         return i_next, input_shape
 
     def forward(self, x):
-        for l in self.sequence:
-            print(x.shape)
-            x = l(x)
-        return x
+        return self.sequence(x)
 
     def write_speck_config(
         self,
