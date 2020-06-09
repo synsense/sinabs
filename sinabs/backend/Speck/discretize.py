@@ -9,13 +9,23 @@ SPECK_WEIGHT_PRECISION_BITS = 8
 SPECK_STATE_PRECISION_BITS = 16
 
 
+def copy_spiking_lyr(layer):
+    return sl.SpikingLayerBPTT(
+        threshold=layer.threshold,
+        threshold_low=layer.threshold_low,
+        membrane_subtract=layer.membrane_subtract,
+        layer_name=layer.layer_name + "_discrete",
+        negative_spikes=layer.negative_spikes,
+        batch_size=layer.batch_size,
+    )
+
+
 def discretize_conv_spike(
     conv_lyr: nn.Conv2d, spike_lyr: sl.iaf_bptt.SpikingLayer, to_int: bool = True,
 ) -> (nn.Conv2d, sl.iaf_bptt.SpikingLayer):
-    # conv_lyr_copy = deepcopy(conv_lyr)
-    # spike_lyr_copy = deepcopy(spike_lyr)
-    # return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
-    return discretize_conv_spike_(conv_lyr, spike_lyr, to_int=to_int)
+    conv_lyr_copy = deepcopy(conv_lyr)
+    spike_lyr_copy = copy_spiking_lyr(spike_lyr)
+    return discretize_conv_spike_(conv_lyr_copy, spike_lyr_copy, to_int=to_int)
 
 
 def discretize_conv_spike_(
@@ -39,9 +49,15 @@ def discretize_sl(
     :param snn:  The model or layer that is to be discretized
     :param to_int: If False, round the values, but don't cast to Int. (Default True).
     """
-    # model_copy = deepcopy(snn)
-    # return discretize_sl_(model_copy, to_int=to_int)
-    return discretize_sl_(snn, to_int=to_int)
+    try:
+        model_copy = deepcopy(snn)
+    except RuntimeError:
+        raise NotImplementedError(
+            "Some sinabs object can currently not be copied. You may run "
+            "`discretize_sl_` instead, to discretize the original model instead "
+            "of a copy."
+        )
+    return discretize_sl_(model_copy, to_int=to_int)
 
 
 def discretize_sl_(
