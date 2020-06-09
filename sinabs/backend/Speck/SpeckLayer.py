@@ -1,13 +1,28 @@
 import torch
 from torch import nn
+import torch.functional as F
 from typing import Dict
 import sinabs.layers as sl
 from warnings import warn
 from .discretize import discretize_conv_spike
 
 
+class SumPool2d(nn.Module):
+    def __init__(self, size):
+        super().__init__()
+        self.size = size
+        if isinstance(size, int):
+            self.factor = size
+        else:
+            self.factor = size[0] * size[1]
+
+    def forward(self, input):
+        return self.factor * F.avg_pool2d(input, kernel_size=self.size, stride=self.size)
+
+
 class SpeckLayer(nn.Module):
-    def __init__(self, conv, pool, spk, in_shape, discretize=True):
+    def __init__(self, conv, pool, spk,
+                 in_shape, discretize=True, rescale_parameters=1):
         super().__init__()
 
         self.config_dict = {}
@@ -165,7 +180,7 @@ class SpeckLayer(nn.Module):
 
     def pool(self, pool):
         if pool is not None and pool > 1:
-            self._pool_layer = nn.AvgPool2d(kernel_size=pool, stride=pool)
+            self._pool_layer = SumPool2d(size=pool)
             self.config_dict["Pooling"] = pool
         else:
             self._pool_layer = None

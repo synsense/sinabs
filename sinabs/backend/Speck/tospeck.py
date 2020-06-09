@@ -6,7 +6,7 @@ except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
     SAMNA_AVAILABLE = True
-from .SpeckLayer import SpeckLayer
+from .SpeckLayer import SpeckLayer, SumPool2d
 
 import torch.nn as nn
 import torch
@@ -47,7 +47,11 @@ class SpeckCompatibleNetwork(nn.Module):
         except AttributeError:
             raise ValueError("`snn` must contain a sequential spiking model.")
 
+        # index that goes over the layers of the input network
         i_layer = 0
+        # used to carry pooling info to next conv, to rescale weights due to
+        # the difference between sum and average pooling
+        rescaling_from_pooling = 1
 
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
@@ -69,8 +73,8 @@ class SpeckCompatibleNetwork(nn.Module):
 
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
                 # Linear and Conv layers are dealt with in the same way.
-                i_next, input_shape = self._handle_conv2d_layer(
-                    layers[i_layer:], input_shape,
+                i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
+                    layers[i_layer:], input_shape, rescaling_from_pooling
                 )
 
                 if i_next is None:
@@ -83,9 +87,8 @@ class SpeckCompatibleNetwork(nn.Module):
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
-                self.compatible_layers.append(
-                    nn.AvgPool2d(kernel_size=pooling, stride=pooling)
-                )
+                self.compatible_layers.append(SumPool2d(size=pooling))
+                rescaling_from_pooling = pooling[0] * pooling[1]
 
                 if i_next is not None:
                     i_layer += i_next
@@ -160,9 +163,7 @@ class SpeckCompatibleNetwork(nn.Module):
                     speck_layer.destinations[0].layer = speck_layers_ordering[
                         i_layer_speck + 1
                     ]
-                    speck_layer.destinations[
-                        0
-                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
                 i_layer_speck += 1
@@ -172,7 +173,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 raise TypeError("Unexpected layer in generated network")
         return config
 
-    def _handle_conv2d_layer(self, layers, input_shape):
+    def _handle_conv2d_layer(self, layers, input_shape, rescaling_from_pooling):
         lyr_curr = layers[0]
 
         # Next layer needs to be spiking
@@ -193,12 +194,15 @@ class SpeckCompatibleNetwork(nn.Module):
         compatible_object = SpeckLayer(
             conv=lyr_curr, spk=lyr_next, pool=pooling,
             in_shape=input_shape, discretize=self._discretize,
+            rescale_parameters=rescaling_from_pooling,
         )
+        # the previous rescaling has been used, the new one is used in the next layer
+        rescaling_from_pooling = pooling
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
         output_shape = compatible_object.output_shape
 
-        return i_next, output_shape
+        return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x):
         self.eval()
