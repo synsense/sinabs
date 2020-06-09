@@ -1,10 +1,11 @@
 import torch
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 from typing import Dict
 import sinabs.layers as sl
 from warnings import warn
-from .discretize import discretize_conv_spike
+from .discretize import discretize_conv_spike_, copy_spiking_lyr
+from copy import deepcopy
 
 
 class SumPool2d(nn.Module):
@@ -12,7 +13,7 @@ class SumPool2d(nn.Module):
         super().__init__()
         self.size = size
         if isinstance(size, int):
-            self.factor = size
+            self.factor = size**2
         else:
             self.factor = size[0] * size[1]
 
@@ -21,8 +22,8 @@ class SumPool2d(nn.Module):
 
 
 class SpeckLayer(nn.Module):
-    def __init__(self, conv, pool, spk,
-                 in_shape, discretize=True, rescale_parameters=1):
+    def __init__(self, conv, pool, spk, in_shape,
+                 discretize=True, rescale_weights=1):
         super().__init__()
 
         self.config_dict = {}
@@ -30,10 +31,14 @@ class SpeckLayer(nn.Module):
 
         if isinstance(conv, nn.Linear):
             conv = self.convert_linear_to_conv(conv)
+        else:
+            conv = deepcopy(conv)
+        spk = copy_spiking_lyr(spk)
         if discretize:
             # int conversion is done while writing the config.
-            conv, spk = discretize_conv_spike(conv, spk, to_int=False)
-        self.conv(conv)
+            conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
+
+        self.conv(conv, rescale_weights=rescale_weights)
         self.pool(pool)
         self.spk(spk)
 
@@ -174,8 +179,10 @@ class SpeckLayer(nn.Module):
             "biases": biases.int().tolist(),
         }
 
-    def conv(self, conv):
+    def conv(self, conv, rescale_weights=1):
         self._conv_layer = conv
+        if rescale_weights != 1:
+            conv.weight.data = (conv.weight / rescale_weights).clone().detach()
         self.config_dict.update(self.conv2d_to_dict(conv))
 
     def pool(self, pool):

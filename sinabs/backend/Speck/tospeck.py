@@ -194,10 +194,10 @@ class SpeckCompatibleNetwork(nn.Module):
         compatible_object = SpeckLayer(
             conv=lyr_curr, spk=lyr_next, pool=pooling,
             in_shape=input_shape, discretize=self._discretize,
-            rescale_parameters=rescaling_from_pooling,
+            rescale_weights=rescaling_from_pooling,
         )
         # the previous rescaling has been used, the new one is used in the next layer
-        rescaling_from_pooling = pooling
+        rescaling_from_pooling = pooling**2
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
         output_shape = compatible_object.output_shape
