@@ -6,7 +6,13 @@ import sinabs
 from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
-# import speckdemo as sd
+try:
+    from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
+except (ImportError, ModuleNotFoundError):
+    SAMNA_AVAILABE = False
+else:
+    SAMNA_AVAILABE = True
+
 from .SpeckLayer import SpeckLayer
 
 
@@ -65,7 +71,7 @@ class SpeckCompatibleNetwork(nn.Module):
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape = self._handle_conv2d_layer(
-                    layers[i_layer:], input_shape, i_layer_speck,
+                    layers[i_layer:], input_shape,
                 )
 
                 if i_next is None:
@@ -78,10 +84,6 @@ class SpeckCompatibleNetwork(nn.Module):
                     i_layer_speck += 1
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
-                # This case can only happen when `layers` starts with a pooling layer, or
-                # input layer because all other pooling layers should get consolidated.
-                # Assume that input comes from DVS.
-                # TODO test
 
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
                 self.compatible_layers.append(
@@ -102,7 +104,8 @@ class SpeckCompatibleNetwork(nn.Module):
 
             elif isinstance(lyr_curr, sl.iaf_bptt.SpikingLayer):
                 raise TypeError(
-                    "`SpikingLayer` must be preceded by layer of type `Conv2d` or `Linear`."
+                    f" Layer of type {type(lyr_curr)} must be preceded by layer of "
+                    "type `Conv2d` or `Linear`."
                 )
 
             else:
@@ -117,9 +120,13 @@ class SpeckCompatibleNetwork(nn.Module):
         self.sequence = nn.Sequential(*self.compatible_layers)
 
     def make_config(self, speck_layers_ordering=range(9)):
-        from samna.speck.configuration import SpeckConfiguration
 
-        config = SpeckConfiguration()
+        try:
+            config = SpeckConfiguration()
+        except NameError:
+            raise RuntimeError(
+                "`samna` module has not been imported. Cannot write Speck configuration."
+            )
 
         if self._dvs_input:
             # - Cut DVS output to match output shape of `lyr_curr`
@@ -132,6 +139,10 @@ class SpeckCompatibleNetwork(nn.Module):
         for i, speck_equivalent_layer in enumerate(self.sequence):
             # happens when the network starts with pooling
             if isinstance(speck_equivalent_layer, nn.AvgPool2d):
+                # This case can only happen if `self.sequence` starts with a pooling layer
+                # or input layer because all other pooling layers should get consolidated.
+                # Therefore, assume that input comes from DVS.
+                # TODO test
                 # Object representing Speck DVS
                 dvs = config.dvs_layer
                 dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
@@ -153,8 +164,12 @@ class SpeckCompatibleNetwork(nn.Module):
                     speck_layer.destinations[0].enable = False
                 else:
                     # Set destination layer
-                    speck_layer.destinations[0].layer = speck_layers_ordering[i_layer_speck + 1]
-                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[0].layer = speck_layers_ordering[
+                        i_layer_speck + 1
+                    ]
+                    speck_layer.destinations[
+                        0
+                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
                 i_layer_speck += 1
@@ -164,7 +179,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 raise TypeError("Unexpected layer in generated network")
         return config
 
-    def _handle_conv2d_layer(self, layers, input_shape, i_layer_speck):
+    def _handle_conv2d_layer(self, layers, input_shape):
         lyr_curr = layers[0]
 
         # Next layer needs to be spiking
@@ -183,7 +198,9 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
-        compatible_object = SpeckLayer(conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape)
+        compatible_object = SpeckLayer(
+            conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape
+        )
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
         output_shape = compatible_object.output_shape
@@ -194,10 +211,8 @@ class SpeckCompatibleNetwork(nn.Module):
         return self.sequence(x)
 
     def write_speck_config(
-        self,
-        config_dict: dict,
-        speck_layer,  #: sd.configuration.CNNLayerConfig,
-    ) -> Tuple[int]:
+        self, config_dict: dict, speck_layer: "CNNLayerConfig",
+    ):  # -> Tuple[int]:
         # Update configuration of the Speck layer
         # print("Setting dimensions:")
         # pprint(layer_config["dimensions"])
@@ -215,15 +230,16 @@ class SpeckCompatibleNetwork(nn.Module):
             # print(f"Setting parameter {param}: {value}")
             setattr(speck_layer, param, value)
 
-        # Output shape with given input
-        dimensions = config_dict["dimensions"]
-        output_shape = (
-            dimensions["output_feature_count"],
-            dimensions["output_size_y"],
-            dimensions["output_size_x"],
-        )
-        print("Output shape:", output_shape)
-        return output_shape
+        # TODO: This is probably not necessary anymore:
+        # # Output shape with given input
+        # dimensions = config_dict["dimensions"]
+        # output_shape = (
+        #     dimensions["output_feature_count"],
+        #     dimensions["output_size_y"],
+        #     dimensions["output_size_x"],
+        # )
+        # print("Output shape:", output_shape)
+        # return output_shape
 
     def consolidate_pooling(
         self, layers, input_shape: Tuple[int], dvs: bool = False
@@ -246,7 +262,9 @@ class SpeckCompatibleNetwork(nn.Module):
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):
                 # Update pooling size
-                new_pooling, input_shape = self.get_pooling_size(lyr, input_shape, dvs=dvs)
+                new_pooling, input_shape = self.get_pooling_size(
+                    lyr, input_shape, dvs=dvs
+                )
                 if dvs:
                     pooling[0] *= new_pooling[0]
                     pooling[1] *= new_pooling[1]
