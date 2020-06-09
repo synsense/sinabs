@@ -21,6 +21,7 @@ class SpeckCompatibleNetwork(nn.Module):
         snn: Union[nn.Module, sinabs.Network],
         input_shape: Optional[Tuple[int]] = None,
         dvs_input: bool = True,
+        discretize: bool = True,
     ) -> Dict:
         """
         Given a sinabs spiking network, prepare a speck-compatible network.
@@ -59,6 +60,7 @@ class SpeckCompatibleNetwork(nn.Module):
             )
         self._dvs_input = dvs_input
         self._external_input_shape = input_shape
+        self._discretize = discretize
 
         # - Iterate over layers from model
         while i_layer < len(layers):
@@ -184,13 +186,13 @@ class SpeckCompatibleNetwork(nn.Module):
             raise TypeError("Convolutional layer must be followed by spiking layer.")
 
         # - Consolidate pooling from subsequent layers
-        # TODO is the input_shape calculation needed here?
         pooling, i_next = self.consolidate_pooling(layers[2:], dvs=False)
 
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
         compatible_object = SpeckLayer(
-            conv=lyr_curr, spk=lyr_next, pool=pooling, in_shape=input_shape
+            conv=lyr_curr, spk=lyr_next, pool=pooling,
+            in_shape=input_shape, discretize=self._discretize,
         )
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
@@ -262,7 +264,7 @@ class SpeckCompatibleNetwork(nn.Module):
         self, layer: nn.AvgPool2d, dvs: bool
     ) -> Union[int, Tuple[int]]:
         """
-        get_sumpool2d_pooling_size - Determine the pooling size of a `SumPooling2dLayer` object.
+        get_pooling_size - Determine the pooling size of a pooling object.
         :param layer:  `AvgPool2d` object
         :param dvs:    bool - If True, pooling does not need to be symmetric.
         :return:
@@ -308,7 +310,6 @@ class SpeckCompatibleNetwork(nn.Module):
                 raise ValueError(
                     f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
                 )
-            # TODO: infer_output_shape does not work with discretized
             return pooling
 
 
