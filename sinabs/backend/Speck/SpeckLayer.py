@@ -16,6 +16,7 @@ class SpeckLayer(nn.Module):
         if isinstance(conv, nn.Linear):
             conv = self.convert_linear_to_conv(conv)
         if discretize:
+            # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike(conv, spk, to_int=False)
         self.conv(conv)
         self.pool(pool)
@@ -75,14 +76,23 @@ class SpeckLayer(nn.Module):
     @staticmethod
     def spklayer_to_dict(layer: sl.SpikingLayer) -> Dict:
         # - Neuron states
-        if layer.state is not None:
-            if len(layer.state.shape) == 2:
-                # this happens when we had a linear layer turned to conv
-                layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
-                layer.activations = layer.activations.unsqueeze(-1).unsqueeze(-1)
+        if layer.state.dim() == 1:
+            # this should happen when the state is tensor([0.]), which is the
+            # Sinabs default for non-initialized networks. We check that and
+            # then we assign no initial neuron state to Speck.
+            assert len(layer.state) == 1
+            assert layer.state.item() == 0.
+            neurons_state = None
+        elif layer.state.dim() == 2:
+            # this happens when we had a linear layer turned to conv
+            layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
+            layer.activations = layer.activations.unsqueeze(-1).unsqueeze(-1)
+            neurons_state = layer.state.int().tolist()
+        elif layer.state.dim() == 4:
+            # 4-dimensional states should be the norm.
             neurons_state = layer.state.transpose(2, 3).int().tolist()
         else:
-            neurons_state = None
+            raise ValueError("Current state of spiking layer not understood.")
 
         # - Resetting vs returning to 0
         return_to_zero = layer.membrane_subtract is not None
@@ -159,21 +169,18 @@ class SpeckLayer(nn.Module):
             self.config_dict["Pooling"] = pool
         else:
             self._pool_layer = lambda x: x  # do nothing
-            self.config_dict["Pooling"] = 1  # check, is this ok for no pooling?
+            self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
 
     def spk(self, spk):
-        if spk is not None:
-            self._spk_layer = spk
-            self.config_dict.update(self.spklayer_to_dict(spk))
-        else:
-            self._spk_layer = nn.ReLU()  # TODO temporary
+        self._spk_layer = spk
+        self.config_dict.update(self.spklayer_to_dict(spk))
 
     def forward(self, x):
-        print("Input to Speck Layer", x.shape)
+        # print("Input to Speck Layer", x.shape)
         x = self._conv_layer(x)
-        print("After convolution", x.shape)
+        # print("After convolution", x.shape)
         x = self._spk_layer(x)
-        print("After spiking", x.shape)
+        # print("After spiking", x.shape)
         x = self._pool_layer(x)
-        print("After pooling", x.shape)
+        # print("After pooling", x.shape)
         return x
