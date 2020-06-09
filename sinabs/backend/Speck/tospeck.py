@@ -3,15 +3,14 @@ from warnings import warn
 import torch.nn as nn
 import sinabs.layers as sl
 import sinabs
-from sinabs.cnnutils import infer_output_shape
 from typing import Dict, Tuple, Union, Optional
 
 try:
     from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
 except (ImportError, ModuleNotFoundError):
-    SAMNA_AVAILABE = False
+    SAMNA_AVAILABLE = False
 else:
-    SAMNA_AVAILABE = True
+    SAMNA_AVAILABLE = True
 
 from .SpeckLayer import SpeckLayer
 
@@ -48,7 +47,6 @@ class SpeckCompatibleNetwork(nn.Module):
             raise ValueError("`snn` must contain a sequential spiking model.")
 
         i_layer = 0
-        i_layer_speck = 0
 
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
@@ -64,7 +62,6 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # - Iterate over layers from model
         while i_layer < len(layers):
-
             # Layer to be ported to Speck
             lyr_curr = layers[i_layer]
 
@@ -81,10 +78,8 @@ class SpeckCompatibleNetwork(nn.Module):
                     # Add 2 to i_layer to go to next layer, + i_next for number
                     # of consolidated pooling layers
                     i_layer += i_next + 2
-                    i_layer_speck += 1
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
-
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
                 self.compatible_layers.append(
                     nn.AvgPool2d(kernel_size=pooling, stride=pooling)
@@ -114,19 +109,15 @@ class SpeckCompatibleNetwork(nn.Module):
                 )
 
         # TODO: Does anything need to be done after iterating over layers?
-
         # print("Finished configuration of Speck.")
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
     def make_config(self, speck_layers_ordering=range(9)):
+        if not SAMNA_AVAILABLE:
+            raise ImportError("`samna` does not appear to be installed.")
 
-        try:
-            config = SpeckConfiguration()
-        except NameError:
-            raise RuntimeError(
-                "`samna` module has not been imported. Cannot write Speck configuration."
-            )
+        config = SpeckConfiguration()
 
         if self._dvs_input:
             # - Cut DVS output to match output shape of `lyr_curr`
@@ -194,7 +185,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # - Consolidate pooling from subsequent layers
         # TODO is the input_shape calculation needed here?
-        pooling, _, i_next = self.consolidate_pooling(layers[2:], input_shape)
+        pooling, i_next = self.consolidate_pooling(layers[2:], dvs=False)
 
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
@@ -230,19 +221,8 @@ class SpeckCompatibleNetwork(nn.Module):
             # print(f"Setting parameter {param}: {value}")
             setattr(speck_layer, param, value)
 
-        # TODO: This is probably not necessary anymore:
-        # # Output shape with given input
-        # dimensions = config_dict["dimensions"]
-        # output_shape = (
-        #     dimensions["output_feature_count"],
-        #     dimensions["output_size_y"],
-        #     dimensions["output_size_x"],
-        # )
-        # print("Output shape:", output_shape)
-        # return output_shape
-
     def consolidate_pooling(
-        self, layers, input_shape: Tuple[int], dvs: bool = False
+        self, layers, dvs: bool
     ) -> Tuple[Union[int, Tuple[int], None], int]:
         """
         consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in `layers`
@@ -262,9 +242,7 @@ class SpeckCompatibleNetwork(nn.Module):
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):
                 # Update pooling size
-                new_pooling, input_shape = self.get_pooling_size(
-                    lyr, input_shape, dvs=dvs
-                )
+                new_pooling = self.get_pooling_size(lyr, dvs=dvs)
                 if dvs:
                     pooling[0] *= new_pooling[0]
                     pooling[1] *= new_pooling[1]
@@ -273,15 +251,15 @@ class SpeckCompatibleNetwork(nn.Module):
             else:
                 # print("Pooling:", pooling)
                 # print("Output shape:", input_shape)
-                return pooling, input_shape, i_next
+                return pooling, i_next
 
-        # If this line is reached, all objects in `layers` are `SumPooling2dLayer`s.
+        # If this line is reached, all objects in `layers` are pooling layers.
         # print("Pooling:", pooling)
         # print("Output shape:", input_shape)
-        return pooling, input_shape, None
+        return pooling, None
 
     def get_pooling_size(
-        self, layer: nn.AvgPool2d, input_shape: Tuple[int], dvs: bool = True
+        self, layer: nn.AvgPool2d, dvs: bool
     ) -> Union[int, Tuple[int]]:
         """
         get_sumpool2d_pooling_size - Determine the pooling size of a `SumPooling2dLayer` object.
@@ -317,7 +295,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 raise ValueError(
                     f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
                 )
-            return (pooling_y, pooling_x), infer_output_shape(layer, input_shape)
+            return (pooling_y, pooling_x)
         else:
             # Check whether pooling is symmetric
             if pooling_x != pooling_y:
@@ -331,7 +309,7 @@ class SpeckCompatibleNetwork(nn.Module):
                     f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
                 )
             # TODO: infer_output_shape does not work with discretized
-            return pooling, infer_output_shape(layer, input_shape)
+            return pooling
 
 
 # def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
