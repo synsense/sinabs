@@ -4,6 +4,7 @@ the network equivalence, and of the correct output configuration.
 """
 
 import samna
+
 samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
@@ -17,11 +18,7 @@ from backend.Speck.tospeck import SpeckCompatibleNetwork
 
 class SmartDoorClassifier(nn.Module):
     def __init__(
-        self,
-        quantize=False,
-        linear_size=32,
-        n_channels_in=2,
-        n_channels_out=1,
+        self, quantize=False, linear_size=32, n_channels_in=2, n_channels_out=1,
     ):
         super().__init__()
 
@@ -58,13 +55,13 @@ sdc = SmartDoorClassifier()
 snn = from_model(sdc)
 
 input_shape = (2, 64, 64)
-input = torch.rand((1, *input_shape)) * 1000
+input_data = torch.rand((1, *input_shape)) * 1000
 snn.eval()
-snn_out = snn(input)  # forward pass
+snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
-speck_out = speck_net(input)
+speck_out = speck_net(input_data)
 
 print("Snn out", snn_out.sum().item())
 print("Speck out", speck_out.sum().item())
