@@ -1,18 +1,18 @@
 from warnings import warn
 
-import torch.nn as nn
-import sinabs.layers as sl
-import sinabs
-from typing import Dict, Tuple, Union, Optional
-
 try:
     from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
     SAMNA_AVAILABLE = True
-
 from .SpeckLayer import SpeckLayer
+
+import torch.nn as nn
+import torch
+import sinabs.layers as sl
+import sinabs
+from typing import Dict, Tuple, Union, Optional
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -201,7 +201,9 @@ class SpeckCompatibleNetwork(nn.Module):
         return i_next, output_shape
 
     def forward(self, x):
-        return self.sequence(x)
+        self.eval()
+        with torch.no_grad():
+            return self.sequence(x)
 
     def write_speck_config(
         self, config_dict: dict, speck_layer: "CNNLayerConfig",
@@ -239,7 +241,7 @@ class SpeckCompatibleNetwork(nn.Module):
                          are `SumPooling2dLayer`s.
         """
 
-        pooling = (1, 1) if dvs else 1
+        pooling = [1, 1] if dvs else 1
 
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):

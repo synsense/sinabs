@@ -76,7 +76,7 @@ def _discretize_conv_spk_(
     # - Lower and upper thresholds in a tensor for easier handling
     thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
     # - Weights and biases
-    if conv_lyr.bias:
+    if conv_lyr.bias is not None:
         weights, biases = conv_lyr.parameters()
     else:
         (weights,) = conv_lyr.parameters()

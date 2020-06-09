@@ -164,11 +164,11 @@ class SpeckLayer(nn.Module):
         self.config_dict.update(self.conv2d_to_dict(conv))
 
     def pool(self, pool):
-        if pool is not None:
+        if pool is not None and pool > 1:
             self._pool_layer = nn.AvgPool2d(kernel_size=pool, stride=pool)
             self.config_dict["Pooling"] = pool
         else:
-            self._pool_layer = lambda x: x  # do nothing
+            self._pool_layer = None
             self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
 
     def spk(self, spk):
@@ -181,6 +181,7 @@ class SpeckLayer(nn.Module):
         # print("After convolution", x.shape)
         x = self._spk_layer(x)
         # print("After spiking", x.shape)
-        x = self._pool_layer(x)
-        # print("After pooling", x.shape)
+        if self._pool_layer:
+            x = self._pool_layer(x)
+            # print("After pooling", x.shape)
         return x
