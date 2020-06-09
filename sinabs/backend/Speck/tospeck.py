@@ -1,4 +1,5 @@
 from warnings import warn
+from copy import deepcopy
 
 try:
     from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
@@ -55,8 +56,9 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
-            input_shape = layers[0].output_shape
-            self.compatible_layers.append(layers[0])
+            input_layer = deepcopy(layers[0])
+            input_shape = input_layer.output_shape
+            self.compatible_layers.append(input_layer)
             i_layer += 1
         elif input_shape is None:
             raise ValueError(
@@ -192,8 +194,11 @@ class SpeckCompatibleNetwork(nn.Module):
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
         compatible_object = SpeckLayer(
-            conv=lyr_curr, spk=lyr_next, pool=pooling,
-            in_shape=input_shape, discretize=self._discretize,
+            conv=lyr_curr,
+            spk=lyr_next,
+            pool=pooling,
+            in_shape=input_shape,
+            discretize=self._discretize,
             rescale_weights=rescaling_from_pooling,
         )
         # the previous rescaling has been used, the new one is used in the next layer
