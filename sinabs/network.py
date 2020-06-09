@@ -31,7 +31,7 @@ from .utils import (
     summary,
     search_parameter,
 )
-from .layers import Layer
+from .layers import Layer, SpikingLayer, SpikingLayerBPTT
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
@@ -403,11 +403,9 @@ class Network(Layer):
         """
         Reset all neuron states in the submodules
         """
-        for layer_name, lyr in self.layers:
-            try:
+        for lyr in self.modules():
+            if isinstance(lyr, (SpikingLayer, SpikingLayerBPTT)):
                 lyr.reset_states()
-            except AttributeError:
-                pass
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:
         if num_evs_in is not None:
