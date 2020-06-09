@@ -1,3 +1,8 @@
+"""
+This module is meant to test a real use case. It will include testing of
+the network equivalence, and of the correct output configuration.
+"""
+
 import samna
 samna
 # this is necessary as a workaround because of a problem
@@ -14,7 +19,6 @@ class SmartDoorClassifier(nn.Module):
     def __init__(
         self,
         quantize=False,
-        final_relu=True,
         linear_size=32,
         n_channels_in=2,
         n_channels_out=1,
@@ -41,10 +45,8 @@ class SmartDoorClassifier(nn.Module):
             nn.Linear(432, linear_size, bias=False),
             NeuromorphicReLU(quantize=quantize, fanout=1),
             nn.Linear(linear_size, n_channels_out, bias=False),
+            NeuromorphicReLU(quantize=quantize, fanout=0),
         ]
-
-        if final_relu:
-            self.seq.append(NeuromorphicReLU(quantize=quantize, fanout=0))
 
         self.seq = nn.Sequential(*self.seq)
 
@@ -55,11 +57,16 @@ class SmartDoorClassifier(nn.Module):
 sdc = SmartDoorClassifier()
 snn = from_model(sdc)
 
-# at the moment, a forward pass is needed
 input_shape = (2, 64, 64)
 input = torch.rand((1, *input_shape)) * 1000
+snn.eval()
 snn_out = snn(input)  # forward pass
 
-speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape)
+snn.reset_states()
+speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
 speck_out = speck_net(input)
+
+print("Snn out", snn_out.sum().item())
+print("Speck out", speck_out.sum().item())
+
 speck_config = speck_net.make_config(speck_layers_ordering=[8, 5, 4, 1, 3])
