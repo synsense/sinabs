@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from typing import Dict
 import sinabs.layers as sl
 from warnings import warn
-from .discretize import discretize_conv_spike_, copy_spiking_lyr
+from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
 
@@ -13,17 +13,18 @@ class SumPool2d(nn.Module):
         super().__init__()
         self.size = size
         if isinstance(size, int):
-            self.factor = size**2
+            self.factor = size ** 2
         else:
             self.factor = size[0] * size[1]
 
     def forward(self, input):
-        return self.factor * F.avg_pool2d(input, kernel_size=self.size, stride=self.size)
+        return self.factor * F.avg_pool2d(
+            input, kernel_size=self.size, stride=self.size
+        )
 
 
 class SpeckLayer(nn.Module):
-    def __init__(self, conv, pool, spk, in_shape,
-                 discretize=True, rescale_weights=1):
+    def __init__(self, conv, pool, spk, in_shape, discretize=True, rescale_weights=1):
         super().__init__()
 
         self.config_dict = {}
@@ -33,7 +34,7 @@ class SpeckLayer(nn.Module):
             conv = self.convert_linear_to_conv(conv)
         else:
             conv = deepcopy(conv)
-        spk = copy_spiking_lyr(spk)
+        spk = deepcopy(spk)
         if discretize:
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
@@ -59,12 +60,16 @@ class SpeckLayer(nn.Module):
         dimensions["input_size_y"] = in_shape[1]
         dimensions["input_size_x"] = in_shape[2]
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        dimensions["output_size_x"] = ((
-            dimensions["input_size_x"] - dims["kernel_size"] + 2 * dims["padding_x"]
-        ) // dims["stride_x"] + 1) // self.config_dict["Pooling"]
-        dimensions["output_size_y"] = ((
-            dimensions["input_size_y"] - dims["kernel_size"] + 2 * dims["padding_y"]
-        ) // dims["stride_y"] + 1) // self.config_dict["Pooling"]
+        dimensions["output_size_x"] = (
+            (dimensions["input_size_x"] - dims["kernel_size"] + 2 * dims["padding_x"])
+            // dims["stride_x"]
+            + 1
+        ) // self.config_dict["Pooling"]
+        dimensions["output_size_y"] = (
+            (dimensions["input_size_y"] - dims["kernel_size"] + 2 * dims["padding_y"])
+            // dims["stride_y"]
+            + 1
+        ) // self.config_dict["Pooling"]
 
         return dimensions
 
@@ -101,7 +106,7 @@ class SpeckLayer(nn.Module):
             # Sinabs default for non-initialized networks. We check that and
             # then we assign no initial neuron state to Speck.
             assert len(layer.state) == 1
-            assert layer.state.item() == 0.
+            assert layer.state.item() == 0.0
             neurons_state = None
         elif layer.state.dim() == 2:
             # this happens when we had a linear layer turned to conv
@@ -167,7 +172,7 @@ class SpeckLayer(nn.Module):
         if layer.bias is not None:
             weights, biases = layer.parameters()
         else:
-            weights, = layer.parameters()
+            (weights,) = layer.parameters()
             biases = torch.zeros(layer.out_channels)
 
         # Transpose last two dimensions of weights to match cortexcontrol
