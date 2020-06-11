@@ -1,0 +1,1 @@
+from .tospeck import SpeckCompatibleNetwork
