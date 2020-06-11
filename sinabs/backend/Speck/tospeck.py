@@ -109,11 +109,16 @@ class SpeckCompatibleNetwork(nn.Module):
 
             else:
                 raise TypeError(
-                    f"Layers of type {type(lyr_curr)} are not supported at this location."
+                    f"Layers of type {type(lyr_curr)} are not supported here."
                 )
 
         # TODO: Does anything need to be done after iterating over layers?
         # print("Finished configuration of Speck.")
+
+        if rescaling_from_pooling != 1:
+            warn("Average pooling layer at the end of the network could not "
+                 "be turned into sum pooling. The output will be different by "
+                 f"a factor of {rescaling_from_pooling}!")
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
