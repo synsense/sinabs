@@ -9,7 +9,14 @@ from copy import deepcopy
 
 
 class SumPool2d(nn.Module):
+    """Simple torch layer for speck-style sum pooling in 2d."""
+
     def __init__(self, size):
+        """
+        Create a speck-style sum pooling layer, with kernel equal to stride.
+
+        :param size: Int or 2-Tuple. Used both for kernel size and stride.
+        """
         super().__init__()
         self.size = size
         if isinstance(size, int):
@@ -18,20 +25,37 @@ class SumPool2d(nn.Module):
             self.factor = size[0] * size[1]
 
     def forward(self, input):
+        """Torch forward pass."""
         return self.factor * F.avg_pool2d(
             input, kernel_size=self.size, stride=self.size
         )
 
 
 class SpeckLayer(nn.Module):
-    def __init__(self, conv, pool, spk, in_shape, discretize=True, rescale_weights=1):
+    """Torch module that reproduces the behaviour of a speck layer."""
+
+    def __init__(self, conv, spk, in_shape, pool=None,
+                 discretize=True, rescale_weights=1):
+        """
+        Create a SpeckLayer object representing a speck layer.
+
+        Requires a convolutional layer, a sinabs spiking layer and an optional
+        pooling value. The layers are used in the order conv -> spike -> pool.
+
+        :param conv: A torch.nn.Conv2d or torch.nn.Linear object.
+        :param spk: A sinabs SpikingLayer.
+        :param in_shape: The input shape (tuple), needed to create speck configs.
+        :param pool: An integer representing the sum pooling kernel and stride.
+        :param discretize: Whether to discretize parameters.
+        :parameter rescale_weights: Layer weights will be divided by this value.
+        """
         super().__init__()
 
         self.config_dict = {}
         self.input_shape = in_shape
 
         if isinstance(conv, nn.Linear):
-            conv = self.convert_linear_to_conv(conv)
+            conv = self._convert_linear_to_conv(conv)
         else:
             conv = deepcopy(conv)
         spk = deepcopy(spk)
@@ -39,11 +63,11 @@ class SpeckLayer(nn.Module):
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self.conv(conv, rescale_weights=rescale_weights)
-        self.pool(pool)
-        self.spk(spk)
+        self._conv(conv, rescale_weights=rescale_weights)
+        self._pool(pool)
+        self._spk(spk)
 
-        self.config_dict["dimensions"].update(self.get_dimensions(in_shape))
+        self.config_dict["dimensions"].update(self._get_dimensions(in_shape))
 
         self.output_shape = (
             self.config_dict["dimensions"]["output_feature_count"],
@@ -51,7 +75,7 @@ class SpeckLayer(nn.Module):
             self.config_dict["dimensions"]["output_size_y"],
         )
 
-    def get_dimensions(self, in_shape):
+    def _get_dimensions(self, in_shape):
         dimensions = {}
 
         dims = self.config_dict["dimensions"]
@@ -73,7 +97,7 @@ class SpeckLayer(nn.Module):
 
         return dimensions
 
-    def convert_linear_to_conv(self, lin):
+    def _convert_linear_to_conv(self, lin):
         in_chan, in_h, in_w = self.input_shape
 
         if lin.in_features != in_chan * in_h * in_w:
@@ -99,7 +123,7 @@ class SpeckLayer(nn.Module):
         return layer
 
     @staticmethod
-    def spklayer_to_dict(layer: sl.SpikingLayer) -> Dict:
+    def _spklayer_to_dict(layer: sl.SpikingLayer) -> Dict:
         # - Neuron states
         if layer.state.dim() == 1:
             # this should happen when the state is tensor([0.]), which is the
@@ -144,10 +168,11 @@ class SpeckLayer(nn.Module):
         }
 
     @staticmethod
-    def conv2d_to_dict(layer: nn.Conv2d) -> Dict:
+    def _conv2d_to_dict(layer: nn.Conv2d) -> Dict:
         """
-        spiking_conv2d_to_dict - Extract a dictionary with parameters from a `Conv2d`
+        _conv2d_to_dict - Extract a dictionary with parameters from a `Conv2d` \
                                  so that they can be written to a Speck configuration.
+
         :param layer:   Conv2d whose parameters should be extracted
         :return:    Dict    Parameters of `layer`
         """
@@ -184,13 +209,13 @@ class SpeckLayer(nn.Module):
             "biases": biases.int().tolist(),
         }
 
-    def conv(self, conv, rescale_weights=1):
+    def _conv(self, conv, rescale_weights=1):
         self._conv_layer = conv
         if rescale_weights != 1:
             conv.weight.data = (conv.weight / rescale_weights).clone().detach()
-        self.config_dict.update(self.conv2d_to_dict(conv))
+        self.config_dict.update(self._conv2d_to_dict(conv))
 
-    def pool(self, pool):
+    def _pool(self, pool):
         if pool is not None and pool > 1:
             self._pool_layer = SumPool2d(size=pool)
             self.config_dict["Pooling"] = pool
@@ -198,11 +223,12 @@ class SpeckLayer(nn.Module):
             self._pool_layer = None
             self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
 
-    def spk(self, spk):
+    def _spk(self, spk):
         self._spk_layer = spk
-        self.config_dict.update(self.spklayer_to_dict(spk))
+        self.config_dict.update(self._spklayer_to_dict(spk))
 
     def forward(self, x):
+        """Torch forward pass."""
         # print("Input to Speck Layer", x.shape)
         x = self._conv_layer(x)
         # print("After convolution", x.shape)

@@ -17,6 +17,24 @@ from typing import Dict, Tuple, Union, Optional
 
 
 class SpeckCompatibleNetwork(nn.Module):
+    """
+    Given a sinabs spiking network, prepare a speck-compatible network.
+    This can be used to test the network will be equivalent once on Speck.
+    This class also provides utilities to make the speck configuration and
+    upload it to Speck.
+
+    The following operations are done when converting to speck-compatible:
+    - multiple avg pooling layers in a row are consolidated into one and
+    turned into sum pooling layers;
+    - checks are performed on layer hyperparameter compatibility with speck
+    (kernel sizes, strides, padding)
+    - checks are performed on network structure compatibility with speck
+    (certain layers can only be followed by other layers)
+    - linear layers are turned into convolutional layers
+    - dropout layers are ignored
+    - weights, biases and thresholds are discretized according to speck requirements
+    """
+
     def __init__(
         self,
         snn: Union[nn.Module, sinabs.Network],
@@ -25,16 +43,15 @@ class SpeckCompatibleNetwork(nn.Module):
         discretize: bool = True,
     ) -> Dict:
         """
-        Given a sinabs spiking network, prepare a speck-compatible network.
-        In particular, the following will be done:
-        - multiple pooling layers in a row will be consolidated into one
-        - checks are performed on layer hyperparameter compatibility with speck
-        - checks are performed on network structure compatibility with speck
-        - linear layers are turned into convolutional layers
-        - dropout layers are ignored
-        - weights, biases and thresholds are discretized according to speck requirements
+        SpeckCompatibleNetwork: a class turning sinabs networks into speck \
+        compatible networks, and making speck configurations.
 
-        :param snn: sinabs.Network or torch.nn.Module instance
+        :param snn: sinabs.Network object.
+        :param input_shape: Tuple declaring the input shape, e.g. (2, 128, 128)
+        :param dvs_input:
+        :param discretize: If True, discretize the parameters and thresholds.
+        This is needed for uploading weights to speck. Set to False only for
+        testing purposes.
         """
         super().__init__()
 
@@ -123,6 +140,16 @@ class SpeckCompatibleNetwork(nn.Module):
         self.sequence = nn.Sequential(*self.compatible_layers)
 
     def make_config(self, speck_layers_ordering=range(9)):
+        """
+        Prepare and output the `samna` Speck configuration for this network.
+
+        :param speck_layers_ordering (iterable of int): The order in which the
+            speck layers will be used.
+
+        :return: samna.speck.configuration.SpeckConfiguration
+
+        :raises ImportError: if samna is not available.
+        """
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
@@ -213,6 +240,7 @@ class SpeckCompatibleNetwork(nn.Module):
         return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x):
+        """Torch's forward pass."""
         self.eval()
         with torch.no_grad():
             return self.sequence(x)
@@ -220,6 +248,7 @@ class SpeckCompatibleNetwork(nn.Module):
     def write_speck_config(
         self, config_dict: dict, speck_layer: "CNNLayerConfig",
     ):  # -> Tuple[int]:
+        """Write a single layer configuration to the speck conf object."""
         # Update configuration of the Speck layer
         # print("Setting dimensions:")
         # pprint(layer_config["dimensions"])
@@ -241,8 +270,9 @@ class SpeckCompatibleNetwork(nn.Module):
         self, layers, dvs: bool
     ) -> Tuple[Union[int, Tuple[int], None], int]:
         """
-        consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in `layers`
-                              until the first object of different type.
+        consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in \
+                              `layers` until the first object of different type.
+
         :param layers:  Iterable, containing `SumPooling2dLayer`s and other objects.
         :param dvs:     bool, if True, x- and y- pooling may be different and a
                               Tuple is returned instead of an integer.
@@ -252,7 +282,6 @@ class SpeckCompatibleNetwork(nn.Module):
                          `SumPooling2dLayer`, or `None`, if all objects in `layers`
                          are `SumPooling2dLayer`s.
         """
-
         pooling = [1, 1] if dvs else 1
 
         for i_next, lyr in enumerate(layers):
@@ -279,6 +308,7 @@ class SpeckCompatibleNetwork(nn.Module):
     ) -> Union[int, Tuple[int]]:
         """
         get_pooling_size - Determine the pooling size of a pooling object.
+
         :param layer:  `AvgPool2d` object
         :param dvs:    bool - If True, pooling does not need to be symmetric.
         :return:
