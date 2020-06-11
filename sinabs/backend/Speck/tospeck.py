@@ -74,9 +74,16 @@ class SpeckCompatibleNetwork(nn.Module):
             lyr_curr = layers[i_layer]
 
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
+                # Check for batchnorm after conv
+                if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
+                    print("Is batchNorm")
+                    lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
+                    i_layer += 1
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
-                    layers[i_layer:], input_shape, rescaling_from_pooling
+                    [lyr_curr] + layers[i_layer + 1:],
+                    input_shape,
+                    rescaling_from_pooling
                 )
 
                 if i_next is None:
@@ -101,18 +108,9 @@ class SpeckCompatibleNetwork(nn.Module):
                 # - Ignore dropout and flatten layers
                 i_layer += 1
 
-            elif isinstance(lyr_curr, sl.InputLayer):
-                raise TypeError(f"Only first layer can be of type {type(lyr_curr)}.")
-
-            elif isinstance(lyr_curr, sl.iaf_bptt.SpikingLayer):
-                raise TypeError(
-                    f" Layer of type {type(lyr_curr)} must be preceded by layer of "
-                    "type `Conv2d` or `Linear`."
-                )
-
             else:
                 raise TypeError(
-                    f"Layers of type {type(lyr_curr)} are currently not supported."
+                    f"Layers of type {type(lyr_curr)} are not supported at this location."
                 )
 
         # TODO: Does anything need to be done after iterating over layers?
@@ -186,7 +184,8 @@ class SpeckCompatibleNetwork(nn.Module):
         else:
             reached_end = False
         if reached_end or not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
-            raise TypeError("Convolutional layer must be followed by spiking layer.")
+            raise TypeError(
+                f"Convolution must be followed by spiking layer, found {type(lyr_next)}")
 
         # - Consolidate pooling from subsequent layers
         pooling, i_next = self.consolidate_pooling(layers[2:], dvs=False)
@@ -385,3 +384,27 @@ class SpeckCompatibleNetwork(nn.Module):
 
 #     # Populate the config
 #     return speck_config
+
+
+def _merge_bn_conv(bn, conv):
+    raise NotImplementedError()
+
+
+def _merge_conv_bn(conv, bn):
+    mu = bn.running_mean
+    sigmasq = bn.running_var
+
+    if bn.affine:
+        gamma, beta = bn.weight, bn.bias
+    else:
+        gamma, beta = 1.0, 0.0
+
+    factor = gamma / sigmasq.sqrt()
+
+    c_weight = conv.weight.data.clone().detach()  # TODO this will give an error after Linear
+    c_bias = 0. if conv.bias is None else conv.bias.data.clone().detach()
+
+    conv.weight.data = c_weight * factor[:, None, None, None]
+    conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
+
+    return conv
