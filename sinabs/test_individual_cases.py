@@ -10,19 +10,19 @@ from sinabs.from_torch import from_model
 import numpy as np
 
 input_shape = (2, 16, 16)
-input = torch.rand(1, *input_shape, requires_grad=False) * 100.
+input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 
 
-def networks_equal_output(input, ann):
+def networks_equal_output(input_data, ann):
     snn = from_model(ann)
     snn.eval()
-    snn_out = snn(input)  # forward pass
+    snn_out = snn(input_data).squeeze()  # forward pass
 
     snn.reset_states()
     spn = SpeckCompatibleNetwork(
-        snn, input_shape=input.shape[1:], discretize=False
+        snn, input_shape=input_data.shape[1:], discretize=False
     )
-    spn_out = spn(input)
+    spn_out = spn(input_data).squeeze()
 
     return np.array_equal(snn_out, spn_out)
 
@@ -40,7 +40,7 @@ def test_initial_pooling():
         def forward(self, x):
             return self.seq(x)
 
-    assert networks_equal_output(input, Net())
+    assert networks_equal_output(input_data, Net())
 
 
 def test_pooling_consolidation():
@@ -59,7 +59,7 @@ def test_pooling_consolidation():
         def forward(self, x):
             return self.seq(x)
 
-    assert networks_equal_output(input, Net())
+    assert networks_equal_output(input_data, Net())
 
 
 def test_batchnorm_after_conv():
@@ -67,11 +67,7 @@ def test_batchnorm_after_conv():
         def __init__(self):
             super().__init__()
             self.seq = nn.Sequential(
-                nn.Conv2d(2, 4, kernel_size=2, stride=2),
-                nn.ReLU(),
-                nn.AvgPool2d(kernel_size=2, stride=2),
-                nn.AvgPool2d(kernel_size=3, stride=3),
-                nn.Conv2d(4, 2, kernel_size=1, stride=1),
+                nn.Conv2d(2, 2, kernel_size=1, stride=1),
                 nn.BatchNorm2d(2),
                 nn.ReLU()
             )
@@ -87,4 +83,20 @@ def test_batchnorm_after_conv():
     net.seq[-2].weight.data = torch.tensor([-1.2, -3.5])
     net.seq[-2].bias.data = torch.tensor([-0.2, 0.3])
 
-    assert networks_equal_output(input, net)
+    assert networks_equal_output(input_data, net)
+
+
+def test_flatten_linear():
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.seq = nn.Sequential(
+                nn.Flatten(),
+                nn.Linear(512, 2),
+                nn.ReLU()
+            )
+
+        def forward(self, x):
+            return self.seq(x)
+
+    assert networks_equal_output(input_data, Net())
