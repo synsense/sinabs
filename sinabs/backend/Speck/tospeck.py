@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch
 import sinabs.layers as sl
 import sinabs
-from typing import Dict, Tuple, Union, Optional
+from typing import Dict, Tuple, Union, Optional, Sequence
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -41,7 +41,7 @@ class SpeckCompatibleNetwork(nn.Module):
         input_shape: Optional[Tuple[int]] = None,
         dvs_input: bool = True,
         discretize: bool = True,
-    ) -> Dict:
+    ):
         """
         SpeckCompatibleNetwork: a class turning sinabs networks into speck \
         compatible networks, and making speck configurations.
@@ -97,9 +97,9 @@ class SpeckCompatibleNetwork(nn.Module):
                     i_layer += 1
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
-                    [lyr_curr] + layers[i_layer + 1:],
+                    [lyr_curr] + layers[i_layer + 1 :],
                     input_shape,
-                    rescaling_from_pooling
+                    rescaling_from_pooling,
                 )
 
                 if i_next is None:
@@ -133,13 +133,17 @@ class SpeckCompatibleNetwork(nn.Module):
         # print("Finished configuration of Speck.")
 
         if rescaling_from_pooling != 1:
-            warn("Average pooling layer at the end of the network could not "
-                 "be turned into sum pooling. The output will be different by "
-                 f"a factor of {rescaling_from_pooling}!")
+            warn(
+                "Average pooling layer at the end of the network could not "
+                "be turned into sum pooling. The output will be different by "
+                f"a factor of {rescaling_from_pooling}!"
+            )
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(self, speck_layers_ordering=range(9)):
+    def make_config(
+        self, speck_layers_ordering: Sequence[int] = range(9)
+    ) -> SpeckConfiguration:
         """
         Prepare and output the `samna` Speck configuration for this network.
 
@@ -155,26 +159,35 @@ class SpeckCompatibleNetwork(nn.Module):
 
         config = SpeckConfiguration()
 
-        if self._dvs_input:
+        i_layer_speck = 0
+        dvs = config.dvs_layer
+        if self._dvs_input or isinstance(self.sequence[0], SumPool2d):
             # - Cut DVS output to match output shape of `lyr_curr`
-            dvs = config.dvs_layer
             dvs.cut.y = self._external_input_shape[1]
             dvs.cut.x = self._external_input_shape[2]
-            # TODO: How to deal with feature count?
+            # - Set DVS destination
+            dvs.destinations[0].enable = True
+            dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
+            # - Pooling will only be set to > 1 later if applicable
+            dvs.pooling.y, dvs.pooling.x = 1, 1
 
-        i_layer_speck = 0
+            # TODO: How to deal with feature count?
+        else:
+            dvs.destinations[0].enable = False
+        # TODO: Modify in case of non-sequential models
+        dvs.destinations[1].enable = False
+
         for i, speck_equivalent_layer in enumerate(self.sequence):
             # happens when the network starts with pooling
-            if isinstance(speck_equivalent_layer, nn.AvgPool2d):
+            if isinstance(speck_equivalent_layer, SumPool2d):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
                 # Therefore, assume that input comes from DVS.
+                # TODO: Is it really justified to assume that input comes from DVS when
+                #       the first layer is pooling?
                 # TODO test
-                # Object representing Speck DVS
-                dvs = config.dvs_layer
-                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
-                dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
-                dvs.destinations[0].enable = True
+                # - Set pooling for dvs layer
+                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.size
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
                 # Object representing Speck layer
@@ -190,21 +203,28 @@ class SpeckCompatibleNetwork(nn.Module):
                     # last layer
                     speck_layer.destinations[0].enable = False
                 else:
+                    i_layer_speck += 1
                     # Set destination layer
                     speck_layer.destinations[0].layer = speck_layers_ordering[
-                        i_layer_speck + 1
+                        i_layer_speck
                     ]
-                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[
+                        0
+                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
-                i_layer_speck += 1
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
         return config
 
-    def _handle_conv2d_layer(self, layers, input_shape, rescaling_from_pooling):
+    def _handle_conv2d_layer(
+        self,
+        layers: Sequence[nn.Module],
+        input_shape: Tuple[int],
+        rescaling_from_pooling: int,
+    ) -> Tuple[int, Tuple[int], int]:
         lyr_curr = layers[0]
 
         # Next layer needs to be spiking
@@ -216,7 +236,8 @@ class SpeckCompatibleNetwork(nn.Module):
             reached_end = False
         if reached_end or not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
             raise TypeError(
-                f"Convolution must be followed by spiking layer, found {type(lyr_next)}")
+                f"Convolution must be followed by spiking layer, found {type(lyr_next)}"
+            )
 
         # - Consolidate pooling from subsequent layers
         pooling, i_next = self.consolidate_pooling(layers[2:], dvs=False)
@@ -232,14 +253,14 @@ class SpeckCompatibleNetwork(nn.Module):
             rescale_weights=rescaling_from_pooling,
         )
         # the previous rescaling has been used, the new one is used in the next layer
-        rescaling_from_pooling = pooling**2
+        rescaling_from_pooling = pooling ** 2
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
         output_shape = compatible_object.output_shape
 
         return i_next, output_shape, rescaling_from_pooling
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Torch's forward pass."""
         self.eval()
         with torch.no_grad():
@@ -247,7 +268,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
     def write_speck_config(
         self, config_dict: dict, speck_layer: "CNNLayerConfig",
-    ):  # -> Tuple[int]:
+    ):
         """Write a single layer configuration to the speck conf object."""
         # Update configuration of the Speck layer
         # print("Setting dimensions:")
@@ -267,8 +288,8 @@ class SpeckCompatibleNetwork(nn.Module):
             setattr(speck_layer, param, value)
 
     def consolidate_pooling(
-        self, layers, dvs: bool
-    ) -> Tuple[Union[int, Tuple[int], None], int]:
+        self, layers: Sequence[nn.Module], dvs: bool
+    ) -> Tuple[Union[int, Tuple[int]], Union[int, None]]:
         """
         consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in \
                               `layers` until the first object of different type.
@@ -435,10 +456,12 @@ def _merge_conv_bn(conv, bn):
 
     factor = gamma / sigmasq.sqrt()
 
-    c_weight = conv.weight.data.clone().detach()  # TODO this will give an error after Linear
-    c_bias = 0. if conv.bias is None else conv.bias.data.clone().detach()
+    c_weight = (
+        conv.weight.data.clone().detach()
+    )  # TODO this will give an error after Linear
+    c_bias = 0.0 if conv.bias is None else conv.bias.data.clone().detach()
 
     conv.weight.data = c_weight * factor[:, None, None, None]
-    conv.bias.data = (beta + (c_bias - mu) * factor)
+    conv.bias.data = beta + (c_bias - mu) * factor
 
     return conv
