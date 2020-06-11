@@ -76,7 +76,6 @@ class SpeckCompatibleNetwork(nn.Module):
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
                 # Check for batchnorm after conv
                 if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
-                    print("Is batchNorm")
                     lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
                     i_layer += 1
                 # Linear and Conv layers are dealt with in the same way.
@@ -405,6 +404,6 @@ def _merge_conv_bn(conv, bn):
     c_bias = 0. if conv.bias is None else conv.bias.data.clone().detach()
 
     conv.weight.data = c_weight * factor[:, None, None, None]
-    conv.bias = nn.Parameter((beta + (c_bias - mu) * factor))
+    conv.bias.data = (beta + (c_bias - mu) * factor)
 
     return conv
