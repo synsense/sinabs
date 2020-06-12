@@ -193,7 +193,8 @@ class SpeckCompatibleNetwork(nn.Module):
                 #       the first layer is pooling?
                 # TODO test
                 # - Set pooling for dvs layer
-                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.size
+                assert speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.stride
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
                 # Object representing Speck layer
