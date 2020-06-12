@@ -8,7 +8,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-from .SpeckLayer import SpeckLayer
+from .specklayer import SpeckLayer
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
@@ -68,7 +68,6 @@ class SpeckCompatibleNetwork(nn.Module):
             layers = [*snn]
         else:
             raise TypeError("Expected torch.nn.Sequential or sinabs.Network.")
-
 
         # index that goes over the layers of the input network
         i_layer = 0

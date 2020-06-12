@@ -3,7 +3,7 @@ This should test some individual cases of networks with properties that are
 supported (but maybe not always common). Running these tests should not require
 samna, and they are tests of equivalence between snn and speck compatible net.
 """
-from sinabs.backend.Speck import SpeckCompatibleNetwork
+from sinabs.backend.speck import SpeckCompatibleNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model

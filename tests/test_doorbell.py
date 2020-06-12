@@ -13,7 +13,7 @@ from torch import nn
 import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
-from backend.Speck.tospeck import SpeckCompatibleNetwork
+from sinabs.backend.speck.tospeck import SpeckCompatibleNetwork
 
 
 class SmartDoorClassifier(nn.Module):

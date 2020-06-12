@@ -8,8 +8,8 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-from backend.Speck import SpeckCompatibleNetwork
-from backend.Speck.discretize import discretize_sl_
+from sinabs.backend.speck import SpeckCompatibleNetwork
+from sinabs.backend.speck.discretize import discretize_sl_
 
 from sinabs.from_torch import from_model
 

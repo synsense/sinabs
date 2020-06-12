@@ -1,4 +1,4 @@
-from backend.Speck.discretize import discretize_sl
+from sinabs.backend.speck.discretize import discretize_sl
 import numpy as np
 import torch
 from sinabs.from_torch import from_model
