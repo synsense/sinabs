@@ -7,8 +7,8 @@ except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
     SAMNA_AVAILABLE = True
-from .SpeckLayer import SpeckLayer, SumPool2d
 
+from .SpeckLayer import SpeckLayer
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
@@ -117,7 +117,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
-                self.compatible_layers.append(SumPool2d(size=pooling))
+                self.compatible_layers.append(sl.SumPool2d(size=pooling))
                 rescaling_from_pooling = pooling[0] * pooling[1]
 
                 if i_next is not None:
@@ -166,7 +166,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         i_layer_speck = 0
         dvs = config.dvs_layer
-        if self._dvs_input or isinstance(self.sequence[0], SumPool2d):
+        if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
             # - Cut DVS output to match output shape of `lyr_curr`
             dvs.cut.y = self._external_input_shape[1]
             dvs.cut.x = self._external_input_shape[2]
@@ -184,7 +184,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         for i, speck_equivalent_layer in enumerate(self.sequence):
             # happens when the network starts with pooling
-            if isinstance(speck_equivalent_layer, SumPool2d):
+            if isinstance(speck_equivalent_layer, sl.SumPool2d):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
                 # Therefore, assume that input comes from DVS.
@@ -222,6 +222,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 # in our generated network there is a spurious layer...
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
+
         return config
 
     def _handle_conv2d_layer(
@@ -296,17 +297,17 @@ class SpeckCompatibleNetwork(nn.Module):
         self, layers: Sequence[nn.Module], dvs: bool
     ) -> Tuple[Union[int, Tuple[int]], Union[int, None]]:
         """
-        consolidate_pooling - Consolidate the first `SumPooling2dLayer`s in \
+        consolidate_pooling - Consolidate the first `AvgPool2d`s in \
                               `layers` until the first object of different type.
 
-        :param layers:  Iterable, containing `SumPooling2dLayer`s and other objects.
+        :param layers:  Iterable, containing `AvgPool2d`s and other objects.
         :param dvs:     bool, if True, x- and y- pooling may be different and a
                               Tuple is returned instead of an integer.
         :return:
             int or tuple, consolidated pooling size. Tuple if `dvs` is true.
             int or None, index of first object in `layers` that is not a
-                         `SumPooling2dLayer`, or `None`, if all objects in `layers`
-                         are `SumPooling2dLayer`s.
+                         `AvgPool2d`, or `None`, if all objects in `layers`
+                         are `AvgPool2d`s.
         """
         pooling = [1, 1] if dvs else 1
 
