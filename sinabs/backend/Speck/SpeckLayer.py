@@ -8,29 +8,6 @@ from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
 
-class SumPool2d(nn.Module):
-    """Simple torch layer for speck-style sum pooling in 2d."""
-
-    def __init__(self, size):
-        """
-        Create a speck-style sum pooling layer, with kernel equal to stride.
-
-        :param size: Int or 2-Tuple. Used both for kernel size and stride.
-        """
-        super().__init__()
-        self.size = size
-        if isinstance(size, int):
-            self.factor = size ** 2
-        else:
-            self.factor = size[0] * size[1]
-
-    def forward(self, input):
-        """Torch forward pass."""
-        return self.factor * F.avg_pool2d(
-            input, kernel_size=self.size, stride=self.size
-        )
-
-
 class SpeckLayer(nn.Module):
     """Torch module that reproduces the behaviour of a speck layer."""
 
@@ -217,7 +194,7 @@ class SpeckLayer(nn.Module):
 
     def _pool(self, pool):
         if pool is not None and pool > 1:
-            self._pool_layer = SumPool2d(size=pool)
+            self._pool_layer = sl.SumPool2d(size=pool)
             self.config_dict["Pooling"] = pool
         else:
             self._pool_layer = None
