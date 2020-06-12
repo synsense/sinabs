@@ -193,7 +193,7 @@ class SpeckLayer(nn.Module):
 
     def _pool(self, pool):
         if pool is not None and pool > 1:
-            self._pool_layer = sl.SumPool2d(size=pool)
+            self._pool_layer = sl.SumPool2d(kernel_size=pool, stride=pool)
             self.config_dict["Pooling"] = pool
         else:
             self._pool_layer = None

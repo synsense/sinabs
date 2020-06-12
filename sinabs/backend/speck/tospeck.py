@@ -116,7 +116,9 @@ class SpeckCompatibleNetwork(nn.Module):
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
-                self.compatible_layers.append(sl.SumPool2d(size=pooling))
+                self.compatible_layers.append(
+                    sl.SumPool2d(kernel_size=pooling, stride=pooling)
+                )
                 rescaling_from_pooling = pooling[0] * pooling[1]
 
                 if i_next is not None:
