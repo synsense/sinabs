@@ -37,7 +37,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
     def __init__(
         self,
-        snn: Union[nn.Module, sinabs.Network],
+        snn: Union[nn.Sequential, sinabs.Network],
         input_shape: Optional[Tuple[int]] = None,
         dvs_input: bool = True,
         discretize: bool = True,
@@ -60,10 +60,15 @@ class SpeckCompatibleNetwork(nn.Module):
         self.compatible_layers = []
 
         # TODO: Currently only spiking seq. models are supported
-        try:
-            layers = list(snn.spiking_model.seq)
-        except AttributeError:
-            raise ValueError("`snn` must contain a sequential spiking model.")
+        if isinstance(snn, sinabs.Network):
+            submodules = list(snn.spiking_model.children())
+            assert len(submodules) == 1, "Found multiple submodules instead of sequential"
+            layers = [*submodules[0]]
+        elif isinstance(snn, nn.Sequential):
+            layers = [*snn]
+        else:
+            raise TypeError("Expected torch.nn.Sequential or sinabs.Network.")
+
 
         # index that goes over the layers of the input network
         i_layer = 0
