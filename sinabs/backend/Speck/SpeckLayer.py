@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
 from typing import Dict
 import sinabs.layers as sl
 from warnings import warn

@@ -13,7 +13,7 @@ import torch.nn as nn
 import torch
 import sinabs.layers as sl
 import sinabs
-from typing import Dict, Tuple, Union, Optional, Sequence
+from typing import Tuple, Union, Optional, Sequence
 
 
 class SpeckCompatibleNetwork(nn.Module):
