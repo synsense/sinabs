@@ -62,7 +62,8 @@ class SpeckCompatibleNetwork(nn.Module):
         # TODO: Currently only spiking seq. models are supported
         if isinstance(snn, sinabs.Network):
             submodules = list(snn.spiking_model.children())
-            assert len(submodules) == 1, "Found multiple submodules instead of sequential"
+            if len(submodules) != 1:
+                raise ValueError("Found multiple submodules instead of sequential")
             layers = [*submodules[0]]
         elif isinstance(snn, nn.Sequential):
             layers = [*snn]
@@ -115,6 +116,13 @@ class SpeckCompatibleNetwork(nn.Module):
                     i_layer += i_next + 2
 
             elif isinstance(lyr_curr, nn.AvgPool2d):
+                # This case can only happen if `self.sequence` starts with a pooling layer
+                # or input layer because all other pooling layers should get consolidated.
+                # Therefore, require that input comes from DVS.
+                if not dvs_input:
+                    raise TypeError(
+                        "First layer cannot be pooling if `dvs_input` is `False`."
+                    )
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
                 self.compatible_layers.append(
                     sl.SumPool2d(kernel_size=pooling, stride=pooling)
@@ -188,13 +196,15 @@ class SpeckCompatibleNetwork(nn.Module):
             if isinstance(speck_equivalent_layer, sl.SumPool2d):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
-                # Therefore, assume that input comes from DVS.
-                # TODO: Is it really justified to assume that input comes from DVS when
-                #       the first layer is pooling?
-                # TODO test
+                # Therefore, require that input comes from DVS (Already done in `__init__`,
+                # here just for making sure).
+                assert self._dvs_input
+
                 # - Set pooling for dvs layer
-                assert speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
-                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.stride
+                assert (
+                    speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                )
+                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
                 # Object representing Speck layer

@@ -19,6 +19,7 @@ import numpy as np
 
 from typing import Optional, Tuple
 from warnings import warn
+import pytest
 
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.0
@@ -44,7 +45,7 @@ def verify_dvs_config(
     assert dvs.pooling.x == pooling[1]
 
 
-def verify_networks(ann, target_layers, pooling, discretize):
+def verify_networks(ann, target_layers, pooling, discretize, first_pooling=True):
 
     # - ANN and SNN generation
     snn = from_model(ann)
@@ -59,22 +60,30 @@ def verify_networks(ann, target_layers, pooling, discretize):
     spn = SpeckCompatibleNetwork(
         snn, input_shape=input_shape, discretize=discretize, dvs_input=True
     )
-    # - Version without dvs
-    spn_no_dvs = SpeckCompatibleNetwork(
-        snn, input_shape=input_shape, discretize=discretize, dvs_input=False
-    )
-    spn_out = spn(input_data).squeeze()
-    spn_out_no_dvs = spn_no_dvs(input_data).squeeze()
 
+    spn_out = spn(input_data).squeeze()
     assert np.array_equal(snn_out, spn_out)
-    assert np.array_equal(snn_out, spn_out_no_dvs)
+
+    # - Version without dvs
+    if first_pooling:
+        with pytest.raises(TypeError):
+            SpeckCompatibleNetwork(
+                snn, input_shape=input_shape, discretize=discretize, dvs_input=False
+            )
+    else:
+        spn_no_dvs = SpeckCompatibleNetwork(
+            snn, input_shape=input_shape, discretize=discretize, dvs_input=False
+        )
+        spn_out_no_dvs = spn_no_dvs(input_data).squeeze()
+        assert np.array_equal(snn_out, spn_out_no_dvs)
 
     # - Speck config
     if SAMNA_AVAILABLE:
         config = spn.make_config(target_layers)
-        config_no_dvs = spn_no_dvs.make_config(target_layers)
         verify_dvs_config(config, pooling, input_shape, target_layers[0])
-        verify_dvs_config(config_no_dvs, destination=None)
+        if not first_pooling:
+            config_no_dvs = spn_no_dvs.make_config(target_layers)
+            verify_dvs_config(config_no_dvs, destination=None)
     else:
         warn("Samna not available. Could not perform all tests.")
 
@@ -94,8 +103,10 @@ def test_dvs_no_pooling():
     target_layers = [5, 2]
     pooling = (1, 1)
 
-    verify_networks(Net(), target_layers, pooling, discretize=False)
-    verify_networks(Net(), target_layers, pooling, discretize=True)
+    verify_networks(
+        Net(), target_layers, pooling, discretize=False, first_pooling=False
+    )
+    verify_networks(Net(), target_layers, pooling, discretize=True, first_pooling=False)
 
 
 def test_dvs_pooling_2d():

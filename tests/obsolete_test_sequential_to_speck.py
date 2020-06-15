@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 from sinabs import Network
 import sinabs.layers as sl
-from backend.Speck.tospeck import to_speck_config
+from sinabs.backend.speck.tospeck import to_speck_config
 
 plt.ion()
 
