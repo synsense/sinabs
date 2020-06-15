@@ -24,15 +24,16 @@ class SpeckCompatibleNetwork(nn.Module):
     upload it to Speck.
 
     The following operations are done when converting to speck-compatible:
-    - multiple avg pooling layers in a row are consolidated into one and
+
+    * multiple avg pooling layers in a row are consolidated into one and \
     turned into sum pooling layers;
-    - checks are performed on layer hyperparameter compatibility with speck
+    * checks are performed on layer hyperparameter compatibility with speck \
     (kernel sizes, strides, padding)
-    - checks are performed on network structure compatibility with speck
+    * checks are performed on network structure compatibility with speck \
     (certain layers can only be followed by other layers)
-    - linear layers are turned into convolutional layers
-    - dropout layers are ignored
-    - weights, biases and thresholds are discretized according to speck requirements
+    * linear layers are turned into convolutional layers \
+    * dropout layers are ignored
+    * weights, biases and thresholds are discretized according to speck requirements
     """
 
     def __init__(
@@ -158,13 +159,13 @@ class SpeckCompatibleNetwork(nn.Module):
     def make_config(
         self, speck_layers_ordering: Sequence[int] = range(9)
     ) -> SpeckConfiguration:
-        """
-        Prepare and output the `samna` Speck configuration for this network.
+        """Prepare and output the `samna` Speck configuration for this network.
 
-        :param speck_layers_ordering (iterable of int): The order in which the
-            speck layers will be used.
+        Args:
+            speck_layers_ordering (sequence of integers): The order in which the speck layers will be used.
 
-        :return: samna.speck.configuration.SpeckConfiguration
+        Returns:
+            Speck configuration object
 
         :raises ImportError: if samna is not available.
         """
@@ -243,6 +244,28 @@ class SpeckCompatibleNetwork(nn.Module):
         input_shape: Tuple[int],
         rescaling_from_pooling: int,
     ) -> Tuple[int, Tuple[int], int]:
+        """
+        Generate a SpeckLayer from a Conv2d layer and its subsequent spiking and
+        pooling layers.
+
+        :param layers (sequence of layer objects): First object must be Conv2d, next
+            must be a SpikingLayer. All pooling layers that follow immediately are
+            consolidated. Layers after this will be ignored.
+        :param input_shape (tuple of integers): Shape of the input to the first layer
+            in `layers`. Convention: (input features, height, width)
+        :param rescaling_from_pooling (int): Weights of Conv2d layer are scaled down
+            by this factor. Can be used to account for preceding average pooling that
+            gets converted to sum pooling.
+
+        :return:
+            int: Number of consolidated pooling layers
+            tuple: output shape (features, height, width)
+            int: rescaling factor to account for average pooling
+
+        :raises:
+            TypeError if `layer[1]` is not of type `SpikingLayer`
+        """
+
         lyr_curr = layers[0]
 
         # Next layer needs to be spiking
@@ -287,12 +310,15 @@ class SpeckCompatibleNetwork(nn.Module):
     def write_speck_config(
         self, config_dict: dict, speck_layer: "CNNLayerConfig",
     ):
-        """Write a single layer configuration to the speck conf object."""
+        """
+        Write a single layer configuration to the speck conf object.
+
+        :param config_dict (dict):  Dict containing the configuration
+        :param speck_layer (CNNLayerConfig):  Speck configuration object representing
+            the layer to which configuration is written.
+        """
+
         # Update configuration of the Speck layer
-        # print("Setting dimensions:")
-        # pprint(layer_config["dimensions"])
-        # print("Setting weights, shape:", np.array(layer_config["weights"]).shape)
-        # print("Setting biases, shape:", np.array(layer_config["biases"]).shape)
         speck_layer.dimensions = config_dict["dimensions"]
         speck_layer.weights = config_dict["weights"]
         speck_layer.biases = config_dict["biases"]
@@ -309,17 +335,17 @@ class SpeckCompatibleNetwork(nn.Module):
         self, layers: Sequence[nn.Module], dvs: bool
     ) -> Tuple[Union[int, Tuple[int]], Union[int, None]]:
         """
-        consolidate_pooling - Consolidate the first `AvgPool2d`s in \
+        consolidate_pooling - Consolidate the first `AvgPool2d` objects in \
                               `layers` until the first object of different type.
 
-        :param layers:  Iterable, containing `AvgPool2d`s and other objects.
+        :param layers:  Iterable, containing `AvgPool2d` and other objects.
         :param dvs:     bool, if True, x- and y- pooling may be different and a
                               Tuple is returned instead of an integer.
         :return:
             int or tuple, consolidated pooling size. Tuple if `dvs` is true.
             int or None, index of first object in `layers` that is not a
                          `AvgPool2d`, or `None`, if all objects in `layers`
-                         are `AvgPool2d`s.
+                         are `AvgPool2d`.
         """
         pooling = [1, 1] if dvs else 1
 

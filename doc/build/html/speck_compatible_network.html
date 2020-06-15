@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>sinabs.backend.speck.tospeck &#8212; sinabs-speck 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="sinabs-backend-speck-tospeck">
+<h1>sinabs.backend.speck.tospeck<a class="headerlink" href="#sinabs-backend-speck-tospeck" title="Permalink to this headline">¶</a></h1>
+<p>This module describes the <code class="docutils literal notranslate"><span class="pre">SpeckCompatibleNetwork</span></code> class that is used to transform a spiking neural network into a network that is compatible with speck.</p>
+<div class="toctree-wrapper compound">
+</div>
+<span class="target" id="module-sinabs.backend.speck.tospeck"></span><dl class="class">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork">
+<em class="property">class </em><code class="sig-prename descclassname">sinabs.backend.speck.tospeck.</code><code class="sig-name descname">SpeckCompatibleNetwork</code><span class="sig-paren">(</span><em class="sig-param">snn: Union[torch.nn.modules.container.Sequential, sinabs.network.Network], input_shape: Optional[Tuple[int]] = None, dvs_input: bool = True, discretize: bool = True</em><span class="sig-paren">)</span><a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a sinabs spiking network, prepare a speck-compatible network.
+This can be used to test the network will be equivalent once on Speck.
+This class also provides utilities to make the speck configuration and
+upload it to Speck.</p>
+<p>The following operations are done when converting to speck-compatible:</p>
+<ul class="simple">
+<li><p>multiple avg pooling layers in a row are consolidated into one and     turned into sum pooling layers;</p></li>
+<li><p>checks are performed on layer hyperparameter compatibility with speck     (kernel sizes, strides, padding)</p></li>
+<li><p>checks are performed on network structure compatibility with speck     (certain layers can only be followed by other layers)</p></li>
+<li><p>linear layers are turned into convolutional layers     * dropout layers are ignored</p></li>
+<li><p>weights, biases and thresholds are discretized according to speck requirements</p></li>
+</ul>
+<dl class="method">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.consolidate_pooling">
+<code class="sig-name descname">consolidate_pooling</code><span class="sig-paren">(</span><em class="sig-param">layers: Sequence[torch.nn.modules.module.Module], dvs: bool</em><span class="sig-paren">)</span> &#x2192; Tuple[Union[int, Tuple[int]], Optional[int]]<a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.consolidate_pooling" title="Permalink to this definition">¶</a></dt>
+<dd><p>consolidate_pooling - Consolidate the first <cite>AvgPool2d</cite> objects in                               <cite>layers</cite> until the first object of different type.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layers</strong> – Iterable, containing <cite>AvgPool2d</cite> and other objects.</p></li>
+<li><p><strong>dvs</strong> – bool, if True, x- and y- pooling may be different and a
+Tuple is returned instead of an integer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><p>int or tuple, consolidated pooling size. Tuple if <cite>dvs</cite> is true.
+int or None, index of first object in <cite>layers</cite> that is not a</p>
+<blockquote>
+<div><p><cite>AvgPool2d</cite>, or <cite>None</cite>, if all objects in <cite>layers</cite>
+are <cite>AvgPool2d</cite>.</p>
+</div></blockquote>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.forward">
+<code class="sig-name descname">forward</code><span class="sig-paren">(</span><em class="sig-param">x: torch.Tensor</em><span class="sig-paren">)</span> &#x2192; torch.Tensor<a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.forward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Torch’s forward pass.</p>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.get_pooling_size">
+<code class="sig-name descname">get_pooling_size</code><span class="sig-paren">(</span><em class="sig-param">layer: torch.nn.modules.pooling.AvgPool2d</em>, <em class="sig-param">dvs: bool</em><span class="sig-paren">)</span> &#x2192; Union[int, Tuple[int]]<a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.get_pooling_size" title="Permalink to this definition">¶</a></dt>
+<dd><p>get_pooling_size - Determine the pooling size of a pooling object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>layer</strong> – <cite>AvgPool2d</cite> object</p></li>
+<li><p><strong>dvs</strong> – bool - If True, pooling does not need to be symmetric.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>int or tuple - pooling size. If <cite>dvs</cite> is true, then return a tuple with</dt><dd><p>sizes for y- and x-pooling.</p>
+</dd>
+</dl>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.make_config">
+<code class="sig-name descname">make_config</code><span class="sig-paren">(</span><em class="sig-param">speck_layers_ordering: Sequence[int] = range(0</em>, <em class="sig-param">9)</em><span class="sig-paren">)</span> &#x2192; samna.speck.configuration.SpeckConfiguration.SpeckConfiguration<a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.make_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare and output the <cite>samna</cite> Speck configuration for this network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>speck_layers_ordering</strong> (<em>sequence of integers</em>) – The order in which the speck layers will be used.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Speck configuration object</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>ImportError</strong> – if samna is not available.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.write_speck_config">
+<code class="sig-name descname">write_speck_config</code><span class="sig-paren">(</span><em class="sig-param">config_dict: dict</em>, <em class="sig-param">speck_layer: samna.speck.configuration.CNNLayerConfig.CNNLayerConfig</em><span class="sig-paren">)</span><a class="headerlink" href="#sinabs.backend.speck.tospeck.SpeckCompatibleNetwork.write_speck_config" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write a single layer configuration to the speck conf object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>dict</strong><strong>)</strong> (<em>config_dict</em>) – Dict containing the configuration</p></li>
+<li><p><strong>(</strong><strong>CNNLayerConfig</strong><strong>)</strong> (<em>speck_layer</em>) – Speck configuration object representing
+the layer to which configuration is written.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">sinabs-speck</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Synsense AG.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.4.4</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/speck_compatible_network.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
