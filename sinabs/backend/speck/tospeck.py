@@ -554,10 +554,10 @@ def _merge_conv_bn(conv, bn):
 
     factor = gamma / sigmasq.sqrt()
 
-    c_weight = (
-        conv.weight.data.clone().detach()
-    )  # TODO this will give an error after Linear
+    c_weight = conv.weight.data.clone().detach()
     c_bias = 0.0 if conv.bias is None else conv.bias.data.clone().detach()
+
+    conv = deepcopy(conv)  # TODO: this will cause copying twice
 
     conv.weight.data = c_weight * factor[:, None, None, None]
     conv.bias.data = beta + (c_bias - mu) * factor
