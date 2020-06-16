@@ -61,9 +61,9 @@ class SpeckLayer(nn.Module):
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self._conv(conv)
-        self._pool(pool)
-        self._spk(spk)
+        self.conv_layer = conv
+        self.pool_layer = pool
+        self.spk_layer = spk
 
         self.config_dict["dimensions"].update(self._get_dimensions(in_shape))
 
@@ -254,26 +254,40 @@ class SpeckLayer(nn.Module):
             "biases": biases.int().tolist(),
         }
 
-    def _conv(self, conv):
-        self._conv_layer = conv
-        self.config_dict.update(self._conv2d_to_dict(conv))
-
-    def _pool(self, pool):
-        if pool is not None and pool > 1:
-            self._pool_layer = sl.SumPool2d(kernel_size=pool, stride=pool)
-            self.config_dict["Pooling"] = pool
+    def __setattr__(self, name, value):
+        # - Bypass torch`s setattr for conv, pool and spike layers
+        if name == "conv_layer":
+            self._conv_layer = value
+            self.config_dict.update(self._conv2d_to_dict(value))
+        elif name == "pool_layer":
+            if value is not None and value > 1:
+                self._pool_layer = sl.SumPool2d(kernel_size=value, stride=value)
+                self.config_dict["Pooling"] = value
+            else:
+                self._pool_layer = None
+                self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
+        elif name == "spk_layer":
+            self._spk_layer = value
+            self.config_dict.update(self._spklayer_to_dict(value))
         else:
-            self._pool_layer = None
-            self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
+            super().__setattr__(name, value)
 
-    def _spk(self, spk):
-        self._spk_layer = spk
-        self.config_dict.update(self._spklayer_to_dict(spk))
+    @property
+    def conv_layer(self):
+        return self._conv_layer
+
+    @property
+    def pool_layer(self):
+        return self._pool_layer
+
+    @property
+    def spk_layer(self):
+        return self._spk_layer
 
     def forward(self, x):
         """Torch forward pass."""
         # print("Input to Speck Layer", x.shape)
-        x = self._conv_layer(x)
+        x = self.conv_layer(x)
         # print("After convolution", x.shape)
         x = self._spk_layer(x)
         # print("After spiking", x.shape)
