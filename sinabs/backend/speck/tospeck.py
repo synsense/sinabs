@@ -31,7 +31,7 @@ class SpeckCompatibleNetwork(nn.Module):
     (kernel sizes, strides, padding)
     * checks are performed on network structure compatibility with speck \
     (certain layers can only be followed by other layers)
-    * linear layers are turned into convolutional layers \
+    * linear layers are turned into convolutional layers
     * dropout layers are ignored
     * weights, biases and thresholds are discretized according to speck requirements
     """
@@ -44,15 +44,21 @@ class SpeckCompatibleNetwork(nn.Module):
         discretize: bool = True,
     ):
         """
-        SpeckCompatibleNetwork: a class turning sinabs networks into speck \
+        SpeckCompatibleNetwork: a class turning sinabs networks into speck
         compatible networks, and making speck configurations.
 
-        :param snn: sinabs.Network object.
-        :param input_shape: Tuple declaring the input shape, e.g. (2, 128, 128)
-        :param dvs_input:
-        :param discretize: If True, discretize the parameters and thresholds.
-        This is needed for uploading weights to speck. Set to False only for
-        testing purposes.
+        Parameters
+        ----------
+            snn: sinabs.Network
+                SNN that determines the structure of the `SpeckCompatibleNetwork`
+            input_shape: tuple of ints
+                Shape of the input, convention: (features, height, width)
+            dvs_input: bool
+                Does speck receive input from its DVS camera?
+            discretize: bool
+                If True, discretize the parameters and thresholds.
+                This is needed for uploading weights to speck. Set to False only for
+                testing purposes.
         """
         super().__init__()
 
@@ -161,14 +167,22 @@ class SpeckCompatibleNetwork(nn.Module):
     ) -> SpeckConfiguration:
         """Prepare and output the `samna` Speck configuration for this network.
 
-        Args:
-            speck_layers_ordering (sequence of integers): The order in which the speck layers will be used.
+        Parameters
+        ----------
+            speck_layers_ordering: sequence of integers
+                The order in which the speck layers will be used.
 
-        Returns:
-            Speck configuration object
+        Returns
+        -------
+            SpeckConfiguration
+                Object defining the configuration for speck
 
-        :raises ImportError: if samna is not available.
+        Raises
+        ------
+            ImportError
+                If samna is not available.
         """
+
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
@@ -248,22 +262,33 @@ class SpeckCompatibleNetwork(nn.Module):
         Generate a SpeckLayer from a Conv2d layer and its subsequent spiking and
         pooling layers.
 
-        :param layers (sequence of layer objects): First object must be Conv2d, next
-            must be a SpikingLayer. All pooling layers that follow immediately are
-            consolidated. Layers after this will be ignored.
-        :param input_shape (tuple of integers): Shape of the input to the first layer
-            in `layers`. Convention: (input features, height, width)
-        :param rescaling_from_pooling (int): Weights of Conv2d layer are scaled down
-            by this factor. Can be used to account for preceding average pooling that
-            gets converted to sum pooling.
+        Parameters
+        ----------
+            layers: sequence of layer objects
+                First object must be Conv2d, next must be a SpikingLayer. All pooling
+                layers that follow immediately are consolidated. Layers after this
+                will be ignored.
+            input_shape: tuple of integers
+                Shape of the input to the first layer in `layers`. Convention:
+                (input features, height, width)
+            rescaling_from_pooling: int
+                Weights of Conv2d layer are scaled down by this factor. Can be
+                used to account for preceding average pooling that gets converted
+                to sum pooling.
 
-        :return:
-            int: Number of consolidated pooling layers
-            tuple: output shape (features, height, width)
-            int: rescaling factor to account for average pooling
+        Returns
+        -------
+            int
+                Number of consolidated pooling layers
+            tuple
+                output shape (features, height, width)
+            int
+                rescaling factor to account for average pooling
 
-        :raises:
-            TypeError if `layer[1]` is not of type `SpikingLayer`
+        Raises
+        ------
+            TypeError
+                If `layer[1]` is not of type `SpikingLayer`
         """
 
         lyr_curr = layers[0]
@@ -313,9 +338,13 @@ class SpeckCompatibleNetwork(nn.Module):
         """
         Write a single layer configuration to the speck conf object.
 
-        :param config_dict (dict):  Dict containing the configuration
-        :param speck_layer (CNNLayerConfig):  Speck configuration object representing
-            the layer to which configuration is written.
+        Parameters
+        ----------
+            config_dict: dict
+                Dict containing the configuration
+            speck_layer: CNNLayerConfig
+                Speck configuration object representing the layer to which
+                configuration is written.
         """
 
         # Update configuration of the Speck layer
@@ -335,17 +364,22 @@ class SpeckCompatibleNetwork(nn.Module):
         self, layers: Sequence[nn.Module], dvs: bool
     ) -> Tuple[Union[int, Tuple[int]], Union[int, None]]:
         """
-        consolidate_pooling - Consolidate the first `AvgPool2d` objects in \
-                              `layers` until the first object of different type.
+        Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
-        :param layers:  Iterable, containing `AvgPool2d` and other objects.
-        :param dvs:     bool, if True, x- and y- pooling may be different and a
-                              Tuple is returned instead of an integer.
-        :return:
-            int or tuple, consolidated pooling size. Tuple if `dvs` is true.
-            int or None, index of first object in `layers` that is not a
-                         `AvgPool2d`, or `None`, if all objects in `layers`
-                         are `AvgPool2d`.
+        Parameters
+        ----------
+            layers: Sequence of layer objects
+                Contains `AvgPool2d` and other objects.
+            dvs: bool
+                If `True`, x- and y- pooling may be different and a tuple is returned instead of an integer.
+
+        Returns
+        -------
+            int or tuple of ints
+                Consolidated pooling size. Tuple if `dvs` is `True`.
+            int or None
+                Index of first object in `layers` that is not a `AvgPool2d`,
+                or `None`, if all objects in `layers` are `AvgPool2d`.
         """
         pooling = [1, 1] if dvs else 1
 
@@ -364,22 +398,28 @@ class SpeckCompatibleNetwork(nn.Module):
                 return pooling, i_next
 
         # If this line is reached, all objects in `layers` are pooling layers.
-        # print("Pooling:", pooling)
-        # print("Output shape:", input_shape)
         return pooling, None
 
     def get_pooling_size(
         self, layer: nn.AvgPool2d, dvs: bool
     ) -> Union[int, Tuple[int]]:
         """
-        get_pooling_size - Determine the pooling size of a pooling object.
+        Determine the pooling size of a pooling object.
 
-        :param layer:  `AvgPool2d` object
-        :param dvs:    bool - If True, pooling does not need to be symmetric.
-        :return:
-            int or tuple - pooling size. If `dvs` is true, then return a tuple with
-                           sizes for y- and x-pooling.
+        Parameters
+        ----------
+            layer: torch.nn.AvgPool2d)
+                Pooling layer
+            dvs: bool
+                If `True`, pooling does not need to be symmetric.
+
+        Returns
+        -------
+            int or tuple of int
+                Pooling size. If `dvs` is `True`, return a tuple with sizes for
+                y- and x-pooling.
         """
+
         # Warn if there is non-zero padding.
         # Padding can be either int or tuple of ints
         if isinstance(layer.padding, int):
@@ -490,6 +530,20 @@ def _merge_bn_conv(bn, conv):
 
 
 def _merge_conv_bn(conv, bn):
+    """
+    Merge a convolutional layer with subsequent batch normalization
+
+    Parameters
+    ----------
+        conv: torch.nn.Conv2d
+            Convolutional layer
+        bn: torch.nn.Batchnorm2d
+            Batch normalization
+
+    Returns
+    -------
+        torch.nn.Conv2d: Convolutional layer including batch normalization
+    """
     mu = bn.running_mean
     sigmasq = bn.running_var
 

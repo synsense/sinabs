@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from typing import Dict
+from typing import Dict, Tuple, Optional
 import sinabs.layers as sl
 from warnings import warn
 from .discretize import discretize_conv_spike_
@@ -10,20 +10,37 @@ from copy import deepcopy
 class SpeckLayer(nn.Module):
     """Torch module that reproduces the behaviour of a speck layer."""
 
-    def __init__(self, conv, spk, in_shape, pool=None,
-                 discretize=True, rescale_weights=1):
+    def __init__(
+        self,
+        conv: nn.Conv2d,
+        spk: sl.SpikingLayerBPTT,
+        in_shape: Tuple[int],
+        pool: Optional[bool] = None,
+        discretize: bool = True,
+        rescale_weights: int = 1,
+    ):
         """
         Create a SpeckLayer object representing a speck layer.
 
         Requires a convolutional layer, a sinabs spiking layer and an optional
         pooling value. The layers are used in the order conv -> spike -> pool.
 
-        :param conv: A torch.nn.Conv2d or torch.nn.Linear object.
-        :param spk: A sinabs SpikingLayer.
-        :param in_shape: The input shape (tuple), needed to create speck configs.
-        :param pool: An integer representing the sum pooling kernel and stride.
-        :param discretize: Whether to discretize parameters.
-        :parameter rescale_weights: Layer weights will be divided by this value.
+        Parameters
+        ----------
+            conv: torch.nn.Conv2d or torch.nn.Linear
+                Convolutional or linear layer (linear will be converted to convolutional)
+            spk: sinabs.layers.SpikingLayer
+                Sinabs spiking layer
+            in_shape: tuple of int
+                The input shape, needed to create speck configs if the network does not
+                contain an input layer. Convention: (features, height, width)
+            pool: int or None
+                Integer representing the sum pooling kernel and stride. If `None`, no
+                pooling will be applied.
+            discretize: bool
+                Whether to discretize parameters.
+            rescale_weights: int
+                Layer weights will be divided by this value.
         """
         super().__init__()
 
@@ -51,7 +68,21 @@ class SpeckLayer(nn.Module):
             self.config_dict["dimensions"]["output_size_y"],
         )
 
-    def _get_dimensions(self, in_shape):
+    def _get_dimensions(self, in_shape: Tuple[int]) -> Dict[str, int]:
+        """
+        Calculate layer output dimensions from input shape.
+
+        Parameters
+        ----------
+            in_shape: tuple of int
+                Input shape. Convention: (features, height, width)
+
+        Returns
+        -------
+            dict
+                Input and output dimensions
+        """
+
         dimensions = {}
 
         dims = self.config_dict["dimensions"]
@@ -73,7 +104,21 @@ class SpeckLayer(nn.Module):
 
         return dimensions
 
-    def _convert_linear_to_conv(self, lin):
+    def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
+        """
+        Convert Linear layer to Conv2d.
+
+        Parameters
+        ----------
+            lin: nn.Linear
+                Linear layer to be converted
+
+        Returns
+        -------
+            nn.Conv2d
+                Convolutional layer equivalent to `lin`.
+        """
+
         in_chan, in_h, in_w = self.input_shape
 
         if lin.in_features != in_chan * in_h * in_w:
@@ -99,7 +144,19 @@ class SpeckLayer(nn.Module):
         return layer
 
     @staticmethod
-    def _spklayer_to_dict(layer: sl.SpikingLayer) -> Dict:
+    def _spklayer_to_dict(layer: sl.SpikingLayerBPTT) -> Dict:
+        """
+        Extract parameters of spiking layer into dict.
+
+        Parameters
+        ----------
+            layer: sl.SpikingLayerBPTT
+
+        Returns
+        -------
+            dict
+
+        """
         # - Neuron states
         if layer.state.dim() == 1:
             # this should happen when the state is tensor([0.]), which is the
@@ -146,11 +203,18 @@ class SpeckLayer(nn.Module):
     @staticmethod
     def _conv2d_to_dict(layer: nn.Conv2d) -> Dict:
         """
-        _conv2d_to_dict - Extract a dictionary with parameters from a `Conv2d` \
-                                 so that they can be written to a Speck configuration.
+        Extract a dictionary with parameters from a `Conv2d` so that they can be
+        written to a Speck configuration.
 
-        :param layer:   Conv2d whose parameters should be extracted
-        :return:    Dict    Parameters of `layer`
+        Parameters
+        ----------
+            layer: nn.Conv2d
+                Convolutional layer whose parameters should be extracted
+
+        Returns
+        -------
+            dict
+                Parameters of `layer`
         """
         # - Layer dimension parameters
         dimensions = {}
