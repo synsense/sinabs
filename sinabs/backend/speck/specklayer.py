@@ -61,9 +61,9 @@ class SpeckLayer(nn.Module):
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self.conv_layer = conv
-        self.pool_layer = pool
-        self.spk_layer = spk
+        self._conv_layer = conv
+        self._pool_layer = pool
+        self._spk_layer = spk
 
         self.config_dict["dimensions"].update(self._get_dimensions(in_shape))
 
@@ -73,41 +73,47 @@ class SpeckLayer(nn.Module):
             self.config_dict["dimensions"]["output_size_y"],
         )
 
-    def _get_dimensions(self, in_shape: Tuple[int]) -> Dict[str, int]:
+    def _update_output_dimensions(self) -> Dict[str, int]:
         """
-        Calculate layer output dimensions from input shape.
-
-        Parameters
-        ----------
-            in_shape: tuple of int
-                Input shape. Convention: (features, height, width)
-
-        Returns
-        -------
-            dict
-                Input and output dimensions
+        Update output dimensions in `self.config_dict`
         """
 
-        dimensions = {}
+        channel_count, input_size_y, input_size_x = self.input_shape
 
-        dims = self.config_dict["dimensions"]
-
-        dimensions["channel_count"] = in_shape[0]
-        dimensions["input_size_y"] = in_shape[1]
-        dimensions["input_size_x"] = in_shape[2]
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        dimensions["output_size_x"] = (
-            (dimensions["input_size_x"] - dims["kernel_size"] + 2 * dims["padding_x"])
-            // dims["stride_x"]
+        self.dimensions["output_size_x"] = (
+            (
+                input_size_x
+                - self.dimensions["kernel_size"]
+                + 2 * self.dimensions["padding_x"]
+            )
+            // self.dimensions["stride_x"]
             + 1
         ) // self.config_dict["Pooling"]
-        dimensions["output_size_y"] = (
-            (dimensions["input_size_y"] - dims["kernel_size"] + 2 * dims["padding_y"])
-            // dims["stride_y"]
+        self.dimensions["output_size_y"] = (
+            (
+                input_size_y
+                - self.dimensions["kernel_size"]
+                + 2 * self.dimensions["padding_y"]
+            )
+            // self.dimensions["stride_y"]
             + 1
         ) // self.config_dict["Pooling"]
 
-        return dimensions
+        self._output_shape = (
+            self._config_dict["dimensions"]["output_feature_count"],
+            self._config_dict["dimensions"]["output_size_x"],
+            self._config_dict["dimensions"]["output_size_y"],
+        )
+
+    def _update_config_dict(self):
+        self._config_dict = self._conv2d_to_dict(self.conv_layer)
+        if self.pool_layer is None:
+            self._config_dict["Pooling"] = 1
+        else:
+            self._config_dict["Pooling"] = self.pool_layer.kernel_size
+        self._config_dict.update(self._spklayer_to_dict(self.spk_layer))
+        self._update_output_dimensions()
 
     def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
         """
@@ -256,19 +262,9 @@ class SpeckLayer(nn.Module):
 
     def __setattr__(self, name, value):
         # - Bypass torch`s setattr for conv, pool and spike layers
-        if name == "conv_layer":
-            self._conv_layer = value
-            self.config_dict.update(self._conv2d_to_dict(value))
-        elif name == "pool_layer":
-            if value is not None and value > 1:
-                self._pool_layer = sl.SumPool2d(kernel_size=value, stride=value)
-                self.config_dict["Pooling"] = value
-            else:
-                self._pool_layer = None
-                self.config_dict["Pooling"] = 1  # TODO is this ok for no pooling?
-        elif name == "spk_layer":
-            self._spk_layer = value
-            self.config_dict.update(self._spklayer_to_dict(value))
+        if name in ("conv_layer", "pool_layer", "spk_layer"):
+            super().__setattr__("_" + name, value)
+            self._update_config_dict()
         else:
             super().__setattr__(name, value)
 
@@ -284,14 +280,33 @@ class SpeckLayer(nn.Module):
     def spk_layer(self):
         return self._spk_layer
 
+    @property
+    def config_dict(self):
+        return self._config_dict
+
+    @property
+    def input_shape(self):
+        return self._input_shape
+
+    @input_shape.setter
+    def input_shape(self, in_shape):
+        error = "`in_shape` must be tuple of 3 integers corresponding to channel count, height and width."
+        try:
+            if len(in_shape) != 3:
+                raise ValueError(error)
+        except TypeError:
+            raise TypeError(error)
+        self._input_shape = tuple(int(x) for x in in_shape)
+        self._update_output_dimensions
+
     def forward(self, x):
         """Torch forward pass."""
         # print("Input to Speck Layer", x.shape)
-        x = self.conv_layer(x)
+        x = self._conv_layer(x)
         # print("After convolution", x.shape)
         x = self._spk_layer(x)
         # print("After spiking", x.shape)
-        if self._pool_layer:
+        if self._pool_layer is not None:
             x = self._pool_layer(x)
             # print("After pooling", x.shape)
         return x
