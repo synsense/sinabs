@@ -49,8 +49,6 @@ def verify_networks(ann, target_layers, pooling, discretize, first_pooling=True)
 
     # - ANN and SNN generation
     snn = from_model(ann)
-    if discretize:
-        discretize_sl_(snn)
 
     snn.eval()
     snn_out = snn(input_data).squeeze()
@@ -62,7 +60,8 @@ def verify_networks(ann, target_layers, pooling, discretize, first_pooling=True)
     )
 
     spn_out = spn(input_data).squeeze()
-    assert np.array_equal(snn_out, spn_out)
+    if not discretize:
+        assert np.array_equal(snn_out, spn_out)
 
     # - Version without dvs
     if first_pooling:
@@ -75,7 +74,8 @@ def verify_networks(ann, target_layers, pooling, discretize, first_pooling=True)
             snn, input_shape=input_shape, discretize=discretize, dvs_input=False
         )
         spn_out_no_dvs = spn_no_dvs(input_data).squeeze()
-        assert np.array_equal(snn_out, spn_out_no_dvs)
+        if not discretize:
+            assert np.array_equal(snn_out, spn_out_no_dvs)
 
     # - Speck config
     if SAMNA_AVAILABLE:
