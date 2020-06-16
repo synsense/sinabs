@@ -52,11 +52,16 @@ class SpeckLayer(nn.Module):
         else:
             conv = deepcopy(conv)
         spk = deepcopy(spk)
+
+        if rescale_weights != 1:
+            # this has to be done after copying but before rescaling
+            conv.weight.data = (conv.weight / rescale_weights).clone().detach()
+
         if discretize:
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self._conv(conv, rescale_weights=rescale_weights)
+        self._conv(conv)
         self._pool(pool)
         self._spk(spk)
 
@@ -249,10 +254,8 @@ class SpeckLayer(nn.Module):
             "biases": biases.int().tolist(),
         }
 
-    def _conv(self, conv, rescale_weights=1):
+    def _conv(self, conv):
         self._conv_layer = conv
-        if rescale_weights != 1:
-            conv.weight.data = (conv.weight / rescale_weights).clone().detach()
         self.config_dict.update(self._conv2d_to_dict(conv))
 
     def _pool(self, pool):
