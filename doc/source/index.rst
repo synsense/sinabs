@@ -6,10 +6,14 @@
 Welcome to sinabs-speck's documentation!
 ========================================
 
+Speck interface for SINABS
+
+Table of contents
+-----------------
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
-
+   
+   api/api.rst
 
 
 Indices and tables
