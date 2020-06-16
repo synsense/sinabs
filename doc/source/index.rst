@@ -6,13 +6,16 @@
 Welcome to sinabs-speck's documentation!
 ========================================
 
-Speck interface for SINABS
+Speck interface for SINABS: Convert spiking neural network models to configurations for the Speck chip.
+
+To get started take a look at the :doc:`cnn-to-speck tutorial<notebooks/cnn_to_speck>`.
 
 Table of contents
 -----------------
 .. toctree::
    :maxdepth: 2
-   
+  
+   tutorials
    api/api.rst
 
 
