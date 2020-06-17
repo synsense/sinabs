@@ -44,7 +44,7 @@ class SpeckLayer(nn.Module):
         """
         super().__init__()
 
-        self.input_shape = in_shape
+        self._input_shape = in_shape
 
         if isinstance(conv, nn.Linear):
             conv = self._convert_linear_to_conv(conv)
@@ -255,38 +255,6 @@ class SpeckLayer(nn.Module):
             "biases": biases.int().tolist(),
         }
 
-    def __setattr__(self, name, value):
-        # - Bypass torch`s setattr for conv, pool and spike layers
-        if name in ("conv_layer", "spk_layer"):
-            if self.discretize:
-                if name == "conv_layer":
-                    layer = discretize_conv(
-                        value,
-                        spk_thr=self.spk_layer.threshold,
-                        spk_thr_low=self.spk_layer.threshold_low,
-                        spk_state=self.spk_layer.state,
-                        to_int=False,
-                    )
-                else:
-                    layer = discretize_spk(
-                        value,
-                        conv_weight=self.conv_layer.weight,
-                        conv_bias=self.conv_layer.bias,
-                        to_int=False,
-                    )
-            else:
-                layer = deepcopy(value)
-            super().__setattr__("_" + name, layer)
-            self._update_config_dict()
-
-        elif name == "pool_layer":
-            self._pool_layer = sl.SumPool2d(kernel_size=value, stride=value)
-            self._config_dict["Pooling"] = value
-            self._update_output_dimensions()
-
-        else:
-            super().__setattr__(name, value)
-
     @property
     def conv_layer(self):
         return self._conv_layer
@@ -294,6 +262,16 @@ class SpeckLayer(nn.Module):
     @property
     def pool_layer(self):
         return self._pool_layer
+
+    @property
+    def pool(self):
+        return self._pool_layer.kernel_size
+
+    @pool.setter
+    def pool(self, size):
+        self._pool_layer.kernel_size = size
+        self._config_dict["Pooling"] = size
+        self._update_output_dimensions()
 
     @property
     def spk_layer(self):
@@ -320,7 +298,7 @@ class SpeckLayer(nn.Module):
         except TypeError:
             raise TypeError(error)
         self._input_shape = tuple(int(x) for x in in_shape)
-        self._update_output_dimensions
+        self._update_output_dimensions()
 
     def forward(self, x):
         """Torch forward pass."""
