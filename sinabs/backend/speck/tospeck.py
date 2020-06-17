@@ -195,8 +195,8 @@ class SpeckCompatibleNetwork(nn.Module):
         dvs = config.dvs_layer
         if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
             # - Cut DVS output to match output shape of `lyr_curr`
-            dvs.cut.y = self._external_input_shape[1]
-            dvs.cut.x = self._external_input_shape[2]
+            dvs.cut.y = 0  # self._external_input_shape[1] # REVIEW
+            dvs.cut.x = 0  # self._external_input_shape[2]
             # - Set DVS destination
             dvs.destinations[0].enable = True
             dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
@@ -219,9 +219,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 assert self._dvs_input
 
                 # - Set pooling for dvs layer
-                assert (
-                    speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
-                )
+                assert speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
                 dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
@@ -240,12 +238,8 @@ class SpeckCompatibleNetwork(nn.Module):
                 else:
                     i_layer_speck += 1
                     # Set destination layer
-                    speck_layer.destinations[0].layer = speck_layers_ordering[
-                        i_layer_speck
-                    ]
-                    speck_layer.destinations[
-                        0
-                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[0].layer = speck_layers_ordering[i_layer_speck]
+                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
             else:
@@ -253,9 +247,10 @@ class SpeckCompatibleNetwork(nn.Module):
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
 
+        breakpoint()
         is_valid, message = validate_configuration(config)
         if not is_valid:
-            raise ValueError("Network not valid for Speck: " +  message)
+            raise ValueError("Network not valid for Speck\n" + message)
         else:
             print("Network is valid")
 
@@ -358,6 +353,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # Update configuration of the Speck layer
         speck_layer.dimensions = config_dict["dimensions"]
+
         speck_layer.weights = config_dict["weights"]
         speck_layer.biases = config_dict["biases"]
         if config_dict["neurons_state"] is not None:

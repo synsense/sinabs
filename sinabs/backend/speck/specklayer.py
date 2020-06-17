@@ -75,8 +75,12 @@ class SpeckLayer(nn.Module):
         channel_count, input_size_y, input_size_x = self.input_shape
         self.dimensions = self.config_dict["dimensions"]
 
+        self.dimensions["input_shape"]["x"] = input_size_x
+        self.dimensions["input_shape"]["y'"] = input_size_y
+        self.dimensions["input_shape"]["feature_count"] = channel_count
+
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        self.dimensions["output_size_x"] = (
+        self.dimensions["output_shape"]["x"] = (
             (
                 input_size_x
                 - self.dimensions["kernel_size"]
@@ -85,7 +89,7 @@ class SpeckLayer(nn.Module):
             // self.dimensions["stride_x"]
             + 1
         ) // self.config_dict["Pooling"]
-        self.dimensions["output_size_y"] = (
+        self.dimensions["output_shape"]["y"] = (
             (
                 input_size_y
                 - self.dimensions["kernel_size"]
@@ -96,9 +100,9 @@ class SpeckLayer(nn.Module):
         ) // self.config_dict["Pooling"]
 
         self._output_shape = (
-            self._config_dict["dimensions"]["output_feature_count"],
-            self._config_dict["dimensions"]["output_size_x"],
-            self._config_dict["dimensions"]["output_size_y"],
+            self._config_dict["dimensions"]["output_shape"]["feature_count"],
+            self._config_dict["dimensions"]["output_shape"]["x"],
+            self._config_dict["dimensions"]["output_shape"]["y"],
         )
 
     def _update_config_dict(self):
@@ -224,6 +228,8 @@ class SpeckLayer(nn.Module):
         """
         # - Layer dimension parameters
         dimensions = {}
+        dimensions["output_shape"] = {}
+        dimensions["input_shape"] = {}
 
         # - Padding
         dimensions["padding_x"], dimensions["padding_y"] = layer.padding
@@ -237,7 +243,7 @@ class SpeckLayer(nn.Module):
             raise ValueError("Conv2d: Kernel must have same height and width.")
 
         # - Input and output shapes
-        dimensions["output_feature_count"] = layer.out_channels
+        dimensions["output_shape"]["feature_count"] = layer.out_channels
 
         # - Weights and biases
         if layer.bias is not None:

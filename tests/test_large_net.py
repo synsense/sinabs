@@ -63,13 +63,6 @@ class SpeckNetA(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
-    def test(self, inp_dim=(1, 2, 128, 128)):
-        x = torch.zeros(inp_dim)
-        for layer in self.seq:
-            x = layer(x)
-            if not isinstance(layer, NeuromorphicReLU):
-                print(layer.__class__, x.shape)
-
 
 sdc = SpeckNetA()
 snn = from_model(sdc)
@@ -77,16 +70,17 @@ snn = from_model(sdc)
 input_shape = (2, 128, 128)
 input_data = torch.rand((1, *input_shape)) * 1000
 snn.eval()
-snn_out = snn(input_data)  # forward pass
+
 
 snn.reset_states()
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
+speck_config = speck_net.make_config(speck_layers_ordering=range(9))
+
+snn_out = snn(input_data)  # forward pass
 speck_out = speck_net(input_data)
 
 print("Snn out", snn_out.sum().item())
 print("Speck out", speck_out.sum().item())
-
-speck_config = speck_net.make_config(speck_layers_ordering=range(9))
 
 # - Make sure that layers of different models are distinct objects
 for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
