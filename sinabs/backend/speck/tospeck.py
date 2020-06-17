@@ -3,12 +3,14 @@ from copy import deepcopy
 
 try:
     from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
+    from samna.speck import validate_configuration
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
     SAMNA_AVAILABLE = True
 
 from .specklayer import SpeckLayer
+from .valid_mapping import get_valid_mapping
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
@@ -163,14 +165,15 @@ class SpeckCompatibleNetwork(nn.Module):
         self.sequence = nn.Sequential(*self.compatible_layers)
 
     def make_config(
-        self, speck_layers_ordering: Sequence[int] = range(9)
+        self, speck_layers_ordering: Sequence[int] = None
     ) -> SpeckConfiguration:
         """Prepare and output the `samna` Speck configuration for this network.
 
         Parameters
         ----------
             speck_layers_ordering: sequence of integers
-                The order in which the speck layers will be used.
+                The order in which the speck layers will be used. If None,
+                an automated procedure will be used to find a valid ordering.
 
         Returns
         -------
@@ -185,6 +188,11 @@ class SpeckCompatibleNetwork(nn.Module):
 
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
+        if speck_layers_ordering is None:
+            speck_layers_ordering = range(9)
+            find_valid = True
+        else:
+            find_valid = False
 
         config = SpeckConfiguration()
 
@@ -249,6 +257,8 @@ class SpeckCompatibleNetwork(nn.Module):
                 # in our generated network there is a spurious layer...
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
+
+        validate_configuration(config, "")
 
         return config
 
