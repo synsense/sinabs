@@ -165,7 +165,7 @@ class SpeckCompatibleNetwork(nn.Module):
         self.sequence = nn.Sequential(*self.compatible_layers)
 
     def make_config(
-        self, speck_layers_ordering: Sequence[int] = None
+        self, speck_layers_ordering: Sequence[int] = range(9)
     ) -> SpeckConfiguration:
         """Prepare and output the `samna` Speck configuration for this network.
 
@@ -188,11 +188,6 @@ class SpeckCompatibleNetwork(nn.Module):
 
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
-        if speck_layers_ordering is None:
-            speck_layers_ordering = range(9)
-            find_valid = True
-        else:
-            find_valid = False
 
         config = SpeckConfiguration()
 
@@ -258,7 +253,11 @@ class SpeckCompatibleNetwork(nn.Module):
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
 
-        validate_configuration(config, "")
+        is_valid, message = validate_configuration(config)
+        if not is_valid:
+            raise ValueError("Network not valid for Speck: " +  message)
+        else:
+            print("Network is valid")
 
         return config
 
