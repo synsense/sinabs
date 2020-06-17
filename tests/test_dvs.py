@@ -9,8 +9,6 @@ else:
     SAMNA_AVAILABLE = True
 
 from sinabs.backend.speck import SpeckCompatibleNetwork
-from sinabs.backend.speck.discretize import discretize_sl_
-
 from sinabs.from_torch import from_model
 
 import torch

@@ -3,7 +3,7 @@ from torch import nn
 from typing import Dict, Tuple, Optional
 import sinabs.layers as sl
 from warnings import warn
-from .discretize import discretize_conv_spike_
+from .discretize import discretize_conv_spike_, discretize_conv, discretize_spk
 from copy import deepcopy
 
 
@@ -44,7 +44,6 @@ class SpeckLayer(nn.Module):
         """
         super().__init__()
 
-        self.config_dict = {}
         self.input_shape = in_shape
 
         if isinstance(conv, nn.Linear):
@@ -57,21 +56,16 @@ class SpeckLayer(nn.Module):
             # this has to be done after copying but before rescaling
             conv.weight.data = (conv.weight / rescale_weights).clone().detach()
 
+        self.discretize = discretize
         if discretize:
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
         self._conv_layer = conv
-        self._pool_layer = pool
         self._spk_layer = spk
+        self._pool_layer = sl.SumPool2d(kernel_size=pool, stride=pool)
 
-        self.config_dict["dimensions"].update(self._get_dimensions(in_shape))
-
-        self.output_shape = (
-            self.config_dict["dimensions"]["output_feature_count"],
-            self.config_dict["dimensions"]["output_size_x"],
-            self.config_dict["dimensions"]["output_size_y"],
-        )
+        self._update_config_dict()
 
     def _update_output_dimensions(self) -> Dict[str, int]:
         """
@@ -79,6 +73,7 @@ class SpeckLayer(nn.Module):
         """
 
         channel_count, input_size_y, input_size_x = self.input_shape
+        self.dimensions = self.config_dict["dimensions"]
 
         # dimensions["output_feature_count"] already done in conv2d_to_dict
         self.dimensions["output_size_x"] = (
@@ -262,9 +257,33 @@ class SpeckLayer(nn.Module):
 
     def __setattr__(self, name, value):
         # - Bypass torch`s setattr for conv, pool and spike layers
-        if name in ("conv_layer", "pool_layer", "spk_layer"):
-            super().__setattr__("_" + name, value)
+        if name in ("conv_layer", "spk_layer"):
+            if self.discretize:
+                if name == "conv_layer":
+                    layer = discretize_conv(
+                        value,
+                        spk_thr=self.spk_layer.threshold,
+                        spk_thr_low=self.spk_layer.threshold_low,
+                        spk_state=self.spk_layer.state,
+                        to_int=False,
+                    )
+                else:
+                    layer = discretize_spk(
+                        value,
+                        conv_weight=self.conv_layer.weight,
+                        conv_bias=self.conv_layer.bias,
+                        to_int=False,
+                    )
+            else:
+                layer = deepcopy(value)
+            super().__setattr__("_" + name, layer)
             self._update_config_dict()
+
+        elif name == "pool_layer":
+            self._pool_layer = sl.SumPool2d(kernel_size=value, stride=value)
+            self._config_dict["Pooling"] = value
+            self._update_output_dimensions()
+
         else:
             super().__setattr__(name, value)
 
@@ -283,6 +302,10 @@ class SpeckLayer(nn.Module):
     @property
     def config_dict(self):
         return self._config_dict
+
+    @property
+    def output_shape(self):
+        return self._output_shape
 
     @property
     def input_shape(self):
