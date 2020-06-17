@@ -16,6 +16,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence
+import numpy as np
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -195,8 +196,8 @@ class SpeckCompatibleNetwork(nn.Module):
         dvs = config.dvs_layer
         if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
             # - Cut DVS output to match output shape of `lyr_curr`
-            dvs.cut.y = 0  # self._external_input_shape[1] # REVIEW
-            dvs.cut.x = 0  # self._external_input_shape[2]
+            dvs.cut.y = self._external_input_shape[1] - 1
+            dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
             dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
@@ -356,11 +357,14 @@ class SpeckCompatibleNetwork(nn.Module):
 
         speck_layer.weights = config_dict["weights"]
         speck_layer.biases = config_dict["biases"]
+        speck_layer.weights_kill_bit = config_dict["weights_kill_bit"]
+        speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
         if config_dict["neurons_state"] is not None:
-            pass
-            # print("Setting state:", layer_config["neurons_state"])
-            # TODO unclear why error
-            # speck_layer.neurons_initial_value = layer_config["neurons_state"]
+            print("neuron values shape:", np.array(config_dict["neurons_state"]).shape)
+            speck_layer.neurons_initial_value = config_dict["neurons_state"]
+            speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+        else:
+            pass  # TODO
         for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")
             setattr(speck_layer, param, value)
@@ -530,8 +534,8 @@ class SpeckCompatibleNetwork(nn.Module):
 #     return speck_config
 
 
-def _merge_bn_conv(bn, conv):
-    raise NotImplementedError()
+def _make_false_arrays(shape):
+    pass
 
 
 def _merge_conv_bn(conv, bn):

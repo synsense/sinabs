@@ -75,12 +75,12 @@ class SpeckLayer(nn.Module):
         channel_count, input_size_y, input_size_x = self.input_shape
         self.dimensions = self.config_dict["dimensions"]
 
-        self.dimensions["input_shape"]["x"] = input_size_x
-        self.dimensions["input_shape"]["y'"] = input_size_y
+        self.dimensions["input_shape"]["size"] = {'x': input_size_x, 'y': input_size_y}
         self.dimensions["input_shape"]["feature_count"] = channel_count
 
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        self.dimensions["output_shape"]["x"] = (
+        self.dimensions["output_shape"]["size"] = {}
+        self.dimensions["output_shape"]["size"]["x"] = (
             (
                 input_size_x
                 - self.dimensions["kernel_size"]
@@ -89,7 +89,7 @@ class SpeckLayer(nn.Module):
             // self.dimensions["stride_x"]
             + 1
         ) // self.config_dict["Pooling"]
-        self.dimensions["output_shape"]["y"] = (
+        self.dimensions["output_shape"]["size"]["y"] = (
             (
                 input_size_y
                 - self.dimensions["kernel_size"]
@@ -101,8 +101,8 @@ class SpeckLayer(nn.Module):
 
         self._output_shape = (
             self._config_dict["dimensions"]["output_shape"]["feature_count"],
-            self._config_dict["dimensions"]["output_shape"]["x"],
-            self._config_dict["dimensions"]["output_shape"]["y"],
+            self._config_dict["dimensions"]["output_shape"]["size"]["x"],
+            self._config_dict["dimensions"]["output_shape"]["size"]["y"],
         )
 
     def _update_config_dict(self):
@@ -179,10 +179,10 @@ class SpeckLayer(nn.Module):
             # this happens when we had a linear layer turned to conv
             layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
             layer.activations = layer.activations.unsqueeze(-1).unsqueeze(-1)
-            neurons_state = layer.state.int().tolist()
+            neurons_state = layer.state
         elif layer.state.dim() == 4:
             # 4-dimensional states should be the norm.
-            neurons_state = layer.state.transpose(2, 3).int().tolist()
+            neurons_state = layer.state.transpose(2, 3)
         else:
             raise ValueError("Current state of spiking layer not understood.")
 
@@ -207,7 +207,8 @@ class SpeckLayer(nn.Module):
 
         return {
             "layer_params": layer_params,
-            "neurons_state": neurons_state,
+            "neurons_state": neurons_state[0].int().tolist(),
+            "neurons_state_kill_bit": torch.zeros_like(neurons_state[0]).bool().tolist(),
         }
 
     @staticmethod
@@ -258,7 +259,9 @@ class SpeckLayer(nn.Module):
         return {
             "dimensions": dimensions,
             "weights": weights.int().tolist(),
+            "weights_kill_bit": torch.zeros_like(weights).bool().tolist(),
             "biases": biases.int().tolist(),
+            "biases_kill_bit": torch.zeros_like(biases).bool().tolist(),
         }
 
     def __setattr__(self, name, value):

@@ -70,13 +70,12 @@ snn = from_model(sdc)
 input_shape = (2, 128, 128)
 input_data = torch.rand((1, *input_shape)) * 1000
 snn.eval()
-
+snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
 speck_config = speck_net.make_config(speck_layers_ordering=range(9))
 
-snn_out = snn(input_data)  # forward pass
 speck_out = speck_net(input_data)
 
 print("Snn out", snn_out.sum().item())
