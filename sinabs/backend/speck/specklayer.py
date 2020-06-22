@@ -73,7 +73,7 @@ class SpeckLayer(nn.Module):
         """
 
         channel_count, input_size_y, input_size_x = self.input_shape
-        self.dimensions = self.config_dict["dimensions"]
+        self.dimensions = self._config_dict["dimensions"]
 
         self.dimensions["input_shape"]["size"] = {'x': input_size_x, 'y': input_size_y}
         self.dimensions["input_shape"]["feature_count"] = channel_count
@@ -81,28 +81,22 @@ class SpeckLayer(nn.Module):
         # dimensions["output_feature_count"] already done in conv2d_to_dict
         self.dimensions["output_shape"]["size"] = {}
         self.dimensions["output_shape"]["size"]["x"] = (
-            (
-                input_size_x
-                - self.dimensions["kernel_size"]
-                + 2 * self.dimensions["padding_x"]
-            )
-            // self.dimensions["stride_x"]
-            + 1
-        ) // self.config_dict["Pooling"]
+            input_size_x
+            - self.dimensions["kernel_size"]
+            + 2 * self.dimensions["padding"]["x"]
+        ) // self.dimensions["stride"]["x"] + 1
         self.dimensions["output_shape"]["size"]["y"] = (
-            (
-                input_size_y
-                - self.dimensions["kernel_size"]
-                + 2 * self.dimensions["padding_y"]
-            )
-            // self.dimensions["stride_y"]
-            + 1
-        ) // self.config_dict["Pooling"]
+            input_size_y
+            - self.dimensions["kernel_size"]
+            + 2 * self.dimensions["padding"]["y"]
+        ) // self.dimensions["stride"]["y"] + 1
 
+        conv_out_shape = self._config_dict["dimensions"]["output_shape"]
+        # this is the actual output shape, including pooling
         self._output_shape = (
-            self._config_dict["dimensions"]["output_shape"]["feature_count"],
-            self._config_dict["dimensions"]["output_shape"]["size"]["x"],
-            self._config_dict["dimensions"]["output_shape"]["size"]["y"],
+            conv_out_shape["feature_count"],
+            conv_out_shape["size"]["y"] // self._config_dict["Pooling"],
+            conv_out_shape["size"]["x"] // self._config_dict["Pooling"],
         )
 
     def _update_config_dict(self):
@@ -233,10 +227,16 @@ class SpeckLayer(nn.Module):
         dimensions["input_shape"] = {}
 
         # - Padding
-        dimensions["padding_x"], dimensions["padding_y"] = layer.padding
+        dimensions["padding"] = {
+            "x": layer.padding[0],
+            "y": layer.padding[1],
+        }
 
         # - Stride
-        dimensions["stride_x"], dimensions["stride_y"] = layer.stride
+        dimensions["stride"] = {
+            "x": layer.stride[0],
+            "y": layer.stride[1],
+        }
 
         # - Kernel size
         dimensions["kernel_size"] = layer.kernel_size[0]

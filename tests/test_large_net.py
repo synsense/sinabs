@@ -74,9 +74,10 @@ snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
-speck_config = speck_net.make_config(speck_layers_ordering=range(9))
-
 speck_out = speck_net(input_data)
+
+speck_config = speck_net.make_config(speck_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
+
 
 print("Snn out", snn_out.sum().item())
 print("Speck out", speck_out.sum().item())
