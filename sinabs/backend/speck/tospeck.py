@@ -248,7 +248,6 @@ class SpeckCompatibleNetwork(nn.Module):
                 # should never happen
                 raise TypeError("Unexpected layer in generated network")
 
-        breakpoint()
         is_valid, message = validate_configuration(config)
         if not is_valid:
             raise ValueError("Network not valid for Speck\n" + message)
@@ -360,7 +359,6 @@ class SpeckCompatibleNetwork(nn.Module):
         speck_layer.weights_kill_bit = config_dict["weights_kill_bit"]
         speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
         if config_dict["neurons_state"] is not None:
-            print("neuron values shape:", np.array(config_dict["neurons_state"]).shape)
             speck_layer.neurons_initial_value = config_dict["neurons_state"]
             speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
         else:

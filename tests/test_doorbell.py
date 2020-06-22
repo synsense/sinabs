@@ -66,7 +66,7 @@ speck_out = speck_net(input_data)
 print("Snn out", snn_out.sum().item())
 print("Speck out", speck_out.sum().item())
 
-speck_config = speck_net.make_config(speck_layers_ordering=[8, 5, 4, 1, 3])
+speck_config = speck_net.make_config(speck_layers_ordering=[0, 1, 2, 3, 4, 5])
 
 # - Make sure that layers of different models are distinct objects
 for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
