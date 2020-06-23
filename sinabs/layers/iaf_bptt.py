@@ -185,7 +185,7 @@ class SpikingLayer(Layer):
         """
         return in_shape
 
-    def __deepcopy__(self):
+    def __deepcopy__(self, memo=None):
         other = SpikingLayer(
             input_shape=self.input_shape,
             threshold=self.threshold,
