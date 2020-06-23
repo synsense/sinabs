@@ -97,15 +97,42 @@ def get_valid_mapping(config):
 
     memoryValuesIndex = len(memoryValues) - 1
     memoryLimitsIndex = len(memoryLimits) - 1
-    while memoryValuesIndex >= 0:
+    totalSwaps = 0
+    while memoryValuesIndex>=0:
         if memoryValues[memoryValuesIndex][1][0] <= memoryLimits[memoryLimitsIndex][1][0] and memoryValues[memoryValuesIndex][1][1] <= memoryLimits[memoryLimitsIndex][1][1]:
-            mapping.append([memoryValues[memoryValuesIndex][0], memoryLimits[memoryLimitsIndex][0]])
+            mapping.append([memoryValues[memoryValuesIndex][0],memoryLimits[memoryLimitsIndex][0]])
+            print(mapping)
             memoryValuesIndex = memoryValuesIndex - 1
             memoryLimitsIndex = memoryLimitsIndex - 1
         else:
-            print(str(memoryValues[memoryValuesIndex]) + " can't be mapped because it is too big! limit:" + str(memoryLimits[memoryLimitsIndex]))
-            memoryValuesIndex = memoryValuesIndex - 1
-
-        selectedLayer = selectedLayer - 1
-
+            toBeSwappedIndex = memoryValuesIndex
+            swapped = False
+            while memoryValuesIndex < len(memoryValues) - 1:
+                mapping = mapping[0:len(mapping)-2]
+                if memoryValues[memoryValuesIndex][1][0] < memoryValues[memoryValuesIndex+1][1][0] and memoryValues[memoryValuesIndex][1][1] > memoryValues[memoryValuesIndex+1][1][1]:
+                    print("swapping " + str(memoryValues[toBeSwappedIndex][0]) + " " + str(memoryValues[toBeSwappedIndex][1][0]) + " " + str(memoryValues[toBeSwappedIndex][1][1]) + " with " + str(memoryValues[memoryValuesIndex+1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][1]))
+                    layer = memoryValues[toBeSwappedIndex][0]
+                    weight = memoryValues[toBeSwappedIndex][1][0]
+                    neuron = memoryValues[toBeSwappedIndex][1][1]
+                    memoryValues[toBeSwappedIndex][0] = memoryValues[memoryValuesIndex+1][0]
+                    memoryValues[toBeSwappedIndex][1][0] = memoryValues[memoryValuesIndex+1][1][0]
+                    memoryValues[toBeSwappedIndex][1][1] = memoryValues[memoryValuesIndex+1][1][1]
+                    memoryValues[memoryValuesIndex+1][0] = layer
+                    memoryValues[memoryValuesIndex+1][1][0] = weight
+                    memoryValues[memoryValuesIndex+1][1][1] = neuron
+                    mapping = []
+                    memoryValuesIndex = len(memoryValues) - 1
+                    memoryLimitsIndex = len(memoryLimits) - 1
+                    swapped = True
+                    totalSwaps = totalSwaps + 1
+                    if totalSwaps > 9:
+                        print("can't find a solution!")
+                        return []
+                    break
+                else:
+                    memoryValuesIndex = memoryValuesIndex + 1
+            if not swapped:
+                print(str(memoryValues[toBeSwappedIndex]) + " can't be mapped because it is too big! limit:" + str(memoryLimits[memoryLimitsIndex]))
+                return []
+            
     return mapping
