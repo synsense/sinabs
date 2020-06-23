@@ -16,6 +16,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence
+import numpy as np
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -259,7 +260,7 @@ class SpeckCompatibleNetwork(nn.Module):
             mapping = {m[0]: m[1] for m in mapping}
             # apply the mapping
             ordering = [mapping[i] for i in speck_layers]
-            
+
             print("Not valid, trying ordering", ordering)
             return self.make_config(speck_layers_ordering=ordering)
         elif not is_valid:
@@ -370,11 +371,9 @@ class SpeckCompatibleNetwork(nn.Module):
         speck_layer.biases = config_dict["biases"]
         speck_layer.weights_kill_bit = config_dict["weights_kill_bit"]
         speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
-        if config_dict["neurons_state"] is not None:
-            speck_layer.neurons_initial_value = config_dict["neurons_state"]
-            speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
-        else:
-            pass  # TODO
+        speck_layer.neurons_initial_value = config_dict["neurons_state"]
+        speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+
         for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")
             setattr(speck_layer, param, value)

@@ -105,8 +105,9 @@ class SpeckLayer(nn.Module):
             self._config_dict["Pooling"] = 1
         else:
             self._config_dict["Pooling"] = self.pool_layer.kernel_size
-        self._config_dict.update(self._spklayer_to_dict(self.spk_layer))
+
         self._update_output_dimensions()
+        self._config_dict.update(self._spklayer_to_dict(self.spk_layer))
 
     def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
         """
@@ -147,8 +148,7 @@ class SpeckLayer(nn.Module):
 
         return layer
 
-    @staticmethod
-    def _spklayer_to_dict(layer: sl.SpikingLayerBPTT) -> Dict:
+    def _spklayer_to_dict(self, layer: sl.SpikingLayerBPTT) -> Dict:
         """
         Extract parameters of spiking layer into dict.
 
@@ -168,7 +168,11 @@ class SpeckLayer(nn.Module):
             # then we assign no initial neuron state to Speck.
             assert len(layer.state) == 1
             assert layer.state.item() == 0.0
-            neurons_state = None
+            neurons_state = torch.zeros(
+                self.dimensions["output_shape"]["feature_count"],
+                self.dimensions["output_shape"]["size"]["x"],
+                self.dimensions["output_shape"]["size"]["y"]
+            ).unsqueeze(0)
         elif layer.state.dim() == 2:
             # this happens when we had a linear layer turned to conv
             layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
