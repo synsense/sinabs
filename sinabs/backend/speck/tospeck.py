@@ -16,7 +16,6 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence
-import numpy as np
 
 
 class SpeckCompatibleNetwork(nn.Module):
@@ -173,7 +172,7 @@ class SpeckCompatibleNetwork(nn.Module):
         Parameters
         ----------
             speck_layers_ordering: sequence of integers
-                The order in which the speck layers will be used. If None,
+                The order in which the speck layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
 
         Returns
@@ -190,6 +189,11 @@ class SpeckCompatibleNetwork(nn.Module):
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
+        if speck_layers_ordering == "auto":
+            speck_layers = range(9)  # start with default, correct if necessary
+        else:
+            speck_layers = speck_layers_ordering
+
         config = SpeckConfiguration()
 
         i_layer_speck = 0
@@ -200,11 +204,9 @@ class SpeckCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = speck_layers_ordering[i_layer_speck]
+            dvs.destinations[0].layer = speck_layers[i_layer_speck]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
-
-            # TODO: How to deal with feature count?
         else:
             dvs.destinations[0].enable = False
         # TODO: Modify in case of non-sequential models
@@ -225,7 +227,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
                 # Object representing Speck layer
-                speck_layer = config.cnn_layers[speck_layers_ordering[i_layer_speck]]
+                speck_layer = config.cnn_layers[speck_layers[i_layer_speck]]
                 # read the configuration dictionary from SpeckLayer
                 # and write it to the speck configuration object
                 self.write_speck_config(speck_equivalent_layer.config_dict, speck_layer)
@@ -239,7 +241,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 else:
                     i_layer_speck += 1
                     # Set destination layer
-                    speck_layer.destinations[0].layer = speck_layers_ordering[i_layer_speck]
+                    speck_layer.destinations[0].layer = speck_layers[i_layer_speck]
                     speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
@@ -249,11 +251,21 @@ class SpeckCompatibleNetwork(nn.Module):
                 raise TypeError("Unexpected layer in generated network")
 
         is_valid, message = validate_configuration(config)
-        if not is_valid:
-            raise ValueError("Network not valid for Speck\n" + message)
-        else:
-            print("Network is valid")
 
+        if not is_valid and speck_layers_ordering == "auto":
+            # automatically figure out an ordering that works
+            mapping = get_valid_mapping(config)
+            # turn the mapping into a dict
+            mapping = {m[0]: m[1] for m in mapping}
+            # apply the mapping
+            ordering = [mapping[i] for i in speck_layers]
+            
+            print("Not valid, trying ordering", ordering)
+            return self.make_config(speck_layers_ordering=ordering)
+        elif not is_valid:
+            raise ValueError("Network not valid for Speck\n" + message)
+
+        print("Network is valid")
         return config
 
     def _handle_conv2d_layer(
@@ -522,14 +534,6 @@ class SpeckCompatibleNetwork(nn.Module):
 #     if weights:
 #         device.set_weights(weights)
 #     device.apply()
-
-
-# def to_speck_config(config: Dict) -> samna.SpeckConfig:
-#     speck_config = samna.SpeckConfig()
-#     # TODO
-
-#     # Populate the config
-#     return speck_config
 
 
 def _make_false_arrays(shape):

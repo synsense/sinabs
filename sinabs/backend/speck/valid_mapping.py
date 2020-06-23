@@ -64,7 +64,6 @@ def get_valid_mapping(config):
     :param configuration: speck configuration
     :return: mapping -- a list of indexes
     """
-    assert False
 
     mapping = []
 
@@ -101,7 +100,7 @@ def get_valid_mapping(config):
     while memoryValuesIndex>=0:
         if memoryValues[memoryValuesIndex][1][0] <= memoryLimits[memoryLimitsIndex][1][0] and memoryValues[memoryValuesIndex][1][1] <= memoryLimits[memoryLimitsIndex][1][1]:
             mapping.append([memoryValues[memoryValuesIndex][0],memoryLimits[memoryLimitsIndex][0]])
-            print(mapping)
+            # print(mapping)
             memoryValuesIndex = memoryValuesIndex - 1
             memoryLimitsIndex = memoryLimitsIndex - 1
         else:
@@ -110,7 +109,7 @@ def get_valid_mapping(config):
             while memoryValuesIndex < len(memoryValues) - 1:
                 mapping = mapping[0:len(mapping)-2]
                 if memoryValues[memoryValuesIndex][1][0] < memoryValues[memoryValuesIndex+1][1][0] and memoryValues[memoryValuesIndex][1][1] > memoryValues[memoryValuesIndex+1][1][1]:
-                    print("swapping " + str(memoryValues[toBeSwappedIndex][0]) + " " + str(memoryValues[toBeSwappedIndex][1][0]) + " " + str(memoryValues[toBeSwappedIndex][1][1]) + " with " + str(memoryValues[memoryValuesIndex+1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][1]))
+                    # print("swapping " + str(memoryValues[toBeSwappedIndex][0]) + " " + str(memoryValues[toBeSwappedIndex][1][0]) + " " + str(memoryValues[toBeSwappedIndex][1][1]) + " with " + str(memoryValues[memoryValuesIndex+1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][1]))
                     layer = memoryValues[toBeSwappedIndex][0]
                     weight = memoryValues[toBeSwappedIndex][1][0]
                     neuron = memoryValues[toBeSwappedIndex][1][1]
@@ -134,5 +133,5 @@ def get_valid_mapping(config):
             if not swapped:
                 print(str(memoryValues[toBeSwappedIndex]) + " can't be mapped because it is too big! limit:" + str(memoryLimits[memoryLimitsIndex]))
                 return []
-            
+
     return mapping
