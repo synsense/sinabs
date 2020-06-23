@@ -199,3 +199,5 @@ class SpikingLayer(Layer):
 
         other.state = self.state.detach().clone()
         other.activations = self.activations.detach().clone()
+
+        return other
