@@ -184,3 +184,20 @@ class SpikingLayer(Layer):
         :return: out_shape
         """
         return in_shape
+
+    def __deepcopy__(self):
+        other = SpikingLayer(
+            input_shape=self.input_shape,
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self._membrane_subtract,
+            layer_name="spiking",
+            negative_spikes=self.negative_spikes,
+            batch_size=self.batch_size,
+            membrane_reset=None,
+        )
+
+        other.state = self.state.detach().clone()
+        other.activations = self.activations.detach().clone()
+        other.tw = self.tw
+        other.spikes_number = self.spikes_number
