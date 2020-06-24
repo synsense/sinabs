@@ -172,15 +172,15 @@ class SpeckLayer(nn.Module):
                 self.dimensions["output_shape"]["feature_count"],
                 self.dimensions["output_shape"]["size"]["x"],
                 self.dimensions["output_shape"]["size"]["y"]
-            ).unsqueeze(0)
+            )
         elif layer.state.dim() == 2:
             # this happens when we had a linear layer turned to conv
             layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
             layer.activations = layer.activations.unsqueeze(-1).unsqueeze(-1)
-            neurons_state = layer.state
+            neurons_state = layer.state[0]
         elif layer.state.dim() == 4:
             # 4-dimensional states should be the norm.
-            neurons_state = layer.state.transpose(2, 3)
+            neurons_state = layer.state.transpose(2, 3)[0]
         else:
             raise ValueError("Current state of spiking layer not understood.")
 
@@ -205,8 +205,8 @@ class SpeckLayer(nn.Module):
 
         return {
             "layer_params": layer_params,
-            "neurons_state": neurons_state[0].int().tolist(),
-            "neurons_state_kill_bit": torch.zeros_like(neurons_state[0]).bool().tolist(),
+            "neurons_state": neurons_state.int().tolist(),
+            "neurons_state_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),
         }
 
     @staticmethod

@@ -16,7 +16,6 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence
-import numpy as np
 
 
 class SpeckCompatibleNetwork(nn.Module):

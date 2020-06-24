@@ -7,14 +7,54 @@ from sinabs.backend.speck import SpeckCompatibleNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model
-import numpy as np
+from sinabs.layers.iaf_bptt import SpikingLayer
 
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 
+TEST_CONFIGS = True  # set to False if testing without samna installed.
 
-def networks_equal_output(input_data, ann):
-    snn = from_model(ann)
+
+# --- UTILITIES --- #
+def reset_states(seq):
+    for s in seq:
+        if isinstance(s, SpikingLayer):
+            s.reset_states()
+    return seq
+
+
+def networks_equal_output(input_data, snn):
+    snn.eval()
+    snn_out = snn(input_data).squeeze()  # forward pass
+    reset_states(snn)
+
+    # snn.reset_states()
+    spn = SpeckCompatibleNetwork(
+        snn, input_shape=input_data.shape[1:], discretize=False
+    )
+    spn_out = spn(input_data).squeeze()
+
+    assert torch.equal(snn_out, spn_out)
+
+    if TEST_CONFIGS:
+        # this will give an error if the config is not compatible
+        spn.make_config()
+
+
+# --- TESTS --- #
+def test_with_class():
+    class Net(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.seq = nn.Sequential(
+                nn.Conv2d(2, 4, kernel_size=2, stride=2),
+                nn.ReLU(),
+            )
+
+        def forward(self, x):
+            return self.seq(x)
+
+    snn = from_model(Net())
     snn.eval()
     snn_out = snn(input_data).squeeze()  # forward pass
 
@@ -24,79 +64,53 @@ def networks_equal_output(input_data, ann):
     )
     spn_out = spn(input_data).squeeze()
 
-    return np.array_equal(snn_out, spn_out)
+    assert torch.equal(snn_out, spn_out)
 
 
 def test_initial_pooling():
-    class Net(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.seq = nn.Sequential(
-                nn.AvgPool2d(kernel_size=2, stride=2),
-                nn.Conv2d(2, 4, kernel_size=2, stride=2),
-                nn.ReLU(),
-            )
+    seq = nn.Sequential(
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(batch_size=1),
+    )
 
-        def forward(self, x):
-            return self.seq(x)
-
-    assert networks_equal_output(input_data, Net())
+    networks_equal_output(input_data, seq)
 
 
 def test_pooling_consolidation():
-    class Net(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.seq = nn.Sequential(
-                nn.Conv2d(2, 4, kernel_size=2, stride=2),
-                nn.ReLU(),
-                nn.AvgPool2d(kernel_size=2, stride=2),
-                nn.AvgPool2d(kernel_size=3, stride=3),
-                nn.Conv2d(4, 2, kernel_size=1, stride=1),
-                nn.ReLU()
-            )
+    seq = nn.Sequential(
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(batch_size=1),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(4, 2, kernel_size=1, stride=1),
+        SpikingLayer(batch_size=1)
+    )
 
-        def forward(self, x):
-            return self.seq(x)
-
-    assert networks_equal_output(input_data, Net())
+    networks_equal_output(input_data, seq)
 
 
 def test_batchnorm_after_conv():
-    class Net(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.seq = nn.Sequential(
-                nn.Conv2d(2, 2, kernel_size=1, stride=1),
-                nn.BatchNorm2d(2),
-                nn.ReLU()
-            )
-
-        def forward(self, x):
-            return self.seq(x)
-
-    net = Net()
+    seq = nn.Sequential(
+        nn.Conv2d(2, 2, kernel_size=1, stride=1),
+        nn.BatchNorm2d(2),
+        SpikingLayer(batch_size=1)
+    )
 
     # setting batchnorm parameters, otherwise it's just identity
-    net.seq[-2].running_mean.data = torch.tensor([1.2, -1.5])
-    net.seq[-2].running_var.data = torch.tensor([1.1, 0.7])
-    net.seq[-2].weight.data = torch.tensor([-1.2, -3.5])
-    net.seq[-2].bias.data = torch.tensor([-0.2, 0.3])
+    seq[-2].running_mean.data = torch.tensor([1.2, -1.5])
+    seq[-2].running_var.data = torch.tensor([1.1, 0.7])
+    seq[-2].weight.data = torch.tensor([-1.2, -3.5])
+    seq[-2].bias.data = torch.tensor([-0.2, 0.3])
 
-    assert networks_equal_output(input_data, net)
+    networks_equal_output(input_data, seq)
 
 
 def test_flatten_linear():
-    class Net(nn.Module):
-        def __init__(self):
-            super().__init__()
-            self.seq = nn.Sequential(
-                nn.Flatten(),
-                nn.Linear(512, 2),
-                nn.ReLU()
-            )
+    seq = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(512, 2),
+        SpikingLayer(batch_size=1)
+    )
 
-        def forward(self, x):
-            return self.seq(x)
-
-    assert networks_equal_output(input_data, Net())
+    networks_equal_output(input_data, seq)
