@@ -133,6 +133,13 @@ class SpeckCompatibleNetwork(nn.Module):
                         "First layer cannot be pooling if `dvs_input` is `False`."
                     )
                 pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
+
+                input_shape = [
+                    input_shape[0],
+                    input_shape[1] // pooling[0],
+                    input_shape[2] // pooling[1]
+                ]
+
                 self.compatible_layers.append(
                     sl.SumPool2d(kernel_size=pooling, stride=pooling)
                 )
