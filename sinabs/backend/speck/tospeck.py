@@ -468,20 +468,20 @@ class SpeckCompatibleNetwork(nn.Module):
             # Check whether pooling and strides match
             if stride_y != pooling_y or stride_x != pooling_x:
                 raise ValueError(
-                    f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
+                    "AvgPool2d: Stride size must be the same as pooling size."
                 )
             return (pooling_y, pooling_x)
         else:
             # Check whether pooling is symmetric
             if pooling_x != pooling_y:
                 raise ValueError(
-                    f"AvgPool2d `{layer.layer_name}`: Pooling must be symmetric for CNN layers."
+                    "AvgPool2d: Pooling must be symmetric for CNN layers."
                 )
             pooling = pooling_x  # Is this the vertical dimension?
             # Check whether pooling and strides match
             if any(stride != pooling for stride in (stride_x, stride_y)):
                 raise ValueError(
-                    f"AvgPool2d `{layer.layer_name}`: Stride size must be the same as pooling size."
+                    "AvgPool2d: Stride size must be the same as pooling size."
                 )
             return pooling
 

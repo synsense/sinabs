@@ -67,11 +67,21 @@ def test_with_class():
     assert torch.equal(snn_out, spn_out)
 
 
-def test_initial_pooling():
+def test_with_sinabs_batch():
     seq = nn.Sequential(
-        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.AvgPool2d(kernel_size=(2, 1), stride=(2, 1)),
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
         SpikingLayer(batch_size=1),
+    )
+
+    networks_equal_output(input_data, seq)
+
+
+def test_initial_pooling():
+    seq = nn.Sequential(
+        nn.AvgPool2d(kernel_size=(2, 1), stride=(2, 1)),
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(),
     )
 
     networks_equal_output(input_data, seq)
@@ -80,11 +90,26 @@ def test_initial_pooling():
 def test_pooling_consolidation():
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(batch_size=1),
+        SpikingLayer(),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        SpikingLayer(batch_size=1)
+        SpikingLayer()
+    )
+
+    networks_equal_output(input_data, seq)
+
+
+def test_different_xy_input():
+    input_shape = (2, 16, 32)
+    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
+
+    seq = nn.Sequential(
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(4, 2, kernel_size=1, stride=1),
+        SpikingLayer()
     )
 
     networks_equal_output(input_data, seq)
@@ -94,7 +119,7 @@ def test_batchnorm_after_conv():
     seq = nn.Sequential(
         nn.Conv2d(2, 2, kernel_size=1, stride=1),
         nn.BatchNorm2d(2),
-        SpikingLayer(batch_size=1)
+        SpikingLayer()
     )
 
     # setting batchnorm parameters, otherwise it's just identity
@@ -110,7 +135,7 @@ def test_flatten_linear():
     seq = nn.Sequential(
         nn.Flatten(),
         nn.Linear(512, 2),
-        SpikingLayer(batch_size=1)
+        SpikingLayer()
     )
 
     networks_equal_output(input_data, seq)

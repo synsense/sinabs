@@ -3,7 +3,7 @@ from torch import nn
 from typing import Dict, Tuple, Optional
 import sinabs.layers as sl
 from warnings import warn
-from .discretize import discretize_conv_spike_, discretize_conv, discretize_spk
+from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
 
@@ -46,14 +46,16 @@ class SpeckLayer(nn.Module):
 
         self._input_shape = in_shape
 
+        spk = deepcopy(spk)
         if isinstance(conv, nn.Linear):
             conv = self._convert_linear_to_conv(conv)
+            spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
+            spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
         else:
             conv = deepcopy(conv)
-        spk = deepcopy(spk)
 
         if rescale_weights != 1:
-            # this has to be done after copying but before rescaling
+            # this has to be done after copying but before discretizing
             conv.weight.data = (conv.weight / rescale_weights).clone().detach()
 
         self.discretize = discretize
@@ -162,24 +164,20 @@ class SpeckLayer(nn.Module):
 
         """
         # - Neuron states
-        if layer.state.dim() == 1:
+        if layer.state.dim() == 1 and len(layer.state) == 1 and layer.state.item() == 0.0:
             # this should happen when the state is tensor([0.]), which is the
             # Sinabs default for non-initialized networks. We check that and
             # then we assign no initial neuron state to Speck.
-            assert len(layer.state) == 1
-            assert layer.state.item() == 0.0
             neurons_state = torch.zeros(
                 self.dimensions["output_shape"]["feature_count"],
                 self.dimensions["output_shape"]["size"]["x"],
                 self.dimensions["output_shape"]["size"]["y"]
             )
-        elif layer.state.dim() == 2:
-            # this happens when we had a linear layer turned to conv
-            layer.state = layer.state.unsqueeze(-1).unsqueeze(-1)
-            layer.activations = layer.activations.unsqueeze(-1).unsqueeze(-1)
-            neurons_state = layer.state[0]
+        elif layer.state.dim() == 3:
+            # 3-d is the norm when there is no batch dimension in sinabs
+            neurons_state = layer.state.transpose(1, 2)
         elif layer.state.dim() == 4:
-            # 4-dimensional states should be the norm.
+            # 4-dimensional states should be the norm when there is a batch dim
             neurons_state = layer.state.transpose(2, 3)[0]
         else:
             raise ValueError("Current state of spiking layer not understood.")
