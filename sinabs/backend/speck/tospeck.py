@@ -541,10 +541,6 @@ class SpeckCompatibleNetwork(nn.Module):
 #     device.apply()
 
 
-def _make_false_arrays(shape):
-    pass
-
-
 def _merge_conv_bn(conv, bn):
     """
     Merge a convolutional layer with subsequent batch normalization
