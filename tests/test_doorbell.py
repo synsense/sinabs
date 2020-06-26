@@ -2,10 +2,12 @@
 This module is meant to test a real use case. It will include testing of
 the network equivalence, and of the correct output configuration.
 """
-
-import samna
-
-samna
+try:
+    import samna
+    samna
+    TEST_CONFIGS = True
+except ImportError:
+    TEST_CONFIGS = False
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
 
@@ -79,3 +81,7 @@ def test_was_copied():
     # - Make sure that layers of different models are distinct objects
     for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
         assert lyr_snn is not lyr_speck
+
+
+if not TEST_CONFIGS:
+    test_auto_config = pytest.mark.skip(test_auto_config)
