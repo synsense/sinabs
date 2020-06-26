@@ -1,8 +1,10 @@
-"""
-This should test some individual cases of networks with properties that are
-supported (but maybe not always common). Running these tests should not require
-samna, and they are tests of equivalence between snn and speck compatible net.
-"""
+try:
+    import samna
+    samna
+    TEST_CONFIGS = True
+except ImportError:
+    TEST_CONFIGS = False
+
 from sinabs.backend.speck import SpeckCompatibleNetwork
 import torch
 from torch import nn
@@ -11,8 +13,6 @@ from sinabs.layers.iaf_bptt import SpikingLayer
 
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
-
-TEST_CONFIGS = True  # set to False if testing without samna installed.
 
 
 # --- UTILITIES --- #

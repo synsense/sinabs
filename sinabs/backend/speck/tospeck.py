@@ -173,7 +173,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
     def make_config(
         self, speck_layers_ordering: Sequence[int] = range(9)
-    ) -> SpeckConfiguration:
+    ):
         """Prepare and output the `samna` Speck configuration for this network.
 
         Parameters

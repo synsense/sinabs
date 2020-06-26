@@ -68,10 +68,11 @@ speck_out = speck_net(input_data)
 
 
 def test_same_result():
-    print(speck_out)
+    # print(speck_out)
     assert torch.equal(speck_out.squeeze(), snn_out.squeeze())
 
 
+@pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_auto_config():
     # - Should give an error with the normal layer ordering
     speck_net.make_config(speck_layers_ordering=[0, 1, 2, 3, 4])
@@ -81,7 +82,3 @@ def test_was_copied():
     # - Make sure that layers of different models are distinct objects
     for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
         assert lyr_snn is not lyr_speck
-
-
-if not TEST_CONFIGS:
-    test_auto_config = pytest.mark.skip(test_auto_config)
