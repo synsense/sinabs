@@ -43,7 +43,9 @@ def verify_dvs_config(
     assert dvs.pooling.x == pooling[1]
 
 
-def verify_networks(ann, target_layers, pooling, discretize, first_pooling=True):
+def verify_networks(
+    ann, target_layers, pooling, discretize, input_shape=input_shape, first_pooling=True
+):
 
     # - ANN and SNN generation
     snn = from_model(ann)
@@ -101,10 +103,19 @@ def test_dvs_no_pooling():
     target_layers = [5, 2]
     pooling = (1, 1)
 
-    verify_networks(
-        Net(), target_layers, pooling, discretize=False, first_pooling=False
-    )
-    verify_networks(Net(), target_layers, pooling, discretize=True, first_pooling=False)
+    net = Net()
+    verify_networks(net, target_layers, pooling, discretize=False, first_pooling=False)
+    verify_networks(net, target_layers, pooling, discretize=True, first_pooling=False)
+    # - Make sure missing input shape causes exception
+    with pytest.raises(ValueError):
+        verify_networks(
+            net,
+            target_layers,
+            pooling,
+            discretize=True,
+            first_pooling=False,
+            input_shape=None,
+        )
 
 
 def test_dvs_pooling_2d():
@@ -125,8 +136,19 @@ def test_dvs_pooling_2d():
     target_layers = [5, 2]
     pooling = (2, 8)
 
-    verify_networks(Net(), target_layers, pooling, discretize=False)
-    verify_networks(Net(), target_layers, pooling, discretize=True)
+    net = Net()
+    verify_networks(net, target_layers, pooling, discretize=False)
+    verify_networks(net, target_layers, pooling, discretize=True)
+    # - Make sure missing input shape causes exception
+    with pytest.raises(ValueError):
+        verify_networks(
+            net,
+            target_layers,
+            pooling,
+            discretize=True,
+            first_pooling=False,
+            input_shape=None,
+        )
 
 
 def test_dvs_pooling_1d():
@@ -147,8 +169,9 @@ def test_dvs_pooling_1d():
     target_layers = [5, 2]
     pooling = (8, 8)
 
-    verify_networks(Net(), target_layers, pooling, discretize=False)
-    verify_networks(Net(), target_layers, pooling, discretize=True)
+    net = Net()
+    verify_networks(net, target_layers, pooling, discretize=False)
+    verify_networks(net, target_layers, pooling, discretize=True)
 
 
 def test_dvs_pooling_1d2d():
@@ -169,8 +192,9 @@ def test_dvs_pooling_1d2d():
     target_layers = [5, 2]
     pooling = (4, 2)
 
-    verify_networks(Net(), target_layers, pooling, discretize=False)
-    verify_networks(Net(), target_layers, pooling, discretize=True)
+    net = Net()
+    verify_networks(net, target_layers, pooling, discretize=False)
+    verify_networks(net, target_layers, pooling, discretize=True)
 
 
 def test_dvs_pooling_2d1d():
@@ -191,5 +215,6 @@ def test_dvs_pooling_2d1d():
     target_layers = [5, 2]
     pooling = (4, 2)
 
-    verify_networks(Net(), target_layers, pooling, discretize=False)
-    verify_networks(Net(), target_layers, pooling, discretize=True)
+    net = Net()
+    verify_networks(net, target_layers, pooling, discretize=False)
+    verify_networks(net, target_layers, pooling, discretize=True)
