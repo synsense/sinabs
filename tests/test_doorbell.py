@@ -14,6 +14,7 @@ import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
 from sinabs.backend.speck.tospeck import SpeckCompatibleNetwork
+import pytest
 
 
 class SmartDoorClassifier(nn.Module):
@@ -63,11 +64,18 @@ snn.reset_states()
 speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
 speck_out = speck_net(input_data)
 
-print("Snn out", snn_out.sum().item())
-print("Speck out", speck_out.sum().item())
 
-speck_config = speck_net.make_config(speck_layers_ordering=[0, 1, 2, 3, 4, 5])
+def test_same_result():
+    print(speck_out)
+    assert torch.equal(speck_out.squeeze(), snn_out.squeeze())
 
-# - Make sure that layers of different models are distinct objects
-for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
-    assert lyr_snn is not lyr_speck
+
+def test_auto_config():
+    # - Should give an error with the normal layer ordering
+    speck_net.make_config(speck_layers_ordering=[0, 1, 2, 3, 4])
+
+
+def test_was_copied():
+    # - Make sure that layers of different models are distinct objects
+    for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
+        assert lyr_snn is not lyr_speck
