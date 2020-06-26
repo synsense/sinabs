@@ -11,6 +11,8 @@ from torch import nn
 from sinabs.from_torch import from_model
 from sinabs.layers.iaf_bptt import SpikingLayer
 
+torch.manual_seed(1)
+
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 
@@ -33,6 +35,8 @@ def networks_equal_output(input_data, snn):
         snn, input_shape=input_data.shape[1:], discretize=False
     )
     spn_out = spn(input_data).squeeze()
+
+    print(snn_out.sum(), spn_out.sum())
 
     assert torch.equal(snn_out, spn_out)
 
