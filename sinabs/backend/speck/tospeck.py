@@ -88,9 +88,14 @@ class SpeckCompatibleNetwork(nn.Module):
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
             input_layer = deepcopy(layers[0])
+            if input_shape is not None and input_shape != input_layer.output_shape:
+                warn(
+                    "Network starts with `InputLayer`. Will ignore `input_shape` argument."
+                )
             input_shape = input_layer.output_shape
             self.compatible_layers.append(input_layer)
             i_layer += 1
+
         elif input_shape is None:
             raise ValueError(
                 "`input_shape` must be provided if first layer is not `InputLayer`."
@@ -137,7 +142,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 input_shape = [
                     input_shape[0],
                     input_shape[1] // pooling[0],
-                    input_shape[2] // pooling[1]
+                    input_shape[2] // pooling[1],
                 ]
 
                 self.compatible_layers.append(
@@ -171,9 +176,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(
-        self, speck_layers_ordering: Sequence[int] = range(9)
-    ):
+    def make_config(self, speck_layers_ordering: Sequence[int] = range(9)):
         """Prepare and output the `samna` Speck configuration for this network.
 
         Parameters
@@ -229,7 +232,9 @@ class SpeckCompatibleNetwork(nn.Module):
                 assert self._dvs_input
 
                 # - Set pooling for dvs layer
-                assert speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                assert (
+                    speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                )
                 dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
@@ -249,7 +254,9 @@ class SpeckCompatibleNetwork(nn.Module):
                     i_layer_speck += 1
                     # Set destination layer
                     speck_layer.destinations[0].layer = speck_layers[i_layer_speck]
-                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[
+                        0
+                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
 
             else:
@@ -474,9 +481,7 @@ class SpeckCompatibleNetwork(nn.Module):
         else:
             # Check whether pooling is symmetric
             if pooling_x != pooling_y:
-                raise ValueError(
-                    "AvgPool2d: Pooling must be symmetric for CNN layers."
-                )
+                raise ValueError("AvgPool2d: Pooling must be symmetric for CNN layers.")
             pooling = pooling_x  # Is this the vertical dimension?
             # Check whether pooling and strides match
             if any(stride != pooling for stride in (stride_x, stride_y)):
