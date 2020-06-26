@@ -10,6 +10,7 @@ else:
 
 from sinabs.backend.speck import SpeckCompatibleNetwork
 from sinabs.from_torch import from_model
+from sinabs.layers import InputLayer
 
 import torch
 from torch import nn
@@ -90,11 +91,11 @@ def verify_networks(
 
 def test_dvs_no_pooling():
     class Net(nn.Module):
-        def __init__(self):
+        def __init__(self, input_layer: bool = False):
             super().__init__()
-            self.seq = nn.Sequential(
-                nn.Conv2d(2, 4, kernel_size=2, stride=2), nn.ReLU(),
-            )
+            layers = [InputLayer(input_shape)] if input_layer else []
+            layers += [nn.Conv2d(2, 4, kernel_size=2, stride=2), nn.ReLU()]
+            self.seq = nn.Sequential(*layers)
 
         def forward(self, x):
             return self.seq(x)
@@ -112,22 +113,69 @@ def test_dvs_no_pooling():
             net,
             target_layers,
             pooling,
+            discretize=False,
+            first_pooling=False,
+            input_shape=None,
+        )
+        verify_networks(
+            net,
+            target_layers,
+            pooling,
             discretize=True,
             first_pooling=False,
             input_shape=None,
         )
 
+    # - Network starting with input layer
+    net_input_layer = Net(input_layer=True)
+    verify_networks(
+        net_input_layer,
+        target_layers,
+        pooling,
+        discretize=False,
+        first_pooling=False,
+        input_shape=None,
+    )
+    verify_networks(
+        net_input_layer,
+        target_layers,
+        pooling,
+        discretize=True,
+        first_pooling=False,
+        input_shape=None,
+    )
+    # - Make sure non-matching input shapes cause warning
+    with pytest.raises(Warning):
+        verify_networks(
+            net_input_layer,
+            target_layers,
+            pooling,
+            discretize=False,
+            first_pooling=False,
+            input_shape=(1, 2, 3),
+        )
+        verify_networks(
+            net_input_layer,
+            target_layers,
+            pooling,
+            discretize=True,
+            first_pooling=False,
+            input_shape=(1, 2, 3),
+        )
+
 
 def test_dvs_pooling_2d():
     class Net(nn.Module):
-        def __init__(self):
+        def __init__(self, input_layer: bool = False):
             super().__init__()
-            self.seq = nn.Sequential(
+            layers = [InputLayer(input_shape)] if input_layer else []
+            layers += [
                 nn.AvgPool2d(kernel_size=(2, 4)),
                 nn.AvgPool2d(kernel_size=(1, 2)),
                 nn.Conv2d(2, 4, kernel_size=2, stride=2),
                 nn.ReLU(),
-            )
+            ]
+            self.seq = nn.Sequential(*layers)
 
         def forward(self, x):
             return self.seq(x)
@@ -145,9 +193,43 @@ def test_dvs_pooling_2d():
             net,
             target_layers,
             pooling,
+            discretize=False,
+            first_pooling=False,
+            input_shape=None,
+        )
+        verify_networks(
+            net,
+            target_layers,
+            pooling,
             discretize=True,
             first_pooling=False,
             input_shape=None,
+        )
+
+    net_input_layer = Net(input_layer=True)
+    verify_networks(
+        net_input_layer, target_layers, pooling, discretize=False, input_shape=None
+    )
+    verify_networks(
+        net_input_layer, target_layers, pooling, discretize=True, input_shape=None
+    )
+    # - Make sure non-matching input shapes cause warning
+    with pytest.raises(Warning):
+        verify_networks(
+            net_input_layer,
+            target_layers,
+            pooling,
+            discretize=False,
+            first_pooling=False,
+            input_shape=(1, 2, 3),
+        )
+        verify_networks(
+            net_input_layer,
+            target_layers,
+            pooling,
+            discretize=True,
+            first_pooling=False,
+            input_shape=(1, 2, 3),
         )
 
 
