@@ -250,7 +250,7 @@ def test_dvs_pooling_1d():
 
     # - Speck layer arrangement
     target_layers = [5, 2]
-    pooling = (4,)
+    pooling = (4, 4)
 
     net = Net()
     verify_networks(net, target_layers, pooling, discretize=False)
