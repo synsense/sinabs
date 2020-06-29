@@ -3,6 +3,7 @@ This should test cases of speck compatible networks with dvs input
 """
 try:
     from samna.speck.configuration import SpeckConfiguration
+    from samna.speck import validate_configuration
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
@@ -145,7 +146,7 @@ def test_dvs_no_pooling():
         input_shape=None,
     )
     # - Make sure non-matching input shapes cause warning
-    with pytest.raises(Warning):
+    with pytest.warns(UserWarning):
         verify_networks(
             net_input_layer,
             target_layers,
@@ -182,7 +183,7 @@ def test_dvs_pooling_2d():
 
     # - Speck layer arrangement
     target_layers = [5, 2]
-    pooling = (2, 8)
+    pooling = (2, 4)
 
     net = Net()
     verify_networks(net, target_layers, pooling, discretize=False)
@@ -214,13 +215,13 @@ def test_dvs_pooling_2d():
         net_input_layer, target_layers, pooling, discretize=True, input_shape=None
     )
     # - Make sure non-matching input shapes cause warning
-    with pytest.raises(Warning):
+    with pytest.warns(UserWarning):
         verify_networks(
             net_input_layer,
             target_layers,
             pooling,
             discretize=False,
-            first_pooling=False,
+            first_pooling=True,
             input_shape=(1, 2, 3),
         )
         verify_networks(
@@ -228,7 +229,7 @@ def test_dvs_pooling_2d():
             target_layers,
             pooling,
             discretize=True,
-            first_pooling=False,
+            first_pooling=True,
             input_shape=(1, 2, 3),
         )
 
@@ -249,7 +250,7 @@ def test_dvs_pooling_1d():
 
     # - Speck layer arrangement
     target_layers = [5, 2]
-    pooling = (8, 8)
+    pooling = (4,)
 
     net = Net()
     verify_networks(net, target_layers, pooling, discretize=False)
