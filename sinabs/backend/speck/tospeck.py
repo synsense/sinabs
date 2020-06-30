@@ -258,7 +258,8 @@ class SpeckCompatibleNetwork(nn.Module):
                         0
                     ].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
-
+            elif isinstance(speck_equivalent_layer, sl.InputLayer):
+                pass
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen
