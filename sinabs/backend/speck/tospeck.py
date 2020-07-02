@@ -387,6 +387,7 @@ class SpeckCompatibleNetwork(nn.Module):
         speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
         speck_layer.neurons_initial_value = config_dict["neurons_state"]
         speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+        speck_layer.leak_enable = config_dict["leak_enable"]
 
         for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")

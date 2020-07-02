@@ -264,6 +264,7 @@ class SpeckLayer(nn.Module):
             "weights_kill_bit": torch.zeros_like(weights).bool().tolist(),
             "biases": biases.int().tolist(),
             "biases_kill_bit": torch.zeros_like(biases).bool().tolist(),
+            "leak_enable": biases.bool().any(),
         }
 
     @property
