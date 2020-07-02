@@ -358,7 +358,7 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     """
 
     # Discrete range
-    min_val_disc = 2 ** (bit_precision - 1)
+    min_val_disc = -(2 ** (bit_precision - 1))
     max_val_disc = 2 ** (bit_precision - 1) - 1
 
     # Range in which values lie
@@ -428,7 +428,7 @@ def discretize_scalar(obj: float, scaling: float) -> int:
     obj_scaled = obj * scaling
 
     # Round and cast to integers
-    return int(obj_scaled)
+    return round(obj_scaled)
 
 
 ### OBSOLETE
