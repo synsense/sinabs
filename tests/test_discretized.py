@@ -43,6 +43,10 @@ spk_lyr = SpikingLayerBPTT(threshold=thr, threshold_low=thr_low, membrane_subtra
 
 
 def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state):
+    """
+    Make sure that all discretized values are scaled by same factor and within
+    their allowed range.
+    """
 
     if thr is not None:
         # Guess scaling based on threshold
@@ -62,6 +66,15 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
         (weight, bias, state, thrs),
     ):
         if new is not None:
+            # Explanation for the tolerance:
+            # Let ref_d be the scaled and discretized `reference` value, and `s` the (true)
+            # scaling factor. Then the difference `diff` between ref_d and reference * scaling
+            # is due to rounding and at most 0.5. Therefore the guessed scaling factor
+            # `scale` is ref_d / reference = (ref_d + diff) / reference
+            # When multiplying it with another original value it will deviate at most by
+            # orig * |scale - s| + 0.5, where 0.5 is from rounding and scale - s the
+            # difference between guessed and true scaling factor. |scale - s| = |diff| / |reference|
+            # and |diff| <= 0.5, therefore the total error is at most 0.5 * |orig/referece| + 0.5
             tol = 0.5 * (1 + torch.abs(new / reference))
             assert (torch.abs(scale * orig - new) <= tol).all()
     # Make sure that new values are in allowed range
@@ -76,6 +89,7 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
 
 
 def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
+    """Discretize layers and make sure the discretized values are sensible."""
     if inplace:
         conv_discr, spk_discr = discretize.discretize_conv_spike_(
             conv_lyr, spk_lyr, to_int=to_int
@@ -97,6 +111,8 @@ def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
 
 
 def test_discretize_conv_spike():
+    """Test joint discretization of spiking and convolutional layers"""
+
     # - Make copies of original layers
     conv_copy = deepcopy(conv_lyr)
     spk_copy = deepcopy(spk_lyr)
@@ -158,6 +174,8 @@ def test_discretize_conv_spike():
 
 
 def test_discr_conv():
+    """Discretization of only convolutional layer"""
+
     # - Add biases and evolve to initialize layer state
     conv_lyr.bias = torch.nn.Parameter(bias)
 
@@ -199,6 +217,8 @@ def test_discr_conv():
 
 
 def test_discr_spk():
+    """Discretization of only spiking layer"""
+
     # - Add biases and evolve to initialize layer state
     conv_lyr.bias = torch.nn.Parameter(bias)
 
@@ -252,6 +272,8 @@ def test_discr_spk():
 
 
 def test_discr_tensor():
+    """Discretization of a tensor object by given scaling factor"""
+
     scaling = 3.0917
 
     discr_tensor = discretize.discretize_tensor(float_tensor, scaling, to_int=False)
@@ -268,6 +290,8 @@ def test_discr_tensor():
 
 
 def test_discr_scalar():
+    """Discretization of a scalar object by given scaling factor"""
+
     scaling = 3.0917
 
     scalar = 13.5594
@@ -280,6 +304,8 @@ def test_discr_scalar():
 
 
 def test_scaling():
+    """Choice of scaling factor"""
+
     bit_precision = 8
 
     def test_obj(obj):
