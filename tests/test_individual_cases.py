@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from sinabs.from_torch import from_model
 from sinabs.layers.iaf_bptt import SpikingLayer
+import pytest
 
 torch.manual_seed(0)
 
@@ -43,7 +44,7 @@ def networks_equal_output(input_data, snn):
 
     if TEST_CONFIGS:
         # this will give an error if the config is not compatible
-        spn.make_config()
+        return spn.make_config()
 
 
 # --- TESTS --- #
@@ -126,6 +127,26 @@ def test_different_xy_input():
     )
 
     networks_equal_output(input_data, seq)
+
+
+@pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
+def test_bias_nobias():
+    torch.manual_seed(0)
+
+    input_shape = (2, 16, 32)
+    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
+
+    seq = nn.Sequential(
+        nn.Conv2d(2, 4, kernel_size=2, stride=2, bias=True),
+        SpikingLayer(),
+        nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(4, 2, kernel_size=1, stride=1, bias=False),
+        SpikingLayer()
+    )
+
+    config = networks_equal_output(input_data, seq)
+    assert config.cnn_layers[0].leak_enable is True
+    assert config.cnn_layers[1].leak_enable is False
 
 
 def test_batchnorm_after_conv():
