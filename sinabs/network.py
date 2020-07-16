@@ -427,9 +427,7 @@ class Network(Layer):
 
         SynOps_dataframe = pd.DataFrame()
         for (layer_name, lyr) in self.spiking_model.named_modules():
-            print(layer_name)
             if hasattr(lyr, 'synops'):
-                print(layer_name)
                 SynOps_dataframe = SynOps_dataframe.append(
                     pd.Series(
                         {
