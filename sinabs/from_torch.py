@@ -157,7 +157,7 @@ class SpkConverter(object):
             kernel = (pool.kernel_size, pool.kernel_size)
         else:
             kernel = pool.kernel_size
-        if not hasattr(pool.stride, "__len__"):
+        if isinstance(pool.stride, int):
             stride = (pool.stride, pool.stride)
         else:
             stride = pool.stride
@@ -206,7 +206,7 @@ class SpkConverter(object):
             kernel = (pool.kernel_size, pool.kernel_size)
         else:
             kernel = pool.kernel_size
-        if not hasattr(pool.stride, "__len__"):
+        if isinstance(pool.stride, int):
             stride = (pool.stride, pool.stride)
         else:
             stride = pool.stride
