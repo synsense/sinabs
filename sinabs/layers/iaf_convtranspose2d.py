@@ -23,13 +23,14 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from operator import mul
 from functools import reduce
 from .quantize import QuantizeLayer
 from collections import OrderedDict
-from sinabs.cnnutils import conv_output_size, compute_padding
+from sinabs.cnnutils import compute_padding
 from .iaf import SpikingLayer
+from .iaf_conv2d import SpikingConv2dLayer
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -48,8 +49,8 @@ class SpikingConvTranspose2dLayer(SpikingLayer):
         bias: bool = True,
         threshold: float = 1.,
         threshold_low: Optional[float] = -1.,
-        membrane_subtract: Optional[float] = 1.,
-        membrane_reset: float = 0,
+        membrane_subtract: Optional[float] = None,
+        membrane_reset: Optional[float] = None,
         layer_name: str = "conv2d",
     ):
         """
@@ -65,11 +66,11 @@ class SpikingConvTranspose2dLayer(SpikingLayer):
         :param bias: If this layer has a bias value
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lowerbound for membrane potential
-        :param membrane_subtract: Upon spiking if the membrane potential is subtracted as opposed to reset, what is its value
-        :param membrane_reset: What is the reset membrane potential of the neuron
+        :param membrane_subtract: Upon spiking, if the membrane potential is subtracted as opposed to reset, \
+        what is the subtracted value? Defaults to threshold.
+        :param membrane_reset: What is the reset membrane potential of the neuron. \
+        If not None, the membrane potential is reset instead of subtracted on spiking.
         :param layer_name: Name of this layer
-
-        NOTE: SUBTRACT superseeds Reset value
         """
         SpikingLayer.__init__(
             self,
@@ -226,7 +227,7 @@ def from_convtranspose2d_keras_conf(
             bias=layer_config["config"]["use_bias"],
             threshold=1.0,
             threshold_low=-1.0,
-            membrane_subtract=1.0,
+            membrane_subtract=None,
             layer_name=layer_name,
         )
 

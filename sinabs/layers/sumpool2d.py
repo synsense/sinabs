@@ -58,7 +58,7 @@ class SumPooling2dLayer(TorchLayer):
         )
         self.padding = padding
         self.pool_size = pool_size
-        if strides is None:
+        if (strides is None) or (None in strides):
             strides = pool_size
         self.strides = strides
         if padding == (0, 0, 0, 0):

@@ -43,8 +43,8 @@ class SpikingConv1dLayer(SpikingLayer):
         bias: bool = True,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = 1.0,
-        membrane_reset: float = 0,
+        membrane_subtract: Optional[float] = None,
+        membrane_reset: Optional[float] = None,
         layer_name: str = "conv1d",
     ):
         """
@@ -60,11 +60,11 @@ class SpikingConv1dLayer(SpikingLayer):
         :param bias: If this layer has a bias value
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lower bound for membrane potential
-        :param membrane_subtract: Upon spiking if the membrane potential is subtracted as opposed to reset, what is its value
-        :param membrane_reset: What is the reset membrane potential of the neuron
+        :param membrane_subtract: Upon spiking, if the membrane potential is subtracted as opposed to reset, \
+        what is the subtracted value? Defaults to threshold.
+        :param membrane_reset: What is the reset membrane potential of the neuron. \
+        If not None, the membrane potential is reset instead of subtracted on spiking.
         :param layer_name: Name of this layer
-
-        NOTE: SUBTRACT superseeds Reset value
         """
         SpikingLayer.__init__(
             self,

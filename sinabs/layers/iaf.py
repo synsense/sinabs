@@ -22,7 +22,7 @@
 import torch
 import numpy as np
 import torch.nn as nn
-from typing import Optional, Union, List, Tuple, Dict
+from typing import Optional, Union, List, Tuple
 from .layer import TorchLayer
 from abc import abstractmethod
 
@@ -36,8 +36,8 @@ class SpikingLayer(TorchLayer):
         input_shape: ArrayLike,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = 1.0,
-        membrane_reset: float = 0,
+        membrane_subtract: Optional[float] = None,
+        membrane_reset: Optional[float] = None,
         layer_name: str = "spiking",
         negative_spikes: bool = False,
     ):
@@ -48,16 +48,16 @@ class SpikingLayer(TorchLayer):
         :param input_shape: Input data shape
         :param threshold: Spiking threshold of the neuron
         :param threshold_low: Lowerbound for membrane potential
-        :param membrane_subtract: Upon spiking if the membrane potential is subtracted as opposed to reset, what is its value
-        :param membrane_reset: What is the reset membrane potential of the neuron
+        :param membrane_subtract: Upon spiking, if the membrane potential is subtracted as opposed to reset, \
+        what is the subtracted value? Defaults to threshold.
+        :param membrane_reset: What is the reset membrane potential of the neuron. \
+        If not None, the membrane potential is reset instead of subtracted on spiking.
         :param layer_name: Name of this layer
         :param negative_spikes: Implement a linear transfer function through negative spiking
-
-        NOTE: SUBTRACT superseeds Reset value
         """
         TorchLayer.__init__(self, input_shape=input_shape, layer_name=layer_name)
         # Initialize neuron states
-        self._membrane_subtract = membrane_subtract  # Avoid setter method here
+        self._membrane_subtract = membrane_subtract
         self.membrane_reset = membrane_reset
         self.threshold = threshold
         self.threshold_low = threshold_low
@@ -133,7 +133,7 @@ class SpikingLayer(TorchLayer):
         for iCurrentTimeStep in range(time_steps):
             state = state + syn_out[iCurrentTimeStep]
             # - Reset or subtract from membrane state after spikes
-            if membrane_subtract is not None:
+            if membrane_reset is None:
                 if not neg_spikes:
                     # Calculate number of spikes to be generated
                     n_thresh_crossings = (
@@ -180,24 +180,11 @@ class SpikingLayer(TorchLayer):
 
     @property
     def membrane_subtract(self):
-        return self._membrane_subtract
+        if self._membrane_subtract is not None:
+            return self._membrane_subtract
+        else:
+            return self.threshold
 
     @membrane_subtract.setter
     def membrane_subtract(self, new_val):
-        if new_val is None and self.membrane_reset is None:
-            raise TypeError(
-                "'membrane_reset' and 'membrane_subtract' cannot both be 'None'."
-            )
         self._membrane_subtract = new_val
-
-    @property
-    def membrane_reset(self):
-        return self._membrane_reset
-
-    @membrane_reset.setter
-    def membrane_reset(self, new_val):
-        if new_val is None and self.membrane_subtract is None:
-            raise TypeError(
-                "'membrane_reset' and 'membrane_subtract' cannot both be 'None'."
-            )
-        self._membrane_reset = new_val
