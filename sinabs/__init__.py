@@ -15,14 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-try:
-    import samna
-except (ImportError, ModuleNotFoundError):
-    # this looks terrible but is actually harmless. If samna happens to be
-    # installed, we must import it before torch, otherwise everything crashes.
-    # If not installed, the problem will be dealt with in the appropriate module.
-    pass
-
 from .network import Network
 from .synopcounter import SynOpCounter
 
