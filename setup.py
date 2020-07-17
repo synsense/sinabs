@@ -24,7 +24,7 @@ setup(
     name="sinabs",
     author="aiCTX AG",
     author_email="sadique.sheik@aictx.ai",
-    version="0.1.dev7",
+    version="0.1.dev8",
     description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",
     long_description=long_description,
     long_description_content_type="text/markdown",
