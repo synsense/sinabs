@@ -197,8 +197,7 @@ class SpeckLayer(nn.Module):
             return_to_zero=return_to_zero,
             threshold_high=int(layer.threshold),
             threshold_low=int(layer.threshold_low),
-            monitor_enable=True,  # Yes or no?
-            # leak_enable=layer.bias,  # TODO
+            monitor_enable=False,
         )
 
         return {

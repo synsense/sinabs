@@ -209,6 +209,12 @@ class SpeckCompatibleNetwork(nn.Module):
         i_layer_speck = 0
         dvs = config.dvs_layer
         if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
+            if self._external_input_shape[0] == 1:
+                dvs.merge = True
+            elif self._external_input_shape[0] != 2:
+                message = "dvs layer must have 1 or 2 input channels"
+                raise ValueError("Network not valid for Speck\n" + message)
+
             # - Cut DVS output to match output shape of `lyr_curr`
             dvs.cut.y = self._external_input_shape[1] - 1
             dvs.cut.x = self._external_input_shape[2] - 1
