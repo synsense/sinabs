@@ -101,6 +101,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # - Iterate over layers from model
         while i_layer < len(layers):
+            print(i_layer)
             # Layer to be ported to Speck
             lyr_curr = layers[i_layer]
 
@@ -124,7 +125,7 @@ class SpeckCompatibleNetwork(nn.Module):
                     # of consolidated pooling layers
                     i_layer += i_next + 2
 
-            elif isinstance(lyr_curr, nn.AvgPool2d):
+            elif isinstance(lyr_curr, (sl.SumPool2d, nn.AvgPool2d)):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
                 # Therefore, require that input comes from DVS.
@@ -132,7 +133,8 @@ class SpeckCompatibleNetwork(nn.Module):
                     raise TypeError(
                         "First layer cannot be pooling if `dvs_input` is `False`."
                     )
-                pooling, i_next = self.consolidate_pooling(layers[i_layer:], dvs=True)
+                pooling, i_next, rescaling_from_pooling = self.consolidate_pooling(
+                    layers[i_layer:], dvs=True)
 
                 input_shape = [
                     input_shape[0],
@@ -143,7 +145,9 @@ class SpeckCompatibleNetwork(nn.Module):
                 self.compatible_layers.append(
                     sl.SumPool2d(kernel_size=pooling, stride=pooling)
                 )
-                rescaling_from_pooling = pooling[0] * pooling[1]
+
+                # if isinstance(lyr_curr, nn.AvgPool2d):
+                #     rescaling_from_pooling = pooling[0] * pooling[1]
 
                 if i_next is not None:
                     i_layer += i_next
@@ -329,7 +333,7 @@ class SpeckCompatibleNetwork(nn.Module):
             )
 
         # - Consolidate pooling from subsequent layers
-        pooling, i_next = self.consolidate_pooling(layers[2:], dvs=False)
+        pooling, i_next, rescaling = self.consolidate_pooling(layers[2:], dvs=False)
 
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
@@ -342,7 +346,7 @@ class SpeckCompatibleNetwork(nn.Module):
             rescale_weights=rescaling_from_pooling,
         )
         # the previous rescaling has been used, the new one is used in the next layer
-        rescaling_from_pooling = pooling ** 2
+        rescaling_from_pooling = rescaling
         # we save this object for future forward passes for testing
         self.compatible_layers.append(compatible_object)
         output_shape = compatible_object.output_shape
@@ -404,8 +408,12 @@ class SpeckCompatibleNetwork(nn.Module):
             int or None
                 Index of first object in `layers` that is not a `AvgPool2d`,
                 or `None`, if all objects in `layers` are `AvgPool2d`.
+            int or None
+                Rescaling factor needed when turning AvgPool to SumPool. May
+                differ from the pooling kernel in certain cases.
         """
         pooling = [1, 1] if dvs else 1
+        rescaling_factor = 1
 
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):
@@ -414,18 +422,28 @@ class SpeckCompatibleNetwork(nn.Module):
                 if dvs:
                     pooling[0] *= new_pooling[0]
                     pooling[1] *= new_pooling[1]
+                    rescaling_factor *= new_pooling[0] * new_pooling[1]
+                else:
+                    pooling *= new_pooling
+                    rescaling_factor *= new_pooling ** 2
+            elif isinstance(lyr, sl.SumPool2d):
+                # Update pooling size
+                new_pooling = self.get_pooling_size(lyr, dvs=dvs, check_pad=False)
+                if dvs:
+                    pooling[0] *= new_pooling[0]
+                    pooling[1] *= new_pooling[1]
                 else:
                     pooling *= new_pooling
             else:
                 # print("Pooling:", pooling)
                 # print("Output shape:", input_shape)
-                return pooling, i_next
+                return pooling, i_next, rescaling_factor
 
         # If this line is reached, all objects in `layers` are pooling layers.
-        return pooling, None
+        return pooling, None, rescaling_factor
 
     def get_pooling_size(
-        self, layer: nn.AvgPool2d, dvs: bool
+        self, layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True
     ) -> Union[int, Tuple[int]]:
         """
         Determine the pooling size of a pooling object.
@@ -436,6 +454,8 @@ class SpeckCompatibleNetwork(nn.Module):
                 Pooling layer
             dvs: bool
                 If `True`, pooling does not need to be symmetric.
+            check_pad: bool
+                If `True` (default), check that padding is zero.
 
         Returns
         -------
@@ -446,14 +466,15 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # Warn if there is non-zero padding.
         # Padding can be either int or tuple of ints
-        if isinstance(layer.padding, int):
-            warn_padding = layer.padding != 0
-        else:
-            warn_padding = any(pad != 0 for pad in layer.padding)
-        if warn_padding:
-            warn(
-                f"AvgPool2d `{layer.layer_name}`: Padding is not supported for pooling layers."
-            )
+        if check_pad:
+            if isinstance(layer.padding, int):
+                warn_padding = layer.padding != 0
+            else:
+                warn_padding = any(pad != 0 for pad in layer.padding)
+            if warn_padding:
+                warn(
+                    f"AvgPool2d `{layer.layer_name}`: Padding is not supported for pooling layers."
+                )
 
         # - Pooling and stride
         pooling = layer.kernel_size

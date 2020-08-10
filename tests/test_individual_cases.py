@@ -10,6 +10,7 @@ import torch
 from torch import nn
 from sinabs.from_torch import from_model
 from sinabs.layers.iaf_bptt import SpikingLayer
+from sinabs.layers import SumPool2d
 
 torch.manual_seed(1)
 
@@ -37,7 +38,6 @@ def networks_equal_output(input_data, snn):
     spn_out = spn(input_data).squeeze()
 
     print(snn_out.sum(), spn_out.sum())
-
     assert torch.equal(snn_out, spn_out)
 
     if TEST_CONFIGS:
@@ -91,12 +91,35 @@ def test_initial_pooling():
     networks_equal_output(input_data, seq)
 
 
+def test_initial_sumpooling():
+    seq = nn.Sequential(
+        SumPool2d(kernel_size=(2, 1), stride=(2, 1)),
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(),
+    )
+
+    networks_equal_output(input_data, seq)
+
+
 def test_pooling_consolidation():
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
         SpikingLayer(),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.AvgPool2d(kernel_size=2, stride=2),
+        nn.Conv2d(4, 2, kernel_size=1, stride=1),
+        SpikingLayer()
+    )
+
+    networks_equal_output(input_data, seq)
+
+
+def test_sumpooling_consolidation():
+    seq = nn.Sequential(
+        nn.Conv2d(2, 4, kernel_size=2, stride=2),
+        SpikingLayer(),
+        SumPool2d(kernel_size=2, stride=2),
+        SumPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
         SpikingLayer()
     )
