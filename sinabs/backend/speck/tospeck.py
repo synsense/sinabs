@@ -88,9 +88,14 @@ class SpeckCompatibleNetwork(nn.Module):
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
             input_layer = deepcopy(layers[0])
+            if input_shape is not None and input_shape != input_layer.output_shape:
+                warn(
+                    "Network starts with `InputLayer`. Will ignore `input_shape` argument."
+                )
             input_shape = input_layer.output_shape
             self.compatible_layers.append(input_layer)
             i_layer += 1
+
         elif input_shape is None:
             raise ValueError(
                 "`input_shape` must be provided if first layer is not `InputLayer`."
@@ -139,7 +144,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 input_shape = [
                     input_shape[0],
                     input_shape[1] // pooling[0],
-                    input_shape[2] // pooling[1]
+                    input_shape[2] // pooling[1],
                 ]
 
                 self.compatible_layers.append(
@@ -175,9 +180,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(
-        self, speck_layers_ordering: Sequence[int] = range(9)
-    ):
+    def make_config(self, speck_layers_ordering: Sequence[int] = range(9)):
         """Prepare and output the `samna` Speck configuration for this network.
 
         Parameters
@@ -210,6 +213,12 @@ class SpeckCompatibleNetwork(nn.Module):
         i_layer_speck = 0
         dvs = config.dvs_layer
         if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
+            if self._external_input_shape[0] == 1:
+                dvs.merge = True
+            elif self._external_input_shape[0] != 2:
+                message = "dvs layer must have 1 or 2 input channels"
+                raise ValueError("Network not valid for Speck\n" + message)
+
             # - Cut DVS output to match output shape of `lyr_curr`
             dvs.cut.y = self._external_input_shape[1] - 1
             dvs.cut.x = self._external_input_shape[2] - 1
@@ -233,7 +242,9 @@ class SpeckCompatibleNetwork(nn.Module):
                 assert self._dvs_input
 
                 # - Set pooling for dvs layer
-                assert speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                assert (
+                    speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                )
                 dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
 
             elif isinstance(speck_equivalent_layer, SpeckLayer):
@@ -253,9 +264,12 @@ class SpeckCompatibleNetwork(nn.Module):
                     i_layer_speck += 1
                     # Set destination layer
                     speck_layer.destinations[0].layer = speck_layers[i_layer_speck]
-                    speck_layer.destinations[0].pooling = speck_equivalent_layer.config_dict["Pooling"]
+                    speck_layer.destinations[
+                        0
+                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
                     speck_layer.destinations[0].enable = True
-
+            elif isinstance(speck_equivalent_layer, sl.InputLayer):
+                pass
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen
@@ -383,6 +397,7 @@ class SpeckCompatibleNetwork(nn.Module):
         speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
         speck_layer.neurons_initial_value = config_dict["neurons_state"]
         speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+        speck_layer.leak_enable = config_dict["leak_enable"]
 
         for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")
@@ -495,9 +510,7 @@ class SpeckCompatibleNetwork(nn.Module):
         else:
             # Check whether pooling is symmetric
             if pooling_x != pooling_y:
-                raise ValueError(
-                    "AvgPool2d: Pooling must be symmetric for CNN layers."
-                )
+                raise ValueError("AvgPool2d: Pooling must be symmetric for CNN layers.")
             pooling = pooling_x  # Is this the vertical dimension?
             # Check whether pooling and strides match
             if any(stride != pooling for stride in (stride_x, stride_y)):

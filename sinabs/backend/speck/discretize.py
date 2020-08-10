@@ -176,7 +176,7 @@ def discretize_spk(
 
     """
     lyr_copy = deepcopy(layer)
-    layer_discr = discretize_conv_(
+    layer_discr = discretize_spk_(
         layer=lyr_copy, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
     )
     return layer_discr
@@ -211,7 +211,7 @@ def discretize_spk_(
 
     """
     __, layer_discr = _discretize_conv_spk_(
-        conv_lyr=layer, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
+        spike_lyr=layer, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
     )
     return layer_discr
 
@@ -305,21 +305,19 @@ def _discretize_conv_spk_(
         # - Lower and upper thresholds in a tensor for easier handling
         thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
 
-        spk_state = spike_lyr.state
-
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
     # such each they matches its precision specificaitons.
     scaling_w = determine_discretization_scale(conv_weight, SPECK_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(conv_bias, SPECK_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-    if spk_state is not None:
+    if spike_lyr is not None and spike_lyr.state is not None:
         scaling_n = determine_discretization_scale(
-            spk_state, SPECK_STATE_PRECISION_BITS
+            spike_lyr.state, SPECK_STATE_PRECISION_BITS
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize
-        spk_state = discretize_tensor(spk_state, scaling, to_int=to_int)
+        spike_lyr.state = discretize_tensor(spike_lyr.state, scaling, to_int=to_int)
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
 
@@ -358,7 +356,7 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     """
 
     # Discrete range
-    min_val_disc = 2 ** (bit_precision - 1)
+    min_val_disc = -(2 ** (bit_precision - 1))
     max_val_disc = 2 ** (bit_precision - 1) - 1
 
     # Range in which values lie
@@ -425,10 +423,10 @@ def discretize_scalar(obj: float, scaling: float) -> int:
     """
 
     # Scale the values
-    obj_scaled = obj * scaling
+    obj_scaled = obj * float(scaling)
 
     # Round and cast to integers
-    return int(obj_scaled)
+    return round(obj_scaled)
 
 
 ### OBSOLETE

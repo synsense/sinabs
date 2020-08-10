@@ -197,8 +197,7 @@ class SpeckLayer(nn.Module):
             return_to_zero=return_to_zero,
             threshold_high=int(layer.threshold),
             threshold_low=int(layer.threshold_low),
-            monitor_enable=True,  # Yes or no?
-            # leak_enable=layer.bias,  # TODO
+            monitor_enable=False,
         )
 
         return {
@@ -264,6 +263,7 @@ class SpeckLayer(nn.Module):
             "weights_kill_bit": torch.zeros_like(weights).bool().tolist(),
             "biases": biases.int().tolist(),
             "biases_kill_bit": torch.zeros_like(biases).bool().tolist(),
+            "leak_enable": biases.bool().any(),
         }
 
     @property
