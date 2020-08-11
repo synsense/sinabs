@@ -106,7 +106,6 @@ class SpeckCompatibleNetwork(nn.Module):
 
         # - Iterate over layers from model
         while i_layer < len(layers):
-            print(i_layer)
             # Layer to be ported to Speck
             lyr_curr = layers[i_layer]
 
