@@ -56,9 +56,10 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
         thrs = torch.tensor((thr, thr_low))
         thrs_old = torch.tensor((spk_lyr.threshold, spk_lyr.threshold_low))
     else:
-        scale = torch.max(weight) / torch.max(conv_lyr.weight)
-        reference = torch.max(weight)
-        thrs = thrs_old = None
+        with torch.no_grad():
+            scale = torch.true_divide(torch.max(weight), torch.max(conv_lyr.weight))
+            reference = torch.max(weight)
+            thrs = thrs_old = None
 
     # Error should be within what is expected from rounding
     for orig, new in zip(
@@ -75,7 +76,7 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
             # orig * |scale - s| + 0.5, where 0.5 is from rounding and scale - s the
             # difference between guessed and true scaling factor. |scale - s| = |diff| / |reference|
             # and |diff| <= 0.5, therefore the total error is at most 0.5 * |orig/referece| + 0.5
-            tol = 0.5 * (1 + torch.abs(new / reference))
+            tol = 0.5 * (1 + torch.abs(torch.true_divide(new, reference)))
             assert (torch.abs(scale * orig - new) <= tol).all()
     # Make sure that new values are in allowed range
     for new in (weight, bias):
