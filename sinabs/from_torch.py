@@ -1,4 +1,5 @@
 import copy
+from warnings import warn
 from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
@@ -14,10 +15,20 @@ def synops_hook(layer, inp, out):
     layer.tw = inp.shape[0]
 
 
-def from_model(model, input_shape=None, input_conversion_layer=False,
-               threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
-               exclude_negative_spikes=False, bias_rescaling=1.0,
-               all_2d_conv=False, batch_size=1, synops=True):
+def from_model(
+    model,
+    input_shape=None,
+    input_conversion_layer=False,
+    threshold=1.0,
+    threshold_low=-1.0,
+    membrane_subtract=None,
+    exclude_negative_spikes=False,
+    bias_rescaling=1.0,
+    all_2d_conv=False,
+    batch_size=1,
+    synops=True,
+    add_spiking_output=False,
+):
     """
     Converts a Torch model and returns a Sinabs network object.
     The modules in the model are analyzed, and a copy with the following
@@ -39,6 +50,8 @@ def from_model(model, input_shape=None, input_conversion_layer=False,
     convolutions. Currently not supported.
     :param synops: If True (default), register hooks for counting synaptic \
     operations during foward passes.
+    :param add_spiking_output: If True (default: False), add a spiking layer \
+    to the end of a sequential model if not present.
     """
     return SpkConverter(
         input_shape=input_shape,
@@ -51,14 +64,25 @@ def from_model(model, input_shape=None, input_conversion_layer=False,
         all_2d_conv=all_2d_conv,
         batch_size=batch_size,
         synops=synops,
+        add_spiking_output=add_spiking_output,
     ).convert(model)
 
 
 class SpkConverter(object):
-    def __init__(self, input_shape=None, input_conversion_layer=False,
-                 threshold=1.0, threshold_low=-1.0, membrane_subtract=None,
-                 exclude_negative_spikes=False, bias_rescaling=1.0,
-                 all_2d_conv=False, batch_size=1, synops=True):
+    def __init__(
+        self,
+        input_shape=None,
+        input_conversion_layer=False,
+        threshold=1.0,
+        threshold_low=-1.0,
+        membrane_subtract=None,
+        exclude_negative_spikes=False,
+        bias_rescaling=1.0,
+        all_2d_conv=False,
+        batch_size=1,
+        synops=True,
+        add_spiking_output=False,
+    ):
         """
         Converts a Torch model and returns a Sinabs network object.
         The modules in the model are analyzed, and substitutions are made:
@@ -78,6 +102,8 @@ class SpkConverter(object):
         convolutions. Currently not supported.
         :param synops: If True (default), register hooks for counting synaptic \
         operations during foward passes.
+        :param add_spiking_output: If True (default: False), add a spiking \
+        layer to the end of a sequential model if not present.
         """
         if all_2d_conv:  # TODO
             raise NotImplementedError("Turning linear into conv not supported yet.")
@@ -93,6 +119,7 @@ class SpkConverter(object):
         self.batch_size = batch_size
         self.synops = synops
         self.input_shape = input_shape
+        self.add_spiking_output = add_spiking_output
 
         if input_conversion_layer:
             self.add("input_conversion", input_conversion_layer)
@@ -115,6 +142,17 @@ class SpkConverter(object):
         """
         spk_model = copy.deepcopy(model)
 
+        if self.add_spiking_output:
+            # Add spiking output to sequential model
+            if isinstance(spk_model, nn.Sequential) and not isinstance(
+                spk_model[-1], (nn.ReLU, sl.NeuromorphicReLU)
+            ):
+                spk_model.add_module("Spiking output", nn.ReLU())
+            else:
+                warn(
+                    "Spiking output can olny be added to sequential models that do not end in a ReLU. No layer has been added."
+                )
+
         # import logging
         # logging.debug("## ORIGINAL MODEL")
         # logging.debug(spk_model)
@@ -123,11 +161,7 @@ class SpkConverter(object):
         # logging.debug(spk_model)
 
         device = next(model.parameters()).device
-        network = Network(
-            model,
-            spk_model.to(device),
-            input_shape=self.input_shape
-        )
+        network = Network(model, spk_model.to(device), input_shape=self.input_shape)
 
         return network
 
@@ -149,16 +183,18 @@ class SpkConverter(object):
                 subm.fanout = subm.out_features
                 subm.register_forward_hook(synops_hook)
                 if subm.bias is not None:
-                    subm.bias.data = subm.bias.data.clone().detach() / self.bias_rescaling
+                    subm.bias.data = (
+                        subm.bias.data.clone().detach() / self.bias_rescaling
+                    )
             elif isinstance(subm, nn.Conv2d) and self.synops:
                 subm.fanout = (
-                    subm.out_channels
-                    * product(subm.kernel_size)
-                    / product(subm.stride)
+                    subm.out_channels * product(subm.kernel_size) / product(subm.stride)
                 )
                 subm.register_forward_hook(synops_hook)
                 if subm.bias is not None:
-                    subm.bias.data = subm.bias.data.clone().detach() / self.bias_rescaling
+                    subm.bias.data = (
+                        subm.bias.data.clone().detach() / self.bias_rescaling
+                    )
 
             # if in turn it has children, go iteratively inside
             elif len(list(subm.named_children())):
