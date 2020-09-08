@@ -44,7 +44,6 @@ class SpeckCompatibleNetwork(nn.Module):
         input_shape: Optional[Tuple[int]] = None,
         dvs_input: bool = True,
         discretize: bool = True,
-        kwargs_output: dict = None,
     ):
         """
         SpeckCompatibleNetwork: a class turning sinabs networks into speck
@@ -104,7 +103,6 @@ class SpeckCompatibleNetwork(nn.Module):
         self._dvs_input = dvs_input
         self._external_input_shape = input_shape
         self._discretize = discretize
-        self._kwargs_output = {} if kwargs_output is None else kwargs_output
 
         # - Iterate over layers from model
         while i_layer < len(layers):
@@ -117,6 +115,7 @@ class SpeckCompatibleNetwork(nn.Module):
                     if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
                         lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
                         i_layer += 1
+
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
                     [lyr_curr] + layers[i_layer + 1 :],
@@ -341,20 +340,16 @@ class SpeckCompatibleNetwork(nn.Module):
         try:
             lyr_next = layers[1]
         except IndexError:
-            # Add final spiking layer
-            lyr_next = None
-            pooling = 1
-            i_next = None
-            rescaling = 1
-            lyr_next = sl.iaf_bptt.SpikingLayer(**self._kwargs_output)
+            reached_end = True
         else:
-            if not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
-                raise TypeError(
-                    f"Convolution must be followed by spiking layer, found {type(lyr_next)}"
-                )
+            reached_end = False
+        if reached_end or not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
+            raise TypeError(
+                f"Convolution must be followed by spiking layer, found {type(lyr_next)}"
+            )
 
-            # - Consolidate pooling from subsequent layers
-            pooling, i_next, rescaling = self.consolidate_pooling(layers[2:], dvs=False)
+        # - Consolidate pooling from subsequent layers
+        pooling, i_next, rescaling = self.consolidate_pooling(layers[2:], dvs=False)
 
         # The SpeckLayer object knows how to turn the conv-spk-pool trio to
         # a speck layer, and has a forward method, and computes the output shape
