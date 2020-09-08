@@ -12,8 +12,8 @@ def test_reconstruct_image():
 
     # instantiate layer
     spklayer = sil.Img2SpikeLayer(
-        image_shape=img_shape, tw=10000, max_rate=1000.,
-        squeeze=True)
+        image_shape=img_shape, tw=10000, max_rate=1000.0, squeeze=True
+    )
 
     spikes = spklayer(torch.Tensor(image))
     rates = spikes.mean(0).unsqueeze(0)
@@ -29,9 +29,13 @@ def test_reconstruct_real_numbers():
 
     # instantiate layer
     spklayer = sil.Img2SpikeLayer(
-        image_shape=input_shape, tw=10000, max_rate=1000.,
-        squeeze=True, negative_spikes=True,
-        norm=1.0)
+        image_shape=input_shape,
+        tw=10000,
+        max_rate=1000.0,
+        squeeze=True,
+        negative_spikes=True,
+        norm=1.0,
+    )
 
     spikes = spklayer(torch.Tensor(input_data))
     rates = spikes.mean(0).unsqueeze(0)
@@ -60,15 +64,15 @@ def test_network_conversion():
 
     cnn = CNN().eval()
 
-    cnn.sequence[1].running_mean = 2. * torch.rand(16) - 1.
-    cnn.sequence[1].running_var = torch.rand(16) + 1.
-    cnn.sequence[1].weight = nn.Parameter(2 * torch.rand(16) - 1.)
-    cnn.sequence[1].bias = nn.Parameter(2 * torch.rand(16) - 1.)
+    cnn.sequence[1].running_mean = 2.0 * torch.rand(16) - 1.0
+    cnn.sequence[1].running_var = torch.rand(16) + 1.0
+    cnn.sequence[1].weight = nn.Parameter(2 * torch.rand(16) - 1.0)
+    cnn.sequence[1].bias = nn.Parameter(2 * torch.rand(16) - 1.0)
 
-    cnn.sequence[5].running_mean = 2. * torch.rand(8) - 1.
-    cnn.sequence[5].running_var = torch.rand(8) + 1.
+    cnn.sequence[5].running_mean = 2.0 * torch.rand(8) - 1.0
+    cnn.sequence[5].running_var = torch.rand(8) + 1.0
 
-    img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.)
+    img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
     snn = from_model(cnn, input_shape=input_shape)
 
     img = torch.Tensor(np.random.random(size=input_shape))
@@ -83,3 +87,34 @@ def test_network_conversion():
     # plt.show()
 
     assert np.allclose(snn_res, cnn_res, atol=0.025)
+
+
+def test_network_conversion_add_spk_out():
+    cnn = nn.Sequential(
+        nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False),
+        nn.BatchNorm2d(16, affine=True),
+        nn.ReLU(),
+        nn.AvgPool2d(kernel_size=2),
+        nn.Conv2d(16, 8, kernel_size=(3, 3), bias=True),
+        nn.BatchNorm2d(8, affine=False, track_running_stats=True),
+    )
+
+    input_shape = (1, 28, 28)
+
+    cnn[1].running_mean = 2.0 * torch.rand(16) - 1.0
+    cnn[1].running_var = torch.rand(16) + 1.0
+    cnn[1].weight = nn.Parameter(2 * torch.rand(16) - 1.0)
+    cnn[1].bias = nn.Parameter(2 * torch.rand(16) - 1.0)
+
+    cnn[5].running_mean = 2.0 * torch.rand(8) - 1.0
+    cnn[5].running_var = torch.rand(8) + 1.0
+
+    img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
+
+    snn = from_model(cnn, input_shape=input_shape, add_spiking_output=True)
+
+    img = torch.Tensor(np.random.random(size=input_shape))
+
+    with torch.no_grad():
+        spk_img = img2spk(img)
+        snn(spk_img).mean(0)
