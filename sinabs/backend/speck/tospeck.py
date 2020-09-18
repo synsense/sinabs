@@ -158,7 +158,7 @@ class SpeckCompatibleNetwork(nn.Module):
                 else:
                     break
 
-            elif isinstance(lyr_curr, (nn.Dropout2d, nn.Flatten)):
+            elif isinstance(lyr_curr, (nn.Dropout, nn.Dropout2d, nn.Flatten)):
                 # - Ignore dropout and flatten layers
                 i_layer += 1
 
