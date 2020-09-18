@@ -111,9 +111,11 @@ class SpeckCompatibleNetwork(nn.Module):
 
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
                 # Check for batchnorm after conv
-                if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
-                    lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
-                    i_layer += 1
+                if len(layers) > i_layer + 1:
+                    if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
+                        lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
+                        i_layer += 1
+
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
                     [lyr_curr] + layers[i_layer + 1 :],
@@ -138,7 +140,8 @@ class SpeckCompatibleNetwork(nn.Module):
                         "First layer cannot be pooling if `dvs_input` is `False`."
                     )
                 pooling, i_next, rescaling_from_pooling = self.consolidate_pooling(
-                    layers[i_layer:], dvs=True)
+                    layers[i_layer:], dvs=True
+                )
 
                 input_shape = [
                     input_shape[0],
