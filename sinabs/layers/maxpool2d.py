@@ -20,12 +20,9 @@
 ##
 
 import numpy as np
-import pandas as pd
 import torch.nn as nn
 import torch
 from typing import Optional, Union, List, Tuple
-from operator import mul
-from functools import reduce
 from sinabs.cnnutils import conv_output_size
 
 # - Type alias for array-like objects
@@ -35,11 +32,9 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 class SpikingMaxPooling2dLayer(nn.Module):
     def __init__(
         self,
-        image_shape: ArrayLike,
         pool_size: ArrayLike,
         strides: Optional[ArrayLike] = None,
         padding: ArrayLike = (0, 0, 0, 0),
-        layer_name: str = "pooling2d",
         # state_number: int = 16,
     ):
         """
