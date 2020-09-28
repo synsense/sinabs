@@ -32,7 +32,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 window = 1.0
 
 
-class SpikingLayer(Layer):
+class SpikingLayer(nn.Module):
     def __init__(
         self,
         input_shape: Optional[ArrayLike] = None,
@@ -56,7 +56,7 @@ class SpikingLayer(Layer):
         :param layer_name: Name of this layer
         :param negative_spikes: Implement a linear transfer function through negative spiking
         """
-        super().__init__(input_shape=input_shape, layer_name=layer_name)
+        super().__init__()
         # Initialize neuron states
         self.threshold = threshold
         self.threshold_low = threshold_low

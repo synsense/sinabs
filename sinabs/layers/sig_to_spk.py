@@ -17,11 +17,11 @@
 
 import pandas as pd
 from .layer import Layer
-from typing import Tuple, Optional
+from typing import Tuple
 import torch
 
 
-class Sig2SpikeLayer(Layer):
+class Sig2SpikeLayer(torch.nn.Module):
     """
     Layer to convert analog Signals to Spikes
     """
@@ -42,7 +42,7 @@ class Sig2SpikeLayer(Layer):
         :param layer_name: string layer name
 
         """
-        super().__init__(input_shape=(channels_in, None), layer_name=layer_name)
+        super().__init__()
         self.tw = tw
         self.norm_level = norm_level
         self.spk_out = spk_out
@@ -69,7 +69,8 @@ class Sig2SpikeLayer(Layer):
             )
             spk_sig = (random_tensor < signal).float()
         else:
-            # If there is no conversion to spikes, just replicate the signal as current injection
+            # If there is no conversion to spikes
+            # just replicate the signal as current injection
             spk_sig = signal
 
         self.spikes_number = spk_sig.abs().sum()

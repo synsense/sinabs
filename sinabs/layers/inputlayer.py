@@ -15,7 +15,7 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from .layer import Layer
+from torch import nn
 import pandas as pd
 import numpy as np
 from typing import Union, List, Tuple
@@ -23,14 +23,14 @@ from typing import Union, List, Tuple
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class InputLayer(Layer):
+class InputLayer(nn.Module):
     def __init__(self, input_shape: ArrayLike, layer_name="input"):
         """
         Place holder layer, used typically to acquire some statistics on the input
 
         :param image_shape: Input image dimensions
         """
-        Layer.__init__(self, input_shape=input_shape, layer_name=layer_name)
+        super().__init__()
 
     def forward(self, binary_input):
         """
@@ -69,5 +69,3 @@ class InputLayer(Layer):
             }
         )
         return summary
-
-

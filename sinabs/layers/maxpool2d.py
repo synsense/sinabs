@@ -26,14 +26,13 @@ import torch
 from typing import Optional, Union, List, Tuple
 from operator import mul
 from functools import reduce
-from .layer import Layer
 from sinabs.cnnutils import conv_output_size
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SpikingMaxPooling2dLayer(Layer):
+class SpikingMaxPooling2dLayer(nn.Module):
     def __init__(
         self,
         image_shape: ArrayLike,
@@ -46,7 +45,7 @@ class SpikingMaxPooling2dLayer(Layer):
         """
         Torch implementation of SpikingMaxPooling
         """
-        super().__init__(input_shape=(None, *image_shape), layer_name=layer_name)
+        super().__init__()
         self.padding = padding
         self.pool_size = pool_size
         if strides is None:

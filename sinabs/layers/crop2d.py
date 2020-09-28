@@ -17,13 +17,13 @@
 
 import pandas as pd
 from typing import Union, List, Tuple
-from .layer import Layer
 import numpy as np
+from torch import nn
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class Cropping2dLayer(Layer):
+class Cropping2dLayer(nn.Module):
     """
     Crop input image by
     """
@@ -41,9 +41,7 @@ class Cropping2dLayer(Layer):
         :param cropping: ((top, bottom), (left, right))
         :param layer_name: str Layer name
         """
-        Layer.__init__(
-            self, input_shape=(None, *image_shape), layer_name=layer_name
-        )
+        super().__init__()
         self.top_crop, self.bottom_crop = cropping[0]
         self.left_crop, self.right_crop = cropping[1]
 
@@ -53,8 +51,8 @@ class Cropping2dLayer(Layer):
         crop_out = binary_input[
             :,
             :,
-            self.top_crop : h - self.bottom_crop,
-            self.left_crop : w - self.right_crop,
+            self.top_crop: h - self.bottom_crop,
+            self.left_crop: w - self.right_crop,
         ]
         self.out_shape = crop_out.shape[1:]
         self.spikes_number = crop_out.abs().sum()
@@ -98,5 +96,3 @@ class Cropping2dLayer(Layer):
             }
         )
         return summary
-
-

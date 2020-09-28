@@ -29,7 +29,7 @@ from functools import reduce
 from sinabs.layers.quantize import QuantizeLayer
 from collections import OrderedDict
 from sinabs.cnnutils import compute_padding
-from sinabs.layers.iaf import SpikingLayer
+from sinabs.layers.deprecated import SpikingLayer
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
