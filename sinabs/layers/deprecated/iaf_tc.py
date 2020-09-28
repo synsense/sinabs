@@ -16,11 +16,8 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 from .iaf import SpikingLayer
-from functools import reduce
-from operator import mul
 import torch
 import torch.nn as nn
-import numpy as np
 import pandas as pd
 from typing import Optional, Tuple
 
