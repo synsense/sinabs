@@ -25,7 +25,6 @@ from operator import mul
 from functools import reduce
 from typing import Optional, Union, List, Tuple
 from .utils import (
-    get_keras_activations,
     get_network_activations,
     get_activations,
     search_parameter,
@@ -107,7 +106,6 @@ class Network(Layer):
 
         [this_hook.remove() for this_hook in hook_list]
 
-
     def rescale_parameters(
         self,
         weight_rescaling: dict = None,
@@ -174,7 +172,6 @@ class Network(Layer):
     def set_weights(
         self,
         weights: List,
-        is_from_keras: bool = False,
         img_data_format: str = "channels_first",
         nbit_quantize: Optional[int] = None,
         auto_rescale: bool = False,
@@ -183,18 +180,11 @@ class Network(Layer):
         Load weights for this model from a list of numpy arrays
 
         :param weights: List of weight np.ndarrays
-        :param is_from_keras: bool Flag to specify whether the weights are ported from Keras (channels_last) format
         :param img_data_format: str channels_first/channels_last input data format that the model has been trained with
         :param nbit_quantize: int Number of bits used to approximate the weights with
         :param auto_rescale: bool flag to auto rescale the weights for spiking model to compensate for average pooling
                sumpooling approximation
         """
-        # If weights are loaded from keras, convert them to pytorch compatible format
-        if is_from_keras:
-            from sinabs.from_keras.from_keras import transposeKeras2Torch
-
-            weights = transposeKeras2Torch(weights)
-
         all_thresholds = {}
         # Quantize weights for nbit + 1 in total
         if nbit_quantize:
@@ -285,7 +275,6 @@ class Network(Layer):
         data,
         name_list: Optional[ArrayLike] = None,
         compute_rate: bool = False,
-        with_keras: bool = False,
         verbose: bool = False,
     ) -> ([np.ndarray], [np.ndarray]):
         """
@@ -293,7 +282,6 @@ class Network(Layer):
 
         :param data: Data to process
         :param name_list: list of all layer names (str) whose activations need to be compared
-        :param with_keras: bool compare with keras model or torch model
         :param compute_rate: True if you want to compute firing rate. By default spike count is returned
         :param verbose: bool print debugging logs to the terminal
         """
@@ -309,39 +297,15 @@ class Network(Layer):
         if verbose:
             print("Comparing activations for {0}".format(name_list))
 
-        if with_keras:
-            from sinabs.from_keras.from_keras import infer_data_format
-
-            # Calculate activations for keras model
-            keras_model = self.keras_model
-            keras_data_format = infer_data_format(keras_model.get_config())
-            npData = data.cpu().numpy().copy()
-            if keras_data_format == "channels_last":
-                npData = npData.transpose((0, 2, 3, 1))
-            if compute_rate:
-                npData = npData.mean(axis=0)[np.newaxis, ...]
-            else:
-                npData = npData.sum(axis=0)[np.newaxis, ...]
-            vKerasActivations = get_keras_activations(
-                keras_model, npData, name_list=name_list
-            )
-            # Eliminating the batch dimension
-            vKerasActivations = [act[0] for act in vKerasActivations]
-            if keras_data_format == "channels_last":
-                vKerasActivations = [
-                    act.transpose((2, 0, 1)) for act in vKerasActivations
-                ]
-            analog_activations = vKerasActivations
+        # Calculate activations for the torch analog model
+        if compute_rate:
+            tsrAnalogData = data.mean(0).unsqueeze(0)
         else:
-            # Calculate activations for the torch analog model
-            if compute_rate:
-                tsrAnalogData = data.mean(0).unsqueeze(0)
-            else:
-                tsrAnalogData = data.sum(0).unsqueeze(0)
-            with torch.no_grad():
-                analog_activations = get_activations(
-                    self.analog_model, tsrAnalogData, name_list=name_list
-                )
+            tsrAnalogData = data.sum(0).unsqueeze(0)
+        with torch.no_grad():
+            analog_activations = get_activations(
+                self.analog_model, tsrAnalogData, name_list=name_list
+            )
 
         # Calculate activations for spiking model
         spike_rates = get_network_activations(
@@ -354,7 +318,6 @@ class Network(Layer):
         data,
         name_list: Optional[ArrayLike] = None,
         compute_rate=False,
-        with_keras=False,
     ):
         """
         Plots a scatter plot of all the activations
@@ -362,7 +325,6 @@ class Network(Layer):
         :param data: Data to be processed
         :param name_list: ArrayLike with names of all the layers of interest to be compared
         :param compute_rate: Compare firing rates instead of spike count
-        :param with_keras: Compare to keras model in place of torch analog model
         """
         import pylab
 
@@ -375,7 +337,7 @@ class Network(Layer):
                     pass
 
         analog_activations, spike_rates = self.compare_activations(
-            data, name_list=name_list, compute_rate=compute_rate, with_keras=with_keras
+            data, name_list=name_list, compute_rate=compute_rate,
         )
         for nLyrIdx in range(len(name_list)):
             pylab.scatter(

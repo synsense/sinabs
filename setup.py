@@ -28,7 +28,6 @@ setup(
         "sinabs.layers",
         "sinabs.layers.functional",
         "sinabs.layers.deprecated",
-        "sinabs.from_keras",
         "sinabs.onnx",
     ],
     author="aiCTX AG",

@@ -1,1 +1,1 @@
-This folder hosts all the keras model files
+This folder hosts all the model files

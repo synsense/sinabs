@@ -13,7 +13,7 @@ Getting started
 
 `sinabs` (pytorch based library) is developed to design and implement Spiking Convolutional Neural Networks (SCNNs).
 The library implements several layers that are `spiking` equivalents of CNN layers.
-In addition it provides support to import CNN models implemented in keras conveniently to test their `spiking` equivalent implementation.
+In addition it provides support to import CNN models implemented in torch conveniently to test their `spiking` equivalent implementation.
 
 **NOTE**: The conversion of CNNs to SCNNs is still a subject of research and we strive to keep the library updated to the state-of-the art in addition to providing options to compare various approaches both at a high level abstraction to low level implementation details.
 

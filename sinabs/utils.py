@@ -21,53 +21,6 @@ import numpy as np
 from typing import Iterable, List
 
 
-def get_keras_activations(model, inp, name_list=None):
-    """
-    :param model: Keras model
-    :param inp:  input data to be processed by keras model
-    :param name_list: list of all layers whose activations need to be compared
-    """
-    from tensorflow import keras
-
-    # Generate default list of layers
-    if name_list is None:
-        name_list = [lyr.name for lyr in model.layers]
-        # Add input in the list of layer names if not explicitly defined as a layer name
-        if (
-            type(model.layers[0]) is keras.layers.Input
-            or type(model.layers[0]) is keras.layers.InputLayer
-        ):
-            pass
-        else:
-            name_list = ["Input"] + name_list
-
-    activations = []
-    # Extract activity for each layer of interest
-    for layer_name in name_list:
-        if layer_name == "Input":
-            # Bypass input layers
-            activations.append(inp)
-            continue
-        lyr = model.get_layer(layer_name)
-        if type(lyr) is keras.layers.Input or type(lyr) is keras.layers.InputLayer:
-            activations.append(inp)
-            continue
-        # Bypass Flattening layer
-        if type(lyr) is keras.layers.Flatten:
-            continue
-        # Bypass Dropout layer
-        if type(lyr) is keras.layers.Dropout:
-            continue
-
-        modelx = keras.Model(model.input, lyr.output)
-        activations.append(modelx.predict(inp))
-        del (modelx)
-
-    assert len(name_list) == len(activations)
-
-    return activations
-
-
 def get_activations(torchanalog_model, tsrData, name_list=None):
     """
     Return torch analog model activations for the specified layers
