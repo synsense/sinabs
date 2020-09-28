@@ -20,7 +20,7 @@ import warnings
 import torch.nn as nn
 import numpy as np
 import pandas as pd
-from sinabs.layers.deprecated import SpikingLayer
+from .iaf import SpikingLayer
 from typing import Optional, Union, List, Tuple
 
 

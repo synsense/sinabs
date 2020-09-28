@@ -28,7 +28,7 @@ from typing import Optional, Union, List, Tuple
 from operator import mul
 from functools import reduce
 from sinabs.cnnutils import conv_output_size
-from sinabs.layers.deprecated import SpikingLayer
+from .iaf import SpikingLayer
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]

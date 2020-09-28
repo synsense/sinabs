@@ -18,7 +18,7 @@
 import numpy as np
 import pandas as pd
 from typing import Union, List, Tuple
-from sinabs.layers.layer import Layer
+from .layer import Layer
 from operator import mul
 from functools import reduce
 import warnings

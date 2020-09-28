@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 from functools import reduce
 from operator import mul
-from sinabs.layers.deprecated import SpikingLayer
+from .iaf import SpikingLayer
 from typing import Optional, Union, List, Tuple
 from sinabs.cnnutils import conv_output_size
 from torch.nn import functional

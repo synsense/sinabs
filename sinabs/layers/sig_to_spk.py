@@ -16,7 +16,6 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
-from .layer import Layer
 from typing import Tuple
 import torch
 

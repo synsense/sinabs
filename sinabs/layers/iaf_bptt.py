@@ -23,7 +23,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple
-from .layer import Layer
 from .functional import threshold_subtract
 
 # - Type alias for array-like objects
