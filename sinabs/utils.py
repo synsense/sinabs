@@ -18,9 +18,6 @@
 import torch
 import torch.nn as nn
 import numpy as np
-import os
-import pandas as pd
-from .layers import Layer
 from typing import Iterable, List
 
 
@@ -152,32 +149,6 @@ def get_network_activations(
     if bRate:
         spike_counts = [(counts / tSim * 1000) for counts in spike_counts]
     return spike_counts
-
-
-def summary(model: Layer) -> pd.DataFrame:
-    """
-    This method returns the summary of a model
-    :param model:
-    :return: Pandas DataFrame
-    """
-    summary_dataframe = pd.DataFrame()
-    for layer_name, lyr in model.named_children():
-        try:
-            summary_dataframe = summary_dataframe.append(
-                lyr.summary(), ignore_index=True
-            )
-        except AttributeError:
-            if lyr.__class__.__name__ == "ZeroPad2d":
-                pass
-            elif lyr.__class__.__name__ == "Sequential":
-                summary_dataframe = summary_dataframe.append(
-                    summary(lyr), ignore_index=True
-                )
-            else:
-                raise Exception("Unknown layer type {0}".format(lyr.__class__.__name__))
-
-    summary_dataframe.set_index("Layer", inplace=True)
-    return summary_dataframe
 
 
 def search_parameter(

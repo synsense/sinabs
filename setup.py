@@ -29,6 +29,7 @@ setup(
         "sinabs.layers.functional",
         "sinabs.layers.deprecated",
         "sinabs.from_keras",
+        "sinabs.onnx",
     ],
     author="aiCTX AG",
     author_email="sadique.sheik@aictx.ai",

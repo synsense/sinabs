@@ -96,30 +96,6 @@ class SpikingMaxPooling2dLayer(nn.Module):
         self.tw = len(max_input_sum)
         return max_input_sum.float()  # Float is just to keep things compatible
 
-    def summary(self):
-        """
-        Returns the summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Output_Shape": (tuple(self.output_shape)),
-                "Input_Shape": (tuple(self.input_shape)),
-                "Padding": tuple(self.padding),
-                "Kernel": tuple(self.pool_size),
-                "Pooling": tuple(self.pool_size),
-                "Stride": tuple(self.strides),
-                "Fanout_Prev": reduce(
-                    mul, np.array(self.pool_size) / np.array(self.strides), 1
-                ),
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary
-
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
         """
         Returns the shape of output, given an input to this layer

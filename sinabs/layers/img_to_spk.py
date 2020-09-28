@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-import pandas as pd
 from torch import nn
 from typing import Tuple
 import torch
@@ -74,21 +73,3 @@ class Img2SpikeLayer(nn.Module):
         # NOTE: This is not true if the squeeze is false but input_shape has a batch_size
         # TODO: Fix this
         return input_shape  # (self.tw, *input_shape)
-
-    def summary(self):
-        """
-        :return: A summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Input_Shape": tuple(self.input_shape),
-                "Output_Shape": tuple(self.output_shape),
-                "Fanout_Prev": 1,
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary

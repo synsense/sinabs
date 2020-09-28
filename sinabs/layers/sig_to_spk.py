@@ -74,18 +74,3 @@ class Sig2SpikeLayer(torch.nn.Module):
 
         self.spikes_number = spk_sig.abs().sum()
         return spk_sig
-
-    def summary(self):
-        """
-        Returns a summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Input_Shape": tuple(self.input_shape),
-                "Output_Shape": tuple(self.output_shape),
-                "Neurons": self.output_shape[1],
-            }
-        )
-        return summary

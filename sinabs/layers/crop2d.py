@@ -72,27 +72,3 @@ class Cropping2dLayer(nn.Module):
             height - self.top_crop - self.bottom_crop,
             width - self.left_crop - self.right_crop,
         )
-
-    def summary(self):
-        """
-        Returns a summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Input_Shape": tuple(self.input_shape),
-                "Output_Shape": tuple(self.output_shape),
-                "Cropping": (
-                    self.top_crop,
-                    self.bottom_crop,
-                    self.left_crop,
-                    self.right_crop,
-                ),
-                "Fanout_Prev": 1,
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary

@@ -153,15 +153,8 @@ class SpkConverter(object):
                     "Spiking output can olny be added to sequential models that do not end in a ReLU. No layer has been added."
                 )
 
-        # import logging
-        # logging.debug("## ORIGINAL MODEL")
-        # logging.debug(spk_model)
         self.convert_module(spk_model)
-        # logging.debug("## CONVERTED MODEL")
-        # logging.debug(spk_model)
-
-        device = next(model.parameters()).device
-        network = Network(model, spk_model.to(device), input_shape=self.input_shape)
+        network = Network(model, spk_model, input_shape=self.input_shape)
 
         return network
 

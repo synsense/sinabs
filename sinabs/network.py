@@ -28,7 +28,6 @@ from .utils import (
     get_keras_activations,
     get_network_activations,
     get_activations,
-    summary,
     search_parameter,
 )
 from .layers import Layer, SpikingLayer, SpikingLayerBPTT
@@ -391,27 +390,6 @@ class Network(Layer):
         pylab.ylabel("Analog activations")
         pylab.legend()
         return analog_activations, spike_rates
-
-    def summary(self) -> pd.DataFrame:
-        """
-        Generate a summary of this network
-
-        :returns summary: pd.DataFrame
-        """
-        summary_dataframe = summary(self.spiking_model)
-        # Append outbound layer information
-        try:
-            graph = self.graph
-            for src in graph.index:
-                row = graph.loc[src, :]
-                destinations = list(row[row == True].index)
-                if len(destinations):
-                    summary_dataframe.loc[src, "Layer_output"] = destinations
-        except AttributeError as e:
-            warnings.warn(
-                "Graph couldn't be inferred by sinabs. Perhaps you have defined a custom model."
-            )
-        return summary_dataframe
 
     def reset_states(self):
         """
