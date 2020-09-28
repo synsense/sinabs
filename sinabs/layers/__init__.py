@@ -20,7 +20,9 @@ from .crop2d import Cropping2dLayer
 from .iaf import SpikingLayer
 from .maxpool2d import SpikingMaxPooling2dLayer
 from .inputlayer import InputLayer
-from .quantize import QuantizeLayer, NeuromorphicReLU, SumPool2d
+from .quantize import QuantizeLayer
+from .neuromorphic_relu import NeuromorphicReLU
+from .sumpool2d import SumPool2d
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .iaf_tc import SpikingTemporalConv1dLayer
