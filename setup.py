@@ -32,7 +32,7 @@ setup(
     ],
     author="aiCTX AG",
     author_email="sadique.sheik@aictx.ai",
-    description="A spiking deep neural network simulator, and neuromoprhic hardware emulator",
+    description="A spiking deep neural network simulator, and neuromorphic hardware emulator",
     long_description=long_description,
     long_description_content_type="text/markdown",
     license="GNU AGPLv3, Copyright (c) 2019 aiCTX AG",
@@ -40,7 +40,7 @@ setup(
     python_requires=">=3.6",
     project_urls={
         "Source": "https://gitlab.com/aiCTX/sinabs/",
-        "Documentation": "https://aictx.gitlab.io/sinabs",
+        "Documentation": "https://sinabs.ai/",
     },
     classifiers=[
         "Programming Language :: Python :: 3",
