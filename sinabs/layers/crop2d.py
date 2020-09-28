@@ -15,7 +15,6 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-import pandas as pd
 from typing import Union, List, Tuple
 import numpy as np
 from torch import nn
@@ -30,16 +29,12 @@ class Cropping2dLayer(nn.Module):
 
     def __init__(
         self,
-        image_shape: ArrayLike,
         cropping: ArrayLike = ((0, 0), (0, 0)),
-        layer_name="crop2d",
     ):
         """
         Crop input to the the rectangle dimensions
 
-        :param image_shape: Input image dimensions
         :param cropping: ((top, bottom), (left, right))
-        :param layer_name: str Layer name
         """
         super().__init__()
         self.top_crop, self.bottom_crop = cropping[0]

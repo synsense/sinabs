@@ -15,13 +15,26 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-def test_inputlayer():
-    from tensorflow import keras
+def test_maxpool2d():
+    from sinabs.layers import SpikingMaxPooling2dLayer
+    import torch
 
-    inpLayer = keras.layers.InputLayer(input_shape=(5, 20, 20))
-    kerasConf = inpLayer.get_config()
+    inp = torch.zeros((2, 2, 10, 10))
+    maxpool = SpikingMaxPooling2dLayer(pool_size=(2, 2), strides=(2, 2))
 
-    from sinabs.from_keras.from_keras import get_input_shape_from_keras_conf
+    # Verify output shape
+    assert maxpool(inp).shape == (2, 2, 5, 5)
 
-    input_shape = get_input_shape_from_keras_conf(kerasConf)
-    assert input_shape == (5, 20, 20)
+
+def test_maxpool_function():
+    from sinabs.layers import SpikingMaxPooling2dLayer
+    import torch
+
+    lyr = SpikingMaxPooling2dLayer(pool_size=(2, 3), strides=None)
+
+    tsrInput = (torch.rand(10, 1, 2, 3) > 0.8).float()
+    # print(tsrInput.sum(0))
+    tsrInput[:, 0, 0, 2] = 1
+    tsrOut = lyr(tsrInput)
+
+    assert tsrOut.sum().item() == 10.0
