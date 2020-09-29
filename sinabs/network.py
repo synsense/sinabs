@@ -100,10 +100,11 @@ class Network(Layer):
             hook_list.append(this_hook)
 
         # do a forward pass
+        device = next(self.parameters()).device
         dummy_input = torch.zeros(
             [batch_size] + list(input_shape),
             requires_grad=False
-        )
+        ).to(device)
         self(dummy_input)
 
         [this_hook.remove() for this_hook in hook_list]
