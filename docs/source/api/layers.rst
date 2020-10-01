@@ -18,11 +18,6 @@ The layer initialization expects an input shape which follows the below format::
 Abstract layers
 ---------------
 
-`TorchLayer`
-~~~~~~~~~~~~~~~~~~~~~
-
-.. autoclass:: TorchLayer
-    :members:
 
 `SpikingLayer`
 ~~~~~~~~~~~~~~
