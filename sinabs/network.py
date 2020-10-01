@@ -355,10 +355,8 @@ class Network(torch.nn.Module):
                         {
                             "Layer": layer_name,
                             "In": lyr.tot_in,
-                            "Out": lyr.tot_out,
                             "Fanout_Prev": lyr.fanout,
                             "SynOps": lyr.synops,
-                            "Events_routed": lyr.fanout * lyr.tot_in,
                             "Time_window": lyr.tw,
                             "SynOps/s": lyr.synops / lyr.tw * 1000,
                         }
