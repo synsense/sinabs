@@ -29,12 +29,12 @@ from .utils import (
     get_activations,
     search_parameter,
 )
-from .layers import Layer, SpikingLayer, SpikingLayerBPTT
+from .layers import SpikingLayer
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class Network(Layer):
+class Network(torch.nn.Module):
     """
     Class of a spiking neural network
 
@@ -56,7 +56,7 @@ class Network(Layer):
         quantize_activation: bool = False,
         nbit_quantize: Optional[int] = None,
     ):
-        Layer.__init__(self, input_shape=input_shape)
+        super().__init__()
         self.spiking_model: nn.Module = spiking_model
         self.analog_model: nn.Module = analog_model
         self.graph: pd.DataFrame = None
@@ -65,28 +65,10 @@ class Network(Layer):
 
         if input_shape is not None and spiking_model is not None:
             self._compute_shapes(input_shape)
-        # if keras_model is not None:
-        #     from sinabs.from_keras.from_keras import from_model
-        #
-        #     from_model(
-        #         keras_model,
-        #         quantize_activation=quantize_activation,
-        #         nbit_quantize=nbit_quantize,
-        #         network=self,
-        #     )
 
     @property
     def layers(self):
         return list(self.spiking_model.named_children())
-
-    def get_output_shape(self, input_shape: Tuple) -> Tuple:
-        """
-        Return the output dimensions of this model
-
-        :param input_shape:
-        :return:
-        """
-        return self.layers[-1][1].output_shape
 
     def _compute_shapes(self, input_shape, batch_size=1):
         def hook(module, inp, out):
@@ -358,7 +340,7 @@ class Network(Layer):
         Reset all neuron states in the submodules
         """
         for lyr in self.modules():
-            if isinstance(lyr, (SpikingLayer, SpikingLayerBPTT)):
+            if isinstance(lyr, SpikingLayer):
                 lyr.reset_states()
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:

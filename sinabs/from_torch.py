@@ -33,7 +33,8 @@ def from_model(
     ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
 
     :param model: a Torch model
-    :param input_shape: No effect. Backward compatibility only.
+    :param input_shape: If provided, the layer dimensions are computed. \
+    Otherwise they will computed at the first forward pass.
     :param threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
     :param threshold_low: The lower bound of the potential in \
@@ -74,11 +75,11 @@ class SpkConverter(object):
     ):
         """
         Converts a Torch model and returns a Sinabs network object.
-        The modules in the model are analyzed, and substitutions are made:
-        - ReLUs, LeakyReLUs and NeuromorphicReLUs are turned into SpikingLayers
-        - ...
+        The modules in the model are analyzed, and a copy is returned, with all
+        ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
 
-        :param input_shape: No effect. Backward compatibility only.
+        :param input_shape: If provided, the layer dimensions are computed. \
+        Otherwise they will computed at the first forward pass.
         :param threshold: The membrane potential threshold for spiking in \
         convolutional and linear layers (same for all layers).
         :param threshold_low: The lower bound of the potential in \
