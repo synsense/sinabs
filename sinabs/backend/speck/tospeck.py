@@ -88,11 +88,11 @@ class SpeckCompatibleNetwork(nn.Module):
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
             input_layer = deepcopy(layers[0])
-            if input_shape is not None and input_shape != input_layer.output_shape:
+            if input_shape is not None and input_shape != input_layer.input_shape:
                 warn(
                     "Network starts with `InputLayer`. Will ignore `input_shape` argument."
                 )
-            input_shape = input_layer.output_shape
+            input_shape = input_layer.input_shape
             self.compatible_layers.append(input_layer)
             i_layer += 1
 
