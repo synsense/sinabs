@@ -34,7 +34,6 @@ window = 1.0
 class SpikingLayer(nn.Module):
     def __init__(
         self,
-        input_shape: Optional[ArrayLike] = None,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
         membrane_subtract: Optional[float] = None,
@@ -186,7 +185,6 @@ class SpikingLayer(nn.Module):
 
     def __deepcopy__(self, memo=None):
         other = SpikingLayer(
-            input_shape=self.input_shape,
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self._membrane_subtract,

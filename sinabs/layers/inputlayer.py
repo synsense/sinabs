@@ -30,6 +30,7 @@ class InputLayer(nn.Module):
         :param image_shape: Input image dimensions
         """
         super().__init__()
+        self.input_shape = input_shape
 
     def forward(self, binary_input):
         """
