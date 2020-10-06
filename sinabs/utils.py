@@ -18,7 +18,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from typing import Iterable, List
+from typing import List
 
 
 def get_activations(torchanalog_model, tsrData, name_list=None):
@@ -103,31 +103,3 @@ def get_network_activations(
     if bRate:
         spike_counts = [(counts / tSim * 1000) for counts in spike_counts]
     return spike_counts
-
-
-def search_parameter(
-    keys: Iterable, layer_name: str, strEndsWith: str = "weight"
-) -> str:
-    """
-    Return the key that corresponds to a layer name and its weights.
-    This is an internal convenience method and not intended for generic searches
-    :param keys: List of keys to search `layer_name`
-    :param layer_name: String to search at the start of the strings in keys
-    :param strEndsWith: weight / bias
-    :return: Returns the string that satisfies the requirements
-    """
-    dot = "."
-    all_key_matches = []
-    key: str
-    for key in keys:
-        if key.startswith(layer_name + dot) and key.endswith(dot + strEndsWith):
-            all_key_matches.append(key)
-    try:
-        assert len(all_key_matches) is 1
-        return all_key_matches[0]
-    except AssertionError:
-        raise Exception(
-            "Unique key {2} not found in {1}: {0}".format(
-                all_key_matches, keys, layer_name
-            )
-        )
