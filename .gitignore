@@ -16,4 +16,9 @@ __pycache__
 *.npz
 *.onnx
 
+# mac os
 .DS_Store
+
+# test coverage stuff
+.coverage
+htmlcov
