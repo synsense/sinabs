@@ -36,7 +36,8 @@ def get_activations(torchanalog_model, tsrData, name_list=None):
     for layer_name in name_list:
         if layer_name == "Input":
             # Bypass input layers
-            analog_activations.append(tsrData)
+            arrOut = tsrData.detach().cpu().numpy()
+            analog_activations.append(arrOut)
 
     # Define hook
     def hook(module, inp, output):

@@ -215,18 +215,9 @@ class Network(torch.nn.Module):
                 param.data = torch.from_numpy(weights[indx]).float()
             except AssertionError:
                 # Flatten + Dense layers to CNN weights
-                if img_data_format == "channels_last":
-                    w_reshaped = weights[indx].reshape(param.data.shape)
-                    param.data = torch.from_numpy(w_reshaped).float()
-                elif img_data_format == "channels_first":
-                    if is_from_keras:
-
-                        shape_new = np.array(param.shape)[[0, 2, 3, 1]]
-                        w_reshaped = weights[indx].reshape(shape_new).astype(float)
-                        w_reshaped = w_reshaped.transpose(0, 3, 1, 2)
-                    else:
-                        w_reshaped = weights[indx].reshape(param.data.shape)
-                    param.data = torch.from_numpy(w_reshaped).float()
+                w_reshaped = weights[indx].reshape(param.data.shape)
+                param.data = torch.from_numpy(w_reshaped).float()
+                if img_data_format == "channels_first":
                     # Reshape weight for the analog model as well
                     weights[indx] = w_reshaped.reshape((len(w_reshaped), -1))
 
@@ -249,7 +240,6 @@ class Network(torch.nn.Module):
         Forward pass for this model
         """
         with torch.no_grad():
-            self.nEvsLastInput = tsrInput.sum().item()
             return self.spiking_model(tsrInput)
 
     def compare_activations(
@@ -268,12 +258,9 @@ class Network(torch.nn.Module):
         :param verbose: bool print debugging logs to the terminal
         """
         if name_list is None:
-            name_list = []
-            for layer_name, lyr in self.layers:
-                try:
-                    name_list.append(lyr.layer_name)
-                except AttributeError:
-                    pass
+            name_list = ["Input"]
+            for layer_name, lyr in self.spiking_model.named_children():
+                name_list.append(layer_name)
 
         print(name_list)
         if verbose:
@@ -312,11 +299,8 @@ class Network(torch.nn.Module):
 
         if name_list is None:
             name_list = ["Input"]
-            for layer_name, lyr in self.layers:
-                try:
-                    name_list.append(lyr.layer_name)
-                except AttributeError:
-                    pass
+            for layer_name, lyr in self.spiking_model.named_children():
+                name_list.append(layer_name)
 
         analog_activations, spike_rates = self.compare_activations(
             data, name_list=name_list, compute_rate=compute_rate,
