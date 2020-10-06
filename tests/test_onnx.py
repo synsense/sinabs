@@ -1,5 +1,8 @@
 import torch
 import torch.nn as nn
+from pathlib import Path
+
+MODELS_FOLDER = Path(__file__).resolve().parent / "models"
 
 
 def build_model():
@@ -26,7 +29,7 @@ def test_sinabs_model_to_onnx():
     net = build_model()
     dummy_input = torch.zeros([1, 2, 64, 64])  # One time step
     net(dummy_input)  # first pass to create all state variables
-    fname = "models/snn.onnx"
+    fname = MODELS_FOLDER / "snn.onnx"
 
     torch.onnx.export(
         net.spiking_model,
@@ -52,7 +55,7 @@ def test_graph_generation_ann():
 
     model = torchvision.models.resnet18()
     dummy_input = torch.zeros([1, 3, 224, 224])
-    fname = "models/resnet18.onnx"
+    fname = MODELS_FOLDER / "resnet18.onnx"
 
     torch.onnx.export(model, dummy_input, fname)
     onnx_model = onnx.load(fname)
@@ -75,7 +78,7 @@ def test_onnx_sinabs_SpikingLayer():
 
     net.spiking_model(dummy)
 
-    fname = "models/test_spk.onnx"
+    fname = MODELS_FOLDER / "test_spk.onnx"
     torch.onnx.export(
         net.spiking_model,
         (dummy,),
@@ -93,7 +96,7 @@ def test_onnx_sinabs_SpikingLayer():
     # Run onnx model
     import onnxruntime
 
-    session = onnxruntime.InferenceSession(fname)
+    session = onnxruntime.InferenceSession(str(fname))
     ort_inputs = {session.get_inputs()[0].name: inp.numpy()}
     ort_outs = session.run(None, ort_inputs)
 
@@ -111,7 +114,7 @@ def test_onnx_vs_sinabs_equivalence():
 
     net.spiking_model(dummy)
 
-    fname = "models/test_spk_net.onnx"
+    fname = MODELS_FOLDER / "test_spk_net.onnx"
     torch.onnx.export(
         net.spiking_model,
         (dummy,),
@@ -126,7 +129,7 @@ def test_onnx_vs_sinabs_equivalence():
     out_torch = net.spiking_model(inp)
 
     import onnxruntime
-    session = onnxruntime.InferenceSession(fname)
+    session = onnxruntime.InferenceSession(str(fname))
     ort_inputs = {session.get_inputs()[0].name: inp.numpy()}
     ort_outs = session.run(None, ort_inputs)
 

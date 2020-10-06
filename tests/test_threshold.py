@@ -1,3 +1,8 @@
+from pathlib import Path
+
+MODELS_FOLDER = Path(__file__).resolve().parent / "models"
+
+
 def test_threshold_subtract_onnx_eq():
     import torch
     import numpy as np
@@ -15,8 +20,8 @@ def test_threshold_subtract_onnx_eq():
     model = ThresholdTest()
 
     torch_out = model(inp)
-    print(inp, "\nTorch:",torch_out)
-    fname = "models/threshold_subtract.onnx"
+    print(inp, "\nTorch:", torch_out)
+    fname = MODELS_FOLDER / "threshold_subtract.onnx"
 
     torch.onnx.export(model, (inp,), fname, export_params=True,
                       input_names=["t_input"],
@@ -27,7 +32,7 @@ def test_threshold_subtract_onnx_eq():
 
     import onnxruntime
 
-    session = onnxruntime.InferenceSession(fname)
+    session = onnxruntime.InferenceSession(str(fname))
 
     ort_inputs = {session.get_inputs()[0].name: inp.numpy()}
     ort_outs = session.run(None, ort_inputs)
