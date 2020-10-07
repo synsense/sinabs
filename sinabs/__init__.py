@@ -15,6 +15,10 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
+from pbr.version import VersionInfo
+
+__version__ = VersionInfo('sinabs').release_string()
+
 from .network import Network
 from .synopcounter import SynOpCounter
 
