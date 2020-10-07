@@ -2,7 +2,6 @@ image: aictx/ci-python-arch:latest
 
 before_script:
   - pip install --upgrade pip
-  - pip install tensorflow==1.15
   - pip install . --no-cache-dir
   - pip install --upgrade 'm2r@git+https://github.com/crossnox/m2r@dev#egg=m2r'
 

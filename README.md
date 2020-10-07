@@ -9,7 +9,7 @@ Getting started
 
 **Sinabs Is Not A Brain Simulator**
 
-**NOTE**: This project is mirrored to gitlab.com/aiCTX/sinabs and is managed by aiCTX AG.
+**NOTE**: This project is mirrored to gitlab.com/aiCTX/sinabs and is managed by SynSense (former aiCTX AG).
 
 `sinabs` (pytorch based library) is developed to design and implement Spiking Convolutional Neural Networks (SCNNs).
 The library implements several layers that are `spiking` equivalents of CNN layers.
@@ -27,6 +27,7 @@ You can install `sinabs` with pip:
 ```
 pip install sinabs
 ```
+Checkout our quick instructional on how to create a project based on `sinabs` within a virtual environment using [pyenv+pipenv](https://sinabs.ai/howto/python_pyenv_pipenv.html)
 
 If you want to develop or have access to source code of sinabs, download the package from the git repository:
 
@@ -38,27 +39,30 @@ $ pip install -e . --user
 ```
 
 For developers, we recommend that you install this package as a development version so that you can update the package without reinstalling the package.
-Checkout our quick instructional on how to create a project based on `sinabs` within a virtual environment using [pyenv+pipenv](https://aictx.gitlab.io/sinabs/howto/python_pyenv_pipenv.html)
+
 
 Documentation and Examples
 --------------------------
 
-[https://aictx.gitlab.io/sinabs](https://aictx.gitlab.io/sinabs)
+[https://sinabs.ai](https://sinabs.ai)
 
 
-If you would like to generate documentation locally, you can do that using `sphynx`.
+If you would like to generate documentation locally, you can do that using `sphinx`.
 
-You can generate a sphynx documentation for this package by running the the following command.
-
-*Requirements*: sphinx, pandoc, nbsphinx
+You can generate a sphinx documentation for this package by running the the following command.
 
 ```
-$ cd /path/to/sinabs/docs/
+$ cd /path/to/sinabs/
+$ pip install -r sphinx-requirements.txt
+$ cd docs/
 $ make html
-$ firefox build/html/index.html
 ```
 
 This will build and auto generate html documentation at `sinabs/docs/build/html/index.html`
+You can access the generated documentation in your browser.
+```
+$ firefox build/html/index.html
+```
 
 License
 -------
@@ -69,4 +73,4 @@ License
 Contributing to `sinabs`
 ------------------------
 
-Checkout [CONTRIBUTING.md](CONTRIBUTING.md)
+Checkout [CONTRIBUTING.md](https://aictx.gitlab.io/sinabs/CONTRIBUTING.md)
