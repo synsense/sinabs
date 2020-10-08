@@ -11,11 +11,11 @@ unittests:
     - python
     - aiCTX
 
+  stage: test
+
   script:
     - pytest
 
-  only:
-    - master
 
 
 pages:
@@ -63,7 +63,7 @@ pypi_deploy:
   tags:
     - python
     - aiCTX
-  
+
   stage: deploy
   when: manual
 
