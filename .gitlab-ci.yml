@@ -16,7 +16,6 @@ unittests:
     - pytest
 
 
-
 pages:
   tags:
     - python
