@@ -4,7 +4,7 @@ before_script:
   - pip install --upgrade pip
   - pip install . --no-cache-dir
   - pip install --upgrade 'm2r@git+https://github.com/crossnox/m2r@dev#egg=m2r'
-  - pip install onnxruntime onnx pytest-cov
+  - pip install -r test-requirements.txt
 
 unittests:
   tags:
