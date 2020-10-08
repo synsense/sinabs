@@ -21,7 +21,6 @@ def from_model(
     threshold=1.0,
     threshold_low=-1.0,
     membrane_subtract=None,
-    exclude_negative_spikes=False,
     bias_rescaling=1.0,
     batch_size=1,
     synops=True,
@@ -34,7 +33,7 @@ def from_model(
 
     :param model: a Torch model
     :param input_shape: If provided, the layer dimensions are computed. \
-    Otherwise they will computed at the first forward pass.
+    Otherwise they will be computed at the first forward pass.
     :param threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
     :param threshold_low: The lower bound of the potential in \
@@ -52,7 +51,6 @@ def from_model(
         threshold=threshold,
         threshold_low=threshold_low,
         membrane_subtract=membrane_subtract,
-        exclude_negative_spikes=exclude_negative_spikes,
         bias_rescaling=bias_rescaling,
         batch_size=batch_size,
         synops=synops,
@@ -67,7 +65,6 @@ class SpkConverter(object):
         threshold=1.0,
         threshold_low=-1.0,
         membrane_subtract=None,
-        exclude_negative_spikes=False,
         bias_rescaling=1.0,
         batch_size=1,
         synops=True,
@@ -95,7 +92,6 @@ class SpkConverter(object):
         self.threshold_low = threshold_low
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
-        self.exclude_negative_spikes = exclude_negative_spikes
         self.bias_rescaling = bias_rescaling
         self.batch_size = batch_size
         self.synops = synops
