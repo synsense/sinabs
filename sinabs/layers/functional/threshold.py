@@ -19,7 +19,7 @@ class ThresholdSubtract(torch.autograd.Function):
     def backward(ctx, grad_output):
         """"""
         (data,) = ctx.saved_tensors
-        grad_input = grad_output * ((data >= (ctx.threshold - ctx.window)).float())
+        grad_input = grad_output * ((data >= (ctx.threshold - ctx.window)).float()) / ctx.threshold
         return grad_input, None, None
 
     def symbolic(g, data, threshold=1, window=0.5):
