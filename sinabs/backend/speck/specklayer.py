@@ -13,7 +13,7 @@ class SpeckLayer(nn.Module):
     def __init__(
         self,
         conv: nn.Conv2d,
-        spk: sl.SpikingLayerBPTT,
+        spk: sl.SpikingLayer,
         in_shape: Tuple[int],
         pool: Optional[bool] = None,
         discretize: bool = True,
@@ -150,13 +150,13 @@ class SpeckLayer(nn.Module):
 
         return layer
 
-    def _spklayer_to_dict(self, layer: sl.SpikingLayerBPTT) -> Dict:
+    def _spklayer_to_dict(self, layer: sl.SpikingLayer) -> Dict:
         """
         Extract parameters of spiking layer into dict.
 
         Parameters
         ----------
-            layer: sl.SpikingLayerBPTT
+            layer: sl.SpikingLayer
 
         Returns
         -------

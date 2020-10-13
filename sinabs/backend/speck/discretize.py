@@ -10,8 +10,8 @@ SPECK_STATE_PRECISION_BITS = 16
 
 
 def discretize_conv_spike(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayerBPTT, to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayerBPTT):
+    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
     """Discretize convolutional and spiking layers together.
 
     This function takes a 2D convolutional and a spiking layer and returns a
@@ -21,7 +21,7 @@ def discretize_conv_spike(
     ----------
     conv_lyr: nn.Conv2d
         Convolutional layer
-    spike_lyr: sl.SpikingLayerBPTT
+    spike_lyr: sl.SpikingLayer
         Spiking layer
     to_int: bool
         Use integer types for discretized parameter
@@ -30,7 +30,7 @@ def discretize_conv_spike(
     -------
     nn.Conv2d
         Discretized copy of convolutional layer
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized copy of spiking layer
 
     """
@@ -40,8 +40,8 @@ def discretize_conv_spike(
 
 
 def discretize_conv_spike_(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayerBPTT, to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayerBPTT):
+    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
     """Discretize convolutional and spiking layers together, in-place.
 
     This function takes a 2D convolutional and a spiking layer and discretizes
@@ -51,7 +51,7 @@ def discretize_conv_spike_(
     ----------
     conv_lyr: nn.Conv2d
         Convolutional layer
-    spike_lyr: sl.SpikingLayerBPTT
+    spike_lyr: sl.SpikingLayer
         Spiking layer
     to_int: bool
         Use integer types for discretized parameter
@@ -60,7 +60,7 @@ def discretize_conv_spike_(
     -------
     nn.Conv2d
         Discretized convolutional layer
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized spiking layer
 
     """
@@ -148,7 +148,7 @@ def discretize_conv_(
 
 
 def discretize_spk(
-    layer: sl.SpikingLayerBPTT,
+    layer: sl.SpikingLayer,
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
@@ -160,7 +160,7 @@ def discretize_spk(
 
     Parameters
     ----------
-    layer: sl.SpikingLayerBPTT
+    layer: sl.SpikingLayer
         Spiking layer
     conv_weight: torch.Tensor
         Weight tensor of preceding convolutional layer
@@ -171,7 +171,7 @@ def discretize_spk(
 
     Returns
     -------
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized copy of spiking layer
 
     """
@@ -183,7 +183,7 @@ def discretize_spk(
 
 
 def discretize_spk_(
-    layer: sl.SpikingLayerBPTT,
+    layer: sl.SpikingLayer,
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
@@ -195,7 +195,7 @@ def discretize_spk_(
 
     Parameters
     ----------
-    layer: sl.SpikingLayerBPTT
+    layer: sl.SpikingLayer
         Spiking layer
     conv_weight: torch.Tensor
         Weight tensor of preceding convolutional layer
@@ -206,7 +206,7 @@ def discretize_spk_(
 
     Returns
     -------
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized spiking
 
     """
@@ -218,7 +218,7 @@ def discretize_spk_(
 
 def _discretize_conv_spk_(
     conv_lyr: Optional[nn.Conv2d] = None,
-    spike_lyr: Optional[sl.SpikingLayerBPTT] = None,
+    spike_lyr: Optional[sl.SpikingLayer] = None,
     spk_thr: Optional[float] = None,
     spk_thr_low: Optional[float] = None,
     spk_state: Optional[torch.Tensor] = None,
@@ -238,7 +238,7 @@ def _discretize_conv_spk_(
     ----------
         conv_lyr: nn.Conv2d or None
             Convolutional layer
-        spike_lyr: sl.SpikingLayerBPTT or None
+        spike_lyr: sl.SpikingLayer or None
             Spiking layer
         spk_thr: float or None
             Upper threshold of spiking layer. Has to be provided if `spike_lyr` is `None`.
@@ -260,7 +260,7 @@ def _discretize_conv_spk_(
     -------
         nn.Conv2d or None
             Discretized convolutional layer if `conv_lyr` is not `None`, else `None`
-        sl.SpikingLayerBPTT or None
+        sl.SpikingLayer or None
             Discretized spiking layer if `spk_lyr` is not `None`, else `None`
     """
 
@@ -297,7 +297,7 @@ def _discretize_conv_spk_(
         # - Lower and upper thresholds in a tensor for easier handling
         thresholds = torch.tensor((spk_thr_low, spk_thr))
     else:
-        if not isinstance(spike_lyr, sl.SpikingLayerBPTT):
+        if not isinstance(spike_lyr, sl.SpikingLayer):
             raise TypeError("`spike_lyr` must be of type `SpikingLayer`")
 
         discr_spk = True

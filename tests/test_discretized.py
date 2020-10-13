@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from sinabs.backend.speck import discretize
-from sinabs.layers import SpikingLayerBPTT
+from sinabs.layers import SpikingLayer
 
 # - Test tensor to be discretized
 float_tensor = torch.tensor(
@@ -24,8 +24,8 @@ MIN_STATE = -(2 ** (discretize.SPECK_STATE_PRECISION_BITS - 1))
 MAX_STATE = -MIN_STATE - 1
 MIN_WEIGHT = -(2 ** (discretize.SPECK_WEIGHT_PRECISION_BITS - 1))
 MAX_WEIGHT = -MIN_WEIGHT - 1
-## -- Layers to be discretized
 
+# -- Layers to be discretized
 torch.manual_seed(8)
 # - Convolutional
 weight = torch.randn(4, 2, 3, 3) * 10
@@ -39,7 +39,7 @@ conv_lyr.weight = torch.nn.Parameter(weight)
 np.random.seed(4)
 thr = np.random.random() * 10
 thr_low = -np.random.random() * 10
-spk_lyr = SpikingLayerBPTT(threshold=thr, threshold_low=thr_low, membrane_subtract=True)
+spk_lyr = SpikingLayer(threshold=thr, threshold_low=thr_low, membrane_subtract=True)
 
 
 def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state):
