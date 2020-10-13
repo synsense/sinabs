@@ -10,8 +10,8 @@ SPECK_STATE_PRECISION_BITS = 16
 
 
 def discretize_conv_spike(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayerBPTT, to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayerBPTT):
+    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
     """Discretize convolutional and spiking layers together.
 
     This function takes a 2D convolutional and a spiking layer and returns a
@@ -21,7 +21,7 @@ def discretize_conv_spike(
     ----------
     conv_lyr: nn.Conv2d
         Convolutional layer
-    spike_lyr: sl.SpikingLayerBPTT
+    spike_lyr: sl.SpikingLayer
         Spiking layer
     to_int: bool
         Use integer types for discretized parameter
@@ -30,7 +30,7 @@ def discretize_conv_spike(
     -------
     nn.Conv2d
         Discretized copy of convolutional layer
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized copy of spiking layer
 
     """
@@ -40,8 +40,8 @@ def discretize_conv_spike(
 
 
 def discretize_conv_spike_(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayerBPTT, to_int: bool = True,
-) -> (nn.Conv2d, sl.SpikingLayerBPTT):
+    conv_lyr: nn.Conv2d, spike_lyr: sl.SpikingLayer, to_int: bool = True,
+) -> (nn.Conv2d, sl.SpikingLayer):
     """Discretize convolutional and spiking layers together, in-place.
 
     This function takes a 2D convolutional and a spiking layer and discretizes
@@ -51,7 +51,7 @@ def discretize_conv_spike_(
     ----------
     conv_lyr: nn.Conv2d
         Convolutional layer
-    spike_lyr: sl.SpikingLayerBPTT
+    spike_lyr: sl.SpikingLayer
         Spiking layer
     to_int: bool
         Use integer types for discretized parameter
@@ -60,7 +60,7 @@ def discretize_conv_spike_(
     -------
     nn.Conv2d
         Discretized convolutional layer
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized spiking layer
 
     """
@@ -88,6 +88,8 @@ def discretize_conv(
         Upper threshold of subsequent spiking layer
     spk_thr_low: float
         Lower threshold of subsequent spiking layer
+    spk_state: torch.Tensor or None
+        State of spiking layer.
     to_int: bool
         Use integer types for discretized parameter
 
@@ -128,6 +130,8 @@ def discretize_conv_(
         Upper threshold of subsequent spiking layer
     spk_thr_low: float
         Lower threshold of subsequent spiking layer
+    spk_state: torch.Tensor or None
+        State of spiking layer.
     to_int: bool
         Use integer types for discretized parameter
 
@@ -148,7 +152,7 @@ def discretize_conv_(
 
 
 def discretize_spk(
-    layer: sl.SpikingLayerBPTT,
+    layer: sl.SpikingLayer,
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
@@ -160,7 +164,7 @@ def discretize_spk(
 
     Parameters
     ----------
-    layer: sl.SpikingLayerBPTT
+    layer: sl.SpikingLayer
         Spiking layer
     conv_weight: torch.Tensor
         Weight tensor of preceding convolutional layer
@@ -171,19 +175,19 @@ def discretize_spk(
 
     Returns
     -------
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized copy of spiking layer
 
     """
     lyr_copy = deepcopy(layer)
-    layer_discr = discretize_conv_(
+    layer_discr = discretize_spk_(
         layer=lyr_copy, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
     )
     return layer_discr
 
 
 def discretize_spk_(
-    layer: sl.SpikingLayerBPTT,
+    layer: sl.SpikingLayer,
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
@@ -195,7 +199,7 @@ def discretize_spk_(
 
     Parameters
     ----------
-    layer: sl.SpikingLayerBPTT
+    layer: sl.SpikingLayer
         Spiking layer
     conv_weight: torch.Tensor
         Weight tensor of preceding convolutional layer
@@ -206,19 +210,19 @@ def discretize_spk_(
 
     Returns
     -------
-    sl.SpikingLayerBPTT
+    sl.SpikingLayer
         Discretized spiking
 
     """
     __, layer_discr = _discretize_conv_spk_(
-        conv_lyr=layer, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
+        spike_lyr=layer, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
     )
     return layer_discr
 
 
 def _discretize_conv_spk_(
     conv_lyr: Optional[nn.Conv2d] = None,
-    spike_lyr: Optional[sl.SpikingLayerBPTT] = None,
+    spike_lyr: Optional[sl.SpikingLayer] = None,
     spk_thr: Optional[float] = None,
     spk_thr_low: Optional[float] = None,
     spk_state: Optional[torch.Tensor] = None,
@@ -238,7 +242,7 @@ def _discretize_conv_spk_(
     ----------
         conv_lyr: nn.Conv2d or None
             Convolutional layer
-        spike_lyr: sl.SpikingLayerBPTT or None
+        spike_lyr: sl.SpikingLayer or None
             Spiking layer
         spk_thr: float or None
             Upper threshold of spiking layer. Has to be provided if `spike_lyr` is `None`.
@@ -247,7 +251,7 @@ def _discretize_conv_spk_(
             Lower threshold of spiking layer. Has to be provided if `spike_lyr` is `None`.
             Is ignored otherwise.
         spk_state: torch.Tensor or None
-            State of spiking layer. Igrnoed if `spike_lyr` is not `None`.
+            State of spiking layer. Ignored if `spike_lyr` is not `None`.
         conv_weight: torch.Tensor or None
             Weight of convolutional layer. Has to be provided if `conv_lyr` is `None`.
             Is ignored otherwise.
@@ -260,7 +264,7 @@ def _discretize_conv_spk_(
     -------
         nn.Conv2d or None
             Discretized convolutional layer if `conv_lyr` is not `None`, else `None`
-        sl.SpikingLayerBPTT or None
+        sl.SpikingLayer or None
             Discretized spiking layer if `spk_lyr` is not `None`, else `None`
     """
 
@@ -268,7 +272,7 @@ def _discretize_conv_spk_(
         discr_conv = False
 
         if conv_weight is None:
-            raise TypeError("If `conv_lyr` is `None`, `wegiht` must be provided.")
+            raise TypeError("If `conv_lyr` is `None`, `weight` must be provided.")
 
         if conv_bias is None:
             conv_bias = torch.zeros(conv_weight.shape[0])
@@ -297,7 +301,7 @@ def _discretize_conv_spk_(
         # - Lower and upper thresholds in a tensor for easier handling
         thresholds = torch.tensor((spk_thr_low, spk_thr))
     else:
-        if not isinstance(spike_lyr, sl.SpikingLayerBPTT):
+        if not isinstance(spike_lyr, sl.SpikingLayer):
             raise TypeError("`spike_lyr` must be of type `SpikingLayer`")
 
         discr_spk = True
@@ -305,21 +309,19 @@ def _discretize_conv_spk_(
         # - Lower and upper thresholds in a tensor for easier handling
         thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
 
-        spk_state = spike_lyr.state
-
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
     # such each they matches its precision specificaitons.
     scaling_w = determine_discretization_scale(conv_weight, SPECK_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(conv_bias, SPECK_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-    if spk_state is not None:
+    if spike_lyr is not None and spike_lyr.state is not None:
         scaling_n = determine_discretization_scale(
-            spk_state, SPECK_STATE_PRECISION_BITS
+            spike_lyr.state, SPECK_STATE_PRECISION_BITS
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize
-        spk_state = discretize_tensor(spk_state, scaling, to_int=to_int)
+        spike_lyr.state = discretize_tensor(spike_lyr.state, scaling, to_int=to_int)
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
 
@@ -358,7 +360,7 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     """
 
     # Discrete range
-    min_val_disc = 2 ** (bit_precision - 1)
+    min_val_disc = -(2 ** (bit_precision - 1))
     max_val_disc = 2 ** (bit_precision - 1) - 1
 
     # Range in which values lie
@@ -425,93 +427,7 @@ def discretize_scalar(obj: float, scaling: float) -> int:
     """
 
     # Scale the values
-    obj_scaled = obj * scaling
+    obj_scaled = obj * float(scaling)
 
     # Round and cast to integers
-    return int(obj_scaled)
-
-
-### OBSOLETE
-
-# def discretize_sl(
-#     snn: Union[nn.Module, sl.TorchLayer], to_int: bool = True
-# ) -> Union[nn.Module, sl.TorchLayer]:
-#     """
-#     discretize - Return a copy of the provided model or layer with discretized,
-#                  weights, biases, neuron states, and thresholds.
-#     :param snn:  The model or layer that is to be discretized
-#     :param to_int: If False, round the values, but don't cast to Int. (Default True).
-#     """
-#     try:
-#         model_copy = deepcopy(snn)
-#     except RuntimeError:
-#         raise NotImplementedError(
-#             "Some sinabs object can currently not be copied. You may run "
-#             "`discretize_sl_` instead, to discretize the original model instead "
-#             "of a copy."
-#         )
-#     return discretize_sl_(model_copy, to_int=to_int)
-
-
-# def discretize_sl_(
-#     snn: Union[nn.Module, sl.TorchLayer], to_int: bool = True
-# ) -> Union[nn.Module, sl.TorchLayer]:
-#     """
-#     discretize_sl_ - Discretize the weights, biases, neuron states, and thresholds
-#                      of the provided layers.
-#     :param snn:  The model or layer that is to be discretized
-#     :param to_int: If False, round the values, but don't cast to Int. (Default True).
-#     """
-#     if isinstance(snn, sl.SpikingConv2dLayer):
-#         return _discretize_SC2D_(snn, to_int=to_int)
-
-#     elif isinstance(snn, (sl.InputLayer, sl.SumPooling2dLayer)):
-#         # - Do not discretize `InputLayer` and `SumPooling2dLayer`
-#         return snn
-
-#     elif isinstance(snn, nn.Module):
-#         # - For every other type of `Module`s, try discretizing its children
-#         for lyr in snn.children():
-#             discretize_sl_(lyr, to_int=to_int)
-#         return snn
-
-#     else:
-#         raise ValueError(f"Objects of type `{type(snn)}` are not supported.")
-
-
-# def _discretize_SC2D_(layer: sl.TorchLayer, to_int: bool):
-#     # - Lower and upper thresholds in a tensor for easier handling
-#     thresholds = torch.tensor((layer.threshold_low, layer.threshold))
-#     # - Weights and biases
-#     if layer.bias:
-#         weights, biases = layer.parameters()
-#     else:
-#         (weights,) = layer.parameters()
-#         biases = torch.zeros(layer.channels_out)
-
-#     # - Scaling of weights, biases, thresholds and neuron states
-#     # Determine by which common factor weights, biases and thresholds can be scaled
-#     # such each they matches its precision specificaitons.
-#     scaling_w = determine_discretization_scale(weights, SPECK_WEIGHT_PRECISION_BITS)
-#     scaling_b = determine_discretization_scale(biases, SPECK_WEIGHT_PRECISION_BITS)
-#     scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
-#     if layer.state is not None:
-#         scaling_n = determine_discretization_scale(
-#             layer.state, SPECK_STATE_PRECISION_BITS
-#         )
-#         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
-#         # Scale neuron state with common scaling factor and discretize
-#         layer.state = discretize_tensor(layer.state, scaling, to_int=to_int)
-#     else:
-#         scaling = min(scaling_w, scaling_b, scaling_t)
-
-#     # Scale weights, biases and thresholds with common scaling factor and discretize
-#     weights.data = discretize_tensor(weights, scaling, to_int=to_int)
-#     biases.data = discretize_tensor(biases, scaling, to_int=to_int)
-#     layer.threshold_low, layer.threshold = (
-#         discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
-#     )
-#     layer.membrane_subtract = discretize_scalar(layer.membrane_subtract, scaling)
-#     layer.membrane_reset = discretize_scalar(layer.membrane_reset, scaling)
-
-#     return layer
+    return round(obj_scaled)

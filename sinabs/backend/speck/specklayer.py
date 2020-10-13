@@ -13,7 +13,7 @@ class SpeckLayer(nn.Module):
     def __init__(
         self,
         conv: nn.Conv2d,
-        spk: sl.SpikingLayerBPTT,
+        spk: sl.SpikingLayer,
         in_shape: Tuple[int],
         pool: Optional[bool] = None,
         discretize: bool = True,
@@ -150,13 +150,13 @@ class SpeckLayer(nn.Module):
 
         return layer
 
-    def _spklayer_to_dict(self, layer: sl.SpikingLayerBPTT) -> Dict:
+    def _spklayer_to_dict(self, layer: sl.SpikingLayer) -> Dict:
         """
         Extract parameters of spiking layer into dict.
 
         Parameters
         ----------
-            layer: sl.SpikingLayerBPTT
+            layer: sl.SpikingLayer
 
         Returns
         -------
@@ -197,8 +197,7 @@ class SpeckLayer(nn.Module):
             return_to_zero=return_to_zero,
             threshold_high=int(layer.threshold),
             threshold_low=int(layer.threshold_low),
-            monitor_enable=True,  # Yes or no?
-            # leak_enable=layer.bias,  # TODO
+            monitor_enable=False,
         )
 
         return {
@@ -264,6 +263,7 @@ class SpeckLayer(nn.Module):
             "weights_kill_bit": torch.zeros_like(weights).bool().tolist(),
             "biases": biases.int().tolist(),
             "biases_kill_bit": torch.zeros_like(biases).bool().tolist(),
+            "leak_enable": biases.bool().any(),
         }
 
     @property

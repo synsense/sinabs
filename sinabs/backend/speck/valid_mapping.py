@@ -1,6 +1,10 @@
 from math import ceil, log2
+from typing import List, TypeVar
 
-weightsMemorySize = [
+SpeckConfiguration = TypeVar("SpeckConfiguration")
+CNNLayerConfig = TypeVar("CNNLayerConfig")
+
+_WEIGHTS_MEMORY_SIZE = [
     16 * 1024,  # 0
     16 * 1024,  # 1
     16 * 1024,  # 2
@@ -9,9 +13,10 @@ weightsMemorySize = [
     64 * 1024,  # 5
     64 * 1024,  # 6
     16 * 1024,  # 7
-    16 * 1024]  # 8
+    16 * 1024,
+]  # _WEIGHTS_MEMORY_SIZE
 
-neuronsMemorySize = [
+_NEURONS_MEMORY_SIZE = [
     64 * 1024,  # 0
     64 * 1024,  # 1
     64 * 1024,  # 2
@@ -20,118 +25,173 @@ neuronsMemorySize = [
     16 * 1024,  # 5
     16 * 1024,  # 6
     16 * 1024,  # 7
-    16 * 1024]  # 8
+    16 * 1024,
+]  # 8
 
 
-def getOutputSize(inputFeatureSize, kernelSize, padding, stride):
-    return (inputFeatureSize - kernelSize + 2 * padding) / stride + 1
+def _get_output_size(
+    input_feature_size: int, kernel_size: int, padding: int, stride: int
+) -> int:
+    """Output size for a given input size and layer dimensions along one axis"""
+    return (input_feature_size - kernel_size + 2 * padding) / stride + 1
 
 
-def minBitsRequired(value):
-    assert(value != 0)
+def _min_bits_required(value: int) -> int:
+    """Minimum number of bits required to represent a given value"""
+    assert value != 0
     return ceil(log2(value))
 
 
-def computeWeightMemory(config):
-    power = minBitsRequired(config.dimensions.output_shape.feature_count) + \
-        minBitsRequired(config.dimensions.kernel_size * config.dimensions.kernel_size)
+def _compute_weight_memory(config: CNNLayerConfig) -> int:
+    """Required memory size to store CNN layer weights"""
+    power = _min_bits_required(
+        config.dimensions.output_shape.feature_count
+    ) + _min_bits_required(
+        config.dimensions.kernel_size * config.dimensions.kernel_size
+    )
     return config.dimensions.input_shape.feature_count * (1 << power)
 
 
-def computeNeuronMemory(config):
-    fx = getOutputSize(
+def _compute_neuron_memory(config: CNNLayerConfig) -> int:
+    """Required memory size to store CNN layer neuron states"""
+    fx = _get_output_size(
         config.dimensions.input_shape.size.x,
         config.dimensions.kernel_size,
         config.dimensions.padding.x,
-        config.dimensions.stride.x)
+        config.dimensions.stride.x,
+    )
 
-    fy = getOutputSize(
+    fy = _get_output_size(
         config.dimensions.input_shape.size.y,
         config.dimensions.kernel_size,
         config.dimensions.padding.y,
-        config.dimensions.stride.y)
+        config.dimensions.stride.y,
+    )
 
-    power = minBitsRequired(fx) + minBitsRequired(fy)
+    power = _min_bits_required(fx) + _min_bits_required(fy)
     return config.dimensions.output_shape.feature_count * (1 << power)
 
 
-def get_valid_mapping(config):
-    """
-    returns a valid remapping of the layers in speck config if it finds one
+def get_valid_mapping(config: SpeckConfiguration) -> List[List[int]]:
+    """Find valid remapping of layers in Speck config
+
+    Returns a valid remapping of the layers in speck config if it finds one.
     The returned value is a list of indexes from the current config
     how they should be mapped in order to fit the memory.
 
-    :param configuration: speck configuration
-    :return: mapping -- a list of indexes
+    Parameters
+    ----------
+        config: samna.speck.configuration.SpeckConfiguration
+            The Speck configuration whose mapping should be validated
+
+    Returns
+    -------
+        List[List[int]]
+            List of index pairs (i, j) indicating that the i-th layer in `config`
+            should be mapped to the j-th layer on Speck
+
     """
 
     mapping = []
 
-    memoryValues = []
-    memoryLimits = []
+    memory_values = []
+    memory_limits = []
 
     # find all layers used as destination
     # for this we check for DVS and all layers destination enable flag
 
-    usedLayers = []
+    used_layers = []
     for destination in config.dvs_layer.destinations:
-        if destination.enable and not (destination.layer in usedLayers):
-            usedLayers.append(destination.layer)
+        if destination.enable and not (destination.layer in used_layers):
+            used_layers.append(destination.layer)
 
-    for selectedLayer in range(0, len(config.cnn_layers)):
-        for destination in config.cnn_layers[selectedLayer].destinations:
-            if destination.enable and not (destination.layer in usedLayers):
-                usedLayers.append(destination.layer)
+    for selected_layer in range(0, len(config.cnn_layers)):
+        for destination in config.cnn_layers[selected_layer].destinations:
+            if destination.enable and not (destination.layer in used_layers):
+                used_layers.append(destination.layer)
 
-    for selectedLayer in usedLayers:
-        weightMemory = computeWeightMemory(config.cnn_layers[selectedLayer])
-        neuronMemory = computeNeuronMemory(config.cnn_layers[selectedLayer])
-        memoryValues.append([selectedLayer, [weightMemory, neuronMemory]])
+    for selected_layer in used_layers:
+        weight_memory = _compute_weight_memory(config.cnn_layers[selected_layer])
+        neuron_memory = _compute_neuron_memory(config.cnn_layers[selected_layer])
+        memory_values.append([selected_layer, [weight_memory, neuron_memory]])
 
-    for selectedLayer in range(0, len(weightsMemorySize)):
-        memoryLimits.append([selectedLayer, [weightsMemorySize[selectedLayer], neuronsMemorySize[selectedLayer]]])
+    for selected_layer in range(0, len(_WEIGHTS_MEMORY_SIZE)):
+        memory_limits.append(
+            [
+                selected_layer,
+                [
+                    _WEIGHTS_MEMORY_SIZE[selected_layer],
+                    _NEURONS_MEMORY_SIZE[selected_layer],
+                ],
+            ]
+        )
 
-    memoryValues = sorted(memoryValues, key=lambda x: (x[1][0], x[1][1]))
-    memoryLimits = sorted(memoryLimits, key=lambda x: (x[1][0], x[1][1]))
+    memory_values = sorted(memory_values, key=lambda x: (x[1][0], x[1][1]))
+    memory_limits = sorted(memory_limits, key=lambda x: (x[1][0], x[1][1]))
 
-    memoryValuesIndex = len(memoryValues) - 1
-    memoryLimitsIndex = len(memoryLimits) - 1
-    totalSwaps = 0
-    while memoryValuesIndex>=0:
-        if memoryValues[memoryValuesIndex][1][0] <= memoryLimits[memoryLimitsIndex][1][0] and memoryValues[memoryValuesIndex][1][1] <= memoryLimits[memoryLimitsIndex][1][1]:
-            mapping.append([memoryValues[memoryValuesIndex][0],memoryLimits[memoryLimitsIndex][0]])
+    memory_values_index = len(memory_values) - 1
+    memory_limits_index = len(memory_limits) - 1
+    total_swaps = 0
+    while memory_values_index >= 0:
+        if (
+            memory_values[memory_values_index][1][0]
+            <= memory_limits[memory_limits_index][1][0]
+            and memory_values[memory_values_index][1][1]
+            <= memory_limits[memory_limits_index][1][1]
+        ):
+            mapping.append(
+                [
+                    memory_values[memory_values_index][0],
+                    memory_limits[memory_limits_index][0],
+                ]
+            )
             # print(mapping)
-            memoryValuesIndex = memoryValuesIndex - 1
-            memoryLimitsIndex = memoryLimitsIndex - 1
+            memory_values_index = memory_values_index - 1
+            memory_limits_index = memory_limits_index - 1
         else:
-            toBeSwappedIndex = memoryValuesIndex
+            to_be_swapped_index = memory_values_index
             swapped = False
-            while memoryValuesIndex < len(memoryValues) - 1:
-                mapping = mapping[0:len(mapping)-2]
-                if memoryValues[memoryValuesIndex][1][0] < memoryValues[memoryValuesIndex+1][1][0] and memoryValues[memoryValuesIndex][1][1] > memoryValues[memoryValuesIndex+1][1][1]:
-                    # print("swapping " + str(memoryValues[toBeSwappedIndex][0]) + " " + str(memoryValues[toBeSwappedIndex][1][0]) + " " + str(memoryValues[toBeSwappedIndex][1][1]) + " with " + str(memoryValues[memoryValuesIndex+1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][0]) + " " + str(memoryValues[memoryValuesIndex+1][1][1]))
-                    layer = memoryValues[toBeSwappedIndex][0]
-                    weight = memoryValues[toBeSwappedIndex][1][0]
-                    neuron = memoryValues[toBeSwappedIndex][1][1]
-                    memoryValues[toBeSwappedIndex][0] = memoryValues[memoryValuesIndex+1][0]
-                    memoryValues[toBeSwappedIndex][1][0] = memoryValues[memoryValuesIndex+1][1][0]
-                    memoryValues[toBeSwappedIndex][1][1] = memoryValues[memoryValuesIndex+1][1][1]
-                    memoryValues[memoryValuesIndex+1][0] = layer
-                    memoryValues[memoryValuesIndex+1][1][0] = weight
-                    memoryValues[memoryValuesIndex+1][1][1] = neuron
+            while memory_values_index < len(memory_values) - 1:
+                mapping = mapping[0 : len(mapping) - 2]
+                if (
+                    memory_values[memory_values_index][1][0]
+                    < memory_values[memory_values_index + 1][1][0]
+                    and memory_values[memory_values_index][1][1]
+                    > memory_values[memory_values_index + 1][1][1]
+                ):
+                    # print("swapping " + str(memory_values[to_be_swapped_index][0]) + " " + str(memory_values[to_be_swapped_index][1][0]) + " " + str(memory_values[to_be_swapped_index][1][1]) + " with " + str(memory_values[memory_values_index+1][0]) + " " + str(memory_values[memory_values_index+1][1][0]) + " " + str(memory_values[memory_values_index+1][1][1]))
+                    layer = memory_values[to_be_swapped_index][0]
+                    weight = memory_values[to_be_swapped_index][1][0]
+                    neuron = memory_values[to_be_swapped_index][1][1]
+                    memory_values[to_be_swapped_index][0] = memory_values[
+                        memory_values_index + 1
+                    ][0]
+                    memory_values[to_be_swapped_index][1][0] = memory_values[
+                        memory_values_index + 1
+                    ][1][0]
+                    memory_values[to_be_swapped_index][1][1] = memory_values[
+                        memory_values_index + 1
+                    ][1][1]
+                    memory_values[memory_values_index + 1][0] = layer
+                    memory_values[memory_values_index + 1][1][0] = weight
+                    memory_values[memory_values_index + 1][1][1] = neuron
                     mapping = []
-                    memoryValuesIndex = len(memoryValues) - 1
-                    memoryLimitsIndex = len(memoryLimits) - 1
+                    memory_values_index = len(memory_values) - 1
+                    memory_limits_index = len(memory_limits) - 1
                     swapped = True
-                    totalSwaps = totalSwaps + 1
-                    if totalSwaps > 9:
+                    total_swaps = total_swaps + 1
+                    if total_swaps > 9:
                         print("can't find a solution!")
                         return []
                     break
                 else:
-                    memoryValuesIndex = memoryValuesIndex + 1
+                    memory_values_index = memory_values_index + 1
             if not swapped:
-                print(str(memoryValues[toBeSwappedIndex]) + " can't be mapped because it is too big! limit:" + str(memoryLimits[memoryLimitsIndex]))
+                print(
+                    str(memory_values[to_be_swapped_index])
+                    + " can't be mapped because it is too big! limit:"
+                    + str(memory_limits[memory_limits_index])
+                )
                 return []
 
     return mapping
