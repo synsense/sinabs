@@ -15,22 +15,22 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-from .layer import TorchLayer
-import pandas as pd
+from torch import nn
 import numpy as np
 from typing import Union, List, Tuple
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class InputLayer(TorchLayer):
+class InputLayer(nn.Module):
     def __init__(self, input_shape: ArrayLike, layer_name="input"):
         """
-        Torch implementation of SumPooling using the LPPool2d module
+        Place holder layer, used typically to acquire some statistics on the input
 
         :param image_shape: Input image dimensions
         """
-        TorchLayer.__init__(self, input_shape=input_shape, layer_name=layer_name)
+        super().__init__()
+        self.input_shape = input_shape
 
     def forward(self, binary_input):
         """
@@ -51,23 +51,3 @@ class InputLayer(TorchLayer):
         :return: (channels, height, width)
         """
         return self.input_shape
-
-    def summary(self):
-        """
-        :return: A summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Input_Shape": tuple(self.input_shape),
-                "Output_Shape": tuple(self.output_shape),
-                "Fanout_Prev": 1,
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary
-
-

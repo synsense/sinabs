@@ -16,19 +16,9 @@
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
 def test_crop2d():
-    from tensorflow import keras
+    from sinabs.layers import Cropping2dLayer
+    import torch
 
-    kerasLayer = keras.layers.Cropping2D(((2, 3), (3, 2)))
-    keras_config = kerasLayer.get_config()
-
-    from sinabs.from_keras.from_keras import from_cropping2d_keras_conf
-
-    # Create spiking layers
-    layer_list = from_cropping2d_keras_conf(keras_config, input_shape=(5, 30, 50))
-
-    for layer_name, layer in layer_list:
-        print(layer_name)
-        print(layer.summary())
-
-    # Verify output shape
-    assert layer.output_shape == (5, 25, 45)
+    sinabs_layer = Cropping2dLayer(((2, 3), (3, 1)))
+    inp = torch.zeros((2, 2, 10, 10))
+    assert sinabs_layer(inp).shape == (2, 2, 5, 6)
