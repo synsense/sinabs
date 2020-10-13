@@ -15,13 +15,16 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-def test_inputlayer():
-    from tensorflow import keras
+import torch
 
-    inpLayer = keras.layers.InputLayer(input_shape=(5, 20, 20))
-    kerasConf = inpLayer.get_config()
 
-    from sinabs.from_keras.from_keras import get_input_shape_from_keras_conf
+class SumPool2d(torch.nn.LPPool2d):
+    """
+    Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to torch.nn.LPPool2d with p=1.
 
-    input_shape = get_input_shape_from_keras_conf(kerasConf)
-    assert input_shape == (5, 20, 20)
+    :param kernel_size: the size of the window
+    :param stride: the stride of the window. Default value is kernel_size
+    :param ceil_mode: when True, will use ceil instead of floor to compute the output shape
+    """
+    def __init__(self, kernel_size, stride=None, ceil_mode=False):
+        super().__init__(1, kernel_size, stride, ceil_mode)

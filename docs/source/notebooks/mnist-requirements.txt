@@ -1,0 +1,7 @@
+jupyterlab
+ipywidgets
+pillow
+torchvision
+tqdm
+sinabs
+matplotlib

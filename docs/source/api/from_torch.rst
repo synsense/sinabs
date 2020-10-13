@@ -9,8 +9,6 @@ It currently only has limited capability.
     :maxdepth: 3
     :caption: from_torch
 
-
-
 .. py:currentmodule:: sinabs.from_torch
 .. automodule:: sinabs.from_torch
     :members:

@@ -20,33 +20,27 @@
 ##
 
 import numpy as np
-import pandas as pd
 import torch.nn as nn
 import torch
 from typing import Optional, Union, List, Tuple
-from operator import mul
-from functools import reduce
-from .layer import Layer
 from sinabs.cnnutils import conv_output_size
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class SpikingMaxPooling2dLayer(Layer):
+class SpikingMaxPooling2dLayer(nn.Module):
     def __init__(
         self,
-        image_shape: ArrayLike,
         pool_size: ArrayLike,
         strides: Optional[ArrayLike] = None,
         padding: ArrayLike = (0, 0, 0, 0),
-        layer_name: str = "pooling2d",
         # state_number: int = 16,
     ):
         """
         Torch implementation of SpikingMaxPooling
         """
-        super().__init__(input_shape=(None, *image_shape), layer_name=layer_name)
+        super().__init__()
         self.padding = padding
         self.pool_size = pool_size
         if strides is None:
@@ -96,30 +90,6 @@ class SpikingMaxPooling2dLayer(Layer):
         self.spikes_number = max_input_sum.abs().sum()
         self.tw = len(max_input_sum)
         return max_input_sum.float()  # Float is just to keep things compatible
-
-    def summary(self):
-        """
-        Returns the summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Output_Shape": (tuple(self.output_shape)),
-                "Input_Shape": (tuple(self.input_shape)),
-                "Padding": tuple(self.padding),
-                "Kernel": tuple(self.pool_size),
-                "Pooling": tuple(self.pool_size),
-                "Stride": tuple(self.strides),
-                "Fanout_Prev": reduce(
-                    mul, np.array(self.pool_size) / np.array(self.strides), 1
-                ),
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
         """

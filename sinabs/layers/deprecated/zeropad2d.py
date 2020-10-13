@@ -20,7 +20,7 @@ import torch.nn as nn
 import pandas as pd
 import numpy as np
 from typing import Union, List, Tuple
-from sinabs.layers.layer import Layer
+from .layer import Layer
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 

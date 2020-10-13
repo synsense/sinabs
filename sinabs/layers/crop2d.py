@@ -15,35 +15,28 @@
 #  You should have received a copy of the GNU Affero General Public License
 #  along with sinabs.  If not, see <https://www.gnu.org/licenses/>.
 
-import pandas as pd
 from typing import Union, List, Tuple
-from .layer import Layer
 import numpy as np
+from torch import nn
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
 
-class Cropping2dLayer(Layer):
+class Cropping2dLayer(nn.Module):
     """
     Crop input image by
     """
 
     def __init__(
         self,
-        image_shape: ArrayLike,
         cropping: ArrayLike = ((0, 0), (0, 0)),
-        layer_name="crop2d",
     ):
         """
         Crop input to the the rectangle dimensions
 
-        :param image_shape: Input image dimensions
         :param cropping: ((top, bottom), (left, right))
-        :param layer_name: str Layer name
         """
-        Layer.__init__(
-            self, input_shape=(None, *image_shape), layer_name=layer_name
-        )
+        super().__init__()
         self.top_crop, self.bottom_crop = cropping[0]
         self.left_crop, self.right_crop = cropping[1]
 
@@ -53,8 +46,8 @@ class Cropping2dLayer(Layer):
         crop_out = binary_input[
             :,
             :,
-            self.top_crop : h - self.bottom_crop,
-            self.left_crop : w - self.right_crop,
+            self.top_crop: h - self.bottom_crop,
+            self.left_crop: w - self.right_crop,
         ]
         self.out_shape = crop_out.shape[1:]
         self.spikes_number = crop_out.abs().sum()
@@ -74,29 +67,3 @@ class Cropping2dLayer(Layer):
             height - self.top_crop - self.bottom_crop,
             width - self.left_crop - self.right_crop,
         )
-
-    def summary(self):
-        """
-        Returns a summary of this layer as a pandas Series
-        """
-        summary = pd.Series(
-            {
-                "Type": self.__class__.__name__,
-                "Layer": self.layer_name,
-                "Input_Shape": tuple(self.input_shape),
-                "Output_Shape": tuple(self.output_shape),
-                "Cropping": (
-                    self.top_crop,
-                    self.bottom_crop,
-                    self.left_crop,
-                    self.right_crop,
-                ),
-                "Fanout_Prev": 1,
-                "Neurons": 0,
-                "Kernel_Params": 0,
-                "Bias_Params": 0,
-            }
-        )
-        return summary
-
-

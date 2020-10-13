@@ -1,0 +1,4 @@
+[run]
+source_pkgs = sinabs
+omit = */deprecated/*
+command_line = -m pytest tests/

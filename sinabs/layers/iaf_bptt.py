@@ -23,7 +23,6 @@ import torch
 import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple
-from .layer import Layer
 from .functional import threshold_subtract
 
 # - Type alias for array-like objects
@@ -32,10 +31,9 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 window = 1.0
 
 
-class SpikingLayer(Layer):
+class SpikingLayer(nn.Module):
     def __init__(
         self,
-        input_shape: Optional[ArrayLike] = None,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
         membrane_subtract: Optional[float] = None,
@@ -56,7 +54,7 @@ class SpikingLayer(Layer):
         :param layer_name: Name of this layer
         :param negative_spikes: Implement a linear transfer function through negative spiking
         """
-        super().__init__(input_shape=input_shape, layer_name=layer_name)
+        super().__init__()
         # Initialize neuron states
         self.threshold = threshold
         self.threshold_low = threshold_low
@@ -187,7 +185,6 @@ class SpikingLayer(Layer):
 
     def __deepcopy__(self, memo=None):
         other = SpikingLayer(
-            input_shape=self.input_shape,
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self._membrane_subtract,

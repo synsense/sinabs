@@ -41,6 +41,7 @@ class Layer(nn.Module, ABC):
         """
         nn.Module.__init__(self)
         ABC.__init__(self)
+        warnings.warn(f"Layer {self.__class__.__name__} is deprecated.")
         # Instantiate all input variables
         self.input_shape = input_shape
         self._output_shape: Optional[ArrayLike] = None
