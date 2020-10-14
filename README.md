@@ -16,7 +16,7 @@ This project is managed by SynSense (former aiCTX AG).
 
 **NOTE**: The conversion of CNNs to SCNNs is still a subject of research and we strive to keep the library updated to the state-of-the art in addition to providing options to compare various approaches both at a high level abstraction to low level implementation details.
 
-**NOTE**: This library is an alpha release state and is subject to API changes.
+**NOTE**: This library is in Beta release stage and is subject to API changes.
 
 Installation
 ------------
@@ -28,7 +28,7 @@ pip install sinabs
 ```
 Checkout our quick instructional on how to create a project based on `sinabs` within a virtual environment using [pyenv+pipenv](https://sinabs.ai/howto/python_pyenv_pipenv.html)
 
-If you want to develop or have access to source code of sinabs, download the package from the git repository:
+If you want to develop or have access to source code of `sinabs`, download the package from the git repository:
 
 ```
 $ cd <to/your/software/folder>
@@ -74,4 +74,4 @@ License
 Contributing to `sinabs`
 ------------------------
 
-Checkout [CONTRIBUTING.md](https://aictx.gitlab.io/sinabs/CONTRIBUTING.md)
+Checkout [CONTRIBUTING.md](https://gitlab.com/aictx/sinabs/CONTRIBUTING.md)
