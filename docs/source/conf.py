@@ -40,12 +40,12 @@ sys.path.append(os.path.join(os.path.dirname(__name__), ".."))
 
 project = "sinabs"
 copyright = "2019-2020, SynSense (aiCTX AG)"
-author = "Sadique Sheik, Qian Liu, aiCTX AG"
+author = "Sadique Sheik, Martino Sorbaro, Qian Liu, SynSense"
 
 # The short X.Y version
 # version = "0.1"
 # The full version, including alpha/beta/rc tags
-release = ""
+# release = ""
 
 
 # -- General configuration ---------------------------------------------------
@@ -58,6 +58,7 @@ release = ""
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "pbr.sphinxext",
     "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
@@ -162,7 +163,7 @@ latex_documents = [
         master_doc,
         "SINABS.tex",
         "SINABS Documentation",
-        "Sadique Sheik, Qian Liu, aiCTX AG",
+        author,
         "manual",
     )
 ]
