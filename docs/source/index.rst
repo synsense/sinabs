@@ -19,6 +19,7 @@ Table of contents
    examples
    howto/howto.rst
    api/api.rst
+   contributing
 
 
 Indices and tables

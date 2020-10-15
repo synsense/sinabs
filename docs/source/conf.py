@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-#  Copyright (c) 2019-2019     aiCTX AG (Sadique Sheik, Qian Liu).
+#  Copyright (c) 2019-2020 SynSense.
 #
 #  This file is part of sinabs
 #
@@ -39,11 +39,11 @@ sys.path.append(os.path.join(os.path.dirname(__name__), ".."))
 # -- Project information -----------------------------------------------------
 
 project = "sinabs"
-copyright = "2019, Sadique Sheik, Qian Liu, aiCTX AG"
+copyright = "2019-2020, SynSense (aiCTX AG)"
 author = "Sadique Sheik, Qian Liu, aiCTX AG"
 
 # The short X.Y version
-version = "0.1"
+# version = "0.1"
 # The full version, including alpha/beta/rc tags
 release = ""
 
@@ -62,7 +62,6 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    #"recommonmark",
     "m2r"
 ]
 
@@ -102,8 +101,8 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "aictx-theme"
-html_theme_path = ["."]
+html_theme = "sphinx_rtd_theme"
+#html_theme_path = ["."]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -129,7 +128,7 @@ html_sidebars = {
 }
 
 # ------------------- LOGO ---------------------------
-html_logo = "aiCTX.png"
+#html_logo = "SynSense.png"
 
 
 # -- Options for HTMLHelp output ---------------------------------------------

@@ -74,4 +74,4 @@ License
 Contributing to `sinabs`
 ------------------------
 
-Checkout [CONTRIBUTING.md](https://gitlab.com/aictx/sinabs/CONTRIBUTING.md)
+Checkout [CONTRIBUTING.md](https://sinabs.ai/contributing.html)
