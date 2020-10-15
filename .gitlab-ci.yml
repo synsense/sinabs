@@ -16,6 +16,16 @@ unittests:
   script:
     - pytest --cov
 
+doc_tests:
+  tags:
+    - python
+    - aiCTX
+
+  stage: test
+
+  script:
+    - python setup.py build_sphinx
+
 
 pages:
   tags:
