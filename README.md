@@ -58,7 +58,7 @@ $ pip install -r sphinx-requirements.txt
 $ python setup.py build_sphinx
 ```
 
-This will build and auto generate html documentation at `sinabs/docs/build/html/index.html`
+This will build and auto generate html documentation at `docs/build/html/index.html`
 You can access the generated documentation in your browser.
 ```
 $ firefox docs/build/html/index.html

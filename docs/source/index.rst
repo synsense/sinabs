@@ -6,7 +6,7 @@
 Welcome to SINABS's documentation!
 ==================================
 
-SINABS - Sinabs Is Not A Brain Simulator
+.. mdinclude:: ../../README.md
 
 Table of contents
 -----------------
