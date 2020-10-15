@@ -65,12 +65,10 @@ pypi_deploy:
     - aiCTX
 
   stage: deploy
-  when: manual
 
   only:
     refs:
       - master
-      - test_pypi
     variables:
       - $TWINE_USERNAME == "sheiksadique"
 
