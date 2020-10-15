@@ -28,9 +28,8 @@ pages:
       - master
 
   script:
-    - cd docs
-    - make html
-    - mv build/html/ ../public/
+    - python setup.py build_sphinx
+    - mv docs/build/html/ public/
 
   artifacts:
     paths:

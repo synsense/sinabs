@@ -55,14 +55,13 @@ You can generate a sphinx documentation for this package by running the the foll
 ```
 $ cd /path/to/sinabs/
 $ pip install -r sphinx-requirements.txt
-$ cd docs/
-$ make html
+$ python setup.py build_sphinx
 ```
 
 This will build and auto generate html documentation at `sinabs/docs/build/html/index.html`
 You can access the generated documentation in your browser.
 ```
-$ firefox build/html/index.html
+$ firefox docs/build/html/index.html
 ```
 
 License
