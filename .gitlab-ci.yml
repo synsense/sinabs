@@ -3,7 +3,7 @@ image: aictx/ci-python-arch:latest
 before_script:
   - pip install --upgrade pip
   - pip install . --no-cache-dir
-  - pip install --upgrade 'm2r@git+https://github.com/crossnox/m2r@dev#egg=m2r'
+  - pip install -r sphinx-requirements.txt
   - pip install -r test-requirements.txt
 
 unittests:
@@ -67,7 +67,8 @@ pypi_deploy:
   when: manual
 
   only:
-    - master
+    refs:
+      - master
 
   dependencies:
     - dist_build
@@ -78,3 +79,17 @@ pypi_deploy:
 
   script:
           - twine upload dist/*
+
+
+pypi_test:
+  tags:
+    - python
+    - aiCTX
+
+  stage: test
+
+  only:
+    refs:
+      - test_pypi
+    variables:
+      - $TWINE_USERNAME == sheiksadique
