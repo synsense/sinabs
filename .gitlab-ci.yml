@@ -70,6 +70,9 @@ pypi_deploy:
   only:
     refs:
       - master
+      - test_pypi
+    variables:
+      - $TWINE_USERNAME == "sheiksadique"
 
   dependencies:
     - dist_build
@@ -81,34 +84,3 @@ pypi_deploy:
   script:
     - twine upload dist/*
 
-pypi_test_should_run:
-  tags:
-    - python
-    - aiCTX
-
-  stage: test
-
-  only:
-    refs:
-      - test_pypi
-    variables:
-      - $TWINE_USERNAME == "sheiksadique"
-
-  script:
-    - echo
-
-pypi_test_should_not:
-  tags:
-    - python
-    - aiCTX
-
-  stage: test
-
-  only:
-    refs:
-      - test_pypi
-    variables:
-      - $TWINE_NONEXISTENT == "sheiksadique"
-
-  script:
-    - echo
