@@ -23,6 +23,9 @@ pages:
     - aiCTX
 
   stage: deploy
+  only:
+    refs:
+      - master
 
   script:
     - cd docs
@@ -33,8 +36,6 @@ pages:
     paths:
     - public
 
-  only:
-    - master
 
 dist_build:
   tags:
@@ -44,8 +45,8 @@ dist_build:
   stage: build
 
   only:
-    - master
-
+    refs:
+      - master
 
   before_script:
     - pip install --upgrade pip
@@ -80,7 +81,7 @@ pypi_deploy:
   script:
     - twine upload dist/*
 
-pypi_test:
+pypi_test_should_run:
   tags:
     - python
     - aiCTX
@@ -92,6 +93,22 @@ pypi_test:
       - test_pypi
     variables:
       - $TWINE_USERNAME == "sheiksadique"
+
+  script:
+    - echo
+
+pypi_test_should_not:
+  tags:
+    - python
+    - aiCTX
+
+  stage: test
+
+  only:
+    refs:
+      - test_pypi
+    variables:
+      - $TWINE_NONEXISTENT == "sheiksadique"
 
   script:
     - echo
