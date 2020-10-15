@@ -78,8 +78,7 @@ pypi_deploy:
     - pip install --upgrade twine
 
   script:
-          - twine upload dist/*
-
+    - twine upload dist/*
 
 pypi_test:
   tags:
@@ -92,4 +91,7 @@ pypi_test:
     refs:
       - test_pypi
     variables:
-      - $TWINE_USERNAME == sheiksadique
+      - $TWINE_USERNAME == "sheiksadique"
+
+  script:
+    - echo
