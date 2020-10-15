@@ -90,8 +90,7 @@ class Network(torch.nn.Module):
         """
         Forward pass for this model
         """
-        with torch.no_grad():
-            return self.spiking_model(tsrInput)
+        return self.spiking_model(tsrInput)
 
     def compare_activations(
         self,
