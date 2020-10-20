@@ -29,7 +29,6 @@ class Sig2SpikeLayer(torch.nn.Module):
         channels_in,
         tw: int = 1,
         norm_level: float = 1,
-        layer_name: str = "sig2spk",
         spk_out: bool = True,
     ):
         """
