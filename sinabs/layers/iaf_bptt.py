@@ -23,7 +23,7 @@ import torch
 import numpy as np
 import torch.nn as nn
 from typing import Optional, Union, List, Tuple
-from .functional import threshold_subtract
+from .functional import threshold_subtract, threshold_reset
 
 # - Type alias for array-like objects
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -37,54 +37,35 @@ class SpikingLayer(nn.Module):
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
         membrane_subtract: Optional[float] = None,
-        layer_name: str = "spiking",
-        negative_spikes: bool = False,
         batch_size: Optional[int] = None,
-        membrane_reset=None,
+        membrane_reset=False,
     ):
         """
         Pytorch implementation of a spiking neuron with learning enabled.
-        NOTE: membrane_reset is ignored. Only does membrane subtract
         This class is the base class for any layer that need to implement integrate-and-fire operations.
 
-        :param input_shape: Input data shape
-        :param threshold: Spiking threshold of the neuron
-        :param threshold_low: Lowerbound for membrane potential
-        :param membrane_subtract: bool Upon spiking if the membrane potential is subtracted (True) as opposed to reset(False)
-        :param layer_name: Name of this layer
-        :param negative_spikes: Implement a linear transfer function through negative spiking
+        :param threshold: Spiking threshold of the neuron.
+        :param threshold_low: Lower bound for membrane potential.
+        :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
+        Default is equal to threshold. Ignored if membrane_reset is set.
+        :param negative_spikes: Implement a linear transfer function through negative spiking. \
+        Ignored if membrane_reset is set.
+        :param batch_size: The batch size. Needed to distinguish between timesteps and batch dimension.
+        :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
+        :param layer_name: The name of the layer.
         """
         super().__init__()
         # Initialize neuron states
         self.threshold = threshold
         self.threshold_low = threshold_low
-        self.negative_spikes = negative_spikes
         self._membrane_subtract = membrane_subtract
+        self.membrane_reset = membrane_reset
 
         # Blank parameter place holders
         self.register_buffer("state", torch.zeros(1))
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
         self.batch_size = batch_size
-
-        if membrane_reset is not None:
-            raise NotImplementedError("Membrane reset is no longer supported.")
-
-    #@property
-    #def threshold_low(self):
-    #    return self._threshold_low
-
-    #@threshold_low.setter
-    #def threshold_low(self, new_threshold_low):
-    #    self._threshold_low = new_threshold_low
-    #    #if new_threshold_low is None:
-    #    #    try:
-    #    #        del self.thresh_lower
-    #    #    except AttributeError:
-    #    #        pass
-    #    #else:
-    #    #    # Relu on the layer
-    #    #    self.thresh_lower = nn.Threshold(new_threshold_low, new_threshold_low)
 
     @property
     def membrane_subtract(self):
@@ -142,23 +123,26 @@ class SpikingLayer(nn.Module):
         # Local variables
         threshold = self.threshold
         threshold_low = self.threshold_low
-        neg_spikes = self.negative_spikes
 
         state = self.state
         activations = self.activations
         spikes = []
         for iCurrentTimeStep in range(time_steps):
-            # update neuron states
-            state = syn_out[iCurrentTimeStep] + state - activations * threshold
-            if threshold_low is not None and not neg_spikes:
+
+            # update neuron states (membrane potentials)
+            if self.membrane_reset:
+                # sum the previous state only where there were no spikes
+                state = syn_out[iCurrentTimeStep] + state * (activations == 0.)
+            else:
+                # subtract a number of membrane_subtract's as there are spikes
+                state = syn_out[iCurrentTimeStep] + state - activations * self.membrane_subtract
+            if threshold_low is not None:
                 # This is equivalent to functional.threshold. non zero threshold is not supported for onnx
-                state = torch.nn.functional.relu(state-threshold_low) + threshold_low
+                state = torch.nn.functional.relu(state - threshold_low) + threshold_low
+
             # generate spikes
-            if neg_spikes:
-                activations = (
-                    threshold_subtract(state.abs(), threshold, threshold * window)
-                    * state.sign().int()
-                )
+            if self.membrane_reset:
+                activations = threshold_reset(state, threshold, threshold * window)
             else:
                 activations = threshold_subtract(state, threshold, threshold * window)
             spikes.append(activations)
@@ -188,10 +172,8 @@ class SpikingLayer(nn.Module):
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self._membrane_subtract,
-            layer_name="spiking",
-            negative_spikes=self.negative_spikes,
             batch_size=self.batch_size,
-            membrane_reset=None,
+            membrane_reset=self.membrane_reset,
         )
 
         other.state = self.state.detach().clone()

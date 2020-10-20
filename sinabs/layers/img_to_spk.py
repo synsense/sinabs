@@ -30,7 +30,6 @@ class Img2SpikeLayer(nn.Module):
         image_shape,
         tw: int = 100,
         max_rate: float = 1000,
-        layer_name: str = "img2spk",
         norm: float = 255.0,
         squeeze: bool = False,
         negative_spikes: bool = False

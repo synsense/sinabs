@@ -21,7 +21,7 @@ def test_img2spk():
     from sinabs.layers import Img2SpikeLayer
 
     lyr = Img2SpikeLayer(
-        image_shape=(2, 64, 64), tw=10, max_rate=1000, layer_name="img2spk"
+        image_shape=(2, 64, 64), tw=10, max_rate=1000,
     )
 
     img = torch.rand(2, 64, 64)
