@@ -1,5 +1,6 @@
 from typing import Optional
 from copy import deepcopy
+from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -333,9 +334,10 @@ def _discretize_conv_spk_(
         spike_lyr.threshold_low, spike_lyr.threshold = (
             discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
         )
-        spike_lyr.membrane_subtract = discretize_scalar(
-            spike_lyr.membrane_subtract, scaling
-        )
+        if spike_lyr.membrane_subtract != spike_lyr.threshold:
+            warn(
+                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
+            )
 
     return conv_lyr, spike_lyr
 

@@ -184,13 +184,9 @@ class SpeckLayer(nn.Module):
 
         # - Resetting vs returning to 0
         return_to_zero = layer.membrane_subtract is not None
-        # if return_to_zero and layer.membrane_reset != 0:
-        #     warn(
-        #         f"SpikingConv2dLayer `{layer.layer_name}`: Resetting of membrane potential is always to 0."
-        #     )
         if (not return_to_zero) and layer.membrane_subtract != layer.threshold:
             warn(
-                f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
             )
 
         layer_params = dict(
