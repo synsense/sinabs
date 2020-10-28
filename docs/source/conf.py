@@ -38,7 +38,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "sinabs"
-copyright = "2019-2020, SynSense (aiCTX AG)"
+copyright = "2019-2020, SynSense"
 author = "Sadique Sheik, Martino Sorbaro, Qian Liu, SynSense"
 
 # The short X.Y version
