@@ -94,15 +94,11 @@ Command line:
 
 Launch a terminal and fire away::
 
-    $ cd <to/your/preferred/software/package/path>
-    $ git clone https://gitlab.com/aiCTX/sinabs.git
     $ cd <to/your/project/folder>
     $ pyenv install 3.7.5
     $ pipenv --python ~/.pyenv/versions/3.7.5/bin/python
     $ pipenv shell
-    (project-venv)$ cd <path/to/sinabs>
-    (project-venv)$ pip install .
-    (project-venv)$ cd <to/your/project/folder>
+    (project-venv)$ pip install sinabs
     (project-venv)$ python your_script_with_sinabs.py
 
 You can obviously install ipython, jupyter-notebook etc within this venv.
