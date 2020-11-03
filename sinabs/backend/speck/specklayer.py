@@ -13,7 +13,7 @@ class SpeckLayer(nn.Module):
     def __init__(
         self,
         conv: nn.Conv2d,
-        spk: sl.SpikingLayerBPTT,
+        spk: sl.SpikingLayer,
         in_shape: Tuple[int],
         pool: Optional[bool] = None,
         discretize: bool = True,
@@ -150,13 +150,13 @@ class SpeckLayer(nn.Module):
 
         return layer
 
-    def _spklayer_to_dict(self, layer: sl.SpikingLayerBPTT) -> Dict:
+    def _spklayer_to_dict(self, layer: sl.SpikingLayer) -> Dict:
         """
         Extract parameters of spiking layer into dict.
 
         Parameters
         ----------
-            layer: sl.SpikingLayerBPTT
+            layer: sl.SpikingLayer
 
         Returns
         -------
@@ -184,13 +184,9 @@ class SpeckLayer(nn.Module):
 
         # - Resetting vs returning to 0
         return_to_zero = layer.membrane_subtract is not None
-        # if return_to_zero and layer.membrane_reset != 0:
-        #     warn(
-        #         f"SpikingConv2dLayer `{layer.layer_name}`: Resetting of membrane potential is always to 0."
-        #     )
         if (not return_to_zero) and layer.membrane_subtract != layer.threshold:
             warn(
-                f"SpikingConv2dLayer `{layer.layer_name}`: Subtraction of membrane potential is always by high threshold."
+                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
             )
 
         layer_params = dict(
