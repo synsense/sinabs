@@ -1,5 +1,5 @@
 """
-This should test cases of speck compatible networks with dvs input
+This should test cases of dynapcnn compatible networks with dvs input
 """
 try:
     from samna.speck.configuration import SpeckConfiguration
@@ -8,7 +8,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-from sinabs.backend.speck import SpeckCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 from sinabs.from_torch import from_model
 from sinabs.layers import InputLayer
 
@@ -56,7 +56,7 @@ def verify_networks(
 
     # - SPN generation and output comparison
     snn.reset_states()
-    spn = SpeckCompatibleNetwork(
+    spn = DynapcnnCompatibleNetwork(
         snn, input_shape=input_shape, discretize=discretize, dvs_input=True
     )
 
@@ -67,11 +67,11 @@ def verify_networks(
     # - Version without dvs
     if first_pooling:
         with pytest.raises(TypeError):
-            SpeckCompatibleNetwork(
+            DynapcnnCompatibleNetwork(
                 snn, input_shape=input_shape, discretize=discretize, dvs_input=False
             )
     else:
-        spn_no_dvs = SpeckCompatibleNetwork(
+        spn_no_dvs = DynapcnnCompatibleNetwork(
             snn, input_shape=input_shape, discretize=discretize, dvs_input=False
         )
         spn_out_no_dvs = spn_no_dvs(input_data).squeeze()

@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'sinabs-speck'
+project = 'sinabs-dynapcnn'
 copyright = '2020, Synsense AG'
 author = 'Sadique Sheiq, Martino Sorbaro, Felix Bauer'
 

@@ -5,7 +5,7 @@ try:
 except ImportError:
     TEST_CONFIGS = False
 
-from sinabs.backend.speck import SpeckCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model
@@ -32,7 +32,7 @@ def networks_equal_output(input_data, snn):
     reset_states(snn)
 
     # snn.reset_states()
-    spn = SpeckCompatibleNetwork(
+    spn = DynapcnnCompatibleNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False
     )
     spn_out = spn(input_data).squeeze()
@@ -65,7 +65,7 @@ def test_with_class():
     snn_out = snn(input_data).squeeze()  # forward pass
 
     snn.reset_states()
-    spn = SpeckCompatibleNetwork(
+    spn = DynapcnnCompatibleNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False
     )
     spn_out = spn(input_data).squeeze()

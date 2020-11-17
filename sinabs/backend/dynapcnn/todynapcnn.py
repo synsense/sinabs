@@ -9,33 +9,33 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-from .specklayer import SpeckLayer
+from .dynapcnnlayer import DynapcnnLayer
 from .valid_mapping import get_valid_mapping
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
 import sinabs
-from typing import Tuple, Union, Optional, Sequence
+from typing import Tuple, Union, Optional, Sequence, List
 
 
-class SpeckCompatibleNetwork(nn.Module):
+class DynapcnnCompatibleNetwork(nn.Module):
     """
-    Given a sinabs spiking network, prepare a speck-compatible network.
+    Given a sinabs spiking network, prepare a dynapcnn-compatible network.
     This can be used to test the network will be equivalent once on Speck.
-    This class also provides utilities to make the speck configuration and
+    This class also provides utilities to make the dynapcnn configuration and
     upload it to Speck.
 
-    The following operations are done when converting to speck-compatible:
+    The following operations are done when converting to dynapcnn-compatible:
 
     * multiple avg pooling layers in a row are consolidated into one and \
     turned into sum pooling layers;
-    * checks are performed on layer hyperparameter compatibility with speck \
+    * checks are performed on layer hyperparameter compatibility with dynapcnn \
     (kernel sizes, strides, padding)
-    * checks are performed on network structure compatibility with speck \
+    * checks are performed on network structure compatibility with dynapcnn \
     (certain layers can only be followed by other layers)
     * linear layers are turned into convolutional layers
     * dropout layers are ignored
-    * weights, biases and thresholds are discretized according to speck requirements
+    * weights, biases and thresholds are discretized according to dynapcnn requirements
     """
 
     def __init__(
@@ -46,25 +46,25 @@ class SpeckCompatibleNetwork(nn.Module):
         discretize: bool = True,
     ):
         """
-        SpeckCompatibleNetwork: a class turning sinabs networks into speck
-        compatible networks, and making speck configurations.
+        DynapcnnCompatibleNetwork: a class turning sinabs networks into dynapcnn
+        compatible networks, and making dynapcnn configurations.
 
         Parameters
         ----------
             snn: sinabs.Network
-                SNN that determines the structure of the `SpeckCompatibleNetwork`
+                SNN that determines the structure of the `DynapcnnCompatibleNetwork`
             input_shape: tuple of ints
                 Shape of the input, convention: (features, height, width)
             dvs_input: bool
-                Does speck receive input from its DVS camera?
+                Does dynapcnn receive input from its DVS camera?
             discretize: bool
                 If True, discretize the parameters and thresholds.
-                This is needed for uploading weights to speck. Set to False only for
+                This is needed for uploading weights to dynapcnn. Set to False only for
                 testing purposes.
         """
         super().__init__()
 
-        # this holds the SpeckLayer objects which can be used for testing
+        # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = []
 
@@ -188,13 +188,13 @@ class SpeckCompatibleNetwork(nn.Module):
         Parameters
         ----------
             speck_layers_ordering: sequence of integers or "auto"
-                The order in which the speck layers will be used. If "auto",
+                The order in which the dynapcnn layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
 
         Returns
         -------
             SpeckConfiguration
-                Object defining the configuration for speck
+                Object defining the configuration for dynapcnn
 
         Raises
         ------
@@ -249,11 +249,11 @@ class SpeckCompatibleNetwork(nn.Module):
                 )
                 dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
 
-            elif isinstance(speck_equivalent_layer, SpeckLayer):
+            elif isinstance(speck_equivalent_layer, DynapcnnLayer):
                 # Object representing Speck layer
                 speck_layer = config.cnn_layers[speck_layers[i_layer_speck]]
-                # read the configuration dictionary from SpeckLayer
-                # and write it to the speck configuration object
+                # read the configuration dictionary from DynapcnnLayer
+                # and write it to the dynapcnn configuration object
                 self.write_speck_config(speck_equivalent_layer.config_dict, speck_layer)
 
                 # For now: Sequential model, second destination always disabled
@@ -302,7 +302,7 @@ class SpeckCompatibleNetwork(nn.Module):
         rescaling_from_pooling: int,
     ) -> Tuple[int, Tuple[int], int]:
         """
-        Generate a SpeckLayer from a Conv2d layer and its subsequent spiking and
+        Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
         pooling layers.
 
         Parameters
@@ -349,11 +349,12 @@ class SpeckCompatibleNetwork(nn.Module):
             )
 
         # - Consolidate pooling from subsequent layers
+        pooling: Union[List[int], int]
         pooling, i_next, rescaling = self.consolidate_pooling(layers[2:], dvs=False)
 
-        # The SpeckLayer object knows how to turn the conv-spk-pool trio to
-        # a speck layer, and has a forward method, and computes the output shape
-        compatible_object = SpeckLayer(
+        # The DynapcnnLayer object knows how to turn the conv-spk-pool trio to
+        # a dynapcnn layer, and has a forward method, and computes the output shape
+        compatible_object = DynapcnnLayer(
             conv=lyr_curr,
             spk=lyr_next,
             pool=pooling,
@@ -379,7 +380,7 @@ class SpeckCompatibleNetwork(nn.Module):
         self, config_dict: dict, speck_layer: "CNNLayerConfig",
     ):
         """
-        Write a single layer configuration to the speck conf object.
+        Write a single layer configuration to the dynapcnn conf object.
 
         Parameters
         ----------
@@ -407,7 +408,7 @@ class SpeckCompatibleNetwork(nn.Module):
 
     def consolidate_pooling(
         self, layers: Sequence[nn.Module], dvs: bool
-    ) -> Tuple[Union[int, Tuple[int]], Union[int, None]]:
+    ) -> Tuple[Union[List[int], int], int, int]:
         """
         Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 

@@ -15,7 +15,7 @@ from torch import nn
 import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
-from sinabs.backend.speck.tospeck import SpeckCompatibleNetwork
+from sinabs.backend.dynapcnn.todynapcnn import DynapcnnCompatibleNetwork
 import pytest
 
 
@@ -63,7 +63,7 @@ snn.eval()
 snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
-speck_net = SpeckCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
+speck_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
 speck_out = speck_net(input_data)
 
 

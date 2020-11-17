@@ -7,20 +7,20 @@ from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
 
-class SpeckLayer(nn.Module):
-    """Torch module that reproduces the behaviour of a speck layer."""
+class DynapcnnLayer(nn.Module):
+    """Torch module that reproduces the behaviour of a dynapcnn layer."""
 
     def __init__(
         self,
         conv: nn.Conv2d,
         spk: sl.SpikingLayer,
         in_shape: Tuple[int],
-        pool: Optional[bool] = None,
+        pool: Optional[int] = None,
         discretize: bool = True,
         rescale_weights: int = 1,
     ):
         """
-        Create a SpeckLayer object representing a speck layer.
+        Create a DynapcnnLayer object representing a dynapcnn layer.
 
         Requires a convolutional layer, a sinabs spiking layer and an optional
         pooling value. The layers are used in the order conv -> spike -> pool.
@@ -32,7 +32,7 @@ class SpeckLayer(nn.Module):
             spk: sinabs.layers.SpikingLayer
                 Sinabs spiking layer
             in_shape: tuple of int
-                The input shape, needed to create speck configs if the network does not
+                The input shape, needed to create dynapcnn configs if the network does not
                 contain an input layer. Convention: (features, height, width)
             pool: int or None
                 Integer representing the sum pooling kernel and stride. If `None`, no
@@ -167,7 +167,7 @@ class SpeckLayer(nn.Module):
         if layer.state.dim() == 1 and len(layer.state) == 1 and layer.state.item() == 0.0:
             # this should happen when the state is tensor([0.]), which is the
             # Sinabs default for non-initialized networks. We check that and
-            # then we assign no initial neuron state to Speck.
+            # then we assign no initial neuron state to DYNAP-CNN.
             neurons_state = torch.zeros(
                 self.dimensions["output_shape"]["feature_count"],
                 self.dimensions["output_shape"]["size"]["x"],
@@ -206,7 +206,7 @@ class SpeckLayer(nn.Module):
     def _conv2d_to_dict(layer: nn.Conv2d) -> Dict:
         """
         Extract a dictionary with parameters from a `Conv2d` so that they can be
-        written to a Speck configuration.
+        written to a DYNAP-CNN configuration.
 
         Parameters
         ----------
@@ -309,12 +309,8 @@ class SpeckLayer(nn.Module):
 
     def forward(self, x):
         """Torch forward pass."""
-        # print("Input to Speck Layer", x.shape)
         x = self._conv_layer(x)
-        # print("After convolution", x.shape)
         x = self._spk_layer(x)
-        # print("After spiking", x.shape)
         if self._pool_layer is not None:
             x = self._pool_layer(x)
-            # print("After pooling", x.shape)
         return x

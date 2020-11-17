@@ -1,7 +1,7 @@
 from copy import deepcopy
 import numpy as np
 import torch
-from sinabs.backend.speck import discretize
+from sinabs.backend.dynapcnn import discretize
 from sinabs.layers import SpikingLayer
 
 # - Test tensor to be discretized

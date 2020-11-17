@@ -1,7 +1,7 @@
 sinabs.backend.speck.tospeck
 =============================
 
-This module describes the ``SpeckCompatibleNetwork`` class that is used to transform a spiking neural network into a network that is compatible with speck.
+This module describes the ``DynapcnnCompatibleNetwork`` class that is used to transform a spiking neural network into a network that is compatible with speck.
 
 
 .. toctree::

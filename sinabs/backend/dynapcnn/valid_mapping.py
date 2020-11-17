@@ -75,13 +75,13 @@ def _compute_neuron_memory(config: CNNLayerConfig) -> int:
 def get_valid_mapping(config: SpeckConfiguration) -> List[List[int]]:
     """Find valid remapping of layers in Speck config
 
-    Returns a valid remapping of the layers in speck config if it finds one.
+    Returns a valid remapping of the layers in dynapcnn config if it finds one.
     The returned value is a list of indexes from the current config
     how they should be mapped in order to fit the memory.
 
     Parameters
     ----------
-        config: samna.speck.configuration.SpeckConfiguration
+        config: samna.dynapcnn.configuration.SpeckConfiguration
             The Speck configuration whose mapping should be validated
 
     Returns
