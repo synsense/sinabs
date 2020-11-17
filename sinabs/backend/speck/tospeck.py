@@ -88,11 +88,11 @@ class SpeckCompatibleNetwork(nn.Module):
         # - Input to start with
         if isinstance(layers[0], sl.InputLayer):
             input_layer = deepcopy(layers[0])
-            if input_shape is not None and input_shape != input_layer.output_shape:
+            if input_shape is not None and input_shape != input_layer.input_shape:
                 warn(
                     "Network starts with `InputLayer`. Will ignore `input_shape` argument."
                 )
-            input_shape = input_layer.output_shape
+            input_shape = input_layer.input_shape
             self.compatible_layers.append(input_layer)
             i_layer += 1
 
@@ -182,12 +182,12 @@ class SpeckCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(self, speck_layers_ordering: Sequence[int] = range(9)):
+    def make_config(self, speck_layers_ordering: Union[Sequence[int], str] = range(9)):
         """Prepare and output the `samna` Speck configuration for this network.
 
         Parameters
         ----------
-            speck_layers_ordering: sequence of integers
+            speck_layers_ordering: sequence of integers or "auto"
                 The order in which the speck layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
 
@@ -522,61 +522,6 @@ class SpeckCompatibleNetwork(nn.Module):
                     "AvgPool2d: Stride size must be the same as pooling size."
                 )
             return pooling
-
-
-# def identity_dimensions(input_shape: Tuple[int]) -> sd.configuration.CNNLayerDimensions:
-#     """
-#     identity_dimensions - Return `CNNLayerDimensions` for Speck such that the layer
-#                           performs an identity operation.
-#     :param input_shape:   Tuple with feature_count, vertical and horizontal size of
-#                           input to the layer.
-#     :return:
-#         CNNLayerDimensions corresponding to identity operation.
-#     """
-#     dimensions = sd.configuration.CNNLayerDimensions()
-#     # No padding
-#     dimensions.padding.x = 0
-#     dimensions.padding.y = 0
-#     # Stride 1
-#     dimensions.stride.x = 1
-#     dimensions.stride.y = 1
-#     # Input shape
-#     dimensions.input_shape.feature_count = input_shape[0]
-#     dimensions.input_shape.y = input_shape[1]
-#     dimensions.input_shape.x = input_shape[2]
-#     # Output shape
-#     dimensions.output_shape.feature_count = input_shape[0]
-#     dimensions.output_shape.y = input_shape[1]
-#     dimensions.output_shape.x = input_shape[2]
-
-#     return dimensions
-
-
-# def identity_weights(feature_count: int) -> List[List[List[List[int]]]]:
-#     """
-#     identity_weights - Return weights that correspond to identity operation,
-#                        assuming that feature_count and channel_count are the same.
-#     :param feature_count:  int  Number of input features
-#     :return:
-#         list    Weights for identity operation
-#     """
-#     return [
-#         [[[int(i == j)]] for j in range(feature_count)] for i in range(feature_count)
-#     ]
-
-
-# def write_to_device(config: Dict, device: samna.SpeckModel, weights=None):
-#     """
-#     Write your model configuration to dict
-
-#     :param config:
-#     :param device:
-#     :return:
-#     """
-#     device.set_config(to_speck_config(config))
-#     if weights:
-#         device.set_weights(weights)
-#     device.apply()
 
 
 def _merge_conv_bn(conv, bn):

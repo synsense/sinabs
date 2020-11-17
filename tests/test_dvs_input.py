@@ -62,7 +62,7 @@ def verify_networks(
 
     spn_out = spn(input_data).squeeze()
     if not discretize:
-        assert np.array_equal(snn_out, spn_out)
+        assert np.array_equal(snn_out.detach(), spn_out)
 
     # - Version without dvs
     if first_pooling:
@@ -76,7 +76,7 @@ def verify_networks(
         )
         spn_out_no_dvs = spn_no_dvs(input_data).squeeze()
         if not discretize:
-            assert np.array_equal(snn_out, spn_out_no_dvs)
+            assert np.array_equal(snn_out.detach(), spn_out_no_dvs)
 
     # - Speck config
     if SAMNA_AVAILABLE:

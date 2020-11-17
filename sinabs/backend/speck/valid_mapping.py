@@ -1,6 +1,8 @@
 from math import ceil, log2
-from typing import List
-from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
+from typing import List, TypeVar
+
+SpeckConfiguration = TypeVar("SpeckConfiguration")
+CNNLayerConfig = TypeVar("CNNLayerConfig")
 
 _WEIGHTS_MEMORY_SIZE = [
     16 * 1024,  # 0
