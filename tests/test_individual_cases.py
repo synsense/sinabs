@@ -31,9 +31,9 @@ def networks_equal_output(input_data, snn):
     snn_out = snn(input_data).squeeze()  # forward pass
     reset_states(snn)
 
-    # snn.reset_states()
     spn = DynapcnnCompatibleNetwork(
-        snn, input_shape=input_data.shape[1:], discretize=False
+        snn, input_shape=input_data.shape[1:], discretize=False,
+        dvs_input = True,
     )
     spn_out = spn(input_data).squeeze()
 

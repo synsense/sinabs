@@ -42,7 +42,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         self,
         snn: Union[nn.Sequential, sinabs.Network],
         input_shape: Optional[Tuple[int]] = None,
-        dvs_input: bool = True,
+        dvs_input: bool = False,
         discretize: bool = True,
     ):
         """
@@ -214,7 +214,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         i_layer_speck = 0
         dvs = config.dvs_layer
-        if self._dvs_input or isinstance(self.sequence[0], sl.SumPool2d):
+        if self._dvs_input:
             if self._external_input_shape[0] == 1:
                 dvs.merge = True
             elif self._external_input_shape[0] != 2:
@@ -231,6 +231,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.pooling.y, dvs.pooling.x = 1, 1
         else:
             dvs.destinations[0].enable = False
+            if isinstance(self.sequence[0], sl.SumPool2d):
+                raise ValueError("Network cannot start with pooling if dvs_input=False")
         # TODO: Modify in case of non-sequential models
         dvs.destinations[1].enable = False
 
