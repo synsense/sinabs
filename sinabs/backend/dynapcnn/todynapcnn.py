@@ -41,7 +41,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
     def __init__(
         self,
         snn: Union[nn.Sequential, sinabs.Network],
-        input_shape: Optional[Tuple[int]] = None,
+        input_shape: Optional[Tuple[int, int, int]] = None,
         dvs_input: bool = False,
         discretize: bool = True,
     ):
