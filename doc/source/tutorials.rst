@@ -2,4 +2,4 @@ Tutorials
 =========
 
 .. toctree::
-    notebooks/cnn_to_speck
+    notebooks/cnn_to_dynapcnn

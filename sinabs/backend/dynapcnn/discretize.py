@@ -6,8 +6,8 @@ import torch
 import torch.nn as nn
 import sinabs.layers as sl
 
-SPECK_WEIGHT_PRECISION_BITS = 8
-SPECK_STATE_PRECISION_BITS = 16
+DYNAPCNN_WEIGHT_PRECISION_BITS = 8
+DYNAPCNN_STATE_PRECISION_BITS = 16
 
 
 def discretize_conv_spike(
@@ -313,12 +313,12 @@ def _discretize_conv_spk_(
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
     # such each they matches its precision specificaitons.
-    scaling_w = determine_discretization_scale(conv_weight, SPECK_WEIGHT_PRECISION_BITS)
-    scaling_b = determine_discretization_scale(conv_bias, SPECK_WEIGHT_PRECISION_BITS)
-    scaling_t = determine_discretization_scale(thresholds, SPECK_STATE_PRECISION_BITS)
+    scaling_w = determine_discretization_scale(conv_weight, DYNAPCNN_WEIGHT_PRECISION_BITS)
+    scaling_b = determine_discretization_scale(conv_bias, DYNAPCNN_WEIGHT_PRECISION_BITS)
+    scaling_t = determine_discretization_scale(thresholds, DYNAPCNN_STATE_PRECISION_BITS)
     if spike_lyr is not None and spike_lyr.state is not None:
         scaling_n = determine_discretization_scale(
-            spike_lyr.state, SPECK_STATE_PRECISION_BITS
+            spike_lyr.state, DYNAPCNN_STATE_PRECISION_BITS
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize

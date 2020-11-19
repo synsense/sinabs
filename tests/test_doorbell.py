@@ -68,7 +68,7 @@ speck_out = speck_net(input_data)
 
 
 def test_same_result():
-    # print(speck_out)
+    # print(dynapcnn_out)
     assert torch.equal(speck_out.squeeze(), snn_out.squeeze())
 
 

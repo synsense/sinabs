@@ -21,9 +21,9 @@ from typing import Tuple, Union, Optional, Sequence, List
 class DynapcnnCompatibleNetwork(nn.Module):
     """
     Given a sinabs spiking network, prepare a dynapcnn-compatible network.
-    This can be used to test the network will be equivalent once on Speck.
+    This can be used to test the network will be equivalent once on DYNAPCNN.
     This class also provides utilities to make the dynapcnn configuration and
-    upload it to Speck.
+    upload it to DYNAPCNN.
 
     The following operations are done when converting to dynapcnn-compatible:
 
@@ -106,7 +106,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # - Iterate over layers from model
         while i_layer < len(layers):
-            # Layer to be ported to Speck
+            # Layer to be ported to DYNAPCNN
             lyr_curr = layers[i_layer]
 
             if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
@@ -171,7 +171,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 )
 
         # TODO: Does anything need to be done after iterating over layers?
-        # print("Finished configuration of Speck.")
+        # print("Finished configuration of DYNAPCNN.")
 
         if rescaling_from_pooling != 1:
             warn(
@@ -182,12 +182,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(self, speck_layers_ordering: Union[Sequence[int], str] = range(9)):
-        """Prepare and output the `samna` Speck configuration for this network.
+    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9)):
+        """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
         ----------
-            speck_layers_ordering: sequence of integers or "auto"
+            chip_layers_ordering: sequence of integers or "auto"
                 The order in which the dynapcnn layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
 
@@ -205,28 +205,28 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
-        if speck_layers_ordering == "auto":
-            speck_layers = range(9)  # start with default, correct if necessary
+        if chip_layers_ordering == "auto":
+            chip_layers = range(9)  # start with default, correct if necessary
         else:
-            speck_layers = speck_layers_ordering
+            chip_layers = chip_layers_ordering
 
         config = SpeckConfiguration()
 
-        i_layer_speck = 0
+        i_layer_chip = 0
         dvs = config.dvs_layer
         if self._dvs_input:
             if self._external_input_shape[0] == 1:
                 dvs.merge = True
             elif self._external_input_shape[0] != 2:
                 message = "dvs layer must have 1 or 2 input channels"
-                raise ValueError("Network not valid for Speck\n" + message)
+                raise ValueError("Network not valid for DYNAPCNN\n" + message)
 
             # - Cut DVS output to match output shape of `lyr_curr`
             dvs.cut.y = self._external_input_shape[1] - 1
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = speck_layers[i_layer_speck]
+            dvs.destinations[0].layer = chip_layers[i_layer_chip]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
         else:
@@ -236,9 +236,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # TODO: Modify in case of non-sequential models
         dvs.destinations[1].enable = False
 
-        for i, speck_equivalent_layer in enumerate(self.sequence):
+        for i, chip_equivalent_layer in enumerate(self.sequence):
             # happens when the network starts with pooling
-            if isinstance(speck_equivalent_layer, sl.SumPool2d):
+            if isinstance(chip_equivalent_layer, sl.SumPool2d):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
                 # Therefore, require that input comes from DVS (Already done in `__init__`,
@@ -247,32 +247,32 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
                 # - Set pooling for dvs layer
                 assert (
-                    speck_equivalent_layer.stride == speck_equivalent_layer.kernel_size
+                    chip_equivalent_layer.stride == chip_equivalent_layer.kernel_size
                 )
-                dvs.pooling.y, dvs.pooling.x = speck_equivalent_layer.kernel_size
+                dvs.pooling.y, dvs.pooling.x = chip_equivalent_layer.kernel_size
 
-            elif isinstance(speck_equivalent_layer, DynapcnnLayer):
-                # Object representing Speck layer
-                speck_layer = config.cnn_layers[speck_layers[i_layer_speck]]
+            elif isinstance(chip_equivalent_layer, DynapcnnLayer):
+                # Object representing DYNAPCNN layer
+                chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
                 # read the configuration dictionary from DynapcnnLayer
                 # and write it to the dynapcnn configuration object
-                self.write_speck_config(speck_equivalent_layer.config_dict, speck_layer)
+                self.write_dynapcnn_config(chip_equivalent_layer.config_dict, chip_layer)
 
                 # For now: Sequential model, second destination always disabled
-                speck_layer.destinations[1].enable = False
+                chip_layer.destinations[1].enable = False
 
                 if i == len(self.sequence) - 1:
                     # last layer
-                    speck_layer.destinations[0].enable = False
+                    chip_layer.destinations[0].enable = False
                 else:
-                    i_layer_speck += 1
+                    i_layer_chip += 1
                     # Set destination layer
-                    speck_layer.destinations[0].layer = speck_layers[i_layer_speck]
-                    speck_layer.destinations[
+                    chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
+                    chip_layer.destinations[
                         0
-                    ].pooling = speck_equivalent_layer.config_dict["Pooling"]
-                    speck_layer.destinations[0].enable = True
-            elif isinstance(speck_equivalent_layer, sl.InputLayer):
+                    ].pooling = chip_equivalent_layer.config_dict["Pooling"]
+                    chip_layer.destinations[0].enable = True
+            elif isinstance(chip_equivalent_layer, sl.InputLayer):
                 pass
             else:
                 # in our generated network there is a spurious layer...
@@ -281,18 +281,18 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         is_valid, message = validate_configuration(config)
 
-        if not is_valid and speck_layers_ordering == "auto":
+        if not is_valid and chip_layers_ordering == "auto":
             # automatically figure out an ordering that works
             mapping = get_valid_mapping(config)
             # turn the mapping into a dict
             mapping = {m[0]: m[1] for m in mapping}
             # apply the mapping
-            ordering = [mapping[i] for i in speck_layers]
+            ordering = [mapping[i] for i in chip_layers]
 
             print("Not valid, trying ordering", ordering)
-            return self.make_config(speck_layers_ordering=ordering)
+            return self.make_config(chip_layers_ordering=ordering)
         elif not is_valid:
-            raise ValueError("Network not valid for Speck\n" + message)
+            raise ValueError("Network not valid for DYNAPCNN\n" + message)
 
         print("Network is valid")
         return config
@@ -378,8 +378,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
         with torch.no_grad():
             return self.sequence(x)
 
-    def write_speck_config(
-        self, config_dict: dict, speck_layer: "CNNLayerConfig",
+
+    def write_dynapcnn_config(
+        self, config_dict: dict, chip_layer: "CNNLayerConfig",
     ):
         """
         Write a single layer configuration to the dynapcnn conf object.
@@ -388,25 +389,25 @@ class DynapcnnCompatibleNetwork(nn.Module):
         ----------
             config_dict: dict
                 Dict containing the configuration
-            speck_layer: CNNLayerConfig
-                Speck configuration object representing the layer to which
+            chip_layer: CNNLayerConfig
+                DYNAPCNN configuration object representing the layer to which
                 configuration is written.
         """
 
-        # Update configuration of the Speck layer
-        speck_layer.dimensions = config_dict["dimensions"]
+        # Update configuration of the DYNAPCNN layer
+        chip_layer.dimensions = config_dict["dimensions"]
 
-        speck_layer.weights = config_dict["weights"]
-        speck_layer.biases = config_dict["biases"]
-        speck_layer.weights_kill_bit = config_dict["weights_kill_bit"]
-        speck_layer.biases_kill_bit = config_dict["biases_kill_bit"]
-        speck_layer.neurons_initial_value = config_dict["neurons_state"]
-        speck_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
-        speck_layer.leak_enable = config_dict["leak_enable"]
+        chip_layer.weights = config_dict["weights"]
+        chip_layer.biases = config_dict["biases"]
+        chip_layer.weights_kill_bit = config_dict["weights_kill_bit"]
+        chip_layer.biases_kill_bit = config_dict["biases_kill_bit"]
+        chip_layer.neurons_initial_value = config_dict["neurons_state"]
+        chip_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+        chip_layer.leak_enable = config_dict["leak_enable"]
 
         for param, value in config_dict["layer_params"].items():
             # print(f"Setting parameter {param}: {value}")
-            setattr(speck_layer, param, value)
+            setattr(chip_layer, param, value)
 
     def consolidate_pooling(
         self, layers: Sequence[nn.Module], dvs: bool
