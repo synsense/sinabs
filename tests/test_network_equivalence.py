@@ -3,6 +3,7 @@ import sinabs.layers as sil
 import numpy as np
 from torch import nn
 from sinabs.from_torch import from_model
+import pytest
 
 
 def test_reconstruct_image():
@@ -118,3 +119,18 @@ def test_network_conversion_add_spk_out():
     with torch.no_grad():
         spk_img = img2spk(img)
         snn(spk_img).mean(0)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_parameter_devices():
+    cnn = nn.Sequential(
+        nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False),
+        nn.ReLU(),
+    )
+
+    snn = from_model(cnn.cuda(), input_shape=None)
+
+    spk_img = torch.rand((10, 1, 28, 28)).cuda()
+
+    with torch.no_grad():
+        snn(spk_img)
