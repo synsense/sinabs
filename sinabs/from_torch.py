@@ -1,5 +1,6 @@
 import copy
 from warnings import warn
+import torch
 from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
@@ -104,7 +105,7 @@ class SpkConverter(object):
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
             batch_size=self.batch_size,
-        )
+        ).to(self.device)
 
     def convert(self, model):
         """
@@ -113,6 +114,11 @@ class SpkConverter(object):
         :returns network: the Sinabs network object created by conversion.
         """
         spk_model = copy.deepcopy(model)
+        # device is taken as the device of the first element of the input state_dict
+        try:
+            self.device = next(model.parameters()).device
+        except StopIteration:
+            self.device = torch.device("cpu")
 
         if self.add_spiking_output:
             # Add spiking output to sequential model
