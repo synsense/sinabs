@@ -75,7 +75,7 @@ def test_same_result():
 @pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_auto_config():
     # - Should give an error with the normal layer ordering
-    dynapcnn_net.make_config(dynapcnn_layers_ordering=[0, 1, 2, 3, 4])
+    dynapcnn_net.make_config(chip_layers_ordering=[0, 1, 2, 3, 4])
 
 
 def test_was_copied():
