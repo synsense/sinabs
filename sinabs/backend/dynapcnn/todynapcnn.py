@@ -284,6 +284,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if not is_valid and chip_layers_ordering == "auto":
             # automatically figure out an ordering that works
             mapping = get_valid_mapping(config)
+            if mapping == []:
+                raise ValueError("Could not find valid layer sequence for this network")
+
             # turn the mapping into a dict
             mapping = {m[0]: m[1] for m in mapping}
             # apply the mapping
