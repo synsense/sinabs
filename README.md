@@ -1,3 +1,3 @@
-# sinabs-speck
+# sinabs-dynapcnn
 
-`sinabs` submodule to port sinabs models onto a Speck processor  
+`sinabs` submodule to port sinabs models onto a DYNAP-CNN processor  

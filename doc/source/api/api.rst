@@ -3,5 +3,5 @@ API
 
 .. toctree::
     discretize
-    speck_compatible_network
-    specklayer
+    dynapcnn_compatible_network
+    dynapcnnlayer

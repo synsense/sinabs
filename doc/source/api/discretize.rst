@@ -1,4 +1,4 @@
-sinabs.backend.speck.discretize
+sinabs.backend.dynapcnn.discretize
 ===============================
 
 This module defines methods for discretizing convoluitional torch layers and SINABS spiking layers.
@@ -9,6 +9,6 @@ This module defines methods for discretizing convoluitional torch layers and SIN
     :caption: discretize
 
 
-.. py:currentmodule:: sinabs.backend.speck.discretize
-.. automodule:: sinabs.backend.speck.discretize
+.. py:currentmodule:: sinabs.backend.dynapcnn.discretize
+.. automodule:: sinabs.backend.dynapcnn.discretize
     :members:

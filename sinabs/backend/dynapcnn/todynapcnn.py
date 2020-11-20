@@ -2,8 +2,8 @@ from warnings import warn
 from copy import deepcopy
 
 try:
-    from samna.speck.configuration import SpeckConfiguration, CNNLayerConfig
-    from samna.speck import validate_configuration
+    from samna.dynapcnn.configuration import DynapcnnConfiguration, CNNLayerConfig
+    from samna.dynapcnn import validate_configuration
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
@@ -193,7 +193,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         Returns
         -------
-            SpeckConfiguration
+            DynapcnnConfiguration
                 Object defining the configuration for dynapcnn
 
         Raises
@@ -210,7 +210,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             chip_layers = chip_layers_ordering
 
-        config = SpeckConfiguration()
+        config = DynapcnnConfiguration()
 
         i_layer_chip = 0
         dvs = config.dvs_layer

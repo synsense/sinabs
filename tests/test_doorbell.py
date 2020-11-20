@@ -63,22 +63,22 @@ snn.eval()
 snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
-speck_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
-speck_out = speck_net(input_data)
+dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
+dynapcnn_out = dynapcnn_net(input_data)
 
 
 def test_same_result():
     # print(dynapcnn_out)
-    assert torch.equal(speck_out.squeeze(), snn_out.squeeze())
+    assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
 @pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_auto_config():
     # - Should give an error with the normal layer ordering
-    speck_net.make_config(speck_layers_ordering=[0, 1, 2, 3, 4])
+    dynapcnn_net.make_config(dynapcnn_layers_ordering=[0, 1, 2, 3, 4])
 
 
 def test_was_copied():
     # - Make sure that layers of different models are distinct objects
-    for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, speck_net.sequence):
-        assert lyr_snn is not lyr_speck
+    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model.seq, dynapcnn_net.sequence):
+        assert lyr_snn is not lyr_dynapcnn

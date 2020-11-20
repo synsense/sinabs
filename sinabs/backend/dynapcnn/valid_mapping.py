@@ -1,7 +1,7 @@
 from math import ceil, log2
 from typing import List, TypeVar
 
-SpeckConfiguration = TypeVar("SpeckConfiguration")
+DynapcnnConfiguration = TypeVar("DynapcnnConfiguration")
 CNNLayerConfig = TypeVar("CNNLayerConfig")
 
 _WEIGHTS_MEMORY_SIZE = [
@@ -72,7 +72,7 @@ def _compute_neuron_memory(config: CNNLayerConfig) -> int:
     return config.dimensions.output_shape.feature_count * (1 << power)
 
 
-def get_valid_mapping(config: SpeckConfiguration) -> List[List[int]]:
+def get_valid_mapping(config: DynapcnnConfiguration) -> List[List[int]]:
     """Find valid remapping of layers in DYNAPCNN config
 
     Returns a valid remapping of the layers in dynapcnn config if it finds one.
@@ -81,7 +81,7 @@ def get_valid_mapping(config: SpeckConfiguration) -> List[List[int]]:
 
     Parameters
     ----------
-        config: samna.dynapcnn.configuration.SpeckConfiguration
+        config: samna.dynapcnn.configuration.DynapcnnConfiguration
             The DYNAPCNN configuration whose mapping should be validated
 
     Returns

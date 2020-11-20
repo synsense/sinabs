@@ -101,5 +101,5 @@ def test_auto_config():
 
 def test_was_copied():
     # - Make sure that layers of different models are distinct objects
-    for lyr_snn, lyr_speck in zip(snn.spiking_model.seq, dynapcnn_net.sequence):
-        assert lyr_snn is not lyr_speck
+    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model.seq, dynapcnn_net.sequence):
+        assert lyr_snn is not lyr_dynapcnn

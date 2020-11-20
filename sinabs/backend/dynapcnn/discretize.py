@@ -235,7 +235,7 @@ def _discretize_conv_spk_(
 
     Determine and apply a suitable scaling factor for weight and bias of
     convolutional layer as well as thresholds and state of spiking layer, taking
-    into account current parameters and available precision on Speck. Instead of
+    into account current parameters and available precision on DYNAP-CNN. Instead of
     providing layers, respective parameters can be provided directly. If a layer
     is not provided, `None` will be returned instead of its discrete version.
 

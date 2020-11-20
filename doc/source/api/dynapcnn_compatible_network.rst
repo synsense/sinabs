@@ -1,14 +1,14 @@
-sinabs.backend.speck.tospeck
+sinabs.backend.dynapcnn.todynapcnn
 =============================
 
-This module describes the ``DynapcnnCompatibleNetwork`` class that is used to transform a spiking neural network into a network that is compatible with speck.
+This module describes the ``DynapcnnCompatibleNetwork`` class that is used to transform a spiking neural network into a network that is compatible with dynapcnn.
 
 
 .. toctree::
     :maxdepth: 3
-    :caption: tospeck
+    :caption: todynapcnn
 
 
-.. py:currentmodule:: sinabs.backend.speck.tospeck
-.. automodule:: sinabs.backend.speck.tospeck
+.. py:currentmodule:: sinabs.backend.dynapcnn.todynapcnn
+.. automodule:: sinabs.backend.dynapcnn.todynapcnn
     :members:

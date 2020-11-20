@@ -2,7 +2,7 @@
 This should test cases of dynapcnn compatible networks with dvs input
 """
 try:
-    from samna.speck.configuration import SpeckConfiguration
+    from samna.dynapcnn.configuration import DynapcnnConfiguration
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
@@ -25,7 +25,7 @@ input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
 
 
 def verify_dvs_config(
-    config: SpeckConfiguration,
+    config: DynapcnnConfiguration,
     pooling: Optional[Tuple[int]] = (1, 1),
     input_shape: Optional[Tuple[int]] = False,
     destination: Optional[int] = None,
@@ -78,7 +78,7 @@ def verify_networks(
         if not discretize:
             assert np.array_equal(snn_out.detach(), spn_out_no_dvs)
 
-    # - Speck config
+    # - DYNAP-CNN config
     if SAMNA_AVAILABLE:
         config = spn.make_config(target_layers)
         verify_dvs_config(config, pooling=pooling, input_shape=input_shape, destination=target_layers[0])
@@ -100,7 +100,7 @@ def test_dvs_no_pooling():
         def forward(self, x):
             return self.seq(x)
 
-    # - Speck layer arrangement
+    # - DYNAP-CNN layer arrangement
     target_layers = [5, 2]
     pooling = (1, 1)
 
@@ -180,7 +180,7 @@ def test_dvs_pooling_2d():
         def forward(self, x):
             return self.seq(x)
 
-    # - Speck layer arrangement
+    # - DYNAP-CNN layer arrangement
     target_layers = [5, 2]
     pooling = (2, 4)
 
@@ -247,7 +247,7 @@ def test_dvs_pooling_1d():
         def forward(self, x):
             return self.seq(x)
 
-    # - Speck layer arrangement
+    # - DYNAP-CNN layer arrangement
     target_layers = [5, 2]
     pooling = (4, 4)
 
@@ -270,7 +270,7 @@ def test_dvs_pooling_1d2d():
         def forward(self, x):
             return self.seq(x)
 
-    # - Speck layer arrangement
+    # - DYNAP-CNN layer arrangement
     target_layers = [5, 2]
     pooling = (4, 2)
 
@@ -293,7 +293,7 @@ def test_dvs_pooling_2d1d():
         def forward(self, x):
             return self.seq(x)
 
-    # - Speck layer arrangement
+    # - DYNAP-CNN layer arrangement
     target_layers = [5, 2]
     pooling = (4, 2)
 

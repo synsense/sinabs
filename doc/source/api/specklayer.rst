@@ -1,7 +1,7 @@
-sinabs.backend.speck.specklayer
+sinabs.backend.dynapcnn.dynapcnnlayer
 ===============================
 
-This module defines the ``DynapcnnLayer`` class that is used to reproduce the behavior of a layer on the speck chip.
+This module defines the ``DynapcnnLayer`` class that is used to reproduce the behavior of a layer on the dynapcnn chip.
 
 
 .. toctree::

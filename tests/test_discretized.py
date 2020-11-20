@@ -20,9 +20,9 @@ float_tensor = torch.tensor(
     ]
 )
 
-MIN_STATE = -(2 ** (discretize.SPECK_STATE_PRECISION_BITS - 1))
+MIN_STATE = -(2 ** (discretize.DYNAPCNN_STATE_PRECISION_BITS - 1))
 MAX_STATE = -MIN_STATE - 1
-MIN_WEIGHT = -(2 ** (discretize.SPECK_WEIGHT_PRECISION_BITS - 1))
+MIN_WEIGHT = -(2 ** (discretize.DYNAPCNN_WEIGHT_PRECISION_BITS - 1))
 MAX_WEIGHT = -MIN_WEIGHT - 1
 
 # -- Layers to be discretized
