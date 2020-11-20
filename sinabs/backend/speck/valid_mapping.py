@@ -101,14 +101,22 @@ def get_valid_mapping(config: SpeckConfiguration) -> List[List[int]]:
     # for this we check for DVS and all layers destination enable flag
 
     used_layers = []
+    # finds layers that are targets of the DVS input
     for destination in config.dvs_layer.destinations:
         if destination.enable and not (destination.layer in used_layers):
             used_layers.append(destination.layer)
 
+    # finds layers that are targets of any other layer
     for selected_layer in range(0, len(config.cnn_layers)):
         for destination in config.cnn_layers[selected_layer].destinations:
             if destination.enable and not (destination.layer in used_layers):
                 used_layers.append(destination.layer)
+
+    # find all layers that have a target
+    for selected_layer in range(0, len(config.cnn_layers)):
+        for destination in config.cnn_layers[selected_layer].destinations:
+            if destination.enable and not (selected_layer in used_layers):
+                used_layers.append(selected_layer)
 
     for selected_layer in used_layers:
         weight_memory = _compute_weight_memory(config.cnn_layers[selected_layer])
