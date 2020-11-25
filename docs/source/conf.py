@@ -31,7 +31,7 @@ author = 'Sadique Sheik, Martino Sorbaro, Felix Bauer'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'pbr.sphinxext'
+    'pbr.sphinxext',
     'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
