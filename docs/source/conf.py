@@ -19,10 +19,10 @@
 
 project = 'sinabs-dynapcnn'
 copyright = '2020, Synsense AG'
-author = 'Sadique Sheiq, Martino Sorbaro, Felix Bauer'
+author = 'Sadique Sheik, Martino Sorbaro, Felix Bauer'
 
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+# release = '0.0.1'
 
 
 # -- General configuration ---------------------------------------------------
@@ -31,13 +31,20 @@ release = '0.0.1'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    'pbr.sphinxext'
     'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
+    'm2r'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
+
+source_suffix = {".rst": 'restructuredtext',
+                 ".txt": 'markdown',
+                 ".md": 'markdown',
+                 }
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
