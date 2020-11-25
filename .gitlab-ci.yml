@@ -1,0 +1,77 @@
+image: aictx/ci-python-arch:latest
+
+before_script:
+  - pip install --upgrade pip
+  - pip install . --no-cache-dir
+
+dist_build:
+  tags:
+    - python
+    - aiCTX
+
+  stage: build
+
+  only:
+    refs:
+      - master
+
+  before_script:
+    - pip install wheel
+
+  script:
+    - python setup.py sdist bdist_wheel
+
+  artifacts:
+    paths:
+      - dist
+
+pages:
+  tags:
+    - python
+    - aiCTX
+
+  stage: deploy
+  only:
+    refs:
+      - master
+
+  script:
+    - python setup.py build_sphinx
+    - mv docs/build/html/ public/
+
+  artifacts:
+    paths:
+      - public
+
+doc_tests:
+  tags:
+    - python
+    - aiCTX
+
+  stage: test
+
+  script:
+    - python setup.py build_sphinx
+
+
+pypi_deploy:
+  tags:
+    - python
+    - aiCTX
+
+  stage: deploy
+
+  only:
+    refs:
+      - master
+    variables:
+      - $TWINE_USERNAME == "sheiksadique"
+
+  dependencies:
+    - dist_build
+
+  before_script:
+    - pip install --upgrade twine
+
+  script:
+    - twine upload dist/*
