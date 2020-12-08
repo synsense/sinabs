@@ -381,7 +381,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
         with torch.no_grad():
             return self.sequence(x)
 
-
     def write_dynapcnn_config(
         self, config_dict: dict, chip_layer: "CNNLayerConfig",
     ):

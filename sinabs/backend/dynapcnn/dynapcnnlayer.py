@@ -183,7 +183,7 @@ class DynapcnnLayer(nn.Module):
             raise ValueError("Current state of spiking layer not understood.")
 
         # - Resetting vs returning to 0
-        return_to_zero = layer.membrane_subtract is not None
+        return_to_zero = layer.membrane_reset
         if (not return_to_zero) and layer.membrane_subtract != layer.threshold:
             warn(
                 "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
