@@ -88,9 +88,13 @@ def get_network_activations(
     return spike_counts
 
 
-def smart_weight_rescaling(ann: nn.Module, sample_data: torch.Tensor, output_layers: List[str], param_layers: List[str], percentile: float=99):
+def normalize_weights(ann: nn.Module, sample_data: torch.Tensor, output_layers: List[str], param_layers: List[str], percentile: float=99):
     """
     Rescale the weights of the network, such that the activity of each specified layer is normalized.
+
+    The method implemented here roughly follows the paper:
+    `Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification` by Rueckauer et al.
+    https://www.frontiersin.org/article/10.3389/fnins.2017.00682
 
     Args:
          ann(nn.Module): Torch module
