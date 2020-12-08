@@ -85,17 +85,21 @@ class Network(torch.nn.Module):
         """
         Compare activations of the analog model and the SNN for a given data sample
 
-        :param data: Data to process
-        :param name_list: list of all layer names (str) whose activations need to be compared
-        :param compute_rate: True if you want to compute firing rate. By default spike count is returned
-        :param verbose: bool print debugging logs to the terminal
+        Args:
+            data (np.ndarray):      Data to process
+            name_list (List[str]):  list of all layer names (str) whose activations need to be compared
+            compute_rate (bool):    True if you want to compute firing rate. By default spike count is returned
+            verbose (bool):         print debugging logs to the terminal
+        Returns:
+            tuple: A tuple of lists (ann_activity, snn_activity)
+                - ann_activity: output activity of the ann layers
+                - snn_activity: output activity of the snn layers
         """
         if name_list is None:
             name_list = ["Input"]
             for layer_name, lyr in self.spiking_model.named_children():
                 name_list.append(layer_name)
 
-        print(name_list)
         if verbose:
             print("Comparing activations for {0}".format(name_list))
 
@@ -124,9 +128,14 @@ class Network(torch.nn.Module):
         """
         Plots a scatter plot of all the activations
 
-        :param data: Data to be processed
-        :param name_list: ArrayLike with names of all the layers of interest to be compared
-        :param compute_rate: Compare firing rates instead of spike count
+        Args:
+            data: Data to be processed
+            name_list: ArrayLike with names of all the layers of interest to be compared
+            compute_rate: Compare firing rates instead of spike count
+        Returns:
+            tuple: A tuple of lists (ann_activity, snn_activity)
+                - ann_activity: output activity of the ann layers
+                - snn_activity: output activity of the snn layers
         """
         import pylab
 

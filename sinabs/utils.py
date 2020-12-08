@@ -86,3 +86,50 @@ def get_network_activations(
     if bRate:
         spike_counts = [(counts / tSim * 1000) for counts in spike_counts]
     return spike_counts
+
+
+def normalize_weights(ann: nn.Module, sample_data: torch.Tensor, output_layers: List[str], param_layers: List[str], percentile: float=99):
+    """
+    Rescale the weights of the network, such that the activity of each specified layer is normalized.
+
+    The method implemented here roughly follows the paper:
+    `Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification` by Rueckauer et al.
+    https://www.frontiersin.org/article/10.3389/fnins.2017.00682
+
+    Args:
+         ann(nn.Module): Torch module
+         sample_data (nn.Tensor): Input data to normalize the network with
+         output_layers (List[str]): List of layers to verify activity of normalization. Typically this is a relu layer
+         param_layers (List[str]): List of layers whose parameters preceed `output_layers`
+         percentile (float): A number between 0 and 100 to determine activity to be normalized by.
+          where a 100 corresponds to the max activity of the network. Defaults to 99.
+    """
+    # Network activity storage
+    output_data = []
+
+    # Hook to save data
+    def save_data(lyr, input, output):
+        output_data.append(output.clone())
+
+    # All the named layers of the module
+    named_layers = dict(ann.named_children())
+
+    for i in range(len(output_layers)):
+        param_layer = named_layers[param_layers[i]]
+        output_layer = named_layers[output_layers[i]]
+
+        handle = output_layer.register_forward_hook(save_data)
+
+        with torch.no_grad():
+            _ = ann(sample_data)
+
+            # Get max output
+            max_lyr_out = np.percentile(output_data[-1].numpy(), percentile)
+
+            # Rescale weights to normalize max output
+            for p in param_layer.parameters():
+                p.data *= 1 / max_lyr_out
+
+        output_data.clear()
+        # Deregister hook
+        handle.remove()
