@@ -23,7 +23,7 @@ def from_model(
     threshold_low=-1.0,
     membrane_subtract=None,
     bias_rescaling=1.0,
-    batch_size=1,
+    batch_size=None,
     synops=True,
     add_spiking_output=False,
 ):
@@ -67,7 +67,7 @@ class SpkConverter(object):
         threshold_low=-1.0,
         membrane_subtract=None,
         bias_rescaling=1.0,
-        batch_size=1,
+        batch_size=None,
         synops=True,
         add_spiking_output=False,
     ):
