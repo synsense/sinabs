@@ -89,7 +89,7 @@ class SpikingLayer(nn.Module):
 
         # Reshape data to appropriate dimensions
         if self.batch_size:
-            syn_out = syn_out.reshape((-1, self.batch_size, *syn_out.shape[1:]))
+            syn_out = syn_out.reshape((self.batch_size, -1, *syn_out.shape[1:])).transpose(0, 1)
         # Ensure the neuron state are initialized
         try:
             assert self.state.shape == syn_out.shape[1:]
@@ -133,8 +133,7 @@ class SpikingLayer(nn.Module):
         self.spikes_number = all_spikes.abs().sum()
 
         if self.batch_size:
-            all_spikes = all_spikes.reshape((-1, *all_spikes.shape[2:]))
-
+            all_spikes = all_spikes.transpose(0, 1).reshape((-1, *all_spikes.shape[2:]))
         return all_spikes
 
     def get_output_shape(self, in_shape):
