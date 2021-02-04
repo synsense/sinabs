@@ -5,15 +5,7 @@ from torch import nn
 import sinabs.layers as sl
 from sinabs import Network
 from numpy import product
-
-
-def synops_hook(layer, inp, out):
-    assert len(inp) == 1, "Multiple inputs not supported for synops hook"
-    inp = inp[0]
-    layer.tot_in = inp.sum().item()
-    layer.tot_out = out.sum().item()
-    layer.synops = layer.tot_in * layer.fanout
-    layer.tw = inp.shape[0]
+from sinabs.synopcounter import synops_hook
 
 
 def from_model(
