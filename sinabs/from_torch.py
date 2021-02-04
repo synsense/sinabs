@@ -137,18 +137,19 @@ class SpkConverter(object):
         return network
 
     def convert_module(self, module):
-        if hasattr(module, "__len__"):
-            # if sequential or similar, we iterate over it to access by index
-            submodules = enumerate(module)
-        else:
-            # otherwise, we look at the named_children and access by name
-            submodules = list(module.named_children())
+        # if hasattr(module, "__len__"):
+        #     # if sequential or similar, we iterate over it to access by index
+        #     submodules = enumerate(module)
+        # else:
+        #     # otherwise, we look at the named_children and access by name
+        submodules = list(module.named_children())
 
         # iterate over the children
         for name, subm in submodules:
             # if it's one of the layers we're looking for, substitute it
             if isinstance(subm, (nn.ReLU, sl.NeuromorphicReLU)):
-                module[name] = self.relu2spiking()
+                # module[name] = self.relu2spiking()
+                setattr(module, name, self.relu2spiking())
 
             elif isinstance(subm, nn.Linear) and self.synops:
                 subm.fanout = subm.out_features
