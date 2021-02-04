@@ -121,12 +121,32 @@ def test_network_conversion_add_spk_out():
         snn(spk_img).mean(0)
 
 
+def test_network_conversion_compicated_model():
+    """
+    Try converting rather complicated network model with nested structures, which used
+    to fail before.
+    """
+
+    class ComplicatedANN(nn.Module):
+        # The dimensions don't match,but this is not the point here.
+        def __init__(self):
+            super().__init__()
+            self.conv1 = nn.Conv2d(1, 1, 1)
+            self.seq = nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1))
+            self.relu = nn.ReLU()
+            self.pool = nn.AvgPool2d(3)
+            self.seq2 = nn.Sequential(
+                nn.Flatten(), nn.Sequential(nn.Conv2d(2, 1, 2), nn.Linear(12, 12))
+            )
+
+    ann = ComplicatedANN()
+
+    snn = from_model(ann)
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_parameter_devices():
-    cnn = nn.Sequential(
-        nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False),
-        nn.ReLU(),
-    )
+    cnn = nn.Sequential(nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False), nn.ReLU())
 
     snn = from_model(cnn.cuda(), input_shape=None)
 
