@@ -173,4 +173,4 @@ class Network(torch.nn.Module):
         if num_evs_in is not None:
             warnings.warn("num_evs_in is deprecated and has no effect")
 
-        return self.synops_counter.get_synops(num_evs_in)
+        return self.synops_counter.get_synops()
