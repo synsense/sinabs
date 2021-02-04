@@ -8,6 +8,7 @@ __pycache__
 *.py~
 *.pyc
 *.egg-info
+.eggs
 
 # Data heavy files
 *.json

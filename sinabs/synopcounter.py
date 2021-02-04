@@ -4,8 +4,6 @@ from numpy import product
 from warnings import warn
 import pandas as pd
 
-J_PER_SYNOP = 1e-11
-
 
 def synops_hook(layer, inp, out):
     assert len(inp) == 1, "Multiple inputs not supported for synops hook"
@@ -16,7 +14,7 @@ def synops_hook(layer, inp, out):
     layer.tw = inp.shape[0]
 
 
-class SNNSynopCounter:
+class SNNSynOpCounter:
     def __init__(self, model):
         self.model = model
         self.handles = []
@@ -37,33 +35,30 @@ class SNNSynopCounter:
         handle = layer.register_forward_hook(synops_hook)
         self.handles.append(handle)
 
-        def get_synops(self, num_evs_in=None) -> pd.DataFrame:
-            if num_evs_in is not None:
-                warn("num_evs_in is deprecated and has no effect")
+    def get_synops(self) -> pd.DataFrame:
+        SynOps_dataframe = pd.DataFrame()
+        for i, lyr in enumerate(self.model.modules()):
+            if hasattr(lyr, 'synops'):
+                SynOps_dataframe = SynOps_dataframe.append(
+                    pd.Series(
+                        {
+                            "Layer": i,
+                            "In": lyr.tot_in,
+                            "Fanout_Prev": lyr.fanout,
+                            "SynOps": lyr.synops,
+                            "Time_window": lyr.tw,
+                            "SynOps/s": lyr.synops / lyr.tw * 1000,
+                        }
+                    ),
+                    ignore_index=True,
+                )
+        SynOps_dataframe.set_index("Layer", inplace=True)
+        return SynOps_dataframe
 
-            SynOps_dataframe = pd.DataFrame()
-            for (layer_name, lyr) in self.model.named_modules():
-                if hasattr(lyr, 'synops'):
-                    SynOps_dataframe = SynOps_dataframe.append(
-                        pd.Series(
-                            {
-                                "Layer": layer_name,
-                                "In": lyr.tot_in,
-                                "Fanout_Prev": lyr.fanout,
-                                "SynOps": lyr.synops,
-                                "Time_window": lyr.tw,
-                                "SynOps/s": lyr.synops / lyr.tw * 1000,
-                            }
-                        ),
-                        ignore_index=True,
-                    )
-            SynOps_dataframe.set_index("Layer", inplace=True)
-            return SynOps_dataframe
-
-    def get_total_power_use(self):
+    def get_total_power_use(self, j_per_synop=1e-11):
         synops_table = self.get_synops()
         tot_synops_per_s = synops_table["SynOps/s"].sum()
-        power_in_mW = tot_synops_per_s * J_PER_SYNOP * 1000
+        power_in_mW = tot_synops_per_s * j_per_synop * 1000
         return power_in_mW
 
     def __del__(self):
