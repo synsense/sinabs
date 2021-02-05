@@ -22,7 +22,9 @@ class SNNSynOpCounter:
 
     Usage:
         counter = SNNSynOpCounter(my_spiking_model)
+
         output = my_spiking_model(input)  # forward pass
+
         synops_table = counter.get_synops()
 
     Arguments:
@@ -58,14 +60,14 @@ class SNNSynOpCounter:
         NOTE: this may not be accurate in presence of average pooling.
 
         Returns:
-            A Pandas DataFrame containing layer IDs and respectively, for the \
-            latest forward pass performed, their:
-                - number of input spikes
-                - fanout
-                - synaptic operations
-                - number of timesteps
-                - total duration of simulation
-                - number of synaptic operations per second
+            SynOps_dataframe: A Pandas DataFrame containing layer IDs and \
+            respectively, for the latest forward pass performed, their:
+                number of input spikes,
+                fanout,
+                synaptic operations,
+                number of timesteps,
+                total duration of simulation,
+                number of synaptic operations per second.
         """
         SynOps_dataframe = pd.DataFrame()
         for i, lyr in enumerate(self.model.modules()):
@@ -115,7 +117,9 @@ class SynOpCounter(object):
 
     Usage:
         counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)
+
         output = MyTorchModule(input)  # forward pass
+
         synop_count = counter()
 
     :param modules: list of modules, e.g. MyTorchModel.modules()
