@@ -23,8 +23,8 @@ class Network(torch.nn.Module):
         spiking_model: torch.nn.Module, a spiking neural network model
         analog_model: torch.nn.Module, an artifical neural network model
         input_shape: Tuple, size of input
-        synops: If True (default: False), register hooks for counting \
-        synaptic operations during forward passes.
+        synops: If True (default: False), register hooks for counting synaptic \
+        operations during forward passes, instantiating `sinabs.SNNSynOpCounter`.
     """
 
     def __init__(
@@ -163,13 +163,16 @@ class Network(torch.nn.Module):
 
     def reset_states(self):
         """
-        Reset all neuron states in the submodules
+        Reset all neuron states in the submodules.
         """
         for lyr in self.modules():
             if isinstance(lyr, SpikingLayer):
                 lyr.reset_states()
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:
+        """
+        Please see docs for `sinabs.SNNSynOpCounter.get_synops()`.
+        """
         if num_evs_in is not None:
             warnings.warn("num_evs_in is deprecated and has no effect")
 

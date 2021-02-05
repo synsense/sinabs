@@ -1,7 +1,6 @@
 import torch
 from sinabs.layers import NeuromorphicReLU
 from numpy import product
-from warnings import warn
 import pandas as pd
 
 
@@ -15,14 +14,31 @@ def synops_hook(layer, inp, out):
 
 
 class SNNSynOpCounter:
-    def __init__(self, model):
+    """
+    Counter for the synaptic operations emitted by all SpikingLayers in a
+    spiking model.
+    Note that this is automatically instantiated by `from_torch` and by
+    `Network` if they are passed `synops=True`.
+
+    Usage:
+        counter = SNNSynOpCounter(my_spiking_model)
+        output = my_spiking_model(input)  # forward pass
+        synops_table = counter.get_synops()
+
+    Arguments:
+        model: Spiking model.
+        dt: the number of milliseconds corresponding to a time step in the \
+        simulation (default 1.0).
+    """
+    def __init__(self, model, dt=1.0):
         self.model = model
         self.handles = []
+        self.dt = dt
 
         for layer in model.modules():
-            self.register_synops_hook(layer)
+            self._register_synops_hook(layer)
 
-    def register_synops_hook(self, layer):
+    def _register_synops_hook(self, layer):
         if isinstance(layer, torch.nn.Conv2d):
             layer.fanout = (layer.out_channels *
                             product(layer.kernel_size) /
@@ -36,6 +52,21 @@ class SNNSynOpCounter:
         self.handles.append(handle)
 
     def get_synops(self) -> pd.DataFrame:
+        """
+        Method to compute a table of synaptic operations for the latest forward pass.
+
+        NOTE: this may not be accurate in presence of average pooling.
+
+        Returns:
+            A Pandas DataFrame containing layer IDs and respectively, for the \
+            latest forward pass performed, their:
+                - number of input spikes
+                - fanout
+                - synaptic operations
+                - number of timesteps
+                - total duration of simulation
+                - number of synaptic operations per second
+        """
         SynOps_dataframe = pd.DataFrame()
         for i, lyr in enumerate(self.model.modules()):
             if hasattr(lyr, 'synops'):
@@ -46,8 +77,9 @@ class SNNSynOpCounter:
                             "In": lyr.tot_in,
                             "Fanout_Prev": lyr.fanout,
                             "SynOps": lyr.synops,
-                            "Time_window": lyr.tw,
-                            "SynOps/s": lyr.synops / lyr.tw * 1000,
+                            "N. timesteps": lyr.tw,
+                            "Time window (ms)": lyr.tw * self.dt,
+                            "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
                         }
                     ),
                     ignore_index=True,
@@ -56,6 +88,16 @@ class SNNSynOpCounter:
         return SynOps_dataframe
 
     def get_total_power_use(self, j_per_synop=1e-11):
+        """
+        Method to quickly get the total power use of the network, estimated
+        over the latest forward pass.
+
+        Arguments:
+            j_per_synop: Energy use per synaptic operation, in joules.\
+            Default 1e-11 J.
+
+        Returns: estimated power in mW.
+        """
         synops_table = self.get_synops()
         tot_synops_per_s = synops_table["SynOps/s"].sum()
         power_in_mW = tot_synops_per_s * j_per_synop * 1000
@@ -68,7 +110,8 @@ class SNNSynOpCounter:
 
 class SynOpCounter(object):
     """
-    Counter for the synaptic operations emitted by all Neuromorphic ReLUs in a model.
+    Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an
+    analog CNN model.
 
     Usage:
         counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)
