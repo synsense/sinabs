@@ -1,9 +1,4 @@
-try:
-    import samna
-    samna
-    TEST_CONFIGS = True
-except ImportError:
-    TEST_CONFIGS = False
+import samna
 
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 import torch
@@ -40,9 +35,8 @@ def networks_equal_output(input_data, snn):
     print(snn_out.sum(), spn_out.sum())
     assert torch.equal(snn_out, spn_out)
 
-    if TEST_CONFIGS:
-        # this will give an error if the config is not compatible
-        return spn.make_config()
+    # this will give an error if the config is not compatible
+    return spn.make_config()
 
 
 # --- TESTS --- #
@@ -150,7 +144,6 @@ def test_different_xy_input():
     networks_equal_output(input_data, seq)
 
 
-@pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_bias_nobias():
     torch.manual_seed(0)
 

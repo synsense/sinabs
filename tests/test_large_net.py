@@ -2,12 +2,7 @@
 This module is meant to test a real use case. It will include testing of
 the network equivalence, and of the correct output configuration.
 """
-try:
-    import samna
-    samna
-    TEST_CONFIGS = True
-except ImportError:
-    TEST_CONFIGS = False
+import samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
 
@@ -86,14 +81,12 @@ def test_same_result():
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
-@pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_too_large():
     with pytest.raises(ValueError):
         # - Should give an error with the normal layer ordering
         dynapcnn_net.make_config(chip_layers_ordering=range(9))
 
 
-@pytest.mark.skipif(not TEST_CONFIGS, reason="samna not available.")
 def test_auto_config():
     # - Should give an error with the normal layer ordering
     dynapcnn_net.make_config(chip_layers_ordering="auto")

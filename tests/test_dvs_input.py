@@ -1,12 +1,7 @@
 """
 This should test cases of dynapcnn compatible networks with dvs input
 """
-try:
-    from samna.dynapcnn.configuration import DynapcnnConfiguration
-except (ImportError, ModuleNotFoundError):
-    SAMNA_AVAILABLE = False
-else:
-    SAMNA_AVAILABLE = True
+import samna
 
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 from sinabs.from_torch import from_model
@@ -17,7 +12,6 @@ from torch import nn
 import numpy as np
 
 from typing import Optional, Tuple
-from warnings import warn
 import pytest
 
 INPUT_SHAPE = (2, 16, 16)
@@ -25,7 +19,7 @@ input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
 
 
 def verify_dvs_config(
-    config: DynapcnnConfiguration,
+    config,
     pooling: Optional[Tuple[int]] = (1, 1),
     input_shape: Optional[Tuple[int]] = False,
     destination: Optional[int] = None,
@@ -79,14 +73,12 @@ def verify_networks(
             assert np.array_equal(snn_out.detach(), spn_out_no_dvs)
 
     # - DYNAP-CNN config
-    if SAMNA_AVAILABLE:
-        config = spn.make_config(target_layers)
-        verify_dvs_config(config, pooling=pooling, input_shape=input_shape, destination=target_layers[0])
-        if not first_pooling:
-            config_no_dvs = spn_no_dvs.make_config(target_layers)
-            verify_dvs_config(config_no_dvs, input_shape=input_shape, destination=None)
-    else:
-        warn("Samna not available. Could not perform all tests.")
+    config = spn.make_config(target_layers)
+    verify_dvs_config(config, pooling=pooling, input_shape=input_shape, destination=target_layers[0])
+    if not first_pooling:
+        config_no_dvs = spn_no_dvs.make_config(target_layers)
+        verify_dvs_config(config_no_dvs, input_shape=input_shape, destination=None)
+
 
 
 def test_dvs_no_pooling():
