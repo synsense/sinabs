@@ -54,6 +54,16 @@ doc_tests:
   script:
     - python setup.py build_sphinx
 
+unittests:
+  tags:
+    - python
+    - aiCTX
+
+  stage: test
+
+  script:
+    - pytest
+
 
 pypi_deploy:
   tags:
@@ -76,4 +86,3 @@ pypi_deploy:
 
   script:
     - twine upload dist/*
-
