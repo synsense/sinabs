@@ -246,9 +246,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 assert self._dvs_input
 
                 # - Set pooling for dvs layer
-                assert (
-                    chip_equivalent_layer.stride == chip_equivalent_layer.kernel_size
-                )
+                assert chip_equivalent_layer.stride == chip_equivalent_layer.kernel_size
                 dvs.pooling.y, dvs.pooling.x = chip_equivalent_layer.kernel_size
 
             elif isinstance(chip_equivalent_layer, DynapcnnLayer):
@@ -256,7 +254,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
                 # read the configuration dictionary from DynapcnnLayer
                 # and write it to the dynapcnn configuration object
-                self.write_dynapcnn_config(chip_equivalent_layer.config_dict, chip_layer)
+                self.write_dynapcnn_config(
+                    chip_equivalent_layer.config_dict, chip_layer
+                )
 
                 # For now: Sequential model, second destination always disabled
                 chip_layer.destinations[1].enable = False
@@ -381,9 +381,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         with torch.no_grad():
             return self.sequence(x)
 
-    def write_dynapcnn_config(
-        self, config_dict: dict, chip_layer: "CNNLayerConfig",
-    ):
+    def write_dynapcnn_config(self, config_dict: dict, chip_layer: "CNNLayerConfig"):
         """
         Write a single layer configuration to the dynapcnn conf object.
 
@@ -440,6 +438,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         for i_next, lyr in enumerate(layers):
             if isinstance(lyr, nn.AvgPool2d):
+
+                if self._discretize:
+                    warn(
+                        "For average pooling, subsequent weights are scaled down. This can lead to larger quantization errors when `discretize` is `True`."
+                    )
+
                 # Update pooling size
                 new_pooling = self.get_pooling_size(lyr, dvs=dvs)
                 if dvs:
