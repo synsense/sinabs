@@ -121,8 +121,7 @@ class SNNSynOpCounter:
 
         Returns: estimated power in mW.
         """
-        synops_table = self.get_synops()
-        tot_synops_per_s = synops_table["SynOps/s"].sum()
+        tot_synops_per_s = self.get_total_synops(per_second=True)
         power_in_mW = tot_synops_per_s * j_per_synop * 1000
         return power_in_mW
 
