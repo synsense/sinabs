@@ -69,23 +69,20 @@ class SNNSynOpCounter:
                 total duration of simulation,
                 number of synaptic operations per second.
         """
-        SynOps_dataframe = pd.DataFrame()
+        d = {}
         for i, lyr in enumerate(self.model.modules()):
             if hasattr(lyr, 'synops'):
-                SynOps_dataframe = SynOps_dataframe.append(
-                    pd.Series(
-                        {
-                            "Layer": i,
-                            "In": lyr.tot_in,
-                            "Fanout_Prev": lyr.fanout,
-                            "SynOps": lyr.synops,
-                            "N. timesteps": lyr.tw,
-                            "Time window (ms)": lyr.tw * self.dt,
-                            "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
-                        }
-                    ),
-                    ignore_index=True,
-                )
+                d[i] = {
+                    "Layer": i,
+                    "In": lyr.tot_in,
+                    "Fanout_Prev": lyr.fanout,
+                    "SynOps": lyr.synops,
+                    "N. timesteps": lyr.tw,
+                    "Time window (ms)": lyr.tw * self.dt,
+                    "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
+                }
+
+        SynOps_dataframe = pd.DataFrame.from_dict(d, "index")
         SynOps_dataframe.set_index("Layer", inplace=True)
         return SynOps_dataframe
 
