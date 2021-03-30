@@ -20,3 +20,4 @@ def test_tinynetwork():
     model(inp)
     # 3 spikes, 2x2 kernel, 5 channels
     assert counter.get_synops()["SynOps"].sum() == 60
+    assert counter.get_total_synops() == 60

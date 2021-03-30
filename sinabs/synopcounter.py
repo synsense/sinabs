@@ -69,25 +69,46 @@ class SNNSynOpCounter:
                 total duration of simulation,
                 number of synaptic operations per second.
         """
-        SynOps_dataframe = pd.DataFrame()
+        d = {}
         for i, lyr in enumerate(self.model.modules()):
             if hasattr(lyr, 'synops'):
-                SynOps_dataframe = SynOps_dataframe.append(
-                    pd.Series(
-                        {
-                            "Layer": i,
-                            "In": lyr.tot_in,
-                            "Fanout_Prev": lyr.fanout,
-                            "SynOps": lyr.synops,
-                            "N. timesteps": lyr.tw,
-                            "Time window (ms)": lyr.tw * self.dt,
-                            "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
-                        }
-                    ),
-                    ignore_index=True,
-                )
+                d[i] = {
+                    "Layer": i,
+                    "In": lyr.tot_in,
+                    "Fanout_Prev": lyr.fanout,
+                    "SynOps": lyr.synops,
+                    "N. timesteps": lyr.tw,
+                    "Time window (ms)": lyr.tw * self.dt,
+                    "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
+                }
+
+        SynOps_dataframe = pd.DataFrame.from_dict(d, "index")
         SynOps_dataframe.set_index("Layer", inplace=True)
         return SynOps_dataframe
+
+    def get_total_synops(self, per_second=False) -> float:
+        """
+        Faster method for computing total synaptic operations without using Pandas.
+
+        NOTE: this may not be accurate in presence of average pooling.
+
+        Arguments:
+            per_second (bool, default False): if True, gives synops per second \
+        instead of total synops in the last forward pass.
+
+        Returns:
+            synops: the total synops in the network, based on the last forward pass.
+        """
+        synops = 0.0
+        for i, lyr in enumerate(self.model.modules()):
+            if hasattr(lyr, 'synops'):
+                if per_second:
+                    layer_synops = lyr.synops / lyr.tw / self.dt * 1000
+                else:
+                    layer_synops = lyr.synops
+
+                synops += layer_synops
+        return synops
 
     def get_total_power_use(self, j_per_synop=1e-11):
         """
@@ -100,8 +121,7 @@ class SNNSynOpCounter:
 
         Returns: estimated power in mW.
         """
-        synops_table = self.get_synops()
-        tot_synops_per_s = synops_table["SynOps/s"].sum()
+        tot_synops_per_s = self.get_total_synops(per_second=True)
         power_in_mW = tot_synops_per_s * j_per_synop * 1000
         return power_in_mW
 
