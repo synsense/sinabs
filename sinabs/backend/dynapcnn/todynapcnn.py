@@ -345,10 +345,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
         try:
             lyr_next = layers[1]
         except IndexError:
-            reached_end = True
-        else:
-            reached_end = False
-        if reached_end or not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
+            raise TypeError(
+                "Convolution must be followed by spiking layer, end of network found."
+            )
+        if not isinstance(lyr_next, sl.iaf_bptt.SpikingLayer):
             raise TypeError(
                 f"Convolution must be followed by spiking layer, found {type(lyr_next)}"
             )
