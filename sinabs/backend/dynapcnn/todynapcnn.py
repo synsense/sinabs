@@ -1,9 +1,8 @@
-from warnings import warn
 from copy import deepcopy
+from warnings import warn
 
 try:
-    from samna.dynapcnn.configuration import DynapcnnConfiguration, CNNLayerConfig
-    from samna.dynapcnn import validate_configuration
+    import samna
 except (ImportError, ModuleNotFoundError):
     SAMNA_AVAILABLE = False
 else:
@@ -39,11 +38,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
     """
 
     def __init__(
-        self,
-        snn: Union[nn.Sequential, sinabs.Network],
-        input_shape: Optional[Tuple[int, int, int]] = None,
-        dvs_input: bool = False,
-        discretize: bool = True,
+            self,
+            snn: Union[nn.Sequential, sinabs.Network],
+            input_shape: Optional[Tuple[int, int, int]] = None,
+            dvs_input: bool = False,
+            discretize: bool = True,
     ):
         """
         DynapcnnCompatibleNetwork: a class turning sinabs networks into dynapcnn
@@ -118,7 +117,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
-                    [lyr_curr] + layers[i_layer + 1 :],
+                    [lyr_curr] + layers[i_layer + 1:],
                     input_shape,
                     rescaling_from_pooling,
                 )
@@ -139,7 +138,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     raise TypeError(
                         "First layer cannot be pooling if `dvs_input` is `False`."
                     )
-                pooling, i_next, rescaling_from_pooling = self.consolidate_pooling(
+                pooling, i_next, rescaling_from_pooling = consolidate_pooling(
                     layers[i_layer:], dvs=True
                 )
 
@@ -182,7 +181,21 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9)):
+    def to(self, device="cpu"):
+        """
+
+        Parameters
+        ----------
+        device: String
+            cpu:0, cuda:0, dynapcnn, speck2
+
+        Returns
+        -------
+
+        """
+        self.device = device
+
+    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnn"):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
@@ -190,11 +203,13 @@ class DynapcnnCompatibleNetwork(nn.Module):
             chip_layers_ordering: sequence of integers or "auto"
                 The order in which the dynapcnn layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
+            device: String
+                dynapcnn or speck2
 
         Returns
         -------
-            DynapcnnConfiguration
-                Object defining the configuration for dynapcnn
+            Configuration object
+                Object defining the configuration for the device
 
         Raises
         ------
@@ -210,7 +225,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             chip_layers = chip_layers_ordering
 
-        config = DynapcnnConfiguration()
+        if device is "dynapcnn":
+            config = samna.dynapcnn.configuration.DynapcnnConfiguration()
+        elif device is "speck2":
+            config = samna.speck2.configuration.SpeckConfiguration()
+        else:
+            raise Exception("Unknown device type")
 
         i_layer_chip = 0
         dvs = config.dvs_layer
@@ -229,82 +249,58 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.destinations[0].layer = chip_layers[i_layer_chip]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
+
+
         else:
             dvs.destinations[0].enable = False
-            if isinstance(self.sequence[0], sl.SumPool2d):
-                raise ValueError("Network cannot start with pooling if dvs_input=False")
         # TODO: Modify in case of non-sequential models
         dvs.destinations[1].enable = False
 
-        for i, chip_equivalent_layer in enumerate(self.sequence):
-            # happens when the network starts with pooling
-            if isinstance(chip_equivalent_layer, sl.SumPool2d):
-                # This case can only happen if `self.sequence` starts with a pooling layer
-                # or input layer because all other pooling layers should get consolidated.
-                # Therefore, require that input comes from DVS (Already done in `__init__`,
-                # here just for making sure).
-                assert self._dvs_input
-
-                # - Set pooling for dvs layer
-                assert (
-                    chip_equivalent_layer.stride == chip_equivalent_layer.kernel_size
-                )
-                dvs.pooling.y, dvs.pooling.x = chip_equivalent_layer.kernel_size
-
-            elif isinstance(chip_equivalent_layer, DynapcnnLayer):
-                # Object representing DYNAPCNN layer
-                chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
-                # read the configuration dictionary from DynapcnnLayer
-                # and write it to the dynapcnn configuration object
-                self.write_dynapcnn_config(chip_equivalent_layer.config_dict, chip_layer)
-
-                # For now: Sequential model, second destination always disabled
-                chip_layer.destinations[1].enable = False
-
-                if i == len(self.sequence) - 1:
-                    # last layer
-                    chip_layer.destinations[0].enable = False
-                else:
-                    i_layer_chip += 1
-                    # Set destination layer
-                    chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
-                    chip_layer.destinations[
-                        0
-                    ].pooling = chip_equivalent_layer.config_dict["Pooling"]
-                    chip_layer.destinations[0].enable = True
-            elif isinstance(chip_equivalent_layer, sl.InputLayer):
+        ## Update config object according to model specifications
+        # Check for first layer to be sumpool, while ignoring InputLayer
+        for first_layer in self.sequence:
+            if isinstance(first_layer, sl.InputLayer):
                 pass
             else:
-                # in our generated network there is a spurious layer...
-                # should never happen
-                raise TypeError("Unexpected layer in generated network")
+                break
+        if isinstance(first_layer, sl.SumPool2d):
+            if self._dvs_input:
+                assert (
+                        first_layer.stride == first_layer.kernel_size
+                )
+                dvs.pooling.y, dvs.pooling.x = first_layer.kernel_size
+            else:
+                raise ValueError("Network cannot start with pooling if dvs_input=False")
 
-        is_valid, message = validate_configuration(config)
+        write_model_to_config(self.sequence, config, chip_layers)
 
-        if not is_valid and chip_layers_ordering == "auto":
-            # automatically figure out an ordering that works
-            mapping = get_valid_mapping(config)
-            if mapping == []:
-                raise ValueError("Could not find valid layer sequence for this network")
+        # Validate config
+        if validate_configuration(config, device):
+            print("Network is valid")
+            return config
+        else:
+            if chip_layers_ordering is "auto":
+                # Try to auto arrange the layers
+                mapping = get_valid_mapping(config)
+                if mapping == []:
+                    raise ValueError("Could not find valid layer sequence for this network")
 
-            # turn the mapping into a dict
-            mapping = {m[0]: m[1] for m in mapping}
-            # apply the mapping
-            ordering = [mapping[i] for i in chip_layers]
+                # turn the mapping into a dict
+                mapping = {m[0]: m[1] for m in mapping}
+                # apply the mapping
+                ordering = [mapping[i] for i in chip_layers]
 
-            print("Not valid, trying ordering", ordering)
-            return self.make_config(chip_layers_ordering=ordering)
-        elif not is_valid:
-            raise ValueError("Network not valid for DYNAPCNN\n" + message)
+                print("Not valid, trying ordering", ordering)
+                return self.make_config(chip_layers_ordering=ordering)
+            else:
+                raise ValueError(f"Network not valid for {device}")
 
-        print("Network is valid")
-        return config
 
     def _handle_conv2d_layer(
-        self,
-        layers: Sequence[nn.Module],
-        input_shape: Tuple[int],
-        rescaling_from_pooling: int,
+            self,
+            layers: Sequence[nn.Module],
+            input_shape: Tuple[int],
+            rescaling_from_pooling: int,
     ) -> Tuple[int, Tuple[int], int]:
         """
         Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -355,7 +351,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # - Consolidate pooling from subsequent layers
         pooling: Union[List[int], int]
-        pooling, i_next, rescaling = self.consolidate_pooling(layers[2:], dvs=False)
+        pooling, i_next, rescaling = consolidate_pooling(layers[2:], dvs=False)
 
         # The DynapcnnLayer object knows how to turn the conv-spk-pool trio to
         # a dynapcnn layer, and has a forward method, and computes the output shape
@@ -381,151 +377,125 @@ class DynapcnnCompatibleNetwork(nn.Module):
         with torch.no_grad():
             return self.sequence(x)
 
-    def write_dynapcnn_config(
-        self, config_dict: dict, chip_layer: "CNNLayerConfig",
-    ):
-        """
-        Write a single layer configuration to the dynapcnn conf object.
+    # def forward(self, data):
+    #    if self.device in ("dynapcnn", "speck2"):
+    #    #pass data to device
+    #    else:
+    #        return super().forward(data)
 
-        Parameters
-        ----------
-            config_dict: dict
-                Dict containing the configuration
-            chip_layer: CNNLayerConfig
-                DYNAPCNN configuration object representing the layer to which
-                configuration is written.
-        """
 
-        # Update configuration of the DYNAPCNN layer
-        chip_layer.dimensions = config_dict["dimensions"]
+def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[List[int], int], int, int]:
+    """
+    Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
-        chip_layer.weights = config_dict["weights"]
-        chip_layer.biases = config_dict["biases"]
-        chip_layer.weights_kill_bit = config_dict["weights_kill_bit"]
-        chip_layer.biases_kill_bit = config_dict["biases_kill_bit"]
-        chip_layer.neurons_initial_value = config_dict["neurons_state"]
-        chip_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
-        chip_layer.leak_enable = config_dict["leak_enable"]
+    Parameters
+    ----------
+        layers: Sequence of layer objects
+            Contains `AvgPool2d` and other objects.
+        dvs: bool
+            If `True`, x- and y- pooling may be different and a tuple is returned instead of an integer.
 
-        for param, value in config_dict["layer_params"].items():
-            # print(f"Setting parameter {param}: {value}")
-            setattr(chip_layer, param, value)
+    Returns
+    -------
+        int or tuple of ints
+            Consolidated pooling size. Tuple if `dvs` is `True`.
+        int or None
+            Index of first object in `layers` that is not a `AvgPool2d`,
+            or `None`, if all objects in `layers` are `AvgPool2d`.
+        int or None
+            Rescaling factor needed when turning AvgPool to SumPool. May
+            differ from the pooling kernel in certain cases.
+    """
+    pooling = [1, 1] if dvs else 1
+    rescaling_factor = 1
 
-    def consolidate_pooling(
-        self, layers: Sequence[nn.Module], dvs: bool
-    ) -> Tuple[Union[List[int], int], int, int]:
-        """
-        Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
-
-        Parameters
-        ----------
-            layers: Sequence of layer objects
-                Contains `AvgPool2d` and other objects.
-            dvs: bool
-                If `True`, x- and y- pooling may be different and a tuple is returned instead of an integer.
-
-        Returns
-        -------
-            int or tuple of ints
-                Consolidated pooling size. Tuple if `dvs` is `True`.
-            int or None
-                Index of first object in `layers` that is not a `AvgPool2d`,
-                or `None`, if all objects in `layers` are `AvgPool2d`.
-            int or None
-                Rescaling factor needed when turning AvgPool to SumPool. May
-                differ from the pooling kernel in certain cases.
-        """
-        pooling = [1, 1] if dvs else 1
-        rescaling_factor = 1
-
-        for i_next, lyr in enumerate(layers):
-            if isinstance(lyr, nn.AvgPool2d):
-                # Update pooling size
-                new_pooling = self.get_pooling_size(lyr, dvs=dvs)
-                if dvs:
-                    pooling[0] *= new_pooling[0]
-                    pooling[1] *= new_pooling[1]
-                    rescaling_factor *= new_pooling[0] * new_pooling[1]
-                else:
-                    pooling *= new_pooling
-                    rescaling_factor *= new_pooling ** 2
-            elif isinstance(lyr, sl.SumPool2d):
-                # Update pooling size
-                new_pooling = self.get_pooling_size(lyr, dvs=dvs, check_pad=False)
-                if dvs:
-                    pooling[0] *= new_pooling[0]
-                    pooling[1] *= new_pooling[1]
-                else:
-                    pooling *= new_pooling
+    for i_next, lyr in enumerate(layers):
+        if isinstance(lyr, nn.AvgPool2d):
+            # Update pooling size
+            new_pooling = get_pooling_size(lyr, dvs=dvs)
+            if dvs:
+                pooling[0] *= new_pooling[0]
+                pooling[1] *= new_pooling[1]
+                rescaling_factor *= new_pooling[0] * new_pooling[1]
             else:
-                # print("Pooling:", pooling)
-                # print("Output shape:", input_shape)
-                return pooling, i_next, rescaling_factor
-
-        # If this line is reached, all objects in `layers` are pooling layers.
-        return pooling, None, rescaling_factor
-
-    def get_pooling_size(
-        self, layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True
-    ) -> Union[int, Tuple[int]]:
-        """
-        Determine the pooling size of a pooling object.
-
-        Parameters
-        ----------
-            layer: torch.nn.AvgPool2d)
-                Pooling layer
-            dvs: bool
-                If `True`, pooling does not need to be symmetric.
-            check_pad: bool
-                If `True` (default), check that padding is zero.
-
-        Returns
-        -------
-            int or tuple of int
-                Pooling size. If `dvs` is `True`, return a tuple with sizes for
-                y- and x-pooling.
-        """
-
-        # Warn if there is non-zero padding.
-        # Padding can be either int or tuple of ints
-        if check_pad:
-            if isinstance(layer.padding, int):
-                warn_padding = layer.padding != 0
+                pooling *= new_pooling
+                rescaling_factor *= new_pooling ** 2
+        elif isinstance(lyr, sl.SumPool2d):
+            # Update pooling size
+            new_pooling = get_pooling_size(lyr, dvs=dvs, check_pad=False)
+            if dvs:
+                pooling[0] *= new_pooling[0]
+                pooling[1] *= new_pooling[1]
             else:
-                warn_padding = any(pad != 0 for pad in layer.padding)
-            if warn_padding:
-                warn(
-                    f"AvgPool2d `{layer.layer_name}`: Padding is not supported for pooling layers."
-                )
-
-        # - Pooling and stride
-        pooling = layer.kernel_size
-        pooling_y, pooling_x = (
-            (pooling, pooling) if isinstance(pooling, int) else pooling
-        )
-
-        stride = layer.stride
-        stride_y, stride_x = (stride, stride) if isinstance(stride, int) else stride
-
-        if dvs:
-            # Check whether pooling and strides match
-            if stride_y != pooling_y or stride_x != pooling_x:
-                raise ValueError(
-                    "AvgPool2d: Stride size must be the same as pooling size."
-                )
-            return (pooling_y, pooling_x)
+                pooling *= new_pooling
         else:
-            # Check whether pooling is symmetric
-            if pooling_x != pooling_y:
-                raise ValueError("AvgPool2d: Pooling must be symmetric for CNN layers.")
-            pooling = pooling_x  # Is this the vertical dimension?
-            # Check whether pooling and strides match
-            if any(stride != pooling for stride in (stride_x, stride_y)):
-                raise ValueError(
-                    "AvgPool2d: Stride size must be the same as pooling size."
-                )
-            return pooling
+            # print("Pooling:", pooling)
+            # print("Output shape:", input_shape)
+            return pooling, i_next, rescaling_factor
+
+    # If this line is reached, all objects in `layers` are pooling layers.
+    return pooling, None, rescaling_factor
+
+
+def get_pooling_size(layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True) -> Union[int, Tuple[int]]:
+    """
+    Determine the pooling size of a pooling object.
+
+    Parameters
+    ----------
+        layer: torch.nn.AvgPool2d)
+            Pooling layer
+        dvs: bool
+            If `True`, pooling does not need to be symmetric.
+        check_pad: bool
+            If `True` (default), check that padding is zero.
+
+    Returns
+    -------
+        int or tuple of int
+            Pooling size. If `dvs` is `True`, return a tuple with sizes for
+            y- and x-pooling.
+    """
+
+    # Warn if there is non-zero padding.
+    # Padding can be either int or tuple of ints
+    if check_pad:
+        if isinstance(layer.padding, int):
+            warn_padding = layer.padding != 0
+        else:
+            warn_padding = any(pad != 0 for pad in layer.padding)
+        if warn_padding:
+            warn(
+                f"AvgPool2d `{layer.layer_name}`: Padding is not supported for pooling layers."
+            )
+
+    # - Pooling and stride
+    pooling = layer.kernel_size
+    pooling_y, pooling_x = (
+        (pooling, pooling) if isinstance(pooling, int) else pooling
+    )
+
+    stride = layer.stride
+    stride_y, stride_x = (stride, stride) if isinstance(stride, int) else stride
+
+    if dvs:
+        # Check whether pooling and strides match
+        if stride_y != pooling_y or stride_x != pooling_x:
+            raise ValueError(
+                "AvgPool2d: Stride size must be the same as pooling size."
+            )
+        return (pooling_y, pooling_x)
+    else:
+        # Check whether pooling is symmetric
+        if pooling_x != pooling_y:
+            raise ValueError("AvgPool2d: Pooling must be symmetric for CNN layers.")
+        pooling = pooling_x  # Is this the vertical dimension?
+        # Check whether pooling and strides match
+        if any(stride != pooling for stride in (stride_x, stride_y)):
+            raise ValueError(
+                "AvgPool2d: Stride size must be the same as pooling size."
+            )
+        return pooling
 
 
 def _merge_conv_bn(conv, bn):
@@ -562,3 +532,92 @@ def _merge_conv_bn(conv, bn):
     conv.bias.data = beta + (c_bias - mu) * factor
 
     return conv
+
+
+def write_dynapcnn_layer_config(config_dict: dict, chip_layer: "CNNLayerConfig"):
+    """
+    Write a single layer configuration to the dynapcnn conf object.
+
+    Parameters
+    ----------
+        config_dict: dict
+            Dict containing the configuration
+        chip_layer: CNNLayerConfig
+            DYNAPCNN configuration object representing the layer to which
+            configuration is written.
+    """
+
+    # Update configuration of the DYNAPCNN layer
+    chip_layer.dimensions = config_dict["dimensions"]
+
+    chip_layer.weights = config_dict["weights"]
+    chip_layer.biases = config_dict["biases"]
+    chip_layer.weights_kill_bit = config_dict["weights_kill_bit"]
+    chip_layer.biases_kill_bit = config_dict["biases_kill_bit"]
+    chip_layer.neurons_initial_value = config_dict["neurons_state"]
+    chip_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
+    chip_layer.leak_enable = config_dict["leak_enable"]
+
+    for param, value in config_dict["layer_params"].items():
+        # print(f"Setting parameter {param}: {value}")
+        setattr(chip_layer, param, value)
+
+
+def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[int]):
+    i_layer_chip = 0
+    for i, chip_equivalent_layer in enumerate(model):
+        # happens when the network starts with pooling
+        if isinstance(chip_equivalent_layer, sl.SumPool2d):
+            pass
+        elif isinstance(chip_equivalent_layer, DynapcnnLayer):
+            # Object representing DYNAPCNN layer
+            chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
+            # read the configuration dictionary from DynapcnnLayer
+            # and write it to the dynapcnn configuration object
+            write_dynapcnn_layer_config(chip_equivalent_layer.config_dict, chip_layer)
+
+            # For now: Sequential model, second destination always disabled
+            chip_layer.destinations[1].enable = False
+
+            if i == len(model) - 1:
+                # last layer
+                chip_layer.destinations[0].enable = False
+            else:
+                i_layer_chip += 1
+                # Set destination layer
+                chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
+                chip_layer.destinations[
+                    0
+                ].pooling = chip_equivalent_layer.config_dict["Pooling"]
+                chip_layer.destinations[0].enable = True
+        elif isinstance(chip_equivalent_layer, sl.InputLayer):
+            pass
+        else:
+            # in our generated network there is a spurious layer...
+            # should never happen
+            raise TypeError("Unexpected layer in generated network")
+
+
+def validate_configuration(config, device: str) -> bool:
+    """
+    Verify whether the config object is valid given a device's specifications
+    Parameters
+    ----------
+    config: Config object
+        Config object of a device
+    device: String
+        dynapcnn or speck2
+
+    Returns
+    -------
+    true if valid
+
+    """
+    # Validate configuration
+    if device is "dynapcnn":
+        is_valid, message = samna.dynapcnn.validate_configuration(config)
+    elif device is "speck2":
+        is_valid, message = samna.speck2.validate_configuration(config)
+    else:
+        raise Exception("Unknown device type")
+    return is_valid
