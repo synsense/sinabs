@@ -194,6 +194,15 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         """
         self.device = device
+        if device in ("dynapcnn", "speck2"):
+            # Generate config
+            config = self.make_config(chip_layers_ordering="auto", device=device)
+            # TODO: Find the device/devkit
+            self.dev_kit = dev_kit
+            self.dev_kit.get_model().apply_configuration(config)
+            return self
+        else:
+            return super().to(device)
 
     def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnn"):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
@@ -372,10 +381,20 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Torch's forward pass."""
-        self.eval()
-        with torch.no_grad():
-            return self.sequence(x)
+        if hasattr(self, "device") and self.device in ("dynapcnn", "speck2"):
+            raise NotImplementedError
+            # TODO: Convert tensor data to events
+            # Send events to device
+            self.dev_kit.get_model().write(eventsIn)
+            # Read events back
+            evsOut = readout_buffer.get_buf()
+            # TODO Convert to tensor and return
+            return out
+        else:
+            """Torch's forward pass."""
+            self.eval()
+            with torch.no_grad():
+                return self.sequence(x)
 
     # def forward(self, data):
     #    if self.device in ("dynapcnn", "speck2"):
