@@ -144,6 +144,35 @@ def test_network_conversion_compicated_model():
     snn = from_model(ann)
 
 
+def test_network_conversion_with_batch_size():
+    class ComplicatedANN(nn.Module):
+        # The dimensions don't match,but this is not the point here.
+        def __init__(self):
+            super().__init__()
+            self.conv1 = nn.Conv2d(1, 1, 1)
+            self.seq = nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1))
+            self.relu = nn.ReLU()
+            self.pool = nn.AvgPool2d(3)
+            self.seq2 = nn.Sequential(
+                nn.Flatten(), nn.Sequential(nn.Conv2d(2, 1, 2), nn.Linear(12, 12))
+            )
+
+    ann = ComplicatedANN()
+
+    # Model conversion without input size specification
+    snn = from_model(ann, batch_size=32)
+    assert(snn.spiking_model.relu.batch_size == 32)
+
+    # Model conversion with input size specification
+    snn = from_model(ann, input_shape=(1, 128, 128), batch_size=32)
+    assert(snn.spiking_model.relu.batch_size == 32)
+
+
+
+
+
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_parameter_devices():
     cnn = nn.Sequential(nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False), nn.ReLU())
