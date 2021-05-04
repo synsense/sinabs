@@ -1,3 +1,4 @@
+import abc
 import torch
 import numpy as np
 import torch.nn as nn
@@ -10,29 +11,34 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 window = 1.0
 
 
-class SpikingLayer(nn.Module):
-    def __init__(
-        self,
-        threshold: float = 1.0,
-        threshold_low: Optional[float] = -1.0,
-        membrane_subtract: Optional[float] = None,
-        batch_size: Optional[int] = None,
-        membrane_reset=False,
-    ):
-        """
-        Pytorch implementation of a spiking neuron with learning enabled.
-        This class is the base class for any layer that need to implement integrate-and-fire operations.
+class IAFLayer(abc.ABC):
+    pass
 
-        :param threshold: Spiking threshold of the neuron.
-        :param threshold_low: Lower bound for membrane potential.
-        :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
-        Default is equal to threshold. Ignored if membrane_reset is set.
-        :param negative_spikes: Implement a linear transfer function through negative spiking. \
-        Ignored if membrane_reset is set.
-        :param batch_size: The batch size. Needed to distinguish between timesteps and batch dimension.
-        :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
-        :param layer_name: The name of the layer.
-        """
+
+class SpikingLayer(nn.Module):
+    """
+    Pytorch implementation of a spiking neuron with learning enabled.
+    This class is the base class for any layer that need to implement integrate-and-fire operations.
+
+    :param threshold: Spiking threshold of the neuron.
+    :param threshold_low: Lower bound for membrane potential.
+    :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
+    Default is equal to threshold. Ignored if membrane_reset is set.
+    :param negative_spikes: Implement a linear transfer function through negative spiking. \
+    Ignored if membrane_reset is set.
+    :param batch_size: The batch size. Needed to distinguish between timesteps and batch dimension.
+    :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
+    :param layer_name: The name of the layer.
+    """
+
+    def __init__(
+            self,
+            threshold: float = 1.0,
+            threshold_low: Optional[float] = -1.0,
+            membrane_subtract: Optional[float] = None,
+            batch_size: Optional[int] = None,
+            membrane_reset=False,
+    ):
         super().__init__()
         # Initialize neuron states
         self.threshold = threshold
@@ -83,6 +89,8 @@ class SpikingLayer(nn.Module):
         return input_spikes
 
     def forward(self, binary_input: torch.Tensor):
+        # Expected input dimensions
+        # (batch_size*time_steps, ...)
 
         # Compute the synaptic current
         syn_out: torch.Tensor = self.synaptic_output(binary_input)
@@ -90,10 +98,9 @@ class SpikingLayer(nn.Module):
         # Reshape data to appropriate dimensions
         if self.batch_size:
             syn_out = syn_out.reshape((self.batch_size, -1, *syn_out.shape[1:])).transpose(0, 1)
+
         # Ensure the neuron state are initialized
-        try:
-            assert self.state.shape == syn_out.shape[1:]
-        except AssertionError:
+        if self.state.shape != syn_out.shape[1:]:
             self.reset_states(shape=syn_out.shape[1:], randomize=False)
 
         # Determine no. of time steps from input
@@ -146,7 +153,7 @@ class SpikingLayer(nn.Module):
         return in_shape
 
     def __deepcopy__(self, memo=None):
-        other = SpikingLayer(
+        other = self.__class__(
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self._membrane_subtract,
@@ -158,3 +165,7 @@ class SpikingLayer(nn.Module):
         other.activations = self.activations.detach().clone()
 
         return other
+
+
+# Register SpikingLayer as a subclass of Abstract Metaclass
+IAFLayer.register(SpikingLayer)
