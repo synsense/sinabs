@@ -9,17 +9,19 @@ def test_list_all_devices():
         print(d.device_type_name)
 
 
-#def test_is_device_type():
-#    devices = io.get_all_samna_devices()
-#    print([io.is_device_type(d, "dynapcnndevkit") for d in devices])
-#    print([io.is_device_type(d, "dvxplorer") for d in devices])
+def test_is_device_type():
+    devices = io.get_all_samna_devices()
+    print([io.is_device_type(d, "dynapcnndevkit") for d in devices])
+    print([io.is_device_type(d, "dvxplorer") for d in devices])
 
 
 def test_discover_device():
     device = io.open_device("dvxplorer:0")
+    device = io.open_device("dvxplorer:0")
     device = io.open_device("dynapcnndevkit:0")
     io.close_device("dvxplorer:0")
     io.close_device("dynapcnndevkit:0")
+    assert(io.get_all_open_samna_devices() == [])
 
 
 def test_get_device_map():

@@ -4,7 +4,10 @@ from itertools import groupby
 from typing import List, Dict
 from samna.dynapcnn.event import RouterEvent, Spike
 
+
+# Managed global variables
 samna_node = None
+samna_devices = None
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
@@ -103,7 +106,10 @@ def get_samna_node():
     global samna_node
 
     if samna_node is None:
+        # Initialize the node
         samna_node = init_samna_node()
+        # Fetch all samna devices
+        get_all_samna_devices()
 
     return samna_node
 
@@ -145,8 +151,10 @@ def get_all_samna_devices():
     devices:
         Returns a list of all available samna devices
     """
-    device_list = get_all_open_samna_devices() + get_all_unopened_samna_devices()
-    return device_list
+    global samna_devices
+    if samna_devices is None:
+        samna_devices = get_all_open_samna_devices() + get_all_unopened_samna_devices()
+    return samna_devices
 
 
 def get_device_map() -> Dict:
@@ -231,7 +239,8 @@ def open_device(device_id: str):
     device_name, device_num = device_id.split(":")
     device_num = int(device_num)
 
-    dev_info = discover_device(device_id)
+    device_map = get_device_map()
+    dev_info = device_map[device_id]
     # Open Devkit
     samna.device_node.DeviceController.open_device(dev_info, f"{device_name}_{device_num}")
 
