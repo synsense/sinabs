@@ -1,16 +1,29 @@
-import torch
-import time
-import samna
-from samna.dynapcnn.event import RouterEvent, Spike
 from typing import List
 
+import samna
+import torch
+from samna.dynapcnn.event import RouterEvent, Spike
 
 samna_node = None
+
+# A map of all device types and their corresponding samna `device_name`
+device_types = {
+    "speck": "speck",
+    "dynapse2": "DYNAP-SE2 DevBoard",
+    "dynapse2_stack": "DYNAP-SE2 Stack",
+    "speck2devkit": "Speck2DevKit",
+    "dynapse1devkit": "Dynapse1DevKit",
+    "davis346": "Davis 346",
+    "davis240": "Davis 240",
+    "dvxplorer": "DVXplorer",
+    "pollendevkit": "PollenDevKit",
+    "dynapcnndevkit": "DynapcnnDevKit",
+}
 
 
 def raster_to_events(raster: torch.Tensor, layer: int = 0) -> List[RouterEvent]:
     """
-    Convert spike raster to events for dynapcnn
+    Convert spike raster to events for DynaapcnnDevKit
 
     Parameters:
     -----------
@@ -68,33 +81,70 @@ def events_to_raster(eventList: List, layer: int = 0) -> torch.Tensor:
     return evsFiltered
 
 
-def get_all_samna_devices():
+def init_samna_node():
+    # initialize the main SamnaNode
+    receiver_endpoint = "tcp://0.0.0.0:33335"
+    sender_endpoint = "tcp://0.0.0.0:33336"
+    node_id = 1
+    interpreter_id = 2
+    samna_node = samna.SamnaNode(sender_endpoint, receiver_endpoint, node_id)
+
+    # setup the python interpreter node
+    samna.setup_local_node(receiver_endpoint, sender_endpoint, interpreter_id)
+
+    # open a connection to device_node
+    samna.open_remote_node(node_id, "device_node")
+    return samna_node
+
+
+def get_samna_node():
+    global samna_node
+
+    if samna_node is None:
+        samna_node = init_samna_node()
+
+    return samna_node
+
+
+def get_all_unopened_samna_devices():
     """
-    Returns a list of all samna devices
+    Returns a list of all unopen samna devices
 
     Returns
     -------
     devices:
-        A list of samna devices currently connected
+        A list of samna devices currently un-opened
     """
-    global samna_node
 
-    if samna_node is None:
-        # initialize the main SamnaNode
-        receiver_endpoint = "tcp://0.0.0.0:33335"
-        sender_endpoint = "tcp://0.0.0.0:33336"
-        node_id = 1
-        interpreter_id = 2
-        samna_node = samna.SamnaNode(sender_endpoint, receiver_endpoint, node_id)
-
-        # setup the python interpreter node
-        samna.setup_local_node(receiver_endpoint, sender_endpoint, interpreter_id)
-
-        # open a connection to device_node
-        samna.open_remote_node(node_id, "device_node")
-
+    get_samna_node()
     # Find device
     return samna.device_node.DeviceController.get_unopened_devices()
+
+
+def get_all_open_samna_devices():
+    """
+    Returns a list of all opened samna devices
+
+    Returns
+    -------
+    devices:
+        A list of samna devices currently opened
+
+    """
+    get_samna_node()
+    # Find device
+    return samna.device_node.DeviceController.get_opened_devices()
+
+
+def get_all_samna_devices():
+    """
+    Returns
+    -------
+    devices:
+        Returns a list of all available samna devices
+    """
+    device_list = get_all_open_samna_devices() + get_all_unopened_samna_devices()
+    return device_list
 
 
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
@@ -112,7 +162,7 @@ def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
     boolean
 
     """
-    return dev_info.device_type_name == dev_type
+    return dev_info.device_type_name == device_types[dev_type]
 
 
 def discover_device(device_id: str):
@@ -122,7 +172,7 @@ def discover_device(device_id: str):
     Parameters
     ----------
     device_id: str
-        Device name/identifier (DynapcnnDevKit:0 or speck:0 or DVXplorer:1 ... )
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
     Returns
@@ -131,11 +181,11 @@ def discover_device(device_id: str):
 
     See Also
     --------
-    get_device
+    open_device, close_device
 
     """
 
-    synsense_devs = get_all_samna_devices()
+    synsense_devs = get_all_unopened_samna_devices()
 
     device_name, device_num = device_id.split(":")
     device_num = int(device_num)
@@ -173,7 +223,7 @@ def close_device(device_id: str):
     Parameters
     ----------
     device_id: str
-        Device name/identifier (dynapcnn:0 or speck:0 or dynapcnn:1 ... )
+        Device name/identifier (DynaapcnnDevKit:0 or speck:0 or DynaapcnnDevKit:1 ... )
 
     """
     device_name, device_num = device_id.split(":")

@@ -76,7 +76,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         elif isinstance(snn, nn.Sequential):
             layers = [*snn]
         else:
-            raise TypeError("Expected torch.nn.Sequential or sinabs.Network.")
+            raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
 
         # index that goes over the layers of the input network
         i_layer = 0
@@ -304,7 +304,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
             else:
                 raise ValueError(f"Network not valid for {device}")
 
-
     def _handle_conv2d_layer(
             self,
             layers: Sequence[nn.Module],
@@ -395,12 +394,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
             self.eval()
             with torch.no_grad():
                 return self.sequence(x)
-
-    # def forward(self, data):
-    #    if self.device in ("dynapcnn", "speck2"):
-    #    #pass data to device
-    #    else:
-    #        return super().forward(data)
 
 
 def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[List[int], int], int, int]:
