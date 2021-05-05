@@ -18,3 +18,8 @@ def test_discover_device():
     device = io.open_device("dynapcnndevkit:0")
     io.close_device("dvxplorer:0")
     io.close_device("dynapcnndevkit:0")
+
+
+def test_get_device_map():
+    device_map = io.get_device_map()
+    print(device_map)

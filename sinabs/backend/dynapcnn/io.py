@@ -1,7 +1,8 @@
-from typing import List
+from typing import List, Dict
 
 import samna
 import torch
+from itertools import groupby
 from samna.dynapcnn.event import RouterEvent, Spike
 
 samna_node = None
@@ -19,6 +20,8 @@ device_types = {
     "pollendevkit": "PollenDevKit",
     "dynapcnndevkit": "DynapcnnDevKit",
 }
+
+device_type_map = {v: k for (k, v) in device_types.items()}
 
 
 def raster_to_events(raster: torch.Tensor, layer: int = 0) -> List[RouterEvent]:
@@ -145,6 +148,31 @@ def get_all_samna_devices():
     """
     device_list = get_all_open_samna_devices() + get_all_unopened_samna_devices()
     return device_list
+
+
+def get_device_map() -> Dict:
+    """
+    Returns
+    -------
+    Returns a dict of device name and device info
+    """
+
+    def sort_devices(devices: List) -> List:
+        devices.sort(key=lambda x: x.usb_device_address)
+        return devices
+
+    # Get all devices available
+    devices = get_all_samna_devices()
+    # Group by device_type_name
+    device_groups = groupby(devices, lambda x: x.device_type_name)
+    # Switch keys from samna's device_type_name to device_type names
+    device_groups = {device_type_map[k]: sort_devices(list(v)) for k, v in device_groups}
+    # Flat map
+    device_map = {}
+    for dev_type, dev_list in device_groups.items():
+        for i, dev in enumerate(dev_list):
+            device_map[f"{dev_type}:{i}"] = dev
+    return device_map
 
 
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
