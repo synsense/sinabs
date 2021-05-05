@@ -1,8 +1,7 @@
-from typing import List, Dict
-
 import samna
 import torch
 from itertools import groupby
+from typing import List, Dict
 from samna.dynapcnn.event import RouterEvent, Spike
 
 samna_node = None
@@ -136,7 +135,7 @@ def get_all_open_samna_devices():
     """
     get_samna_node()
     # Find device
-    return samna.device_node.DeviceController.get_opened_devices()
+    return [x.device_info for x in samna.device_node.DeviceController.get_opened_devices()]
 
 
 def get_all_samna_devices():
@@ -213,12 +212,8 @@ def discover_device(device_id: str):
 
     """
 
-    synsense_devs = get_all_unopened_samna_devices()
-
-    device_name, device_num = device_id.split(":")
-    device_num = int(device_num)
-
-    device_info = [x for x in synsense_devs if is_device_type(x, device_name)][device_num]
+    device_map = get_device_map()
+    device_info = device_map[device_id]
     return device_info
 
 
