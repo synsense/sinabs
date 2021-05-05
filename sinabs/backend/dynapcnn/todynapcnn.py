@@ -15,6 +15,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
+from .io import open_device
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -181,30 +182,33 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def to(self, device="cpu"):
+    def to(self, device="cpu", chip_layers_ordering="auto"):
         """
 
         Parameters
         ----------
         device: String
             cpu:0, cuda:0, dynapcnn, speck2
+        chip_layers_ordering: List/"auto"
+            A list of layers on the device where you want each of the model layers to be placed.
+
 
         Returns
         -------
 
         """
         self.device = device
-        if device in ("dynapcnn", "speck2"):
+        device_name, device_num = device.split(":")
+        if device_name in ("dynapcnndevkit", "speck2"):
             # Generate config
-            config = self.make_config(chip_layers_ordering="auto", device=device)
-            # TODO: Find the device/devkit
-            self.dev_kit = dev_kit
-            self.dev_kit.get_model().apply_configuration(config)
+            config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
+            self.samna_device = open_device(device)
+            self.samna_device.get_model().apply_configuration(config)
             return self
         else:
             return super().to(device)
 
-    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnn"):
+    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnndevkit:0"):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
@@ -213,7 +217,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 The order in which the dynapcnn layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
             device: String
-                dynapcnn or speck2
+                dynapcnndevkit:0 or speck2:0
 
         Returns
         -------
@@ -234,12 +238,14 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             chip_layers = chip_layers_ordering
 
-        if device is "dynapcnn":
+        device_name, device_num = device.split(":")
+
+        if device_name == "dynapcnndevkit":
             config = samna.dynapcnn.configuration.DynapcnnConfiguration()
-        elif device is "speck2":
+        elif device_name == "speck2":
             config = samna.speck2.configuration.SpeckConfiguration()
         else:
-            raise Exception("Unknown device type")
+            raise Exception(f"Unknown device type {device_name}")
 
         i_layer_chip = 0
         dvs = config.dvs_layer
@@ -284,7 +290,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         write_model_to_config(self.sequence, config, chip_layers)
 
         # Validate config
-        if validate_configuration(config, device):
+        if validate_configuration(config, device_name):
             print("Network is valid")
             return config
         else:
@@ -300,7 +306,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 ordering = [mapping[i] for i in chip_layers]
 
                 print("Not valid, trying ordering", ordering)
-                return self.make_config(chip_layers_ordering=ordering)
+                return self.make_config(chip_layers_ordering=ordering, device=device)
             else:
                 raise ValueError(f"Network not valid for {device}")
 
@@ -626,10 +632,10 @@ def validate_configuration(config, device: str) -> bool:
 
     """
     # Validate configuration
-    if device is "dynapcnn":
+    if device == "dynapcnndevkit":
         is_valid, message = samna.dynapcnn.validate_configuration(config)
-    elif device is "speck2":
+    elif device == "speck2":
         is_valid, message = samna.speck2.validate_configuration(config)
     else:
-        raise Exception("Unknown device type")
+        raise Exception(f"Unknown device type {device}")
     return is_valid
