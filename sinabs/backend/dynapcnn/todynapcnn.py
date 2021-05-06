@@ -208,7 +208,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, device_num = device.split(":")
-            if device_name in ("dynapcnndevkit", "speck2"):
+            if device_name in ("dynapcnndevkit", "speck2devkit"):
                 # Generate config
                 config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
 
@@ -217,12 +217,20 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     monitor_layers = monitor_layers.copy()
                     if "dvs" in monitor_layers:
                         config.dvs_layer.monitor_enable = True
+                        config.dvs_layer.monitor_sensor_enable = True
                         monitor_layers.remove("dvs")
                     for lyr_indx in monitor_layers:
                         config.cnn_layers[lyr_indx].monitor_enable = True
 
                 self.samna_device = open_device(device)
-                self.samna_device.get_model().apply_configuration(config)
+
+                if device_name == "dynapcnndevkit":
+                    self.samna_device.get_model().apply_configuration(config)
+                elif device_name == "speck2devkit":
+                    self.samna_device.get_daughter_board(0).get_model().apply_configuration(config)
+                else:
+                    raise ValueError("Unknown device description. device name has to be dynapcnndekit or speck2devkit")
+
                 return self
             else:
                 return super().to(device)
@@ -238,7 +246,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 The order in which the dynapcnn layers will be used. If "auto",
                 an automated procedure will be used to find a valid ordering.
             device: String
-                dynapcnndevkit:0 or speck2:0
+                dynapcnndevkit:0 or speck2devkit:0
 
         Returns
         -------
@@ -263,7 +271,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         if device_name == "dynapcnndevkit":
             config = samna.dynapcnn.configuration.DynapcnnConfiguration()
-        elif device_name == "speck2":
+        elif device_name == "speck2devkit":
             config = samna.speck2.configuration.SpeckConfiguration()
         else:
             raise Exception(f"Unknown device type {device_name}")
@@ -407,7 +415,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if hasattr(self, "device") and self.device in ("dynapcnn", "speck2"):
+        if hasattr(self, "device") and self.device in ("dynapcnndevkit", "speck2devkit"):
             raise NotImplementedError
             # TODO: Convert tensor data to events
             # Send events to device
@@ -645,7 +653,7 @@ def validate_configuration(config, device: str) -> bool:
     config: Config object
         Config object of a device
     device: String
-        dynapcnn or speck2
+        dynapcnndevkit or speck2devkit
 
     Returns
     -------
@@ -655,7 +663,7 @@ def validate_configuration(config, device: str) -> bool:
     # Validate configuration
     if device == "dynapcnndevkit":
         is_valid, message = samna.dynapcnn.validate_configuration(config)
-    elif device == "speck2":
+    elif device == "speck2devkit":
         is_valid, message = samna.speck2.validate_configuration(config)
     else:
         raise Exception(f"Unknown device type {device}")
