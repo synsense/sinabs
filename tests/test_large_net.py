@@ -2,7 +2,7 @@
 This module is meant to test a real use case. It will include testing of
 the network equivalence, and of the correct output configuration.
 """
-#import samna
+# import samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
 
@@ -97,6 +97,8 @@ def test_was_copied():
     for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model.seq, dynapcnn_net.sequence):
         assert lyr_snn is not lyr_dynapcnn
 
+
+@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
     dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
     dynapcnn_out = dynapcnn_net(input_data)

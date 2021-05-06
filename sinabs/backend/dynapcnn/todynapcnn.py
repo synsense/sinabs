@@ -182,7 +182,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def to(self, device="cpu", chip_layers_ordering="auto"):
+    def to(self, device="cpu", chip_layers_ordering="auto", monitor_layers: List=None):
         """
 
         Parameters
@@ -191,22 +191,43 @@ class DynapcnnCompatibleNetwork(nn.Module):
             cpu:0, cuda:0, dynapcnn, speck2
         chip_layers_ordering: List/"auto"
             A list of layers on the device where you want each of the model layers to be placed.
-
-
-        Returns
-        -------
-
+        monitor_layers: None/List
+            A list of all chip-layers that you want to monitor.
+            If you want to monitor the dvs layer for eg.
+                ``
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                ``
+        Note
+        ----
+        chip_layers_ordering and monitor_layers are used only when using synsense devices.
+        For GPU or CPU usage these options are ignored.
         """
         self.device = device
-        device_name, device_num = device.split(":")
-        if device_name in ("dynapcnndevkit", "speck2"):
-            # Generate config
-            config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
-            self.samna_device = open_device(device)
-            self.samna_device.get_model().apply_configuration(config)
-            return self
-        else:
+        if isinstance(device, torch.device):
             return super().to(device)
+        elif isinstance(device, str):
+            device_name, device_num = device.split(":")
+            if device_name in ("dynapcnndevkit", "speck2"):
+                # Generate config
+                config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
+
+                # Enable monitors
+                if monitor_layers is not None:
+                    monitor_layers = monitor_layers.copy()
+                    if "dvs" in monitor_layers:
+                        config.dvs_layer.monitor_enable = True
+                        monitor_layers.remove("dvs")
+                    for lyr_indx in monitor_layers:
+                        config.cnn_layers[lyr_indx].monitor_enable = True
+
+                self.samna_device = open_device(device)
+                self.samna_device.get_model().apply_configuration(config)
+                return self
+            else:
+                return super().to(device)
+        else:
+            raise Exception("Unknown device description.")
 
     def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnndevkit:0"):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
