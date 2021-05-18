@@ -10,13 +10,12 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 window = 1.0
 
 
-class SpikingLayer(nn.Module):
+class IAF(nn.Module):
     def __init__(
         self,
         threshold: float = 1.0,
         threshold_low: Optional[float] = -1.0,
         membrane_subtract: Optional[float] = None,
-        batch_size: Optional[int] = None,
         membrane_reset=False,
     ):
         """
@@ -27,9 +26,6 @@ class SpikingLayer(nn.Module):
         :param threshold_low: Lower bound for membrane potential.
         :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
         Default is equal to threshold. Ignored if membrane_reset is set.
-        :param negative_spikes: Implement a linear transfer function through negative spiking. \
-        Ignored if membrane_reset is set.
-        :param batch_size: The batch size. Needed to distinguish between timesteps and batch dimension.
         :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
         :param layer_name: The name of the layer.
         """
@@ -44,7 +40,6 @@ class SpikingLayer(nn.Module):
         self.register_buffer("state", torch.zeros(1))
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
-        self.batch_size = batch_size
 
     @property
     def membrane_subtract(self):
@@ -72,28 +67,9 @@ class SpikingLayer(nn.Module):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
-    def synaptic_output(self, input_spikes: torch.Tensor) -> torch.Tensor:
-        """
-        This method needs to be overridden/defined by the child class
-        Default implementation is pass through
-
-        :param input_spikes: torch.Tensor input to the layer.
-        :return:  torch.Tensor - synaptic output current
-        """
-        return input_spikes
-
-    def forward(self, binary_input: torch.Tensor):
-
-        # Compute the synaptic current
-        syn_out: torch.Tensor = self.synaptic_output(binary_input)
-
-        # Reshape data to appropriate dimensions
-        if self.batch_size:
-            syn_out = syn_out.reshape((self.batch_size, -1, *syn_out.shape[1:])).transpose(0, 1)
+    def forward(self, syn_out: torch.Tensor):
         # Ensure the neuron state are initialized
-        try:
-            assert self.state.shape == syn_out.shape[1:]
-        except AssertionError:
+        if self.state.shape != syn_out.shape[1:]:
             self.reset_states(shape=syn_out.shape[1:], randomize=False)
 
         # Determine no. of time steps from input
@@ -132,8 +108,6 @@ class SpikingLayer(nn.Module):
         all_spikes = torch.stack(spikes)
         self.spikes_number = all_spikes.abs().sum()
 
-        if self.batch_size:
-            all_spikes = all_spikes.transpose(0, 1).reshape((-1, *all_spikes.shape[2:]))
         return all_spikes
 
     def get_output_shape(self, in_shape):
@@ -158,3 +132,36 @@ class SpikingLayer(nn.Module):
         other.activations = self.activations.detach().clone()
 
         return other
+
+
+class SpikingLayer(IAF):
+    """
+    Pytorch implementation of a spiking neuron with learning enabled.
+    This class is the base class for any layer that need to implement integrate-and-fire operations.
+
+    Takes input of shape (batch*time, ...)
+
+    Params
+    ------
+    batch_size: int/None
+        Specify the batch size of the input data
+        If None, batch_size 1 is assumed
+
+    See :py:class:`IAF` class for other parameters of this class
+
+    """
+    def __init__(self, *args, batch_size=1, **kwargs):
+        super().__init__(*args, **kwargs)
+        if batch_size is None:
+            self.batch_size = 1
+        else:
+            self.batch_size = batch_size
+
+    def forward(self, data):
+        out = data
+        # Unsqueeze
+        out = data.reshape((self.batch_size, -1, *data.shape[1:])).transpose(0, 1)
+        out = super().forward(out)
+        # Flatten batch, time
+        out = out.transpose(0, 1).reshape((-1, *out.shape[2:]))
+        return out
