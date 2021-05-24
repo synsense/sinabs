@@ -49,8 +49,13 @@ class DynapcnnLayer(nn.Module):
         spk = deepcopy(spk)
         if isinstance(conv, nn.Linear):
             conv = self._convert_linear_to_conv(conv)
-            spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
-            spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
+            if spk.state.dim() == 1 and len(spk.state) == 1 and spk.state.item() == 0.0:
+                # Layer is uninitialized. Leave it as it is
+                pass
+            else:
+                # Expand dims
+                spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
+                spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
@@ -180,7 +185,7 @@ class DynapcnnLayer(nn.Module):
             # 4-dimensional states should be the norm when there is a batch dim
             neurons_state = layer.state.transpose(2, 3)[0]
         else:
-            raise ValueError("Current state of spiking layer not understood.")
+            raise ValueError(f"Current state (shape: {layer.state.shape}) of spiking layer not understood.")
 
         # - Resetting vs returning to 0
         return_to_zero = layer.membrane_reset
