@@ -97,6 +97,7 @@ def events_to_raster(eventList: List, layer: int = 0) -> torch.Tensor:
             if ev.layer == layer:
                 evsFiltered.append((ev.timestamp, ev.feature, ev.x, ev.y))
 
+    raise NotImplementedError
     return evsFiltered
 
 
