@@ -5,6 +5,7 @@ import sinabs.layers as sl
 from warnings import warn
 from .discretize import discretize_conv_spike_
 from copy import deepcopy
+from functools import reduce
 
 
 class DynapcnnLayer(nn.Module):
@@ -311,6 +312,22 @@ class DynapcnnLayer(nn.Module):
             raise TypeError(error)
         self._input_shape = tuple(int(x) for x in in_shape)
         self._update_output_dimensions()
+
+    def summary(self):
+        return {
+            "pool": self.pool,
+            "kernel": list(self.conv_layer.weight.data.shape),
+            "neuron": list(self.spk_layer.state.shape)
+        }
+
+    def memory_summary(self):
+        summary = self.summary()
+        def mul(x, y): return x*y
+
+        return {
+            "kernel": reduce(mul, summary["kernel"]),
+            "neuron": reduce(mul, summary["neuron"]),
+            "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias)}
 
     def forward(self, x):
         """Torch forward pass."""

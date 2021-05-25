@@ -1,6 +1,6 @@
 from copy import deepcopy
 from warnings import warn
-
+import time
 try:
     import samna
 except (ImportError, ModuleNotFoundError):
@@ -8,6 +8,7 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
+import numpy as np
 from .dynapcnnlayer import DynapcnnLayer
 from .valid_mapping import get_valid_mapping
 import torch.nn as nn
@@ -15,7 +16,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import open_device
+from .io import open_device, _parse_device_string
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -182,7 +183,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def to(self, device="cpu", chip_layers_ordering="auto", monitor_layers: List=None):
+    def to(self, device="cpu", chip_layers_ordering="auto", monitor_layers: List=None, config_modifier=None):
         """
 
         Parameters
@@ -198,6 +199,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
                 ``
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
         Note
         ----
         chip_layers_ordering and monitor_layers are used only when using synsense devices.
@@ -207,7 +211,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if isinstance(device, torch.device):
             return super().to(device)
         elif isinstance(device, str):
-            device_name, device_num = device.split(":")
+            device_name, _ = _parse_device_string(device)
             if device_name in ("dynapcnndevkit", "speck2devkit"):
                 # Generate config
                 config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
@@ -222,14 +226,28 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     for lyr_indx in monitor_layers:
                         config.cnn_layers[lyr_indx].monitor_enable = True
 
+                # Apply user config modifier
+                if config_modifier is not None:
+                    config = config_modifier(config)
+
+                # Apply configuration to device
                 self.samna_device = open_device(device)
 
                 if device_name == "dynapcnndevkit":
                     self.samna_device.get_model().apply_configuration(config)
+                    time.sleep(1)
+                    self.samna_output_buffer = samna.BufferSinkNode_dynapcnn_event_output_event()
                 elif device_name == "speck2devkit":
                     self.samna_device.get_daughter_board(0).get_model().apply_configuration(config)
+                    time.sleep(1)
+                    self.samna_output_buffer = samna.BufferSinkNode_speck2_event_output_event()
                 else:
                     raise ValueError("Unknown device description. device name has to be dynapcnndekit or speck2devkit")
+
+                # Connect buffer sink node to device
+                self.samna_device.get_model().get_source_node().add_destination(
+                    self.samna_output_buffer.get_input_channel()
+                )
 
                 return self
             else:
@@ -267,7 +285,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             chip_layers = chip_layers_ordering
 
-        device_name, device_num = device.split(":")
+        device_name, _ = _parse_device_string(device)
 
         if device_name == "dynapcnndevkit":
             config = samna.dynapcnn.configuration.DynapcnnConfiguration()
@@ -414,16 +432,18 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         return i_next, output_shape, rescaling_from_pooling
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if hasattr(self, "device") and self.device in ("dynapcnndevkit", "speck2devkit"):
-            raise NotImplementedError
-            # TODO: Convert tensor data to events
-            # Send events to device
-            self.dev_kit.get_model().write(eventsIn)
+    def forward(self, x):
+        if hasattr(self, "device") and _parse_device_string(self.device)[0] in ("dynapcnndevkit", "speck2devkit"):
+            # NOTE: The code to start and stop time stamping is device specific
+            self.samna_device.get_io_module().write_config(0x0003, 1)  # Enable time stamp
+            # Send input
+            self.samna_device.get_model().write(x)
+            time.sleep((x[-1].timestamp - x[0].timestamp)*1e-6 + 1)
+            # Disable timestamp
+            self.samna_device.get_io_module().write_config(0x0003, 0)  # Disable time stamp
             # Read events back
-            evsOut = readout_buffer.get_buf()
-            # TODO Convert to tensor and return
-            return out
+            evsOut = self.samna_output_buffer.get_events()
+            return evsOut
         else:
             """Torch's forward pass."""
             self.eval()
@@ -668,3 +688,24 @@ def validate_configuration(config, device: str) -> bool:
     else:
         raise Exception(f"Unknown device type {device}")
     return is_valid
+
+
+def memory_summary(net: DynapcnnCompatibleNetwork):
+    """
+    Get a summary of the network's memory requirements
+    Parameters
+    ----------
+    net: DynapcnnCompatibleNetwork
+        The network object
+
+    Returns
+    -------
+    summary
+
+    """
+    summary = []
+    for lyr in net.sequence:
+        lyr_summary = lyr.memory_summary()
+        summary.append(tuple(lyr_summary.values()))
+        columns = lyr_summary.keys()
+    return np.array(summary, dtype=[(x, int) for x in columns])
