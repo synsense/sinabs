@@ -4,7 +4,6 @@ from itertools import groupby
 from typing import List, Dict
 from samna.dynapcnn.event import RouterEvent, Spike
 
-
 # Managed global variables
 samna_node = None
 samna_devices = None
@@ -26,7 +25,19 @@ device_types = {
 device_type_map = {v: k for (k, v) in device_types.items()}
 
 
-def raster_to_events(raster: torch.Tensor, layer: int = 0) -> List[RouterEvent]:
+def enable_timestamps(device):
+    # NOTE: The hex code is specific to dynapcnn devkit
+    dk.get_io_module().write_config(0x0003, 1)
+    raise NotImplementedError
+
+
+def disable_timestamps(device):
+    # NOTE: The hex code is specific to dynapcnn devkit
+    dk.get_io_module().write_config(0x0003, 0)
+    raise NotImplementedError
+
+
+def raster_to_events(raster: torch.Tensor, layer: int = 0, dt=1e-3) -> List[Spike]:
     """
     Convert spike raster to events for DynaapcnnDevKit
 
@@ -39,22 +50,25 @@ def raster_to_events(raster: torch.Tensor, layer: int = 0) -> List[RouterEvent]:
     layer: int
         The index of the layer to route the events to
 
+    dt: float
+        Length of time step of the raster in seconds
+
     Returns:
     --------
 
-    events: List[RouterEvent]
+    events: List[Spike]
         A list of events that will be streamed to the device
     """
     t, ch, y, x = torch.where(raster)
     evData = torch.stack((t, ch, y, x), dim=0).T
     events = []
     for row in evData:
-        ev = RouterEvent()
+        ev = Spike()
         ev.layer = layer
         ev.x = row[3]
         ev.y = row[2]
         ev.feature = row[1]
-        # ev.timestamp = row[0]
+        ev.timestamp = int(row[0].item()*1e6*dt)  # Time in uS
         events.append(ev)
     return events
 
@@ -236,9 +250,8 @@ def open_device(device_id: str):
     -------
 
     """
-    device_name, device_num = device_id.split(":")
-    device_num = int(device_num)
-
+    device_name, device_num = _parse_device_string(device_id)
+    device_id = f"{device_name}:{device_num}"
     device_map = get_device_map()
     dev_info = device_map[device_id]
     # Open Devkit
@@ -258,5 +271,15 @@ def close_device(device_id: str):
         Device name/identifier (DynaapcnnDevKit:0 or speck:0 or DynaapcnnDevKit:1 ... )
 
     """
-    device_name, device_num = device_id.split(":")
+    device_name, device_num = _parse_device_string(device_id)
     samna.device_node.DeviceController.close_device(f"{device_name}_{device_num}")
+
+
+def _parse_device_string(device_id: str) -> (str, int):
+    device_splits = device_id.split(":")
+    device_name = device_splits[0]
+    if len(device_splits) > 1:
+        device_num = int(device_splits[1])
+    else:
+        device_num = 0
+    return device_name, device_num
