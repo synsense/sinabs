@@ -80,7 +80,6 @@ def verify_networks(
         verify_dvs_config(config_no_dvs, input_shape=input_shape, destination=None)
 
 
-
 def test_dvs_no_pooling():
     class Net(nn.Module):
         def __init__(self, input_layer: bool = False):

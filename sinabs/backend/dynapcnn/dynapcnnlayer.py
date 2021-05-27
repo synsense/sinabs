@@ -5,6 +5,7 @@ import sinabs.layers as sl
 from warnings import warn
 from .discretize import discretize_conv_spike_
 from copy import deepcopy
+from functools import reduce
 
 
 class DynapcnnLayer(nn.Module):
@@ -49,8 +50,13 @@ class DynapcnnLayer(nn.Module):
         spk = deepcopy(spk)
         if isinstance(conv, nn.Linear):
             conv = self._convert_linear_to_conv(conv)
-            spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
-            spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
+            if spk.state.dim() == 1 and len(spk.state) == 1 and spk.state.item() == 0.0:
+                # Layer is uninitialized. Leave it as it is
+                pass
+            else:
+                # Expand dims
+                spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
+                spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
@@ -180,7 +186,7 @@ class DynapcnnLayer(nn.Module):
             # 4-dimensional states should be the norm when there is a batch dim
             neurons_state = layer.state.transpose(2, 3)[0]
         else:
-            raise ValueError("Current state of spiking layer not understood.")
+            raise ValueError(f"Current state (shape: {layer.state.shape}) of spiking layer not understood.")
 
         # - Resetting vs returning to 0
         return_to_zero = layer.membrane_reset
@@ -306,6 +312,22 @@ class DynapcnnLayer(nn.Module):
             raise TypeError(error)
         self._input_shape = tuple(int(x) for x in in_shape)
         self._update_output_dimensions()
+
+    def summary(self):
+        return {
+            "pool": self.pool,
+            "kernel": list(self.conv_layer.weight.data.shape),
+            "neuron": list(self.spk_layer.state.shape)
+        }
+
+    def memory_summary(self):
+        summary = self.summary()
+        def mul(x, y): return x*y
+
+        return {
+            "kernel": reduce(mul, summary["kernel"]),
+            "neuron": reduce(mul, summary["neuron"]),
+            "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias)}
 
     def forward(self, x):
         """Torch forward pass."""

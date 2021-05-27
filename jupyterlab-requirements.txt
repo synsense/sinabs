@@ -1,0 +1,10 @@
+jupyterlab
+jupyterlab-code-formatter
+black
+jupyterlab-lsp
+python-lsp-server
+pillow
+torchvision
+tqdm
+ipywidgets
+matplotlib
