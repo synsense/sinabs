@@ -16,7 +16,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import open_device, _parse_device_string
+from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -189,7 +189,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         Parameters
         ----------
         device: String
-            cpu:0, cuda:0, dynapcnn, speck2
+            cpu:0, cuda:0, dynapcnndevkit, speck2devkit
         chip_layers_ordering: List/"auto"
             A list of layers on the device where you want each of the model layers to be placed.
         monitor_layers: None/List
@@ -434,13 +434,15 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
     def forward(self, x):
         if hasattr(self, "device") and _parse_device_string(self.device)[0] in ("dynapcnndevkit", "speck2devkit"):
+            _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
-            self.samna_device.get_io_module().write_config(0x0003, 1)  # Enable time stamp
+            disable_timestamps(self.device)
+            enable_timestamps(self.device)
             # Send input
             self.samna_device.get_model().write(x)
             time.sleep((x[-1].timestamp - x[0].timestamp)*1e-6 + 1)
             # Disable timestamp
-            self.samna_device.get_io_module().write_config(0x0003, 0)  # Disable time stamp
+            disable_timestamps(self.device)
             # Read events back
             evsOut = self.samna_output_buffer.get_events()
             return evsOut
@@ -449,6 +451,25 @@ class DynapcnnCompatibleNetwork(nn.Module):
             self.eval()
             with torch.no_grad():
                 return self.sequence(x)
+
+    def memory_summary(self):
+        """
+        Get a summary of the network's memory requirements
+
+        Returns
+        -------
+        dict:
+            A dictionary with keys kernel, neuron, bias.
+            The values are a list of the corresponding number per layer in the same order as the model
+
+        """
+        summary = {}
+        summary.update({k: list() for k in self.sequence[0].memory_summary().keys()})
+        for lyr in self.sequence:
+            lyr_summary = lyr.memory_summary()
+            for k, v in lyr_summary.items():
+                summary[k].append(v)
+        return summary
 
 
 def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[List[int], int], int, int]:
@@ -689,23 +710,3 @@ def validate_configuration(config, device: str) -> bool:
         raise Exception(f"Unknown device type {device}")
     return is_valid
 
-
-def memory_summary(net: DynapcnnCompatibleNetwork):
-    """
-    Get a summary of the network's memory requirements
-    Parameters
-    ----------
-    net: DynapcnnCompatibleNetwork
-        The network object
-
-    Returns
-    -------
-    summary
-
-    """
-    summary = []
-    for lyr in net.sequence:
-        lyr_summary = lyr.memory_summary()
-        summary.append(tuple(lyr_summary.values()))
-        columns = lyr_summary.keys()
-    return np.array(summary, dtype=[(x, int) for x in columns])

@@ -2,7 +2,7 @@ import samna
 import torch
 from itertools import groupby
 from typing import List, Dict
-from samna.dynapcnn.event import RouterEvent, Spike
+import samna
 
 # Managed global variables
 samna_node = None
@@ -25,19 +25,41 @@ device_types = {
 device_type_map = {v: k for (k, v) in device_types.items()}
 
 
-def enable_timestamps(device):
-    # NOTE: The hex code is specific to dynapcnn devkit
-    dk.get_io_module().write_config(0x0003, 1)
-    raise NotImplementedError
+def enable_timestamps(device: str) -> None:
+    """
+
+    Parameters
+    ----------
+    device: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+    """
+    dev_name, _ = _parse_device_string(device)
+    if dev_name != "dynapcnndevkit":
+        raise NotImplementedError
+    device = open_device(device)
+    device.get_io_module().write_config(0x0003, 1)
 
 
-def disable_timestamps(device):
-    # NOTE: The hex code is specific to dynapcnn devkit
-    dk.get_io_module().write_config(0x0003, 0)
-    raise NotImplementedError
+def disable_timestamps(device: str) -> None:
+    """
+
+    Parameters
+    ----------
+    device: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+    """
+    dev_name, _ = _parse_device_string(device)
+    if dev_name != "dynapcnndevkit":
+        raise NotImplementedError
+    device = open_device(device)
+    device.get_io_module().write_config(0x0003, 0)
 
 
-def raster_to_events(raster: torch.Tensor, layer: int = 0, dt=1e-3) -> List[Spike]:
+def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str="dynapcnndevkit:0") -> List:
     """
     Convert spike raster to events for DynaapcnnDevKit
 
@@ -53,12 +75,24 @@ def raster_to_events(raster: torch.Tensor, layer: int = 0, dt=1e-3) -> List[Spik
     dt: float
         Length of time step of the raster in seconds
 
+    device: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+
     Returns:
     --------
 
     events: List[Spike]
         A list of events that will be streamed to the device
     """
+    dev_name, _ = _parse_device_string(device)
+    if dev_name == "dynapcnndevkit":
+        Spike = samna.dynapcnn.event.Spike
+    elif dev_name == "speck2devkit":
+        Spike = samna.speck2.event.Spike
+    else:
+        raise NotImplementedError("Device type unknown")
     t, ch, y, x = torch.where(raster)
     evData = torch.stack((t, ch, y, x), dim=0).T
     events = []
@@ -73,14 +107,14 @@ def raster_to_events(raster: torch.Tensor, layer: int = 0, dt=1e-3) -> List[Spik
     return events
 
 
-def events_to_raster(eventList: List, layer: int = 0) -> torch.Tensor:
+def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
     """
     Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`
 
     Parameters:
     -----------
 
-    eventList: List
+    event_list: List
         A list comprising of events from samna API
 
     layer: int
@@ -91,14 +125,11 @@ def events_to_raster(eventList: List, layer: int = 0) -> torch.Tensor:
 
     raster: torch.Tensor
     """
-    evsFiltered = []
-    for ev in eventList:
-        if isinstance(ev, Spike):
-            if ev.layer == layer:
-                evsFiltered.append((ev.timestamp, ev.feature, ev.x, ev.y))
-
+    evs_filtered = filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list)
+    evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
     raise NotImplementedError
-    return evsFiltered
+    raster = map(rasterize, evs_filtered)
+    return raster
 
 
 def init_samna_node():
