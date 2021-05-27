@@ -75,7 +75,7 @@ class DynapcnnLayer(nn.Module):
 
         self._update_config_dict()
 
-    def _update_output_dimensions(self) -> Dict[str, int]:
+    def _update_output_dimensions(self):
         """
         Update output dimensions in `self.config_dict`
         """
@@ -231,14 +231,14 @@ class DynapcnnLayer(nn.Module):
 
         # - Padding
         dimensions["padding"] = {
-            "x": layer.padding[0],
-            "y": layer.padding[1],
+            "x": layer.padding[1],
+            "y": layer.padding[0],
         }
 
         # - Stride
         dimensions["stride"] = {
-            "x": layer.stride[0],
-            "y": layer.stride[1],
+            "x": layer.stride[1],
+            "y": layer.stride[0],
         }
 
         # - Kernel size
