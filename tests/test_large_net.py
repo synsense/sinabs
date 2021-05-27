@@ -110,3 +110,10 @@ def test_to_device():
     io.close_device("dynapcnndevkit:0")
 
     dynapcnn_net.to(device="dynapcnndevkit:1")
+
+def test_memory_summary():
+    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    summary = dynapcnn_net.memory_summary()
+
+    print(summary)
+
