@@ -141,7 +141,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                         "First layer cannot be pooling if `dvs_input` is `False`."
                     )
                 pooling, i_next, rescaling_from_pooling = consolidate_pooling(
-                    layers[i_layer:], dvs=True
+                    layers[i_layer:], dvs=True, discretize=self._discretize
                 )
 
                 input_shape = [
@@ -412,7 +412,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # - Consolidate pooling from subsequent layers
         pooling: Union[List[int], int]
-        pooling, i_next, rescaling = consolidate_pooling(layers[2:], dvs=False)
+        pooling, i_next, rescaling = consolidate_pooling(layers[2:], dvs=False, discretize=self._discretize)
 
         # The DynapcnnLayer object knows how to turn the conv-spk-pool trio to
         # a dynapcnn layer, and has a forward method, and computes the output shape
@@ -472,7 +472,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return summary
 
 
-def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[List[int], int], int, int]:
+def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool, discretize: bool) -> Tuple[Union[List[int], int], int, int]:
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -482,6 +482,8 @@ def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[L
             Contains `AvgPool2d` and other objects.
         dvs: bool
             If `True`, x- and y- pooling may be different and a tuple is returned instead of an integer.
+        discritize: bool
+            True if the weights of the model need to be discretized
 
     Returns
     -------
@@ -499,6 +501,10 @@ def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool) -> Tuple[Union[L
 
     for i_next, lyr in enumerate(layers):
         if isinstance(lyr, nn.AvgPool2d):
+            if discretize:
+                warn(
+                    "For average pooling, subsequent weights are scaled down. This can lead to larger quantization errors when `discretize` is `True`."
+                )
             # Update pooling size
             new_pooling = get_pooling_size(lyr, dvs=dvs)
             if dvs:
