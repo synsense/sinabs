@@ -19,7 +19,7 @@ class IAF(nn.Module):
         membrane_reset=False,
     ):
         """
-        Pytorch implementation of a spiking neuron with learning enabled.
+        Pytorch implementation of a Integrate and Fire neuron with learning enabled.
         This class is the base class for any layer that need to implement integrate-and-fire operations.
 
         :param threshold: Spiking threshold of the neuron.
@@ -27,7 +27,6 @@ class IAF(nn.Module):
         :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
         Default is equal to threshold. Ignored if membrane_reset is set.
         :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
-        :param layer_name: The name of the layer.
         """
         super().__init__()
         # Initialize neuron states
@@ -68,6 +67,7 @@ class IAF(nn.Module):
             self.activations = torch.zeros(shape, device=self.activations.device)
 
     def forward(self, syn_out: torch.Tensor):
+        # Expected input shape (time, ...)
         # Ensure the neuron state are initialized
         if self.state.shape != syn_out.shape[1:]:
             self.reset_states(shape=syn_out.shape[1:], randomize=False)
@@ -158,6 +158,7 @@ class SpikingLayer(IAF):
             self.batch_size = batch_size
 
     def forward(self, data):
+        # Expected input shape (batch*time, ...)
         out = data
         # Unsqueeze
         out = data.reshape((self.batch_size, -1, *data.shape[1:])).transpose(0, 1)
