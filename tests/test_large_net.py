@@ -98,18 +98,28 @@ def test_was_copied():
         assert lyr_snn is not lyr_dynapcnn
 
 
+def test_make_config():
+    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_out = dynapcnn_net(input_data)
+
+    config = dynapcnn_net.make_config(device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
+    config = dynapcnn_net.make_config(device="dynapcnndevkit:0", chip_layers_ordering="auto")
+
+
+
 @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
     dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
     dynapcnn_out = dynapcnn_net(input_data)
 
-    dynapcnn_net.to(device="dynapcnndevkit:0")
+
+    dynapcnn_net.to(device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
 
     # Close device for safe exit
     from sinabs.backend.dynapcnn import io
     io.close_device("dynapcnndevkit:0")
 
-    dynapcnn_net.to(device="dynapcnndevkit:1")
+    #dynapcnn_net.to(device="dynapcnndevkit:1")
 
 def test_memory_summary():
     dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
