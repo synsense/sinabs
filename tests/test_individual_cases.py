@@ -190,3 +190,29 @@ def test_flatten_linear():
     )
 
     networks_equal_output(input_data, seq)
+
+
+def test_no_spk_ending():
+    seq = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(512, 2),
+    )
+
+    with pytest.raises(TypeError):
+        DynapcnnCompatibleNetwork(
+            seq, input_shape=input_data.shape[1:], discretize=False
+        )
+
+
+def test_no_spk_middle():
+    seq = nn.Sequential(
+        nn.Flatten(),
+        nn.Linear(512, 10),
+        nn.Linear(10, 2),
+        SpikingLayer()
+    )
+
+    with pytest.raises(TypeError):
+        DynapcnnCompatibleNetwork(
+            seq, input_shape=input_data.shape[1:], discretize=False
+        )
