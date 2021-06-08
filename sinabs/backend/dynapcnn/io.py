@@ -2,7 +2,7 @@ import samna
 import torch
 from itertools import groupby
 from typing import List, Dict
-import samna
+import numpy as np
 
 # Managed global variables
 samna_node = None
@@ -59,7 +59,7 @@ def disable_timestamps(device: str) -> None:
     device.get_io_module().write_config(0x0003, 0)
 
 
-def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str="dynapcnndevkit:0") -> List:
+def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapcnndevkit:0") -> List:
     """
     Convert spike raster to events for DynaapcnnDevKit
 
@@ -107,6 +107,51 @@ def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str="dynapcnn
     return events
 
 
+def xytp_to_events(xytp: torch.Tensor, layer, device: str = "dynapcnndevkit:0") -> List:
+    """
+    Convert spike raster to events for DynaapcnnDevKit
+
+    Parameters:
+    -----------
+
+    xytp: torch.Tensor
+        A numpy structured array with columns x, y, timestamp, polarity
+
+    layer: int
+        The index of the layer to route the events to
+
+    device: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+
+    Returns:
+    --------
+
+    events: List[Spike]
+        A list of events that will be streamed to the device
+    """
+    dev_name, _ = _parse_device_string(device)
+    if dev_name == "dynapcnndevkit":
+        Spike = samna.dynapcnn.event.Spike
+    elif dev_name == "speck2devkit":
+        Spike = samna.speck2.event.Spike
+    else:
+        raise NotImplementedError("Device type unknown")
+
+    events = []
+    tstart = xytp["t"].min()
+    for row in xytp:
+        ev = Spike()
+        ev.layer = layer
+        ev.x = row["x"]
+        ev.y = row["y"]
+        ev.feature = row["p"]
+        ev.timestamp = row["t"] - tstart  # Time in uS
+        events.append(ev)
+    return events
+
+
 def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
     """
     Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`
@@ -130,6 +175,39 @@ def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
     raise NotImplementedError
     raster = map(rasterize, evs_filtered)
     return raster
+
+
+def events_to_xytp(event_list: List, layer: int) -> np.array:
+    """
+    Convert an eventList read from `samna` to a numpy structured array of "x", "y", "t", "channel".
+
+    Parameters:
+    -----------
+
+    event_list: List
+        A list comprising of events from samna API
+
+    layer: int
+        The index of layer for which the data needs to be converted
+
+    Returns:
+    --------
+
+    xytc: np.array
+        A numpy structured array with columns "x", "y", "t", "channel".
+    """
+    evs_filtered = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer, event_list))
+    xytc = np.empty(
+        len(evs_filtered),
+        dtype=[("x", np.uint16), ("y", np.uint16), ("t", np.uint64), ("channel", np.uint16)]
+    )
+
+    for i, event in enumerate(evs_filtered):
+        xytc[i]["x"] = event.x
+        xytc[i]["y"] = event.y
+        xytc[i]["t"] = event.timestamp
+        xytc[i]["channel"] = event.feature
+    return xytc
 
 
 def init_samna_node():

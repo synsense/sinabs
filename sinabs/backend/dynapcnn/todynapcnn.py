@@ -8,7 +8,6 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-import numpy as np
 from .dynapcnnlayer import DynapcnnLayer
 from .valid_mapping import get_valid_mapping
 import torch.nn as nn
@@ -183,7 +182,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def to(self, device="cpu", chip_layers_ordering="auto", monitor_layers: List=None, config_modifier=None):
+    def to(self, device="cpu", chip_layers_ordering="auto",
+           monitor_layers: Optional[List] = None, config_modifier=None):
         """
 
         Parameters
@@ -214,21 +214,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
             device_name, _ = _parse_device_string(device)
             if device_name in ("dynapcnndevkit", "speck2devkit"):
                 # Generate config
-                config = self.make_config(chip_layers_ordering=chip_layers_ordering, device=device)
-
-                # Enable monitors
-                if monitor_layers is not None:
-                    monitor_layers = monitor_layers.copy()
-                    if "dvs" in monitor_layers:
-                        config.dvs_layer.monitor_enable = True
-                        config.dvs_layer.monitor_sensor_enable = True
-                        monitor_layers.remove("dvs")
-                    for lyr_indx in monitor_layers:
-                        config.cnn_layers[lyr_indx].monitor_enable = True
-
-                # Apply user config modifier
-                if config_modifier is not None:
-                    config = config_modifier(config)
+                config = self.make_config(
+                    chip_layers_ordering=chip_layers_ordering,
+                    device=device,
+                    monitor_layers=monitor_layers,
+                    config_modifier=config_modifier,
+                )
 
                 # Apply configuration to device
                 self.samna_device = open_device(device)
@@ -255,7 +246,13 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             raise Exception("Unknown device description.")
 
-    def make_config(self, chip_layers_ordering: Union[Sequence[int], str] = range(9), device="dynapcnndevkit:0"):
+    def make_config(
+            self,
+            chip_layers_ordering: Union[Sequence[int], str] = range(9),
+            device="dynapcnndevkit:0",
+            monitor_layers: Optional[List] = None,
+            config_modifier=None
+    ):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
@@ -265,6 +262,16 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 an automated procedure will be used to find a valid ordering.
             device: String
                 dynapcnndevkit:0 or speck2devkit:0
+            monitor_layers: None/List
+                A list of all chip-layers that you want to monitor.
+                If you want to monitor the dvs layer for eg.
+                    ``
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    ``
+            config_modifier:
+                A user configuration modifier method.
+                This function can be used to make any custom changes you want to make to the configuration object.
 
         Returns
         -------
@@ -312,13 +319,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
 
-
         else:
             dvs.destinations[0].enable = False
         # TODO: Modify in case of non-sequential models
         dvs.destinations[1].enable = False
 
-        ## Update config object according to model specifications
+        # Update config object according to model specifications
         # Check for first layer to be sumpool, while ignoring InputLayer
         for first_layer in self.sequence:
             if isinstance(first_layer, sl.InputLayer):
@@ -328,13 +334,27 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if isinstance(first_layer, sl.SumPool2d):
             if self._dvs_input:
                 assert (
-                        first_layer.stride == first_layer.kernel_size
+                    first_layer.stride == first_layer.kernel_size
                 )
                 dvs.pooling.y, dvs.pooling.x = first_layer.kernel_size
             else:
                 raise ValueError("Network cannot start with pooling if dvs_input=False")
 
         write_model_to_config(self.sequence, config, chip_layers)
+
+        # Enable monitors
+        if monitor_layers is not None:
+            monitor_layers = monitor_layers.copy()
+            if "dvs" in monitor_layers:
+                config.dvs_layer.monitor_enable = True
+                config.dvs_layer.monitor_sensor_enable = True
+                monitor_layers.remove("dvs")
+            for lyr_indx in monitor_layers:
+                config.cnn_layers[lyr_indx].monitor_enable = True
+
+        # Apply user config modifier
+        if config_modifier is not None:
+            config = config_modifier(config)
 
         # Validate config
         if validate_configuration(config, device_name):
@@ -715,4 +735,3 @@ def validate_configuration(config, device: str) -> bool:
     else:
         raise Exception(f"Unknown device type {device}")
     return is_valid
-
