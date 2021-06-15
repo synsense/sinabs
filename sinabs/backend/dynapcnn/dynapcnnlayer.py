@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import numpy as np
 from typing import Dict, Tuple, Optional
 import sinabs.layers as sl
 from warnings import warn
@@ -321,12 +322,30 @@ class DynapcnnLayer(nn.Module):
         }
 
     def memory_summary(self):
+        """
+        Computes the amount of memory required for each of the components.
+        Note that this is not necessarily the same as the number of parameters due to some architecture design constraints.
+
+        .. math::
+
+            K_{MT} = c \\cdot 2^{\\lceil \\log_2\\left(k_xk_y\\right) \\rceil + \\lceil \\log_2\\left(f\\right) \\rceil}
+
+        .. math::
+             
+            N_{MT} = f \\cdot 2^{ \\lceil \\log_2\\left(f_y\\right) \\rceil + \\lceil \\log_2\\left(f_x\\right) \\rceil }
+
+        Returns
+        -------
+        A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
+
+        """
         summary = self.summary()
-        def mul(x, y): return x*y
+        f, c, h, w = summary["kernel"]
+        hn, hw = summary["neuron"][-2:]
 
         return {
-            "kernel": reduce(mul, summary["kernel"]),
-            "neuron": reduce(mul, summary["neuron"]),
+            "kernel": c*pow(2, np.ceil(np.log2(h*w)) + np.ceil(np.log2(f))),
+            "neuron": f*pow(2, np.ceil(np.log2(hn)) + np.ceil(np.log2(hw))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias)}
 
     def forward(self, x):
