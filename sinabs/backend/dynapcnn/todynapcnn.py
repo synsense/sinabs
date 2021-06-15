@@ -1,3 +1,4 @@
+import warnings
 from copy import deepcopy
 from warnings import warn
 import time
@@ -708,5 +709,7 @@ def validate_configuration(config, device: str) -> bool:
         is_valid, message = samna.speck2.validate_configuration(config)
     else:
         raise Exception(f"Unknown device type {device}")
+    if not is_valid:
+        warnings.warn(message)
     return is_valid
 
