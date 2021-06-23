@@ -141,8 +141,9 @@ class Network(torch.nn.Module):
 
         if name_list is None:
             name_list = ["Input"]
-            for layer_name, lyr in self.spiking_model.named_children():
-                name_list.append(layer_name)
+            for layer_name, lyr in self.spiking_model.named_modules():
+                if isinstance(lyr, SpikingLayer):
+                    name_list.append(layer_name)
 
         analog_activations, spike_rates = self.compare_activations(
             data, name_list=name_list, compute_rate=compute_rate,
