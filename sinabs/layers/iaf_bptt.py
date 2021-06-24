@@ -1,20 +1,21 @@
-import torch
-import numpy as np
-import torch.nn as nn
-from typing import Optional, Union, List, Tuple
-from .functional import threshold_subtract, threshold_reset
+from typing import Optional, Union
 
-# - Type alias for array-like objects
-ArrayLike = Union[np.ndarray, List, Tuple]
+import torch
+
+from .functional import threshold_subtract, threshold_reset
+from .spiking_layer import SpikingLayer
+from .pack_dims import squeeze_class
 
 window = 1.0
 
+__all__ = ["IAF", "IAFSqueeze"]
 
-class IAF(nn.Module):
+
+class IAF(SpikingLayer):
     def __init__(
         self,
         threshold: float = 1.0,
-        threshold_low: Optional[float] = -1.0,
+        threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
     ):
@@ -22,11 +23,17 @@ class IAF(nn.Module):
         Pytorch implementation of a Integrate and Fire neuron with learning enabled.
         This class is the base class for any layer that need to implement integrate-and-fire operations.
 
-        :param threshold: Spiking threshold of the neuron.
-        :param threshold_low: Lower bound for membrane potential.
-        :param membrane_subtract: The amount to subtract from the membrane potential upon spiking. \
-        Default is equal to threshold. Ignored if membrane_reset is set.
-        :param membrane_reset: bool, if True, reset the membrane to 0 on spiking.
+        Parameters
+        ----------
+        threshold: float
+            Spiking threshold of the neuron.
+        threshold_low: float or None
+            Lower bound for membrane potential.
+        membrane_subtract: float or None
+            The amount to subtract from the membrane potential upon spiking.
+            Default is equal to threshold. Ignored if membrane_reset is set.
+        membrane_reset: bool
+            If True, reset the membrane to 0 on spiking.
         """
         super().__init__()
         # Initialize neuron states
@@ -67,7 +74,20 @@ class IAF(nn.Module):
             self.activations = torch.zeros(shape, device=self.activations.device)
 
     def forward(self, syn_out: torch.Tensor):
-        # Expected input shape (time, ...)
+        """
+        Forward pass with given data.
+
+        Parameters
+        ----------
+        syn_out : torch.Tensor
+            Data to be processed. Expected shape: (time, batch, ...)
+
+        Returns
+        -------
+        torch.Tensor
+            Output data. Same shape as `syn_out`.
+        """
+
         # Ensure the neuron state are initialized
         if self.state.shape != syn_out.shape[1:]:
             self.reset_states(shape=syn_out.shape[1:], randomize=False)
@@ -87,10 +107,14 @@ class IAF(nn.Module):
             # update neuron states (membrane potentials)
             if self.membrane_reset:
                 # sum the previous state only where there were no spikes
-                state = syn_out[iCurrentTimeStep] + state * (activations == 0.)
+                state = syn_out[iCurrentTimeStep] + state * (activations == 0.0)
             else:
                 # subtract a number of membrane_subtract's as there are spikes
-                state = syn_out[iCurrentTimeStep] + state - activations * self.membrane_subtract
+                state = (
+                    syn_out[iCurrentTimeStep]
+                    + state
+                    - activations * self.membrane_subtract
+                )
             if threshold_low is not None:
                 # This is equivalent to functional.threshold. non zero threshold is not supported for onnx
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
@@ -120,49 +144,30 @@ class IAF(nn.Module):
         return in_shape
 
     def __deepcopy__(self, memo=None):
-        other = SpikingLayer(
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self._membrane_subtract,
-            batch_size=self.batch_size,
-            membrane_reset=self.membrane_reset,
-        )
+        # TODO: What is `memo`?
+
+        other = self.__class__(**self._param_dict)
 
         other.state = self.state.detach().clone()
         other.activations = self.activations.detach().clone()
 
         return other
 
+    @property
+    def _param_dict(self) -> dict:
+        """
+        Dict of all parameters relevant for creating a new instance with same
+        parameters as `self`
+        """
+        param_dict = super()._param_dict()
+        param_dict.update(
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self._membrane_subtract,
+            membrane_reset=self.membrane_reset,
+        )
+        return param_dict
 
-class SpikingLayer(IAF):
-    """
-    Pytorch implementation of a spiking neuron with learning enabled.
-    This class is the base class for any layer that need to implement integrate-and-fire operations.
 
-    Takes input of shape (batch*time, ...)
-
-    Params
-    ------
-    batch_size: int/None
-        Specify the batch size of the input data
-        If None, batch_size 1 is assumed
-
-    See :py:class:`IAF` class for other parameters of this class
-
-    """
-    def __init__(self, *args, batch_size=1, **kwargs):
-        super().__init__(*args, **kwargs)
-        if batch_size is None:
-            self.batch_size = 1
-        else:
-            self.batch_size = batch_size
-
-    def forward(self, data):
-        # Expected input shape (batch*time, ...)
-        out = data
-        # Unsqueeze
-        out = data.reshape((self.batch_size, -1, *data.shape[1:])).transpose(0, 1)
-        out = super().forward(out)
-        # Flatten batch, time
-        out = out.transpose(0, 1).reshape((-1, *out.shape[2:]))
-        return out
+# - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.
+IAFSqueeze = squeeze_class(IAF)

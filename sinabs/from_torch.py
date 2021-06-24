@@ -64,11 +64,16 @@ class SpkConverter(object):
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
     :param bias_rescaling: Biases are divided by this value.
+    :param num_timesteps: Number of timesteps per sample. If None, `batch_size` \
+    must be provided to seperate batch and time dimensions.
+    :param batch_size: Must be provided if `num_timesteps` is None and is \
+    ignored otherwise.
     :param synops: If True (default: False), register hooks for counting synaptic \
     operations during foward passes.
     :param add_spiking_output: If True (default: False), add a spiking \
     layer to the end of a sequential model if not present.
     """
+
     def __init__(
         self,
         input_shape=None,
@@ -76,6 +81,7 @@ class SpkConverter(object):
         threshold_low=-1.0,
         membrane_subtract=None,
         bias_rescaling=1.0,
+        num_timesteps=None,
         batch_size=None,
         synops=False,
         add_spiking_output=False,
@@ -85,17 +91,28 @@ class SpkConverter(object):
         self.membrane_subtract = membrane_subtract
         self.bias_rescaling = bias_rescaling
         self.batch_size = batch_size
+        self.num_timesteps = num_timesteps
         self.synops = synops
         self.input_shape = input_shape
         self.add_spiking_output = add_spiking_output
 
     def relu2spiking(self):
-        return sl.SpikingLayerBPTT(
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self.membrane_subtract,
-            batch_size=self.batch_size,
-        ).to(self.device)
+
+        if self.num_timesteps is None and self.batch_size is None:
+            return sl.IAF(
+                threshold=self.threshold,
+                threshold_low=self.threshold_low,
+                membrane_subtract=self.membrane_subtract,
+            ).to(self.device)
+
+        else:
+            return sl.IAFSqueeze(
+                threshold=self.threshold,
+                threshold_low=self.threshold_low,
+                membrane_subtract=self.membrane_subtract,
+                batch_size=self.batch_size,
+                num_timesteps=self.num_timesteps,
+            ).to(self.device)
 
     def convert(self, model):
         """
@@ -123,9 +140,7 @@ class SpkConverter(object):
 
         self.convert_module(spk_model)
         network = Network(
-            model, spk_model,
-            input_shape=self.input_shape,
-            synops=self.synops
+            model, spk_model, input_shape=self.input_shape, synops=self.synops
         )
 
         return network
@@ -139,7 +154,9 @@ class SpkConverter(object):
             if isinstance(subm, (nn.ReLU, sl.NeuromorphicReLU)):
                 setattr(module, name, self.relu2spiking())
 
-            elif self.bias_rescaling != 1.0 and isinstance(subm, (nn.Linear, nn.Conv2d)):
+            elif self.bias_rescaling != 1.0 and isinstance(
+                subm, (nn.Linear, nn.Conv2d)
+            ):
                 if subm.bias is not None:
                     subm.bias.data = (
                         subm.bias.data.clone().detach() / self.bias_rescaling
