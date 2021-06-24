@@ -81,7 +81,7 @@ class Network(torch.nn.Module):
         name_list: Optional[ArrayLike] = None,
         compute_rate: bool = False,
         verbose: bool = False,
-    ) -> ([np.ndarray], [np.ndarray]):
+    ) -> ([np.ndarray], [np.ndarray], [str]):
         """
         Compare activations of the analog model and the SNN for a given data sample
 
@@ -91,14 +91,16 @@ class Network(torch.nn.Module):
             compute_rate (bool):    True if you want to compute firing rate. By default spike count is returned
             verbose (bool):         print debugging logs to the terminal
         Returns:
-            tuple: A tuple of lists (ann_activity, snn_activity)
+            tuple: A tuple of lists (ann_activity, snn_activity, name_list)
                 - ann_activity: output activity of the ann layers
                 - snn_activity: output activity of the snn layers
+                - name_list: spiking layers' name list for plotting comparison
         """
         if name_list is None:
             name_list = ["Input"]
-            for layer_name, lyr in self.spiking_model.named_children():
-                name_list.append(layer_name)
+            for layer_name, lyr in self.spiking_model.named_modules():
+                if isinstance(lyr, SpikingLayer):
+                    name_list.append(layer_name)
 
         if verbose:
             print("Comparing activations for {0}".format(name_list))
@@ -117,7 +119,7 @@ class Network(torch.nn.Module):
         spike_rates = get_network_activations(
             self.spiking_model, data, name_list=name_list, bRate=compute_rate
         )
-        return analog_activations, spike_rates
+        return analog_activations, spike_rates, name_list
 
     def plot_comparison(
         self,
@@ -139,15 +141,10 @@ class Network(torch.nn.Module):
         """
         import pylab
 
-        if name_list is None:
-            name_list = ["Input"]
-            for layer_name, lyr in self.spiking_model.named_modules():
-                if isinstance(lyr, SpikingLayer):
-                    name_list.append(layer_name)
-
-        analog_activations, spike_rates = self.compare_activations(
-            data, name_list=name_list, compute_rate=compute_rate,
-        )
+        analog_activations, spike_rates, name_list = self.compare_activations(data,
+                                                                              name_list=name_list,
+                                                                              compute_rate=compute_rate,
+                                                                              )
         for nLyrIdx in range(len(name_list)):
             pylab.scatter(
                 spike_rates[nLyrIdx],
