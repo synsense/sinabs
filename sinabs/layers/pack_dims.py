@@ -134,4 +134,6 @@ def squeeze_class(cls: Type) -> Type:
 
     Squeeze.__name__ = cls.__name__ + "Squeeze"
 
+    Squeezed.register(Squeeze)
+
     return Squeeze

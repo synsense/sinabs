@@ -70,6 +70,7 @@ def test_membrane_reset_multiple_spikes():
 def test_iaf_batching():
     import torch
     from sinabs.layers import IAFSqueeze, IAF
+    from sinabs.layers.pack_dims import Squeezed
 
     batch_size = 7
     t_steps = 9
@@ -79,6 +80,8 @@ def test_iaf_batching():
     sl = IAF(
         threshold=1.0, threshold_low=-1.0, membrane_subtract=1, membrane_reset=False
     )
+
+    assert not isinstance(sl, Squeezed)
 
     data = torch.rand((batch_size, t_steps, n_neurons))
     out_nosqueeze = sl(data)
@@ -92,6 +95,10 @@ def test_iaf_batching():
         batch_size=batch_size,
         membrane_reset=False,
     )
+
+    # Make sure that layer is correctly registered as `Squeezed`
+    assert isinstance(sl, Squeezed)
+
     data_squeezed = data.reshape(-1, n_neurons)
     out_batch = sl(data_squeezed)
     assert out_batch.shape == (t_steps * batch_size, n_neurons)
@@ -104,6 +111,10 @@ def test_iaf_batching():
         num_timesteps=t_steps,
         membrane_reset=False,
     )
+
+    # Make sure that layer is correctly registered as `Squeezed`
+    assert isinstance(sl, Squeezed)
+
     out_steps = sl(data_squeezed)
     assert out_steps.shape == (batch_size * t_steps, n_neurons)
 
