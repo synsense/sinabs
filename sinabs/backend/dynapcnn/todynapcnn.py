@@ -289,7 +289,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             raise ImportError("`samna` does not appear to be installed.")
 
         if chip_layers_ordering == "auto":
-            chip_layers = range(9)  # start with default, correct if necessary
+            chip_layers = range(len(self.compatible_layers))  # start with default, correct if necessary
         else:
             chip_layers = chip_layers_ordering
 
