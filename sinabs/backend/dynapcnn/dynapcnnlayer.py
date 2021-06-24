@@ -341,11 +341,12 @@ class DynapcnnLayer(nn.Module):
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        hn, hw = summary["neuron"][-2:]
+        neuron_height = self.dimensions["output_shape"]["size"]["y"]
+        neuron_width = self.dimensions["output_shape"]["size"]["x"]
 
         return {
             "kernel": c*pow(2, np.ceil(np.log2(h*w)) + np.ceil(np.log2(f))),
-            "neuron": f*pow(2, np.ceil(np.log2(hn)) + np.ceil(np.log2(hw))),
+            "neuron": f*pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias)}
 
     def forward(self, x):

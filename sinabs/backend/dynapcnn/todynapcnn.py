@@ -353,7 +353,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 # apply the mapping
                 ordering = [mapping[i] for i in chip_layers]
 
-                print("Not valid, trying ordering", ordering)
+                print(f"Auto placement: Trying chip_layer_ordering={ordering}")
                 return self.make_config(chip_layers_ordering=ordering, device=device)
             else:
                 raise ValueError(f"Network not valid for {device}")
