@@ -80,13 +80,16 @@ class IAF(SpikingLayer):
         Parameters
         ----------
         syn_out : torch.Tensor
-            Data to be processed. Expected shape: (time, batch, ...)
+            Data to be processed. Expected shape: (batch, time, ...)
 
         Returns
         -------
         torch.Tensor
             Output data. Same shape as `syn_out`.
         """
+
+        # Move time dimension to front
+        syn_out = syn_out.transpose(0, 1)
 
         # Ensure the neuron state are initialized
         if self.state.shape != syn_out.shape[1:]:
@@ -132,7 +135,7 @@ class IAF(SpikingLayer):
         all_spikes = torch.stack(spikes)
         self.spikes_number = all_spikes.abs().sum()
 
-        return all_spikes
+        return all_spikes.transpose(0, 1)  # Move time after batch dimension
 
     def get_output_shape(self, in_shape):
         """

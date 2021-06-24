@@ -13,7 +13,8 @@ def from_model(
     threshold_low=-1.0,
     membrane_subtract=None,
     bias_rescaling=1.0,
-    batch_size=None,
+    num_timesteps=None,
+    batch_size=1,
     synops=False,
     add_spiking_output=False,
 ):
@@ -32,6 +33,10 @@ def from_model(
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
     :param bias_rescaling: Biases are divided by this value.
+    :param num_timesteps: Number of timesteps per sample. If None, `batch_size` \
+    must be provided to seperate batch and time dimensions.
+    :param batch_size: Must be provided if `num_timesteps` is None and is \
+    ignored otherwise.
     :param synops: If True (default: False), register hooks for counting synaptic \
     operations during forward passes.
     :param add_spiking_output: If True (default: False), add a spiking layer \
@@ -82,7 +87,7 @@ class SpkConverter(object):
         membrane_subtract=None,
         bias_rescaling=1.0,
         num_timesteps=None,
-        batch_size=None,
+        batch_size=1,
         synops=False,
         add_spiking_output=False,
     ):
@@ -98,21 +103,13 @@ class SpkConverter(object):
 
     def relu2spiking(self):
 
-        if self.num_timesteps is None and self.batch_size is None:
-            return sl.IAF(
-                threshold=self.threshold,
-                threshold_low=self.threshold_low,
-                membrane_subtract=self.membrane_subtract,
-            ).to(self.device)
-
-        else:
-            return sl.IAFSqueeze(
-                threshold=self.threshold,
-                threshold_low=self.threshold_low,
-                membrane_subtract=self.membrane_subtract,
-                batch_size=self.batch_size,
-                num_timesteps=self.num_timesteps,
-            ).to(self.device)
+        return sl.IAFSqueeze(
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self.membrane_subtract,
+            batch_size=self.batch_size,
+            num_timesteps=self.num_timesteps,
+        ).to(self.device)
 
     def convert(self, model):
         """

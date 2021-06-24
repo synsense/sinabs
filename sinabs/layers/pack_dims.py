@@ -23,7 +23,7 @@ class SqueezeBatchTime(nn.Module):
         self.batch_size = batch_size
 
     def forward(self, data):
-        all_spikes = data.transpose(0, 1).reshape((-1, *data.shape[2:]))
+        all_spikes = data.reshape((-1, *data.shape[2:]))
         return all_spikes
 
 
@@ -33,7 +33,7 @@ class UnsqueezeBatchTime(nn.Module):
         self.batch_size = batch_size
 
     def forward(self, data):
-        syn_out = data.reshape((self.batch_size, -1, *data.shape[1:])).transpose(0, 1)
+        syn_out = data.reshape((self.batch_size, -1, *data.shape[1:]))
         return syn_out
 
 
@@ -109,8 +109,8 @@ def squeeze_class(cls: Type) -> Type:
                     )
                 unsqueezed = data.reshape(self.batch_size, -1, *original_shape[1:])
 
-            # Bring time to 1st dim, apply forward and move batch dim to first again
-            output_unsqueezed = super().forward(unsqueezed.movedim(1, 0)).movedim(0, 1)
+            # Apply actual forward call
+            output_unsqueezed = super().forward(unsqueezed)
 
             # Squeeze batch and time again
             return output_unsqueezed.reshape(-1, *output_unsqueezed.shape[2:])
