@@ -4,9 +4,9 @@ from typing import Type, Optional
 from torch import nn
 
 
-class Squeezed(ABC):
+class Squeeze(ABC):
     """
-    Abstract base class to indicate that a layer is of "squeezed" type, i.e.
+    Abstract base class to indicate that a layer is of "squeeze" type, i.e.
     its forward method expects data with batch and time as one dimension.
     """
 
@@ -58,7 +58,7 @@ def squeeze_class(cls: Type) -> Type:
     if not hasattr(cls, "forward"):
         return ValueError("`cls` must be a layer class with forward method.")
 
-    class Squeeze(cls):
+    class Sqz(cls):
         __doc__ = f"""
         "Squeezed" version of :py:class:`{cls.__name__}`, whose forward method expects
         batch and time as a single dimension.
@@ -132,8 +132,8 @@ def squeeze_class(cls: Type) -> Type:
 
         __qualname__ = cls.__name__ + "Squeeze"
 
-    Squeeze.__name__ = cls.__name__ + "Squeeze"
+    Sqz.__name__ = cls.__name__ + "Squeeze"
 
-    Squeezed.register(Squeeze)
+    Squeeze.register(Sqz)
 
-    return Squeeze
+    return Sqz
