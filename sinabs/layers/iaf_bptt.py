@@ -67,8 +67,11 @@ class IAF(SpikingLayer):
             shape = self.state.shape
 
         if randomize:
-            self.state = torch.rand(shape, device=device)
-            self.activations = torch.rand(shape, device=device)
+            # State between lower and upper threshold
+            low = self.threshold_low or -self.threshold
+            width = self.threshold - low
+            self.state = torch.rand(shape, device=device) * width + low
+            self.activations = torch.zeros(shape, device=self.activations.device)
         else:
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
