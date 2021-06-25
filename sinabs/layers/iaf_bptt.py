@@ -76,12 +76,14 @@ class IAF(SpikingLayer):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
-    def detach_state_grad(self):
+    def zero_grad(self):
         """
-        Remove gradients from stored states and activations. This is helpful when
+        In addition to zeroing gradients of registered parameters,
+        remove gradients from stored states and activations. This is helpful when
         state should be maintained between `forward` calls but backpropagation of
         gradients should not extend beyond single `forward` call.
         """
+        super().zero_grad()
         self.state = self.state.data
         self.activations = self.activations.data
 

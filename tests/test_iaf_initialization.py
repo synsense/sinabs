@@ -124,7 +124,7 @@ def test_iaf_batching():
     assert (out_unsqueezed == out_nosqueeze).all()
 
 
-def test_detach_state_grad():
+def test_zero_grad():
     import pytest
     import torch
     from sinabs.layers import IAF
@@ -158,7 +158,7 @@ def test_detach_state_grad():
     optimizer.zero_grad()
 
     # Detach state gradients to avoid backpropagating through stored states.
-    sl.detach_state_grad()
+    sl.zero_grad()
 
     out1 = model(data1)
 
