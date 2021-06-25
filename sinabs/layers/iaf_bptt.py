@@ -76,6 +76,15 @@ class IAF(SpikingLayer):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
+    def detach_state_grads(self):
+        """
+        Remove gradients from stored states and activations. This is helpful when
+        state should be maintained between `forward` calls but backpropagation of
+        gradients should not extend beyond single `forward` call.
+        """
+        self.state = self.state.data
+        self.activations = self.activations.data
+
     def forward(self, input_spikes: torch.Tensor):
         """
         Forward pass with given data.
