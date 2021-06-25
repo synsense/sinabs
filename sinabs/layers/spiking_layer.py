@@ -26,3 +26,17 @@ class SpikingLayer(torch.nn.Module, ABC):
         parameters as `self`
         """
         return dict()
+
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        r"""
+        Zero's the gradients for buffers/states along with the parameters.
+        See :meth:`torch.nn.Module.zero_grad` for details
+        """
+        # Zero grad parameters
+        super().zero_grad(set_to_none)
+        # Zero grad buffers
+        for b in self.buffers():
+            if b.grad_fn is not None:
+                b.detach_()
+            else:
+                b.requires_grad_(False)
