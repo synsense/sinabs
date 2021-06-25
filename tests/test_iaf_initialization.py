@@ -122,3 +122,52 @@ def test_iaf_batching():
     assert (out_steps == out_batch).all()
     out_unsqueezed = out_steps.reshape(batch_size, t_steps, n_neurons)
     assert (out_unsqueezed == out_nosqueeze).all()
+
+
+def test_detach_state_grad():
+    import pytest
+    import torch
+    from sinabs.layers import IAF
+
+    batch_size = 7
+    t_steps = 9
+    n_neurons = 13
+
+    # No squeeze
+    sl = IAF(
+        threshold=1.0, threshold_low=-1.0, membrane_subtract=1, membrane_reset=False
+    )
+    conv = torch.nn.Conv1d(
+        in_channels=t_steps,
+        out_channels=t_steps,
+        kernel_size=3,
+        padding=1,
+        groups=t_steps,
+    )
+    model = torch.nn.Sequential(conv, sl)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+
+    data0, data1, data2 = torch.rand((3, batch_size, t_steps, n_neurons))
+
+    out0 = model(data0)
+
+    loss = torch.nn.functional.mse_loss(out0, torch.zeros_like(out0))
+    loss.backward()
+
+    optimizer.step()
+    optimizer.zero_grad()
+
+    # Detach state gradients to avoid backpropagating through stored states.
+    sl.detach_state_grad()
+
+    out1 = model(data1)
+
+    loss = torch.nn.functional.mse_loss(out1, torch.zeros_like(out1))
+    loss.backward()
+
+    # Make sure that without detaching there is a RuntimeError
+    with pytest.raises(RuntimeError):
+        out2 = model(data2)
+
+        loss = torch.nn.functional.mse_loss(out2, torch.zeros_like(out2))
+        loss.backward()
