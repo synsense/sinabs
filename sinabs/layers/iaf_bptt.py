@@ -73,30 +73,28 @@ class IAF(SpikingLayer):
             self.state = torch.zeros(shape, device=self.state.device)
             self.activations = torch.zeros(shape, device=self.activations.device)
 
-    def forward(self, syn_out: torch.Tensor):
+    def forward(self, input_spikes: torch.Tensor):
         """
         Forward pass with given data.
 
         Parameters
         ----------
-        syn_out : torch.Tensor
+        input_spikes : torch.Tensor
             Data to be processed. Expected shape: (batch, time, ...)
 
         Returns
         -------
         torch.Tensor
-            Output data. Same shape as `syn_out`.
+            Output data. Same shape as `input_spikes`.
         """
 
-        # Move time dimension to front
-        syn_out = syn_out.transpose(0, 1)
-
         # Ensure the neuron state are initialized
-        if self.state.shape != syn_out.shape[1:]:
-            self.reset_states(shape=syn_out.shape[1:], randomize=False)
+        shape_notime = (input_spikes.shape[0], *input_spikes.shape[2:])
+        if self.state.shape != shape_notime:
+            self.reset_states(shape=shape_notime, randomize=False)
 
         # Determine no. of time steps from input
-        time_steps = len(syn_out)
+        time_steps = input_spikes.shape[1]
 
         # Local variables
         threshold = self.threshold
@@ -110,11 +108,11 @@ class IAF(SpikingLayer):
             # update neuron states (membrane potentials)
             if self.membrane_reset:
                 # sum the previous state only where there were no spikes
-                state = syn_out[iCurrentTimeStep] + state * (activations == 0.0)
+                state = input_spikes[:, iCurrentTimeStep] + state * (activations == 0.0)
             else:
                 # subtract a number of membrane_subtract's as there are spikes
                 state = (
-                    syn_out[iCurrentTimeStep]
+                    input_spikes[:, iCurrentTimeStep]
                     + state
                     - activations * self.membrane_subtract
                 )
@@ -135,7 +133,7 @@ class IAF(SpikingLayer):
         all_spikes = torch.stack(spikes)
         self.spikes_number = all_spikes.abs().sum()
 
-        return all_spikes.transpose(0, 1)  # Move time after batch dimension
+        return all_spikes
 
     def get_output_shape(self, in_shape):
         """
