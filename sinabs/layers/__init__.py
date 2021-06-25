@@ -6,8 +6,8 @@ from .neuromorphic_relu import NeuromorphicReLU
 from .sumpool2d import SumPool2d
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
-from .iaf_bptt import SpikingLayer
-from .iaf_bptt import SpikingLayer as SpikingLayerBPTT
+from .spiking_layer import SpikingLayer
+from .iaf_bptt import IAF, IAFSqueeze
 
 # Deprecated
 from .deprecated.flatten import FlattenLayer

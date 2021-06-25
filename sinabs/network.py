@@ -10,6 +10,7 @@ from .utils import (
     get_activations,
 )
 from .layers import SpikingLayer
+from .synopcounter import SNNSynOpCounter
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 
@@ -21,11 +22,9 @@ class Network(torch.nn.Module):
     Attributes:
         spiking_model: torch.nn.Module, a spiking neural network model
         analog_model: torch.nn.Module, an artifical neural network model
-        graph: pandas DataFrame
         input_shape: Tuple, size of input
-        quantize_activation: bool, if true, the analog model will be initialized
-                           with a quantization layer after each activation
-
+        synops: If True (default: False), register hooks for counting synaptic \
+        operations during forward passes, instantiating `sinabs.SNNSynOpCounter`.
     """
 
     def __init__(
@@ -33,15 +32,16 @@ class Network(torch.nn.Module):
         analog_model: Optional = None,
         spiking_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
-        quantize_activation: bool = False,
-        nbit_quantize: Optional[int] = None,
+        synops: bool = False,
     ):
         super().__init__()
         self.spiking_model: nn.Module = spiking_model
         self.analog_model: nn.Module = analog_model
-        self.graph: pd.DataFrame = None
         self.input_shape = input_shape
-        self.quantize_activation = quantize_activation
+
+        self.synops = synops
+        if synops:
+            self.synops_counter = SNNSynOpCounter(self.spiking_model)
 
         if input_shape is not None and spiking_model is not None:
             self._compute_shapes(input_shape)
@@ -163,31 +163,17 @@ class Network(torch.nn.Module):
 
     def reset_states(self):
         """
-        Reset all neuron states in the submodules
+        Reset all neuron states in the submodules.
         """
         for lyr in self.modules():
             if isinstance(lyr, SpikingLayer):
                 lyr.reset_states()
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:
+        """
+        Please see docs for `sinabs.SNNSynOpCounter.get_synops()`.
+        """
         if num_evs_in is not None:
             warnings.warn("num_evs_in is deprecated and has no effect")
 
-        SynOps_dataframe = pd.DataFrame()
-        for (layer_name, lyr) in self.spiking_model.named_modules():
-            if hasattr(lyr, 'synops'):
-                SynOps_dataframe = SynOps_dataframe.append(
-                    pd.Series(
-                        {
-                            "Layer": layer_name,
-                            "In": lyr.tot_in,
-                            "Fanout_Prev": lyr.fanout,
-                            "SynOps": lyr.synops,
-                            "Time_window": lyr.tw,
-                            "SynOps/s": lyr.synops / lyr.tw * 1000,
-                        }
-                    ),
-                    ignore_index=True,
-                )
-        SynOps_dataframe.set_index("Layer", inplace=True)
-        return SynOps_dataframe
+        return self.synops_counter.get_synops()
