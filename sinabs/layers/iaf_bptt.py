@@ -142,7 +142,7 @@ class IAF(SpikingLayer):
         self.state = state
         self.tw = time_steps
         self.activations = activations
-        all_spikes = torch.stack(spikes)
+        all_spikes = torch.stack(spikes).transpose(0, 1)
         self.spikes_number = all_spikes.abs().sum()
 
         return all_spikes
