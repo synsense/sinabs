@@ -159,19 +159,20 @@ def test_zero_grad():
     # Copy of the original model, where zero_grad will already be applied at beginning
     model_zg = torch.nn.Sequential(conv_0, sl_0)
     model_zg[0].weight.data = model[0].weight.data.clone()
+    model_zg[0].bias.data = model[0].bias.data.clone()
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
     optimizer_zg = torch.optim.SGD(model_zg.parameters(), lr=0.001)
 
-    # sl_0.zero_grad()
+    sl_0.zero_grad()
 
     data0, data1, data2 = torch.rand((3, batch_size, t_steps, n_neurons))
 
     out0 = model(data0)
     out0_zg = model_zg(data0)
 
-    loss = torch.nn.functional.mse_loss(out0, torch.zeros_like(out0))
-    loss_zg = torch.nn.functional.mse_loss(out0_zg, torch.zeros_like(out0_zg))
+    loss = torch.nn.functional.mse_loss(out0, torch.ones_like(out0))
+    loss_zg = torch.nn.functional.mse_loss(out0_zg, torch.ones_like(out0_zg))
     loss.backward()
     loss_zg.backward()
 
@@ -189,12 +190,12 @@ def test_zero_grad():
 
     out1 = model(data1)
 
-    loss = torch.nn.functional.mse_loss(out1, torch.zeros_like(out1))
+    loss = torch.nn.functional.mse_loss(out1, torch.ones_like(out1))
     loss.backward()
 
     # Make sure that without detaching there is a RuntimeError
     with pytest.raises(RuntimeError):
         out2 = model(data2)
 
-        loss = torch.nn.functional.mse_loss(out2, torch.zeros_like(out2))
+        loss = torch.nn.functional.mse_loss(out2, torch.ones_like(out2))
         loss.backward()
