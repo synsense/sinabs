@@ -144,15 +144,42 @@ def test_zero_grad():
         padding=1,
         groups=t_steps,
     )
+    sl_0 = IAF(
+        threshold=1.0, threshold_low=-1.0, membrane_subtract=1, membrane_reset=False
+    )
+    conv_0 = torch.nn.Conv1d(
+        in_channels=t_steps,
+        out_channels=t_steps,
+        kernel_size=3,
+        padding=1,
+        groups=t_steps,
+    )
     model = torch.nn.Sequential(conv, sl)
+
+    # Copy of the original model, where zero_grad will already be applied at beginning
+    model_zg = torch.nn.Sequential(conv_0, sl_0)
+    model_zg[0].weight.data = model[0].weight.data.clone()
+
     optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
+    optimizer_zg = torch.optim.SGD(model_zg.parameters(), lr=0.001)
+
+    # sl_0.zero_grad()
 
     data0, data1, data2 = torch.rand((3, batch_size, t_steps, n_neurons))
 
     out0 = model(data0)
+    out0_zg = model_zg(data0)
 
     loss = torch.nn.functional.mse_loss(out0, torch.zeros_like(out0))
+    loss_zg = torch.nn.functional.mse_loss(out0_zg, torch.zeros_like(out0_zg))
     loss.backward()
+    loss_zg.backward()
+
+    grads = [p.grad.data.clone() for p in model.parameters()]
+    grads_zg = [p.grad.data.clone() for p in model_zg.parameters()]
+
+    for g, g0 in zip(grads, grads_zg):
+        assert torch.isclose(g, g0).all()
 
     optimizer.step()
     optimizer.zero_grad()
