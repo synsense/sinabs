@@ -18,6 +18,8 @@ class IAF(SpikingLayer):
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
+        *args,
+        **kwargs,
     ):
         """
         Pytorch implementation of a Integrate and Fire neuron with learning enabled.
@@ -35,46 +37,14 @@ class IAF(SpikingLayer):
         membrane_reset: bool
             If True, reset the membrane to 0 on spiking.
         """
-        super().__init__()
-        # Initialize neuron states
-        self.threshold = threshold
-        self.threshold_low = threshold_low
-        self._membrane_subtract = membrane_subtract
-        self.membrane_reset = membrane_reset
-
-        # Blank parameter place holders
-        self.register_buffer("state", torch.zeros(1))
-        self.register_buffer("activations", torch.zeros(1))
-        self.spikes_number = None
-
-    @property
-    def membrane_subtract(self):
-        if self._membrane_subtract is not None:
-            return self._membrane_subtract
-        else:
-            return self.threshold
-
-    @membrane_subtract.setter
-    def membrane_subtract(self, new_val):
-        self._membrane_subtract = new_val
-
-    def reset_states(self, shape=None, randomize=False):
-        """
-        Reset the state of all neurons in this layer
-        """
-        device = self.state.device
-        if shape is None:
-            shape = self.state.shape
-
-        if randomize:
-            # State between lower and upper threshold
-            low = self.threshold_low or -self.threshold
-            width = self.threshold - low
-            self.state = torch.rand(shape, device=device) * width + low
-            self.activations = torch.zeros(shape, device=self.activations.device)
-        else:
-            self.state = torch.zeros(shape, device=self.state.device)
-            self.activations = torch.zeros(shape, device=self.activations.device)
+        super().__init__(
+            *args,
+            **kwargs,
+            threshold=threshold,
+            threshold_low=threshold_low,
+            membrane_subtract=membrane_subtract,
+            membrane_reset=membrane_reset,
+        )
 
     def forward(self, input_spikes: torch.Tensor):
         """
@@ -137,40 +107,6 @@ class IAF(SpikingLayer):
         self.spikes_number = all_spikes.abs().sum()
 
         return all_spikes
-
-    def get_output_shape(self, in_shape):
-        """
-        Returns the output shape for passthrough implementation
-
-        :param in_shape:
-        :return: out_shape
-        """
-        return in_shape
-
-    def __deepcopy__(self, memo=None):
-        # TODO: What is `memo`?
-
-        other = self.__class__(**self._param_dict)
-
-        other.state = self.state.detach().clone()
-        other.activations = self.activations.detach().clone()
-
-        return other
-
-    @property
-    def _param_dict(self) -> dict:
-        """
-        Dict of all parameters relevant for creating a new instance with same
-        parameters as `self`
-        """
-        param_dict = super()._param_dict()
-        param_dict.update(
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self._membrane_subtract,
-            membrane_reset=self.membrane_reset,
-        )
-        return param_dict
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.
