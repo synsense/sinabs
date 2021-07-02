@@ -33,6 +33,7 @@ class Network(torch.nn.Module):
         spiking_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
         synops: bool = False,
+        batch_size: int = 1
     ):
         super().__init__()
         self.spiking_model: nn.Module = spiking_model
@@ -44,7 +45,7 @@ class Network(torch.nn.Module):
             self.synops_counter = SNNSynOpCounter(self.spiking_model)
 
         if input_shape is not None and spiking_model is not None:
-            self._compute_shapes(input_shape)
+            self._compute_shapes(input_shape, batch_size=batch_size)
 
     @property
     def layers(self):
@@ -59,12 +60,17 @@ class Network(torch.nn.Module):
             this_hook = layer.register_forward_hook(hook)
             hook_list.append(this_hook)
 
-        # do a forward pass
         device = next(self.parameters()).device
+
+        # Infer shape
+        if batch_size is None:
+            batch_size = 1
+        shape = [batch_size] + list(input_shape)
         dummy_input = torch.zeros(
-            [batch_size] + list(input_shape),
+            shape,
             requires_grad=False
         ).to(device)
+        # do a forward pass
         self(dummy_input)
 
         [this_hook.remove() for this_hook in hook_list]

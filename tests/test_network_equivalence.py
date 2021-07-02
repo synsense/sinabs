@@ -127,45 +127,35 @@ def test_network_conversion_compicated_model():
     to fail before.
     """
 
-    class ComplicatedANN(nn.Module):
-        # The dimensions don't match,but this is not the point here.
-        def __init__(self):
-            super().__init__()
-            self.conv1 = nn.Conv2d(1, 1, 1)
-            self.seq = nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1))
-            self.relu = nn.ReLU()
-            self.pool = nn.AvgPool2d(3)
-            self.seq2 = nn.Sequential(
-                nn.Flatten(), nn.Sequential(nn.Conv2d(2, 1, 2), nn.Linear(12, 12))
-            )
-
-    ann = ComplicatedANN()
+    ann = nn.Sequential(
+            nn.Conv2d(1, 1, 1),
+            nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
+            nn.ReLU(),
+            nn.AvgPool2d(3),
+            nn.Sequential(
+                nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
+            ))
 
     snn = from_model(ann)
 
 
 def test_network_conversion_with_batch_size():
-    class ComplicatedANN(nn.Module):
-        # The dimensions don't match,but this is not the point here.
-        def __init__(self):
-            super().__init__()
-            self.conv1 = nn.Conv2d(1, 1, 1)
-            self.seq = nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1))
-            self.relu = nn.ReLU()
-            self.pool = nn.AvgPool2d(3)
-            self.seq2 = nn.Sequential(
-                nn.Flatten(), nn.Sequential(nn.Conv2d(2, 1, 2), nn.Linear(12, 12))
-            )
-
-    ann = ComplicatedANN()
+    ann = nn.Sequential(
+        nn.Conv2d(1, 1, 1),
+        nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
+        nn.ReLU(),
+        nn.AvgPool2d(3),
+        nn.Sequential(
+            nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
+        ))
 
     # Model conversion without input size specification
     snn = from_model(ann, batch_size=32)
-    assert(snn.spiking_model.relu.batch_size == 32)
+    assert(snn.spiking_model[2].batch_size == 32)
 
     # Model conversion with input size specification
     snn = from_model(ann, input_shape=(1, 128, 128), batch_size=32)
-    assert(snn.spiking_model.relu.batch_size == 32)
+    assert(snn.spiking_model[2].batch_size == 32)
 
 
 
