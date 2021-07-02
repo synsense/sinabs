@@ -128,13 +128,14 @@ def test_network_conversion_compicated_model():
     """
 
     ann = nn.Sequential(
-            nn.Conv2d(1, 1, 1),
-            nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
-            nn.ReLU(),
-            nn.AvgPool2d(3),
-            nn.Sequential(
-                nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
-            ))
+        nn.Conv2d(1, 1, 1),
+        nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
+        nn.ReLU(),
+        nn.AvgPool2d(3),
+        nn.Sequential(
+            nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
+        ),
+    )
 
     snn = from_model(ann)
 
@@ -147,20 +148,36 @@ def test_network_conversion_with_batch_size():
         nn.AvgPool2d(3),
         nn.Sequential(
             nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
-        ))
+        ),
+    )
 
     # Model conversion without input size specification
     snn = from_model(ann, batch_size=32)
-    assert(snn.spiking_model[2].batch_size == 32)
+    assert snn.spiking_model[2].batch_size == 32
 
     # Model conversion with input size specification
     snn = from_model(ann, input_shape=(1, 128, 128), batch_size=32)
-    assert(snn.spiking_model[2].batch_size == 32)
+    assert snn.spiking_model[2].batch_size == 32
 
 
+def test_network_conversion_with_num_timesteps():
+    ann = nn.Sequential(
+        nn.Conv2d(1, 1, 1),
+        nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
+        nn.ReLU(),
+        nn.AvgPool2d(3),
+        nn.Sequential(
+            nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
+        ),
+    )
 
+    # Model conversion without input size specification
+    snn = from_model(ann, num_timesteps=32)
+    assert snn.spiking_model[2].num_timesteps == 32
 
-
+    # Model conversion with input size specification
+    snn = from_model(ann, input_shape=(1, 128, 128), num_timesteps=32)
+    assert snn.spiking_model[2].num_timesteps == 32
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")

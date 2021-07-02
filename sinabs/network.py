@@ -33,7 +33,8 @@ class Network(torch.nn.Module):
         spiking_model: Optional = None,
         input_shape: Optional[ArrayLike] = None,
         synops: bool = False,
-        batch_size: int = 1
+        batch_size: int = 1,
+        num_timesteps: int = 1,
     ):
         super().__init__()
         self.spiking_model: nn.Module = spiking_model
@@ -45,13 +46,13 @@ class Network(torch.nn.Module):
             self.synops_counter = SNNSynOpCounter(self.spiking_model)
 
         if input_shape is not None and spiking_model is not None:
-            self._compute_shapes(input_shape, batch_size=batch_size)
+            self._compute_shapes(input_shape, batch_size=batch_size, num_timesteps=num_timesteps)
 
     @property
     def layers(self):
         return list(self.spiking_model.named_children())
 
-    def _compute_shapes(self, input_shape, batch_size=1):
+    def _compute_shapes(self, input_shape, batch_size=1, num_timesteps=1):
         def hook(module, inp, out):
             module.out_shape = out.shape[1:]
 
@@ -65,7 +66,9 @@ class Network(torch.nn.Module):
         # Infer shape
         if batch_size is None:
             batch_size = 1
-        shape = [batch_size] + list(input_shape)
+        if num_timesteps is None:
+            num_timesteps = 1
+        shape = [batch_size * num_timesteps] + list(input_shape)
         dummy_input = torch.zeros(
             shape,
             requires_grad=False

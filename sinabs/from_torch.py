@@ -49,6 +49,7 @@ def from_model(
         membrane_subtract=membrane_subtract,
         bias_rescaling=bias_rescaling,
         batch_size=batch_size,
+        num_timesteps=num_timesteps,
         synops=synops,
         add_spiking_output=add_spiking_output,
     ).convert(model)
@@ -140,7 +141,8 @@ class SpkConverter(object):
             model, spk_model,
             input_shape=self.input_shape,
             synops=self.synops,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
+            num_timesteps=self.num_timesteps,
         )
 
         return network
