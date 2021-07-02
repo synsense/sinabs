@@ -137,7 +137,10 @@ class SpkConverter(object):
 
         self.convert_module(spk_model)
         network = Network(
-            model, spk_model, input_shape=self.input_shape, synops=self.synops
+            model, spk_model,
+            input_shape=self.input_shape,
+            synops=self.synops,
+            batch_size=self.batch_size
         )
 
         return network
