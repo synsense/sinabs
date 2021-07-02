@@ -46,6 +46,8 @@ def squeeze_class(cls: Type) -> Type:
         batch_size: Optional[int]:
             Batch size of data. Ignored if `num_timesteps` is None, otherwise must
             be provided. Number of timesteps per sample will be inferred dynamically.
+        ...as well as all parameters from {cls.__name__} layer
+
         """
 
         def __init__(
@@ -56,34 +58,35 @@ def squeeze_class(cls: Type) -> Type:
             **kwargs,
         ):
             if num_timesteps is not None:
-                self.num_timesteps = num_timesteps
-                self.batch_size = None
+                self._num_timesteps = num_timesteps
+                self._batch_size = None
             elif batch_size is not None:
-                self.batch_size = batch_size
-                self.num_timesteps = None
+                self._batch_size = batch_size
+                self._num_timesteps = None
             else:
                 raise TypeError(
                     "Either `num_timesteps` or `batch_size` must be provided as integer."
                 )
 
-            super().__init__(*args, **kwargs)
+            # Pass `num_timesteps` for slayer based layers to function correctly
+            super().__init__(*args, **kwargs, num_timesteps=num_timesteps)
 
         def forward(self, data, *args, **kwargs):
             original_shape = data.shape
 
             # Unsqueeze batch and time
-            if self.num_timesteps is not None:
-                if data.shape[0] % self.num_timesteps != 0:
+            if self._num_timesteps is not None:
+                if data.shape[0] % self._num_timesteps != 0:
                     raise ValueError(
-                        f"First dimension of `data` must be multiple of {self.num_timesteps}."
+                        f"First dimension of `data` must be multiple of {self._num_timesteps}."
                     )
-                unsqueezed = data.reshape(-1, self.num_timesteps, *original_shape[1:])
+                unsqueezed = data.reshape(-1, self._num_timesteps, *original_shape[1:])
             else:
-                if data.shape[0] % self.batch_size != 0:
+                if data.shape[0] % self._batch_size != 0:
                     raise ValueError(
-                        f"First dimension of `data` must be multiple of {self.batch_size}."
+                        f"First dimension of `data` must be multiple of {self._batch_size}."
                     )
-                unsqueezed = data.reshape(self.batch_size, -1, *original_shape[1:])
+                unsqueezed = data.reshape(self._batch_size, -1, *original_shape[1:])
 
             # Apply actual forward call
             output_unsqueezed = super().forward(unsqueezed)
@@ -102,9 +105,17 @@ def squeeze_class(cls: Type) -> Type:
             """
             param_dict = super()._param_dict()
             param_dict.update(
-                batch_size=self.batch_size, num_timesteps=self.num_timesteps
+                batch_size=self._batch_size, num_timesteps=self._num_timesteps
             )
             return param_dict
+
+        @property
+        def num_timesteps(self):
+            return self._num_timesteps
+
+        @property
+        def batch_size(self):
+            return self._batch_size
 
         __qualname__ = cls.__name__ + "Squeeze"
 
