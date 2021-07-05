@@ -364,12 +364,15 @@ def open_device(device_id: str):
     device_id = f"{device_name}:{device_num}"
     device_map = get_device_map()
     dev_info = device_map[device_id]
-    # Open Devkit
-    samna.device_node.DeviceController.open_device(dev_info, f"{device_name}_{device_num}")
-
-    # get the handle of our dev-kit
-    device = samna.device_node.__dict__[f"{device_name}_{device_num}"]
-    return device
+    name = f"{device_name}_{device_num}"
+    if name in samna.device_node.__dict__:
+        return samna.device_node.__dict__[name]
+    else:
+        # Open Devkit
+        samna.device_node.DeviceController.open_device(dev_info, name)
+        # get the handle of our dev-kit
+        device = samna.device_node.__dict__[name]
+        return device
 
 
 def close_device(device_id: str):
