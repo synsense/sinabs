@@ -10,7 +10,7 @@ else:
     SAMNA_AVAILABLE = True
 
 from .dynapcnnlayer import DynapcnnLayer
-from .valid_mapping import get_valid_mapping
+from .mapping import get_valid_mapping, dynapcnndevkit_constraints
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
@@ -288,19 +288,29 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
-        if chip_layers_ordering == "auto":
-            chip_layers = range(len(self.compatible_layers))  # start with default, correct if necessary
-        else:
-            chip_layers = chip_layers_ordering
-
         device_name, _ = _parse_device_string(device)
 
         if device_name == "dynapcnndevkit":
             config = samna.dynapcnn.configuration.DynapcnnConfiguration()
+            chip_constraints = dynapcnndevkit_constraints
         elif device_name == "speck2devkit":
             config = samna.speck2.configuration.SpeckConfiguration()
+            chip_constraints = dynapcnndevkit_constraints
         else:
             raise Exception(f"Unknown device type {device_name}")
+
+        # Figure out layer ordering
+        if chip_layers_ordering == "auto":
+            mapping = get_valid_mapping(self, chip_constraints)
+            # turn the mapping into a dict
+            mapping = {m[0]: m[1] for m in mapping}
+            # apply the mapping
+            chip_layers_ordering = [mapping[i] for i in range(len(self.compatible_layers))]
+        else:
+            chip_layers_ordering = chip_layers_ordering
+
+        # Save the chip layers somewhere
+        self._chip_layers_ordering = chip_layers_ordering
 
         i_layer_chip = 0
         dvs = config.dvs_layer
@@ -316,7 +326,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = chip_layers[i_layer_chip]
+            dvs.destinations[0].layer = chip_layers_ordering[i_layer_chip]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
 
@@ -341,7 +351,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             else:
                 raise ValueError("Network cannot start with pooling if dvs_input=False")
 
-        write_model_to_config(self.sequence, config, chip_layers)
+        write_model_to_config(self.sequence, config, chip_layers_ordering)
 
         # Enable monitors
         if monitor_layers is not None:
@@ -362,21 +372,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             print("Network is valid")
             return config
         else:
-            if chip_layers_ordering is "auto":
-                # Try to auto arrange the layers
-                mapping = get_valid_mapping(config)
-                if mapping == []:
-                    raise ValueError("Could not find valid layer sequence for this network")
-
-                # turn the mapping into a dict
-                mapping = {m[0]: m[1] for m in mapping}
-                # apply the mapping
-                ordering = [mapping[i] for i in chip_layers]
-
-                print(f"Auto placement: Trying chip_layer_ordering={ordering}")
-                return self.make_config(chip_layers_ordering=ordering, device=device)
-            else:
-                raise ValueError(f"Network not valid for {device}")
+            raise ValueError(f"Generated config is not valid for {device}")
 
     def _handle_conv2d_layer(
             self,
