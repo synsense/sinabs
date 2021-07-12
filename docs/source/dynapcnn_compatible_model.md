@@ -150,7 +150,7 @@ If the algorithm is unable to place the model onto the chip, you will receive an
 
 Some methods helpful for debugging if you run into problems are `mapping.find_chip_layers` and the object `mapping.dynapcnndevkit_constraints`.
 
-After successfully mapping a model, the `chip_layer_ordering` can be inspected by `DynapcnnCompatibleNetwork._chip_layer_ordering`.
+After successfully mapping a model, the `chip_layers_ordering` can be inspected by `DynapcnnCompatibleNetwork.chip_layers_ordering`.
 
 
 Porting model to device

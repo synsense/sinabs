@@ -69,7 +69,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = []
-        self._chip_layers_ordering = []
+        self.chip_layers_ordering = []
 
         # TODO: Currently only spiking seq. models are supported
         if isinstance(snn, sinabs.Network):
@@ -322,7 +322,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             chip_layers_ordering = chip_layers_ordering[:len(self.compatible_layers)]
 
         # Save the chip layers
-        self._chip_layers_ordering = chip_layers_ordering
+        self.chip_layers_ordering = chip_layers_ordering
         # Update config
         self._set_dvs_config(config)
         write_model_to_config(self.sequence, config, chip_layers_ordering)
@@ -334,6 +334,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
             if "dvs" in monitor_layers:
                 monitor_chip_layers.append("dvs")
             enable_monitors(config, monitor_chip_layers)
+
+        # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
+        config.factory_settings.monitor_input_enable = False
 
         # Apply user config modifier
         if config_modifier is not None:
@@ -369,7 +372,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = self._chip_layers_ordering[i_layer_chip]
+            dvs.destinations[0].layer = self.chip_layers_ordering[i_layer_chip]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
 
@@ -405,10 +408,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
         chip_lyr_idx: int
             Index of the layer on the chip where the model layer is placed.
         """
-        if len(self._chip_layers_ordering) != len(self.compatible_layers):
+        if len(self.chip_layers_ordering) != len(self.compatible_layers):
             raise Exception("Looks like the model has not been mapped onto a device.")
 
-        return self._chip_layers_ordering[layer_idx]
+        return self.chip_layers_ordering[layer_idx]
 
     def _convert_conv2d_layer(
             self,
