@@ -2,6 +2,7 @@ import warnings
 from copy import deepcopy
 from warnings import warn
 import time
+
 try:
     import samna
 except (ImportError, ModuleNotFoundError):
@@ -68,6 +69,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = []
+        self._chip_layers_ordering = []
 
         # TODO: Currently only spiking seq. models are supported
         if isinstance(snn, sinabs.Network):
@@ -118,7 +120,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                         i_layer += 1
 
                 # Linear and Conv layers are dealt with in the same way.
-                i_next, input_shape, rescaling_from_pooling = self._handle_conv2d_layer(
+                i_next, input_shape, rescaling_from_pooling = self._convert_conv2d_layer(
                     [lyr_curr] + layers[i_layer + 1:],
                     input_shape,
                     rescaling_from_pooling,
@@ -307,11 +309,43 @@ class DynapcnnCompatibleNetwork(nn.Module):
             # apply the mapping
             chip_layers_ordering = [mapping[i] for i in range(len(self.compatible_layers))]
         else:
-            chip_layers_ordering = chip_layers_ordering
+            # Truncate chip_layers_ordering just in case a longer list is passed
+            chip_layers_ordering = chip_layers_ordering[:len(self.compatible_layers)]
 
-        # Save the chip layers somewhere
+        # Save the chip layers
         self._chip_layers_ordering = chip_layers_ordering
+        # Update config
+        self._set_dvs_config(config)
+        write_model_to_config(self.sequence, config, chip_layers_ordering)
 
+        # Enable monitors on the specified layers
+        # Find layers corresponding to the chip
+        if monitor_layers is not None:
+            monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
+            if "dvs" in monitor_layers:
+                monitor_chip_layers.append("dvs")
+            enable_monitors(config, monitor_chip_layers)
+
+        # Apply user config modifier
+        if config_modifier is not None:
+            config = config_modifier(config)
+
+        # Validate config
+        if validate_configuration(config, device_name):
+            print("Network is valid")
+            return config
+        else:
+            raise ValueError(f"Generated config is not valid for {device}")
+
+    def _set_dvs_config(self, config):
+        """
+        Update config of the dvs layer
+
+        Parameters
+        ----------
+        config
+
+        """
         i_layer_chip = 0
         dvs = config.dvs_layer
         if self._dvs_input:
@@ -326,7 +360,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = chip_layers_ordering[i_layer_chip]
+            dvs.destinations[0].layer = self._chip_layers_ordering[i_layer_chip]
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
 
@@ -343,38 +377,31 @@ class DynapcnnCompatibleNetwork(nn.Module):
             else:
                 break
         if isinstance(first_layer, sl.SumPool2d):
-            if self._dvs_input:
-                assert (
-                    first_layer.stride == first_layer.kernel_size
-                )
+            if self._dvs_input and (first_layer.stride == first_layer.kernel_size):
                 dvs.pooling.y, dvs.pooling.x = first_layer.kernel_size
             else:
                 raise ValueError("Network cannot start with pooling if dvs_input=False")
 
-        write_model_to_config(self.sequence, config, chip_layers_ordering)
+    def find_chip_layer(self, layer_idx):
+        """
+        Given an index of a layer in the model, find the corresponding chip layer where it is placed
 
-        # Enable monitors
-        if monitor_layers is not None:
-            monitor_layers = monitor_layers.copy()
-            if "dvs" in monitor_layers:
-                config.dvs_layer.monitor_enable = True
-                config.dvs_layer.monitor_sensor_enable = True
-                monitor_layers.remove("dvs")
-            for lyr_indx in monitor_layers:
-                config.cnn_layers[lyr_indx].monitor_enable = True
+        Parameters
+        ----------
+        layer_idx: int
+            Index of a layer
 
-        # Apply user config modifier
-        if config_modifier is not None:
-            config = config_modifier(config)
+        Returns
+        -------
+        chip_lyr_idx: int
+            Index of the layer on the chip where the model layer is placed.
+        """
+        if len(self._chip_layers_ordering) != len(self.compatible_layers):
+            raise Exception("Looks like the model has not been mapped onto a device.")
 
-        # Validate config
-        if validate_configuration(config, device_name):
-            print("Network is valid")
-            return config
-        else:
-            raise ValueError(f"Generated config is not valid for {device}")
+        return self._chip_layers_ordering[layer_idx]
 
-    def _handle_conv2d_layer(
+    def _convert_conv2d_layer(
             self,
             layers: Sequence[nn.Module],
             input_shape: Tuple[int],
@@ -457,7 +484,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             enable_timestamps(self.device)
             # Send input
             self.samna_device.get_model().write(x)
-            time.sleep((x[-1].timestamp - x[0].timestamp)*1e-6 + 1)
+            time.sleep((x[-1].timestamp - x[0].timestamp) * 1e-6 + 1)
             # Disable timestamp
             disable_timestamps(self.device)
             # Read events back
@@ -489,7 +516,34 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return summary
 
 
-def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool, discretize: bool) -> Tuple[Union[List[int], int], int, int]:
+def enable_monitors(config, monitor_chip_layers: List):
+    """
+    Updates the config object in place.
+
+    Parameters
+    ----------
+    config:
+        samna config object
+    monitor_chip_layers:
+        The layers to be monitored on the chip.
+
+    Returns
+    -------
+    config:
+        Returns the modified config. (The config object is modified in place)
+    """
+    monitor_layers = monitor_chip_layers.copy()
+    if "dvs" in monitor_layers:
+        config.dvs_layer.monitor_enable = True
+        config.dvs_layer.monitor_sensor_enable = True
+        monitor_layers.remove("dvs")
+    for lyr_indx in monitor_layers:
+        config.cnn_layers[lyr_indx].monitor_enable = True
+    return config
+
+
+def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool, discretize: bool) -> Tuple[
+    Union[List[int], int], int, int]:
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
