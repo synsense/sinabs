@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Welcome to sinabs-dynapcnn's documentation!
-========================================
+===========================================
 
 dynapcnn interface for SINABS: Convert spiking neural network models to configurations for the dynapcnn chip.
 
@@ -14,7 +14,8 @@ Table of contents
 -----------------
 .. toctree::
    :maxdepth: 2
-  
+
+   dynapcnn_compatible_model
    tutorials
    api/api.rst
 

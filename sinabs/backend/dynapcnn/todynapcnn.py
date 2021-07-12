@@ -186,23 +186,27 @@ class DynapcnnCompatibleNetwork(nn.Module):
     def to(self, device="cpu", chip_layers_ordering="auto",
            monitor_layers: Optional[List] = None, config_modifier=None):
         """
-
         Parameters
         ----------
+
         device: String
             cpu:0, cuda:0, dynapcnndevkit, speck2devkit
+
         chip_layers_ordering: List/"auto"
             A list of layers on the device where you want each of the model layers to be placed.
+
         monitor_layers: None/List
             A list of all chip-layers that you want to monitor.
             If you want to monitor the dvs layer for eg.
-                ``
+            ::
+
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                ``
+
         config_modifier:
             A user configuration modifier method.
             This function can be used to make any custom changes you want to make to the configuration object.
+
         Note
         ----
         chip_layers_ordering and monitor_layers are used only when using synsense devices.
@@ -254,30 +258,35 @@ class DynapcnnCompatibleNetwork(nn.Module):
             monitor_layers: Optional[List] = None,
             config_modifier=None
     ):
-        """Prepare and output the `samna` DYNAPCNN configuration for this network.
+        """
+        Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
         ----------
-            chip_layers_ordering: sequence of integers or "auto"
-                The order in which the dynapcnn layers will be used. If "auto",
-                an automated procedure will be used to find a valid ordering.
-            device: String
-                dynapcnndevkit:0 or speck2devkit:0
-            monitor_layers: None/List
-                A list of all chip-layers that you want to monitor.
-                If you want to monitor the dvs layer for eg.
-                    ``
-                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                    ``
-            config_modifier:
-                A user configuration modifier method.
-                This function can be used to make any custom changes you want to make to the configuration object.
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+
+        device: String
+            dynapcnndevkit:0 or speck2devkit:0
+
+        monitor_layers: None/List
+            A list of all chip-layers that you want to monitor.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
 
         Returns
         -------
-            Configuration object
-                Object defining the configuration for the device
+        Configuration object
+            Object defining the configuration for the device
 
         Raises
         ------

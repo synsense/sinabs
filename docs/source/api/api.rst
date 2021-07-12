@@ -5,3 +5,5 @@ API
     discretize
     dynapcnn_compatible_network
     dynapcnnlayer
+    io
+    mapping

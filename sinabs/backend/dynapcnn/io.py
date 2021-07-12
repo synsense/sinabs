@@ -63,8 +63,8 @@ def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapc
     """
     Convert spike raster to events for DynaapcnnDevKit
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
 
     raster: torch.Tensor
         A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
@@ -79,9 +79,8 @@ def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapc
         Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
-
-    Returns:
-    --------
+    Returns
+    -------
 
     events: List[Spike]
         A list of events that will be streamed to the device
@@ -111,8 +110,8 @@ def xytp_to_events(xytp: torch.Tensor, layer, device: str = "dynapcnndevkit:0") 
     """
     Convert spike raster to events for DynaapcnnDevKit
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
 
     xytp: torch.Tensor
         A numpy structured array with columns x, y, timestamp, polarity
@@ -124,9 +123,8 @@ def xytp_to_events(xytp: torch.Tensor, layer, device: str = "dynapcnndevkit:0") 
         Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
-
-    Returns:
-    --------
+    Returns
+    -------
 
     events: List[Spike]
         A list of events that will be streamed to the device
@@ -154,10 +152,10 @@ def xytp_to_events(xytp: torch.Tensor, layer, device: str = "dynapcnndevkit:0") 
 
 def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
     """
-    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`
+    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
 
     event_list: List
         A list comprising of events from samna API
@@ -165,8 +163,8 @@ def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
     layer: int
         The index of layer for which the data needs to be converted
 
-    Returns:
-    --------
+    Returns
+    -------
 
     raster: torch.Tensor
     """
@@ -179,10 +177,10 @@ def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
 
 def events_to_xytp(event_list: List, layer: int) -> np.array:
     """
-    Convert an eventList read from `samna` to a numpy structured array of "x", "y", "t", "channel".
+    Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`, `channel`.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
 
     event_list: List
         A list comprising of events from samna API
@@ -190,11 +188,11 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
     layer: int
         The index of layer for which the data needs to be converted
 
-    Returns:
-    --------
+    Returns
+    -------
 
     xytc: np.array
-        A numpy structured array with columns "x", "y", "t", "channel".
+        A numpy structured array with columns `x`, `y`, `t`, `channel`.
     """
     evs_filtered = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer, event_list))
     xytc = np.empty(
@@ -308,7 +306,8 @@ def get_device_map() -> Dict:
 
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
     """
-    Check if a DeviceInfo object is of a given device type 'dev_type'
+    Check if a DeviceInfo object is of a given device type `dev_type`
+
     Parameters
     ----------
     dev_info: samna.device.DeviceInfo
@@ -378,6 +377,7 @@ def open_device(device_id: str):
 def close_device(device_id: str):
     """
     Convenience method to close a device
+
     Parameters
     ----------
     device_id: str
