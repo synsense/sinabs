@@ -16,7 +16,7 @@ import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
-from .dynapcnnlayer import DynapcnnLayer
+from .dynapcnnlayer import DynapcnnLayer, DVSLayer
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
 
 
@@ -41,11 +41,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
     """
 
     def __init__(
-            self,
-            snn: Union[nn.Sequential, sinabs.Network],
-            input_shape: Optional[Tuple[int, int, int]] = None,
-            dvs_input: bool = False,
-            discretize: bool = True,
+        self,
+        snn: Union[nn.Sequential, sinabs.Network],
+        input_shape: Optional[Tuple[int, int, int]] = None,
+        dvs_input: bool = False,
+        discretize: bool = True,
     ):
         """
         DynapcnnCompatibleNetwork: a class turning sinabs networks into dynapcnn
@@ -98,11 +98,16 @@ class DynapcnnCompatibleNetwork(nn.Module):
             input_shape = input_layer.input_shape
             self.compatible_layers.append(input_layer)
             i_layer += 1
-
+            # TODO: Convert to DVSLayer
+        elif isinstance(layers[0], DVSLayer):
+            ...
+        elif isinstance(layers[0], sl.SumPool2d):
+            ...
         elif input_shape is None:
             raise ValueError(
                 "`input_shape` must be provided if first layer is not `InputLayer`."
             )
+            # TODO: Generate DVSLayer if applicable
         self._dvs_input = dvs_input
         self._external_input_shape = input_shape
         self._discretize = discretize
@@ -121,7 +126,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
                 # Linear and Conv layers are dealt with in the same way.
                 i_next, input_shape, rescaling_from_pooling = self._convert_conv2d_layer(
-                    [lyr_curr] + layers[i_layer + 1:],
+                    [lyr_curr] + layers[i_layer + 1 :],
                     input_shape,
                     rescaling_from_pooling,
                 )
@@ -134,6 +139,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     # of consolidated pooling layers
                     i_layer += i_next + 2
 
+            # Move this case to init function
             elif isinstance(lyr_curr, (sl.SumPool2d, nn.AvgPool2d)):
                 # This case can only happen if `self.sequence` starts with a pooling layer
                 # or input layer because all other pooling layers should get consolidated.
@@ -185,8 +191,13 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def to(self, device="cpu", chip_layers_ordering="auto",
-           monitor_layers: Optional[List] = None, config_modifier=None):
+    def to(
+        self,
+        device="cpu",
+        chip_layers_ordering="auto",
+        monitor_layers: Optional[List] = None,
+        config_modifier=None,
+    ):
         """
         Parameters
         ----------
@@ -234,13 +245,21 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 if device_name == "dynapcnndevkit":
                     self.samna_device.get_model().apply_configuration(config)
                     time.sleep(1)
-                    self.samna_output_buffer = samna.BufferSinkNode_dynapcnn_event_output_event()
+                    self.samna_output_buffer = (
+                        samna.BufferSinkNode_dynapcnn_event_output_event()
+                    )
                 elif device_name == "speck2devkit":
-                    self.samna_device.get_daughter_board(0).get_model().apply_configuration(config)
+                    self.samna_device.get_daughter_board(
+                        0
+                    ).get_model().apply_configuration(config)
                     time.sleep(1)
-                    self.samna_output_buffer = samna.BufferSinkNode_speck2_event_output_event()
+                    self.samna_output_buffer = (
+                        samna.BufferSinkNode_speck2_event_output_event()
+                    )
                 else:
-                    raise ValueError("Unknown device description. device name has to be dynapcnndekit or speck2devkit")
+                    raise ValueError(
+                        "Unknown device description. device name has to be dynapcnndekit or speck2devkit"
+                    )
 
                 # Connect buffer sink node to device
                 self.samna_device.get_model().get_source_node().add_destination(
@@ -254,11 +273,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
             raise Exception("Unknown device description.")
 
     def make_config(
-            self,
-            chip_layers_ordering: Union[Sequence[int], str] = "auto",
-            device="dynapcnndevkit:0",
-            monitor_layers: Optional[List] = None,
-            config_modifier=None
+        self,
+        chip_layers_ordering: Union[Sequence[int], str] = "auto",
+        device="dynapcnndevkit:0",
+        monitor_layers: Optional[List] = None,
+        config_modifier=None,
     ):
         """
         Prepare and output the `samna` DYNAPCNN configuration for this network.
@@ -316,10 +335,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
             # turn the mapping into a dict
             mapping = {m[0]: m[1] for m in mapping}
             # apply the mapping
-            chip_layers_ordering = [mapping[i] for i in range(len(self.compatible_layers))]
+            chip_layers_ordering = [
+                mapping[i] for i in range(len(self.compatible_layers))
+            ]
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
-            chip_layers_ordering = chip_layers_ordering[:len(self.compatible_layers)]
+            chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
         self.chip_layers_ordering = chip_layers_ordering
@@ -358,6 +379,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         config
 
         """
+        # Goal: Only has to look at DVSLayer
         i_layer_chip = 0
         dvs = config.dvs_layer
         if self._dvs_input:
@@ -373,7 +395,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            if len(self.chip_layers_ordering)>1:
+            if len(self.chip_layers_ordering) > 1:
                 dvs.destinations[0].layer = self.chip_layers_ordering[i_layer_chip]
             else:
                 # No more layers in the network
@@ -419,10 +441,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return self.chip_layers_ordering[layer_idx]
 
     def _convert_conv2d_layer(
-            self,
-            layers: Sequence[nn.Module],
-            input_shape: Tuple[int],
-            rescaling_from_pooling: int,
+        self,
+        layers: Sequence[nn.Module],
+        input_shape: Tuple[int],
+        rescaling_from_pooling: int,
     ) -> Tuple[int, Tuple[int], int]:
         """
         Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -473,7 +495,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # - Consolidate pooling from subsequent layers
         pooling: Union[List[int], int]
-        pooling, i_next, rescaling = consolidate_pooling(layers[2:], dvs=False, discretize=self._discretize)
+        pooling, i_next, rescaling = consolidate_pooling(
+            layers[2:], dvs=False, discretize=self._discretize
+        )
 
         # The DynapcnnLayer object knows how to turn the conv-spk-pool trio to
         # a dynapcnn layer, and has a forward method, and computes the output shape
@@ -494,7 +518,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x):
-        if hasattr(self, "device") and _parse_device_string(self.device)[0] in ("dynapcnndevkit", "speck2devkit"):
+        if hasattr(self, "device") and _parse_device_string(self.device)[0] in (
+            "dynapcnndevkit",
+            "speck2devkit",
+        ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
             disable_timestamps(self.device)
@@ -559,8 +586,9 @@ def enable_monitors(config, monitor_chip_layers: List):
     return config
 
 
-def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool, discretize: bool) -> Tuple[
-    Union[List[int], int], int, int]:
+def consolidate_pooling(
+    layers: Sequence[nn.Module], dvs: bool, discretize: bool
+) -> Tuple[Union[List[int], int], int, int]:
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -619,7 +647,9 @@ def consolidate_pooling(layers: Sequence[nn.Module], dvs: bool, discretize: bool
     return pooling, None, rescaling_factor
 
 
-def get_pooling_size(layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True) -> Union[int, Tuple[int]]:
+def get_pooling_size(
+    layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True
+) -> Union[int, Tuple[int]]:
     """
     Determine the pooling size of a pooling object.
 
@@ -653,9 +683,7 @@ def get_pooling_size(layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True) -> 
 
     # - Pooling and stride
     pooling = layer.kernel_size
-    pooling_y, pooling_x = (
-        (pooling, pooling) if isinstance(pooling, int) else pooling
-    )
+    pooling_y, pooling_x = (pooling, pooling) if isinstance(pooling, int) else pooling
 
     stride = layer.stride
     stride_y, stride_x = (stride, stride) if isinstance(stride, int) else stride
@@ -663,9 +691,7 @@ def get_pooling_size(layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True) -> 
     if dvs:
         # Check whether pooling and strides match
         if stride_y != pooling_y or stride_x != pooling_x:
-            raise ValueError(
-                "AvgPool2d: Stride size must be the same as pooling size."
-            )
+            raise ValueError("AvgPool2d: Stride size must be the same as pooling size.")
         return (pooling_y, pooling_x)
     else:
         # Check whether pooling is symmetric
@@ -674,9 +700,7 @@ def get_pooling_size(layer: nn.AvgPool2d, dvs: bool, check_pad: bool = True) -> 
         pooling = pooling_x  # Is this the vertical dimension?
         # Check whether pooling and strides match
         if any(stride != pooling for stride in (stride_x, stride_y)):
-            raise ValueError(
-                "AvgPool2d: Stride size must be the same as pooling size."
-            )
+            raise ValueError("AvgPool2d: Stride size must be the same as pooling size.")
         return pooling
 
 
@@ -768,9 +792,9 @@ def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[in
                 i_layer_chip += 1
                 # Set destination layer
                 chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
-                chip_layer.destinations[
-                    0
-                ].pooling = chip_equivalent_layer.config_dict["Pooling"]
+                chip_layer.destinations[0].pooling = chip_equivalent_layer.config_dict[
+                    "Pooling"
+                ]
                 chip_layer.destinations[0].enable = True
         elif isinstance(chip_equivalent_layer, sl.InputLayer):
             pass
