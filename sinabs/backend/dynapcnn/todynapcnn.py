@@ -361,6 +361,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         i_layer_chip = 0
         dvs = config.dvs_layer
         if self._dvs_input:
+            i_layer_chip += 1
             if self._external_input_shape[0] == 1:
                 dvs.merge = True
             elif self._external_input_shape[0] != 2:
@@ -372,7 +373,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
             dvs.cut.x = self._external_input_shape[2] - 1
             # - Set DVS destination
             dvs.destinations[0].enable = True
-            dvs.destinations[0].layer = self.chip_layers_ordering[i_layer_chip]
+            if len(self.chip_layers_ordering)>1:
+                dvs.destinations[0].layer = self.chip_layers_ordering[i_layer_chip]
+            else:
+                # No more layers in the network
+                dvs.destinations[1].enable = False
             # - Pooling will only be set to > 1 later if applicable
             dvs.pooling.y, dvs.pooling.x = 1, 1
 
@@ -745,7 +750,7 @@ def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[in
     for i, chip_equivalent_layer in enumerate(model):
         # happens when the network starts with pooling
         if isinstance(chip_equivalent_layer, sl.SumPool2d):
-            pass
+            i_layer_chip += 1
         elif isinstance(chip_equivalent_layer, DynapcnnLayer):
             # Object representing DYNAPCNN layer
             chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]

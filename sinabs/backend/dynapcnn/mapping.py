@@ -2,6 +2,7 @@ from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from copy import deepcopy
 from .dynapcnnlayer import DynapcnnLayer
+from sinabs.layers import SumPool2d
 
 
 @dataclass
@@ -39,7 +40,7 @@ def find_chip_layers(layer: DynapcnnLayer, constraints: List[LayerConstraints]) 
     return idx
 
 
-def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[LayerConstraints]) -> List[int]:
+def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[LayerConstraints]) -> List[Tuple[int, int]]:
     """
     Given a model, find a valid layer ordering for its placement within the constraints provided.
 
@@ -57,7 +58,8 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
     layer_mapping = []
 
     for layer in model.compatible_layers:
-        layer_mapping.append(find_chip_layers(layer, constraints))
+        if isinstance(layer, DynapcnnLayer):
+            layer_mapping.append(find_chip_layers(layer, constraints))
 
     graph = make_flow_graph(layer_mapping, len(constraints))
 
@@ -66,6 +68,10 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
 
     netmap = recover_mapping(new_graph, layer_mapping)
     # return [x[1] for x in netmap]
+    for layer in model.compatible_layers:
+        if isinstance(layer, SumPool2d):
+            # increment indices of netmask
+            netmap = [(0, "dvs")] + [(i + 1, j) for (i, j) in netmap]
     return netmap
 
 
