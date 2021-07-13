@@ -164,14 +164,17 @@ You can also specify a few additional parameters as shown below.
 ```python
 hw_model.to(
     device="dynapcnndevkit:0",
-    chip_layers_ordering="auto",
-    monitor_layers=[8],
+    chip_layers_ordering="auto",  # default value is "auto"
+    monitor_layers=[-1],
     config_modifier=config_modifier,
 )
 ```
 
-As shown in the above example, you can specify which layers on the chip are to be monitored. In addition, for advanced users, a `config_modifier` can be passed.
-A `config_modifier` is a `callable` or a function that takes a config object and does any custom setting changes before writing this on the chip.
+As shown in the above example, you can specify which layers are to be monitored. 
+Note here that the layer indices are that of the model. For instance -1 refers to the last layer of the model.
+In addition, for advanced users, a `config_modifier` can be passed.
+An optional argument `config_modifier` can also be passed. 
+This is a `callable` or a function that takes a config object and does any custom setting changes before writing this on the chip.
 
 See the `__doc__` string for further details on each of these parameters.
 
@@ -193,6 +196,7 @@ Monitoring layer activity
 -------------------------
 
 In order to monitor the spiking activity of a given layer, the corresponding layer has to be specified in the `monitor_layers` parameter. 
+In most use cases, you will want to monitor the activity of the last layer of the model and so this parameter must be set to [-1].
 
 Once enabled, all the corresponding spikes will be found in the sequence of returned events from the chip.
 The `samna_output_buffer` accumulates all the events sent out by the chip, including those from the monitored layers.

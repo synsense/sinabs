@@ -6,9 +6,13 @@
 Welcome to sinabs-dynapcnn's documentation!
 ===========================================
 
-dynapcnn interface for SINABS: Convert spiking neural network models to configurations for the dynapcnn chip.
+This `sinabs` plugin enables porting sinabs models to chips and dev-kits with DYNAP-CNN technology.
 
-To get started take a look at the :doc:`cnn-to-dynapcnn tutorial<notebooks/cnn_to_dynapcnn>`.
+To get started take a look at the
+
+- The documentation below
+- :doc:`cnn-to-dynapcnn tutorial<notebooks/cnn_to_dynapcnn>`.
+- `examples <https://gitlab.com/synsense/sinabs-dynapcnn/~/tree/master/examples>`_
 
 Table of contents
 -----------------

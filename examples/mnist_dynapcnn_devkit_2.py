@@ -39,12 +39,9 @@ hardware_compatible_model = DynapcnnCompatibleNetwork(
     input_shape=input_shape,
 )
 
-print(hardware_compatible_model.memory_summary())
-
 # Apply model to device
 hardware_compatible_model.to(
     device="dynapcnndevkit:0",
-    chip_layers_ordering="auto",
     monitor_layers=[-1]  # Last layer
 )
 
