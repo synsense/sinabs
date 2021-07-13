@@ -16,7 +16,8 @@ import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
-from .dynapcnnlayer import DynapcnnLayer, DVSLayer
+from .dynapcnnlayer import DynapcnnLayer
+from .dvslayer import DVSLayer
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
 
 
