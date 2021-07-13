@@ -57,7 +57,9 @@ def verify_networks(
     spn_out = spn(input_data).squeeze()
     if not discretize:
         assert np.array_equal(snn_out.detach(), spn_out)
-
+    print(snn)
+    print(spn)
+    print(spn.compatible_layers[0]._config_dict)
     # - Version without dvs
     if first_pooling:
         with pytest.raises(TypeError):

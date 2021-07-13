@@ -10,40 +10,39 @@ from functools import reduce
 
 
 class DynapcnnLayer(nn.Module):
-    """Torch module that reproduces the behaviour of a dynapcnn layer."""
+    """
+    Create a DynapcnnLayer object representing a dynapcnn layer.
+
+    Requires a convolutional layer, a sinabs spiking layer and an optional
+    pooling value. The layers are used in the order conv -> spike -> pool.
+
+    Parameters
+    ----------
+        conv: torch.nn.Conv2d or torch.nn.Linear
+            Convolutional or linear layer (linear will be converted to convolutional)
+        spk: sinabs.layers.SpikingLayer
+            Sinabs spiking layer
+        in_shape: tuple of int
+            The input shape, needed to create dynapcnn configs if the network does not
+            contain an input layer. Convention: (features, height, width)
+        pool: int or None
+            Integer representing the sum pooling kernel and stride. If `None`, no
+            pooling will be applied.
+        discretize: bool
+            Whether to discretize parameters.
+        rescale_weights: int
+            Layer weights will be divided by this value.
+    """
 
     def __init__(
-        self,
-        conv: nn.Conv2d,
-        spk: sl.SpikingLayer,
+            self,
+            conv: nn.Conv2d,
+            spk: sl.SpikingLayer,
         in_shape: Tuple[int],
         pool: Optional[int] = None,
         discretize: bool = True,
         rescale_weights: int = 1,
     ):
-        """
-        Create a DynapcnnLayer object representing a dynapcnn layer.
-
-        Requires a convolutional layer, a sinabs spiking layer and an optional
-        pooling value. The layers are used in the order conv -> spike -> pool.
-
-        Parameters
-        ----------
-            conv: torch.nn.Conv2d or torch.nn.Linear
-                Convolutional or linear layer (linear will be converted to convolutional)
-            spk: sinabs.layers.SpikingLayer
-                Sinabs spiking layer
-            in_shape: tuple of int
-                The input shape, needed to create dynapcnn configs if the network does not
-                contain an input layer. Convention: (features, height, width)
-            pool: int or None
-                Integer representing the sum pooling kernel and stride. If `None`, no
-                pooling will be applied.
-            discretize: bool
-                Whether to discretize parameters.
-            rescale_weights: int
-                Layer weights will be divided by this value.
-        """
         super().__init__()
 
         self._input_shape = in_shape

@@ -803,5 +803,5 @@ def validate_configuration(config, device: str) -> bool:
     else:
         raise Exception(f"Unknown device type {device}")
     if not is_valid:
-        warnings.warn(message)
+        print(message)
     return is_valid
