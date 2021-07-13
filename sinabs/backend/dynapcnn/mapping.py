@@ -216,3 +216,5 @@ _BIAS_MEMORY_SIZE = [1024] * 9
 dynapcnndevkit_constraints = [
     LayerConstraints(km, nm, bm) for (km, nm, bm) in zip(_WEIGHTS_MEMORY_SIZE, _NEURONS_MEMORY_SIZE, _BIAS_MEMORY_SIZE)
 ]
+
+speck2_constraints = dynapcnndevkit_constraints

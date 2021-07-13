@@ -10,14 +10,14 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-from .dynapcnnlayer import DynapcnnLayer
-from .mapping import get_valid_mapping, dynapcnndevkit_constraints
 import torch.nn as nn
 import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
+from .dynapcnnlayer import DynapcnnLayer
+from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -306,7 +306,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             chip_constraints = dynapcnndevkit_constraints
         elif device_name == "speck2devkit":
             config = samna.speck2.configuration.SpeckConfiguration()
-            chip_constraints = dynapcnndevkit_constraints
+            chip_constraints = speck2_constraints
         else:
             raise Exception(f"Unknown device type {device_name}")
 
