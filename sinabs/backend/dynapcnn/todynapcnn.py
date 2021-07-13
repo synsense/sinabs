@@ -255,7 +255,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
     def make_config(
             self,
-            chip_layers_ordering: Union[Sequence[int], str] = range(9),
+            chip_layers_ordering: Union[Sequence[int], str] = "auto",
             device="dynapcnndevkit:0",
             monitor_layers: Optional[List] = None,
             config_modifier=None
