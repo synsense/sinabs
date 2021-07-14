@@ -17,7 +17,7 @@ import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
 from .dynapcnnlayer import DynapcnnLayer
-from .dvslayer import DVSLayer
+from .flipdims import FlipDims
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
 
 
@@ -100,7 +100,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
             self.compatible_layers.append(input_layer)
             i_layer += 1
             # TODO: Convert to DVSLayer
-        elif isinstance(layers[0], DVSLayer):
+        elif isinstance(layers[0], sl.Cropping2dLayer):
+            ...
+        elif isinstance(layers[0], FlipDims):
             ...
         elif isinstance(layers[0], sl.SumPool2d):
             ...

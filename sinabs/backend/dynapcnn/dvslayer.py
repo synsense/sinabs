@@ -7,17 +7,26 @@ from .flipdims import FlipDims
 
 class DVSLayer(nn.Module):
     """
+    DVSLayer representing the DVS pixel array on chip and/or the pre-processing.
+
     Parameters
     ----------
-    input_shape
-    pool
-    crop
-    merge_polarities
-    flip_x
-    flip_y
-    swap_xy
-    disable_pixel_array
-
+    input_shape;
+        Shape of input (height, width)
+    pool:
+        Sum pooling kernel size (height, width)
+    crop:
+        Crop the input to the given ROI ((top, bottom), (left, right))
+    merge_polarities:
+        If true, events from both polarities will be merged.
+    flip_x:
+        Flip the X axis
+    flip_y:
+        Flip the Y axis
+    swap_xy:
+        Swap X and Y dimensions
+    disable_pixel_array:
+        Disable the pixel array. This is useful if you want to use the DVS layer for input preprocessing.
     """
 
     def __init__(
@@ -47,10 +56,10 @@ class DVSLayer(nn.Module):
         # Initialize flip layer
         self._flip_layer = FlipDims(flip_x, flip_y, swap_xy)
         self._flip = {
-            "swap_xy": swap_xy,
             "flip_x": flip_x,
             "flip_y": flip_y,
         }
+        self._swap_xy = swap_xy
 
         # Initialize pooling layer
         self._pooling = pool
@@ -65,10 +74,11 @@ class DVSLayer(nn.Module):
         self.disable_pixel_array = disable_pixel_array
 
     def _update_dimensions(self):
-
-        #TODO: Account for merge polarity
-
         channel_count, input_size_y, input_size_x = self.input_shape
+
+        if self.merge_polarities:
+            channel_count = 1
+
         input_shape = {
             "size": {"x": input_size_x, "y": input_size_y},
             "feature_count": channel_count,
@@ -91,17 +101,24 @@ class DVSLayer(nn.Module):
     def _update_config_dict(self):
         self._update_dimensions()
         self._config_dict = {
+            "merge": self.merge_polarities,
             "dimensions": self.dimensions,
-            "flip": self.flip,
+            "mirror": self.flip,
+            "mirror_diagonal": self.swap_xy,
             "crop": self.crop,
             "pooling": self.pooling,
-            "disable_pixel_array": self.disable_pixel_array
+            "pass_sensor_events": not self.disable_pixel_array
         }
 
     def forward(self, data):
-        out = self.flip_layer(data)
+        if self.merge_polarities:
+            data = data.sum(1, keepdim=True)
+
         if self.crop is not None:
-            out = self.crop_layer(out)
+            out = self.crop_layer(data)
+        else:
+            out = data
+        out = self.flip_layer(out)
         out = self.pool_layer(out)
         return out
 
@@ -110,33 +127,37 @@ class DVSLayer(nn.Module):
         return self._pooling
 
     @property
-    def crop(self):
+    def crop(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         return self._crop
 
     @property
-    def pool_layer(self):
-        return self._pool_layer
+    def output_shape(self) -> dict:
+        return self._output_shape
 
     @property
-    def crop_layer(self):
-        return self._crop_layer
+    def flip(self) -> dict:
+        return dict(**self._flip)
 
     @property
-    def output_shape(self) -> Tuple[int, int, int]:
-        raise NotImplementedError
+    def swap_xy(self) -> bool:
+        return self._swap_xy
 
     @property
-    def dimensions(self):
+    def dimensions(self) -> dict:
         return dict(**self._dimensions)
 
     @property
-    def config_dict(self):
+    def config_dict(self) -> dict:
         return dict(**self._config_dict)
 
     @property
-    def flip_layer(self):
-        return self._flip_layer
+    def pool_layer(self) -> nn.Module:
+        return self._pool_layer
 
     @property
-    def flip(self):
-        return dict(**self._flip)
+    def crop_layer(self) -> nn.Module:
+        return self._crop_layer
+
+    @property
+    def flip_layer(self) -> nn.Module:
+        return self._flip_layer
