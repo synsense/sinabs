@@ -38,7 +38,7 @@ class DynapcnnLayer(nn.Module):
         conv: nn.Conv2d,
         spk: sl.SpikingLayer,
         in_shape: Tuple[int],
-        pool: Optional[int] = None,
+        pool: Optional[sl.SumPool2d] = None,
         discretize: bool = True,
         rescale_weights: int = 1,
     ):
@@ -70,7 +70,11 @@ class DynapcnnLayer(nn.Module):
 
         self._conv_layer = conv
         self._spk_layer = spk
-        self._pool_layer = sl.SumPool2d(kernel_size=pool, stride=pool)
+        self._pool_layer = deepcopy(pool)
+        if pool is not None:
+            if pool.kernel_size[0] != pool.kernel_size[1]:
+                raise ValueError("Only square kernels are supported")
+
 
         self._update_config_dict()
 
@@ -111,7 +115,7 @@ class DynapcnnLayer(nn.Module):
         if self.pool_layer is None:
             self._config_dict["Pooling"] = 1
         else:
-            self._config_dict["Pooling"] = self.pool_layer.kernel_size
+            self._config_dict["Pooling"] = self.pool_layer.kernel_size[0]
 
         self._update_output_dimensions()
         self._config_dict.update(self._spklayer_to_dict(self.spk_layer))
@@ -314,7 +318,7 @@ class DynapcnnLayer(nn.Module):
 
     def summary(self):
         return {
-            "pool": self.pool,
+            "pool": None if self.pool is None else list(self.pool_layer.kernel_shape),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": list(self.spk_layer.state.shape),
         }

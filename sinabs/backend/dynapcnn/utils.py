@@ -77,7 +77,8 @@ def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPoo
 
     idx_next = 0
     # Figure out pooling dims
-    for idx_next, lyr in enumerate(layers):
+    while idx_next < len(layers):
+        lyr = layers[idx_next]
         if isinstance(lyr, nn.AvgPool2d):
             if lyr.padding != 0:
                 raise ValueError("Padding is not supported for the pooling layers")
@@ -86,18 +87,22 @@ def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPoo
         else:
             # Reached a non pooling layer
             break
+        # Increment if it is a pooling layer
+        idx_next += 1
 
         pooling = expand_to_pair(lyr.kernel_size)
-        stride = expand_to_pair(lyr.stride)
-        if pooling != stride:
-            raise ValueError("Stride length should be the same as pooling kernel size")
+        if lyr.stride is not None:
+            stride = expand_to_pair(lyr.stride)
+            if pooling != stride:
+                raise ValueError(f"Stride length {lyr.stride} should be the same as pooling kernel size {lyr.kernel_size}")
         # Compute cumulative pooling
         cumulative_pooling = (
             cumulative_pooling[0] * pooling[0],
             cumulative_pooling[1] * pooling[1]
         )
         # Update rescaling factor
-        rescale_factor *= pooling[0] * pooling[1]
+        if isinstance(lyr, nn.AvgPool2d):
+            rescale_factor *= pooling[0] * pooling[1]
 
     # If there are no layers
     if cumulative_pooling == (1, 1):
@@ -170,6 +175,7 @@ def construct_next_dynapcnn_layer(
         )
 
     lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(layers[layer_idx_next:])
+    print(i_next)
     # Increment layer index to after the pooling layers
     layer_idx_next += i_next
 

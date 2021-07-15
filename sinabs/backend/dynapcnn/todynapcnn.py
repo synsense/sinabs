@@ -194,6 +194,17 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
+    def build_from_list(self, layers: List[nn.Module], in_shape, discretize=True) -> nn.Sequential:
+        compatible_layers = []
+        lyr_indx_next = 0
+        # Find and populate dvs layer
+        ...
+        # Find and populate dynapcnn layers
+
+
+        return nn.Sequential(*compatible_layers)
+
+
     def to(
         self,
         device="cpu",
