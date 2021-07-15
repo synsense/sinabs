@@ -200,7 +200,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Find and populate dvs layer
         ...
         # Find and populate dynapcnn layers
-
+        while lyr_indx_next < len(layers):
+            ...
 
         return nn.Sequential(*compatible_layers)
 

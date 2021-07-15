@@ -50,7 +50,7 @@ def expand_to_pair(value) -> (int, int):
     return (value, value) if isinstance(value, int) else value
 
 
-def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPool2d], int, float):
+def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Optional[sl.SumPool2d], int, float):
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -58,7 +58,8 @@ def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPoo
     ----------
         layers: Sequence of layer objects
             Contains `AvgPool2d` and other objects.
-
+        idx_start: int
+            Layer index to start construction from
     Returns
     -------
         lyr_pool: int or tuple of ints
@@ -75,7 +76,7 @@ def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPoo
 
     cumulative_pooling = (1, 1)
 
-    idx_next = 0
+    idx_next = idx_start
     # Figure out pooling dims
     while idx_next < len(layers):
         lyr = layers[idx_next]
@@ -113,7 +114,7 @@ def construct_next_pooling_layer(layers: List[nn.Module]) -> (Optional[sl.SumPoo
 
 
 def construct_next_dynapcnn_layer(
-        layers: List[nn.Module], in_shape: (int, int, int), discretize: bool, rescale_factor: float,
+        layers: List[nn.Module], idx_start: int, in_shape: (int, int, int), discretize: bool, rescale_factor: float,
 ) -> (DynapcnnLayer, int, float):
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -126,6 +127,8 @@ def construct_next_dynapcnn_layer(
             First object must be Conv2d, next must be a SpikingLayer. All pooling
             layers that follow immediately are consolidated. Layers after this
             will be ignored.
+        idx_start:
+            Layer index to start construction from
         in_shape: tuple of integers
             Shape of the input to the first layer in `layers`. Convention:
             (input features, height, width)
@@ -146,7 +149,7 @@ def construct_next_dynapcnn_layer(
             rescaling factor to account for average pooling
 
     """
-    layer_idx_next = 0  # Keep track of layer indices
+    layer_idx_next = idx_start  # Keep track of layer indices
 
     # Check that the first layer is Conv2d, or Linear
     if not isinstance(layers[layer_idx_next], (nn.Conv2d, nn.Linear)):
@@ -174,10 +177,9 @@ def construct_next_dynapcnn_layer(
             f"Convolution must be followed by spiking layer, found {type(lyr_spk)}"
         )
 
-    lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(layers[layer_idx_next:])
-    print(i_next)
+    lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(layers, layer_idx_next)
     # Increment layer index to after the pooling layers
-    layer_idx_next += i_next
+    layer_idx_next = i_next
 
     # Compose DynapcnnLayer
     dynapcnn_layer = DynapcnnLayer(

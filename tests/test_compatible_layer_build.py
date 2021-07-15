@@ -8,7 +8,7 @@ def test_construct_pooling_from_1_layer():
 
     from sinabs.backend.dynapcnn.utils import construct_next_pooling_layer
 
-    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers)
+    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, 0)
 
     assert pool_lyr.kernel_size == (2,2)
     assert layer_idx_next == 1
@@ -20,7 +20,7 @@ def test_construct_pooling_from_2_layers():
 
     from sinabs.backend.dynapcnn.utils import construct_next_pooling_layer
 
-    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers)
+    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, 0)
 
     assert pool_lyr.kernel_size == (6,6)
     assert layer_idx_next == 2
@@ -38,7 +38,7 @@ def test_non_square_pooling_kernel():
 
     with pytest.raises(ValueError):
         _ = construct_next_dynapcnn_layer(
-            layers, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
+            layers, 0, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
         )
 
 
@@ -52,7 +52,7 @@ def test_construct_dynapcnn_layer_from_3_layers():
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
 
     dynapcnn_lyr, layer_idx_next, rescale_factor = construct_next_dynapcnn_layer(
-        layers, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
+        layers, 0, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
     )
 
     print(dynapcnn_lyr)
@@ -71,7 +71,7 @@ def test_construct_dynapcnn_layer_no_pool_layers():
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
 
     dynapcnn_lyr, layer_idx_next, rescale_factor = construct_next_dynapcnn_layer(
-        layers, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
+        layers, 0, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
     )
 
     print(dynapcnn_lyr)
@@ -94,7 +94,7 @@ def test_construct_dynapcnn_layer_from_8_layers():
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
 
     dynapcnn_lyr, layer_idx_next, rescale_factor = construct_next_dynapcnn_layer(
-        layers, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
+        layers, 0, in_shape=(2, 28, 28), discretize=True, rescale_factor=1
     )
 
     print(dynapcnn_lyr)
