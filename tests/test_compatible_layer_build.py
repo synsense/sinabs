@@ -112,8 +112,12 @@ def test_build_from_list_dynapcnn_layers_only():
         nn.AvgPool2d(2),
         nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
         sl.SpikingLayer(),
+        nn.Dropout2d(),
         nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
         sl.SpikingLayer(),
+        nn.Flatten(),
+        nn.Linear(8, 5),
+        sl.SpikingLayer()
     ]
 
     from sinabs.backend.dynapcnn.utils import build_from_list
@@ -122,9 +126,49 @@ def test_build_from_list_dynapcnn_layers_only():
         layers, in_shape=in_shape, discretize=True
     )
 
-    assert len(chip_model) == 3
+    assert len(chip_model) == 4
     assert chip_model[0].output_shape == (8, 6, 6)
     assert chip_model[1].output_shape == (16, 4, 4)
     assert chip_model[2].output_shape == (2, 2, 2)
+    assert chip_model[3].output_shape == (5, 1, 1)
 
+
+def test_missing_spiking_layer():
+    in_shape = (2, 28, 28)
+    layers = [
+        nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+        sl.SumPool2d(2),
+        nn.AvgPool2d(2),
+        nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+        nn.Dropout2d(),
+        nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+        nn.Flatten(),
+        nn.Linear(8, 5),
+    ]
+    from sinabs.backend.dynapcnn.exceptions import MissingLayer
+    from sinabs.backend.dynapcnn.utils import build_from_list
+
+    with pytest.raises(MissingLayer):
+        build_from_list(
+            layers, in_shape=in_shape, discretize=True
+        )
+
+
+def test_incorrect_model_start():
+    in_shape = (2, 28, 28)
+    layers = [
+        sl.SpikingLayer(),
+        sl.SumPool2d(2),
+        nn.AvgPool2d(2),
+    ]
+    from sinabs.backend.dynapcnn.exceptions import UnexpectedLayer
+    from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
+
+    with pytest.raises(UnexpectedLayer):
+        construct_next_dynapcnn_layer(
+            layers, 0, in_shape=in_shape, discretize=True, rescale_factor=1
+        )
 

@@ -4,6 +4,7 @@ from copy import deepcopy
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer
 import sinabs.layers as sl
+from .exceptions import *
 
 
 def construct_dvs_layer(layers: List[nn.Module]) -> (DVSLayer, int):
@@ -72,7 +73,6 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
             differ from the pooling kernel in certain cases.
     """
     rescale_factor = 1
-    lyr_pool = None
 
     cumulative_pooling = (1, 1)
 
@@ -114,7 +114,7 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
 
 
 def construct_next_dynapcnn_layer(
-        layers: List[nn.Module], idx_start: int, in_shape: (int, int, int), discretize: bool, rescale_factor: float,
+        layers: List[nn.Module], idx_start: int, in_shape: (int, int, int), discretize: bool, rescale_factor: float = 1,
 ) -> (DynapcnnLayer, int, float):
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -153,11 +153,13 @@ def construct_next_dynapcnn_layer(
 
     # Check that the first layer is Conv2d, or Linear
     if not isinstance(layers[layer_idx_next], (nn.Conv2d, nn.Linear)):
-        raise Exception("The list of layers needs to start with Conv2d or Linear.")
+        raise UnexpectedLayer(nn.Conv2d, layers[layer_idx_next])
 
     # Identify and consolidate conv layer
     lyr_conv = layers[layer_idx_next]
     layer_idx_next += 1
+    if layer_idx_next >= len(layers):
+        raise MissingLayer(layer_idx_next)
     # Check and consolidate batch norm
     if isinstance(layers[layer_idx_next], nn.BatchNorm2d):
         lyr_conv = merge_conv_bn(lyr_conv, layers[layer_idx_next])
@@ -168,7 +170,7 @@ def construct_next_dynapcnn_layer(
         lyr_spk = layers[layer_idx_next]
         layer_idx_next += 1
     except IndexError as e:
-        raise TypeError("Convolution must be followed by spiking layer. End of network found.")
+        raise MissingLayer(layer_idx_next)
 
     # Check that the next layer is spiking
     # TODO: Check that the next layer is an IAF layer
