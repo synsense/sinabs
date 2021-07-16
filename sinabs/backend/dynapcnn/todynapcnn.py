@@ -3,6 +3,7 @@ from copy import deepcopy
 from warnings import warn
 import time
 
+
 try:
     import samna
 except (ImportError, ModuleNotFoundError):
@@ -19,6 +20,7 @@ from .io import open_device, _parse_device_string, enable_timestamps, disable_ti
 from .dynapcnnlayer import DynapcnnLayer
 from .flipdims import FlipDims
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
+from .utils import construct_next_dynapcnn_layer
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -194,16 +196,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         self.sequence = nn.Sequential(*self.compatible_layers)
 
-    def build_from_list(self, layers: List[nn.Module], in_shape, discretize=True) -> nn.Sequential:
-        compatible_layers = []
-        lyr_indx_next = 0
-        # Find and populate dvs layer
-        ...
-        # Find and populate dynapcnn layers
-        while lyr_indx_next < len(layers):
-            ...
-
-        return nn.Sequential(*compatible_layers)
 
 
     def to(

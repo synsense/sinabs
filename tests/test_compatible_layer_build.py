@@ -101,3 +101,30 @@ def test_construct_dynapcnn_layer_from_8_layers():
     assert dynapcnn_lyr.pool_layer.kernel_size == (4, 4)
     assert layer_idx_next == 4
     assert rescale_factor == 4
+
+
+def test_build_from_list_dynapcnn_layers_only():
+    in_shape = (2, 28, 28)
+    layers = [
+        nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+        sl.SumPool2d(2),
+        nn.AvgPool2d(2),
+        nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+        nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
+        sl.SpikingLayer(),
+    ]
+
+    from sinabs.backend.dynapcnn.utils import build_from_list
+
+    chip_model = build_from_list(
+        layers, in_shape=in_shape, discretize=True
+    )
+
+    assert len(chip_model) == 3
+    assert chip_model[0].output_shape == (8, 6, 6)
+    assert chip_model[1].output_shape == (16, 4, 4)
+    assert chip_model[2].output_shape == (2, 2, 2)
+
+

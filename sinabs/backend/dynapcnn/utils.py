@@ -156,7 +156,7 @@ def construct_next_dynapcnn_layer(
         raise Exception("The list of layers needs to start with Conv2d or Linear.")
 
     # Identify and consolidate conv layer
-    lyr_conv = layers[0]
+    lyr_conv = layers[layer_idx_next]
     layer_idx_next += 1
     # Check and consolidate batch norm
     if isinstance(layers[layer_idx_next], nn.BatchNorm2d):
@@ -177,6 +177,7 @@ def construct_next_dynapcnn_layer(
             f"Convolution must be followed by spiking layer, found {type(lyr_spk)}"
         )
 
+    # Check for next pooling layer
     lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(layers, layer_idx_next)
     # Increment layer index to after the pooling layers
     layer_idx_next = i_next
@@ -192,3 +193,24 @@ def construct_next_dynapcnn_layer(
     )
 
     return dynapcnn_layer, layer_idx_next, rescale_factor_after_pooling
+
+
+def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Sequential:
+    compatible_layers = []
+    lyr_indx_next = 0
+    rescale_factor = 1
+    # Find and populate dvs layer
+    ...
+    # Find and populate dynapcnn layers
+    while lyr_indx_next < len(layers):
+        if isinstance(layers[lyr_indx_next], (nn.Dropout, nn.Dropout2d, nn.Flatten)):
+            # - Ignore dropout and flatten layers
+            lyr_indx_next += 1
+            continue
+        dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
+            layers, lyr_indx_next, in_shape=in_shape, discretize=discretize, rescale_factor=rescale_factor
+        )
+        in_shape = dynapcnn_layer.output_shape
+        compatible_layers.append(dynapcnn_layer)
+
+    return nn.Sequential(*compatible_layers)
