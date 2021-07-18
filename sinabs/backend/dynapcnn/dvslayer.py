@@ -5,9 +5,28 @@ from sinabs.layers import SumPool2d
 from .flipdims import FlipDims
 
 
+def expand_to_pair(value) -> (int, int):
+    """
+    Expand a given value to a pair (tuple) if an int is passed
+
+    Parameters
+    ----------
+    value:
+        int
+
+    Returns
+    -------
+    pair:
+        (int, int)
+    """
+    return (value, value) if isinstance(value, int) else value
+
+
 class DVSLayer(nn.Module):
     """
     DVSLayer representing the DVS pixel array on chip and/or the pre-processing.
+    The order of processing is as follows
+    MergePolarity -> Pool -> Cut -> Flip
 
     Parameters
     ----------
@@ -40,124 +59,255 @@ class DVSLayer(nn.Module):
             swap_xy: bool = False,
             disable_pixel_array: bool = True,
     ):
+
         super().__init__()
-
-        # Initialize crop layer
-        if crop is not None:
-            self._crop_layer = Cropping2dLayer(crop)
-            self._crop = {
-                "origin": {"x": crop[1][0], "y": crop[0][0]},
-                "cut": {"x": crop[1][1], "y": crop[0][1]},
-            }
-        else:
-            self._crop_layer = None
-            self._crop = None
-
-        # Initialize flip layer
-        self._flip_layer = FlipDims(flip_x, flip_y, swap_xy)
-        self._flip = {
-            "flip_x": flip_x,
-            "flip_y": flip_y,
-        }
-        self._swap_xy = swap_xy
-
-        # Initialize pooling layer
-        self._pooling = pool
-        self._pool_layer = SumPool2d(pool)
-
-        self._config_dict = {}
-        self._input_shape = input_shape
-        self._update_config_dict()
 
         # DVS specific settings
         self.merge_polarities = merge_polarities
         self.disable_pixel_array = disable_pixel_array
 
-    def _update_dimensions(self):
+        if merge_polarities:
+            self.input_shape: Tuple[int, int, int] = (1, *input_shape)
+        else:
+            self.input_shape: Tuple[int, int, int] = (2, *input_shape)
+
+        # Initialize pooling layer
+        self.pool_layer = SumPool2d(pool)
+
+        # Initialize crop layer
+        if crop is not None:
+            self.crop_layer = Cropping2dLayer(crop)
+        else:
+            self.crop_layer = None
+
+        # Initialize flip layer
+        self.flip_layer = FlipDims(flip_x, flip_y, swap_xy)
+
+    @classmethod
+    def from_layers(
+            cls,
+            input_shape: Tuple[int, int],
+            pool_layer: Optional[SumPool2d] = None,
+            crop_layer: Optional[Cropping2dLayer] = None,
+            flip_layer: Optional[FlipDims] = None,
+    ) -> "DVSLayer":
+        """
+        Alternative factory method.
+        Generate a DVSLayer from a set of torch layers
+
+        Parameters
+        ----------
+        input_shape:
+            (height, width)
+        pool_layer:
+            SumPool2d layer
+        crop_layer:
+            Crop2dLayer layer
+        flip_layer:
+            FlipDims layer
+
+        Returns
+        -------
+        DVSLayer
+
+        """
+        pool = (1, 1)
+        crop = None
+        flip_x = None
+        flip_y = None
+        swap_xy = None
+        if pool_layer is not None:
+            pool = pool_layer.kernel_size
+        if crop_layer is not None:
+            crop = ((crop_layer.top_crop, crop_layer.bottom_crop), (crop_layer.left_crop, crop_layer.right_crop))
+        if flip_layer is not None:
+            flip_x = flip_layer.flip_x
+            flip_y = flip_layer.flip_y
+            swap_xy = flip_layer.swap_xy
+
+        return DVSLayer(
+            input_shape=input_shape,
+            pool=pool,
+            crop=crop,
+            flip_x=False if flip_x is None else flip_x,
+            flip_y=False if flip_y is None else flip_y,
+            swap_xy=False if swap_xy is None else swap_xy,
+
+        )
+
+    @property
+    def input_shape_dict(self) -> dict:
+        """
+        The configuration dictionary for the input shape
+
+        Returns
+        -------
+        dict
+        """
         channel_count, input_size_y, input_size_x = self.input_shape
 
         if self.merge_polarities:
             channel_count = 1
 
-        input_shape = {
+        return {
             "size": {"x": input_size_x, "y": input_size_y},
             "feature_count": channel_count,
         }
+
+    def get_output_shape_after_pooling(self) -> Tuple[int, int, int]:
+        """
+        Get the shape of data just after the pooling layer.
+
+        Returns
+        -------
+        (channel, height, width)
+        """
+        channel_count, input_size_y, input_size_x = self.input_shape
+
+        if self.merge_polarities:
+            channel_count = 1
+
+        # Compute shapes after pooling
+        pooling = self.get_pooling()
+        output_size_x = input_size_x // pooling[1]
+        output_size_y = input_size_y // pooling[0]
+        return channel_count, output_size_y, output_size_x
+
+    def get_output_shape_dict(self) -> dict:
+        """
+        Configuration dictionary for output shape
+
+        Returns
+        -------
+        dict
+        """
+        channel_count, output_size_y, output_size_x = self.get_output_shape_after_pooling()
+
         # Compute dims after cropping
-        if self.crop is not None:
-            channel_count, input_size_y, input_size_x = self.crop_layer.get_output_shape(self.input_shape)
+        if self.crop_layer is not None:
+            channel_count, output_size_y, output_size_x = self.crop_layer.get_output_shape(
+                (channel_count, output_size_y, output_size_x)
+            )
 
         # Compute dims after pooling
-        output_shape = {
+        return {
             "size": {
-                "x": input_size_x // self.pooling[1],
-                "y": input_size_y // self.pooling[0],
+                "x": output_size_x,
+                "y": output_size_y,
             },
             "feature_count": channel_count,
         }
-        self._dimensions = {"input_shape": input_shape, "output_shape": output_shape}
-        self._output_shape = output_shape
 
-    def _update_config_dict(self):
-        self._update_dimensions()
-        self._config_dict = {
+    def get_dimensions(self) -> dict:
+        """
+        Configuration dictionary for input and output dimensions
+
+        Returns
+        -------
+        dict
+        """
+        return {"input_shape": self.input_shape_dict, "output_shape": self.get_output_shape_dict()}
+
+    def get_config_dict(self) -> dict:
+        return {
             "merge": self.merge_polarities,
-            "dimensions": self.dimensions,
-            "mirror": self.flip,
-            "mirror_diagonal": self.swap_xy,
-            "crop": self.crop,
-            "pooling": self.pooling,
+            "dimensions": self.get_dimensions(),
+            "mirror": self.get_flip_dict(),
+            "mirror_diagonal": self.get_swap_xy(),
+            "crop": self.get_roi(),
+            "pooling": self.get_pooling(),
             "pass_sensor_events": not self.disable_pixel_array
         }
 
     def forward(self, data):
+        # Merge polarities
         if self.merge_polarities:
             data = data.sum(1, keepdim=True)
-
-        if self.crop is not None:
-            out = self.crop_layer(data)
-        else:
-            out = data
+        # Pool
+        out = self.pool_layer(data)
+        # Crop
+        if self.crop_layer is not None:
+            out = self.crop_layer(out)
+        # Flip stuff
         out = self.flip_layer(out)
-        out = self.pool_layer(out)
+
         return out
 
-    @property
-    def pooling(self) -> Tuple[int, int]:
-        return self._pooling
+    def get_pooling(self) -> Tuple[int, int]:
+        """
+        Pooling kernel shape
 
-    @property
-    def crop(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        return self._crop
+        Returns
+        -------
+        (ky, kx)
+        """
+        return expand_to_pair(self.pool_layer.kernel_size)
 
-    @property
-    def output_shape(self) -> dict:
-        return self._output_shape
+    def get_roi(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
+        """
+        The coordinates for ROI.
+        Note that this is not the same as crop parameter passed during the object construction.
 
-    @property
-    def flip(self) -> dict:
-        return dict(**self._flip)
+        Returns
+        -------
+        ((top, bottom), (left, right))
+        """
+        if self.crop_layer is not None:
+            _, h, w = self.get_output_shape_after_pooling()
+            return (
+                (self.crop_layer.top_crop, h - self.crop_layer.bottom_crop),
+                (self.crop_layer.left_crop, h - self.crop_layer.right_crop)
+            )
+        else:
+            _, output_size_y, output_size_x = self.get_output_shape()
+            return (0, output_size_y), (0, output_size_x)
 
-    @property
-    def swap_xy(self) -> bool:
-        return self._swap_xy
+    def get_output_shape(self) -> Tuple[int, int, int]:
+        """
+        Output shape of the layer
 
-    @property
-    def dimensions(self) -> dict:
-        return dict(**self._dimensions)
+        Returns
+        -------
+        (channel, height, width)
+        """
+        channel_count, input_size_y, input_size_x = self.input_shape
 
-    @property
-    def config_dict(self) -> dict:
-        return dict(**self._config_dict)
+        if self.merge_polarities:
+            channel_count = 1
 
-    @property
-    def pool_layer(self) -> nn.Module:
-        return self._pool_layer
+        # Compute shapes after pooling
+        pooling = self.get_pooling()
+        output_size_x = input_size_x // pooling[1]
+        output_size_y = input_size_y // pooling[0]
 
-    @property
-    def crop_layer(self) -> nn.Module:
-        return self._crop_layer
+        # Compute dims after cropping
+        if self.crop_layer is not None:
+            channel_count, output_size_y, output_size_x = self.crop_layer.get_output_shape(
+                (channel_count, output_size_y, output_size_x)
+            )
 
-    @property
-    def flip_layer(self) -> nn.Module:
-        return self._flip_layer
+        return channel_count, output_size_y, output_size_x
+
+    def get_flip_dict(self) -> dict:
+        """
+        Configuration dictionary for x, y flip
+
+        Returns
+        -------
+        dict
+        """
+
+        return {
+            "flip_x": self.flip_layer.flip_x,
+            "flip_y": self.flip_layer.flip_y,
+        }
+
+    def get_swap_xy(self) -> bool:
+        """
+        True if XY has to be swapped.
+
+        Returns
+        -------
+        bool
+        """
+        return self.flip_layer.swap_xy

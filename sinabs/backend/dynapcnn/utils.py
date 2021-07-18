@@ -1,14 +1,41 @@
 import torch.nn as nn
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from copy import deepcopy
 from .dynapcnnlayer import DynapcnnLayer
-from .dvslayer import DVSLayer
+from .dvslayer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
 from .exceptions import *
+from .flipdims import FlipDims
 
 
-def construct_dvs_layer(layers: List[nn.Module]) -> (DVSLayer, int):
-    ...
+def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int]) -> (Optional[DVSLayer], int, float):
+    # Merge -> Sub Sampling -> Cut/Mirror -> Filter
+    layer_idx_next = 0
+    crop_lyr = None
+    flip_lyr = None
+    # Construct pooling layer
+    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, layer_idx_next)
+
+    # Find next layer (check twice for two layers)
+    for i in range(2):
+        layer = layers[layer_idx_next]
+        if isinstance(layer, sl.Cropping2dLayer):
+            crop_lyr = layer
+        if isinstance(layer, FlipDims):
+            flip_lyr = layer
+        else:
+            break
+
+        layer_idx_next += 1
+
+    # If any parameters have been found
+    if layer_idx_next > 0:
+        dvs_layer = DVSLayer.from_layers(pool_layer=pool_lyr, crop_layer=crop_lyr, flip_layer=flip_lyr,
+                                         input_shape=input_shape)
+        return dvs_layer, layer_idx_next, rescale_factor
+    else:
+        # No parameters/layers pertaining to DVS preprocessing found
+        return None, 0, 1
 
 
 def merge_conv_bn(conv, bn):
@@ -47,10 +74,6 @@ def merge_conv_bn(conv, bn):
     return conv
 
 
-def expand_to_pair(value) -> (int, int):
-    return (value, value) if isinstance(value, int) else value
-
-
 def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Optional[sl.SumPool2d], int, float):
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
@@ -72,9 +95,10 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
             Rescaling factor needed when turning AvgPool to SumPool. May
             differ from the pooling kernel in certain cases.
     """
-    rescale_factor = 1
 
-    cumulative_pooling = (1, 1)
+
+    rescale_factor = 1
+    cumulative_pooling = expand_to_pair(1)
 
     idx_next = idx_start
     # Figure out pooling dims
@@ -95,7 +119,8 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
         if lyr.stride is not None:
             stride = expand_to_pair(lyr.stride)
             if pooling != stride:
-                raise ValueError(f"Stride length {lyr.stride} should be the same as pooling kernel size {lyr.kernel_size}")
+                raise ValueError(
+                    f"Stride length {lyr.stride} should be the same as pooling kernel size {lyr.kernel_size}")
         # Compute cumulative pooling
         cumulative_pooling = (
             cumulative_pooling[0] * pooling[0],
