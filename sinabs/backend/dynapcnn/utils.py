@@ -8,9 +8,32 @@ from .exceptions import *
 from .flipdims import FlipDims
 
 
-def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int]) -> (Optional[DVSLayer], int, float):
-    # Merge -> Sub Sampling -> Cut/Mirror -> Filter
-    layer_idx_next = 0
+def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], idx_start = 0) -> (Optional[DVSLayer], int, float):
+    """
+    Generate a DVSLayer given a list of layers
+    NOTE: The number of channels is implicitly assumed to be 2 because of DVS
+
+    Parameters
+    ----------
+    layers:
+        List of layers
+    input_shape:
+        Shape of input (height, width)
+    idx_start:
+        Starting index to scan the list. Default 0
+
+    Returns
+    -------
+    dvs_layer:
+        None or DVSLayer
+    idx_next: int or None
+        Index of first layer after this layer is constructed
+    rescale_factor: float
+        Rescaling factor needed when turning AvgPool to SumPool. May
+        differ from the pooling kernel in certain cases.
+    """
+    # Start with defaults
+    layer_idx_next = idx_start
     crop_lyr = None
     flip_lyr = None
     # Construct pooling layer
@@ -18,10 +41,15 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int]) -
 
     # Find next layer (check twice for two layers)
     for i in range(2):
-        layer = layers[layer_idx_next]
+        # Go to the next layer
+        if layer_idx_next < len(layers):
+            layer = layers[layer_idx_next]
+        else:
+            break
+        # Check layer type
         if isinstance(layer, sl.Cropping2dLayer):
             crop_lyr = layer
-        if isinstance(layer, FlipDims):
+        elif isinstance(layer, FlipDims):
             flip_lyr = layer
         else:
             break
@@ -88,9 +116,8 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
     -------
         lyr_pool: int or tuple of ints
             Consolidated pooling size.
-        idx_next: int or None
+        idx_next: int
             Index of first object in `layers` that is not a `AvgPool2d`,
-            or `None`, if all objects in `layers` are `AvgPool2d`.
         rescale_factor: float
             Rescaling factor needed when turning AvgPool to SumPool. May
             differ from the pooling kernel in certain cases.

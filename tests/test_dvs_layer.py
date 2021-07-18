@@ -16,10 +16,6 @@ def test_init_defaults():
     assert (out == data).all()
 
 
-def test_construct():
-    ...
-
-
 def test_from_layers_empty():
     from sinabs.backend.dynapcnn.dvslayer import DVSLayer
     import sinabs.layers as sl
@@ -59,3 +55,31 @@ def test_from_layers():
     assert out.shape == (1, 2, (64 - 5), (64 - 10))
 
     assert dvs_layer.get_roi() == ((0, 59), (0, 54))
+
+
+def test_construct_empty():
+    from sinabs.backend.dynapcnn.utils import construct_dvs_layer
+
+    layers = []
+
+    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(128, 128))
+
+    assert rescale_factor == 1
+    assert layer_idx_next == 0
+    assert dvs_layer is None
+
+
+def test_construct_from_sumpool():
+    from sinabs.backend.dynapcnn.utils import construct_dvs_layer
+    import sinabs.layers as sl
+    from sinabs.backend.dynapcnn.flipdims import FlipDims
+
+    layers = [sl.SumPool2d(2), sl.Cropping2dLayer(((1, 1), (1, 1)))]
+
+    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(128, 128))
+
+    print(dvs_layer)
+
+    assert rescale_factor == 1
+    assert layer_idx_next == 2
+    assert dvs_layer.get_roi() == ((1, 63), (1, 63))
