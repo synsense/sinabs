@@ -250,11 +250,30 @@ def construct_next_dynapcnn_layer(
 
 
 def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Sequential:
+    """
+    Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
+
+    Parameters
+    ----------
+
+        layers: sequence of layer objects
+        in_shape: tuple of integers
+            Shape of the input to the first layer in `layers`. Convention:
+            (height, width)
+        discretize: bool
+            Discretize weights and thresholds if True
+
+    Returns
+    -------
+        nn.Sequential
+    """
     compatible_layers = []
     lyr_indx_next = 0
-    rescale_factor = 1
     # Find and populate dvs layer
-    ...
+    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape, idx_start=lyr_indx_next)
+    if dvs_layer is not None:
+        compatible_layers.append(dvs_layer)
+        in_shape = dvs_layer.get_output_shape()
     # Find and populate dynapcnn layers
     while lyr_indx_next < len(layers):
         if isinstance(layers[lyr_indx_next], (nn.Dropout, nn.Dropout2d, nn.Flatten)):
