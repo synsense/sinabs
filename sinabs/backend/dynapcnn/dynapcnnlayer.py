@@ -7,6 +7,8 @@ from warnings import warn
 from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
+from .dvslayer import expand_to_pair
+
 
 class DynapcnnLayer(nn.Module):
     """
@@ -34,17 +36,17 @@ class DynapcnnLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        conv: nn.Conv2d,
-        spk: sl.SpikingLayer,
-        in_shape: Tuple[int],
-        pool: Optional[sl.SumPool2d] = None,
-        discretize: bool = True,
-        rescale_weights: int = 1,
+            self,
+            conv: nn.Conv2d,
+            spk: sl.SpikingLayer,
+            in_shape: Tuple[int, int, int],
+            pool: Optional[sl.SumPool2d] = None,
+            discretize: bool = True,
+            rescale_weights: int = 1,
     ):
         super().__init__()
 
-        self._input_shape = in_shape
+        self.input_shape = in_shape
 
         spk = deepcopy(spk)
         if isinstance(conv, nn.Linear):
@@ -68,57 +70,96 @@ class DynapcnnLayer(nn.Module):
             # int conversion is done while writing the config.
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self._conv_layer = conv
-        self._spk_layer = spk
-        self._pool_layer = deepcopy(pool)
+        self.conv_layer = conv
+        self.spk_layer = spk
         if pool is not None:
             if pool.kernel_size[0] != pool.kernel_size[1]:
                 raise ValueError("Only square kernels are supported")
+            self.pool_layer = deepcopy(pool)
+        else:
+            self.pool_layer = None
 
+    def get_config_dict(self):
+        config_dict = {}
+        config_dict["destinations"] = [{}, {}]
 
-        self._update_config_dict()
-
-    def _update_output_dimensions(self):
-        """
-        Update output dimensions in `self.config_dict`
-        """
-
+        # Update the dimensions
         channel_count, input_size_y, input_size_x = self.input_shape
-        self.dimensions = self._config_dict["dimensions"]
-
-        self.dimensions["input_shape"]["size"] = {"x": input_size_x, "y": input_size_y}
-        self.dimensions["input_shape"]["feature_count"] = channel_count
+        dimensions = {"input_shape": {}, "output_shape": {}}
+        dimensions["input_shape"]["size"] = {"x": input_size_x, "y": input_size_y}
+        dimensions["input_shape"]["feature_count"] = channel_count
 
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        self.dimensions["output_shape"]["size"] = {}
-        self.dimensions["output_shape"]["size"]["x"] = (
-            input_size_x
-            - self.dimensions["kernel_size"]
-            + 2 * self.dimensions["padding"]["x"]
-        ) // self.dimensions["stride"]["x"] + 1
-        self.dimensions["output_shape"]["size"]["y"] = (
-            input_size_y
-            - self.dimensions["kernel_size"]
-            + 2 * self.dimensions["padding"]["y"]
-        ) // self.dimensions["stride"]["y"] + 1
+        (f, h, w) = self.get_neuron_shape()
+        dimensions["output_shape"]["size"] = {}
+        dimensions["output_shape"]["feature_count"] = f
+        dimensions["output_shape"]["size"]["x"] = w
+        dimensions["output_shape"]["size"]["y"] = h
+        dimensions["padding"] = {"x": self.conv_layer.padding[1], "y": self.conv_layer.padding[0]}
+        dimensions["stride"] = {"x": self.conv_layer.stride[1], "y": self.conv_layer.stride[0]}
+        dimensions["kernel_size"] = self.conv_layer.kernel_size[0]
 
-        conv_out_shape = self._config_dict["dimensions"]["output_shape"]
-        # this is the actual output shape, including pooling
-        self._output_shape = (
-            conv_out_shape["feature_count"],
-            conv_out_shape["size"]["y"] // self._config_dict["Pooling"],
-            conv_out_shape["size"]["x"] // self._config_dict["Pooling"],
-        )
-
-    def _update_config_dict(self):
-        self._config_dict = self._conv2d_to_dict(self.conv_layer)
-        if self.pool_layer is None:
-            self._config_dict["Pooling"] = 1
+        if dimensions["kernel_size"] != self.conv_layer.kernel_size[1]:
+            raise ValueError("Conv2d: Kernel must have same height and width.")
+        config_dict["dimensions"] = dimensions
+        # Update parameters from convolution
+        if self.conv_layer.bias is not None:
+            (weights, biases) = self.conv_layer.parameters()
         else:
-            self._config_dict["Pooling"] = self.pool_layer.kernel_size[0]
+            (weights,) = self.conv_layer.parameters()
+            biases = torch.zeros(self.conv_layer.out_channels)
+        weights = weights.transpose(2, 3)  # Need this to match samna convention
+        config_dict["weights"] = weights.int().tolist()
+        config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
+        config_dict["biases"] = biases.int().tolist()
+        config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
+        config_dict["leak_enable"] = biases.bool().any()
 
-        self._update_output_dimensions()
-        self._config_dict.update(self._spklayer_to_dict(self.spk_layer))
+        # Update parameters from the spiking layer
+
+        # - Neuron states
+        if (
+                self.spk_layer.state.dim() == 1
+                and len(self.spk_layer.state) == 1
+                and self.spk_layer.state.item() == 0.0
+        ):
+            # this should happen when the state is tensor([0.]), which is the
+            # Sinabs default for non-initialized networks. We check that and
+            # then we assign no initial neuron state to DYNAP-CNN.
+            f, h, w = self.get_neuron_shape()
+            neurons_state = torch.zeros(f, w, h)
+        elif self.spk_layer.state.dim() == 3:
+            # 3-d is the norm when there is no batch dimension in sinabs
+            neurons_state = self.spk_layer.state.transpose(1, 2)
+        elif self.spk_layer.state.dim() == 4:
+            # 4-dimensional states should be the norm when there is a batch dim
+            neurons_state = self.spk_layer.state.transpose(2, 3)[0]
+        else:
+            raise ValueError(
+                f"Current state (shape: {self.spk_layer.state.shape}) of spiking layer not understood."
+            )
+
+        # - Resetting vs returning to 0
+        return_to_zero = self.spk_layer.membrane_reset
+        if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
+            warn(
+                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
+            )
+        config_dict.update({
+            "return_to_zero": return_to_zero,
+            "threshold_high": int(self.spk_layer.threshold),
+            "threshold_low": int(self.spk_layer.threshold_low),
+            "monitor_enable": False,
+            "neurons_initial_value": neurons_state.int().tolist(),
+            "neurons_value_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),
+        })
+        # Update parameters from pooling
+        if self.pool_layer is not None:
+            config_dict["destinations"][0]["pooling"] = expand_to_pair(self.pool_layer.kernel_size)[0]
+            config_dict["destinations"][0]["enable"] = True
+        else:
+            pass
+        return config_dict
 
     def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
         """
@@ -153,174 +194,56 @@ class DynapcnnLayer(nn.Module):
 
         layer.weight.data = (
             lin.weight.data.clone()
-            .detach()
-            .reshape((lin.out_features, in_chan, in_h, in_w))
+                .detach()
+                .reshape((lin.out_features, in_chan, in_h, in_w))
         )
 
         return layer
 
-    def _spklayer_to_dict(self, layer: sl.SpikingLayer) -> Dict:
+    def get_neuron_shape(self) -> Tuple[int, int, int]:
         """
-        Extract parameters of spiking layer into dict.
-
-        Parameters
-        ----------
-            layer: sl.SpikingLayer
+        Return the output shape of the neuron layer
 
         Returns
         -------
-            dict
-
+        features, height, width
         """
-        # - Neuron states
-        if (
-            layer.state.dim() == 1
-            and len(layer.state) == 1
-            and layer.state.item() == 0.0
-        ):
-            # this should happen when the state is tensor([0.]), which is the
-            # Sinabs default for non-initialized networks. We check that and
-            # then we assign no initial neuron state to DYNAP-CNN.
-            neurons_state = torch.zeros(
-                self.dimensions["output_shape"]["feature_count"],
-                self.dimensions["output_shape"]["size"]["x"],
-                self.dimensions["output_shape"]["size"]["y"],
+
+        def get_shape_after_conv(layer: nn.Conv2d, input_shape):
+            (ch_in, h_in, w_in) = input_shape
+            (kh, kw) = expand_to_pair(layer.kernel_size)
+            (pad_h, pad_w) = expand_to_pair(layer.padding)
+            (stride_h, stride_w) = expand_to_pair(layer.stride)
+
+            def out_len(in_len, k, s, p):
+                return (in_len - k + 2 * p) // s + 1
+
+            out_h = out_len(h_in, kh, stride_h, pad_h)
+            out_w = out_len(w_in, kw, stride_w, pad_w)
+            ch_out = layer.out_channels
+            return ch_out, out_h, out_w
+
+        conv_out_shape = get_shape_after_conv(self.conv_layer, input_shape=self.input_shape)
+        return conv_out_shape
+
+    def get_output_shape(self) -> Tuple[int, int, int]:
+        neuron_shape = self.get_neuron_shape()
+        # this is the actual output shape, including pooling
+        if self.pool_layer is not None:
+            pool = expand_to_pair(self.pool_layer.kernel_size)
+            return (
+                neuron_shape[0],
+                neuron_shape[1] // pool[0],
+                neuron_shape[2] // pool[1],
             )
-        elif layer.state.dim() == 3:
-            # 3-d is the norm when there is no batch dimension in sinabs
-            neurons_state = layer.state.transpose(1, 2)
-        elif layer.state.dim() == 4:
-            # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = layer.state.transpose(2, 3)[0]
         else:
-            raise ValueError(
-                f"Current state (shape: {layer.state.shape}) of spiking layer not understood."
-            )
+            return neuron_shape
 
-        # - Resetting vs returning to 0
-        return_to_zero = layer.membrane_reset
-        if (not return_to_zero) and layer.membrane_subtract != layer.threshold:
-            warn(
-                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
-            )
-
-        layer_params = dict(
-            return_to_zero=return_to_zero,
-            threshold_high=int(layer.threshold),
-            threshold_low=int(layer.threshold_low),
-            monitor_enable=False,
-        )
-
+    def summary(self) -> dict:
         return {
-            "layer_params": layer_params,
-            "neurons_state": neurons_state.int().tolist(),
-            "neurons_state_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),
-        }
-
-    @staticmethod
-    def _conv2d_to_dict(layer: nn.Conv2d) -> Dict:
-        """
-        Extract a dictionary with parameters from a `Conv2d` so that they can be
-        written to a DYNAP-CNN configuration.
-
-        Parameters
-        ----------
-            layer: nn.Conv2d
-                Convolutional layer whose parameters should be extracted
-
-        Returns
-        -------
-            dict
-                Parameters of `layer`
-        """
-        # - Layer dimension parameters
-        dimensions = {}
-        dimensions["output_shape"] = {}
-        dimensions["input_shape"] = {}
-
-        # - Padding
-        dimensions["padding"] = {"x": layer.padding[1], "y": layer.padding[0]}
-
-        # - Stride
-        dimensions["stride"] = {"x": layer.stride[1], "y": layer.stride[0]}
-
-        # - Kernel size
-        dimensions["kernel_size"] = layer.kernel_size[0]
-        if dimensions["kernel_size"] != layer.kernel_size[1]:
-            raise ValueError("Conv2d: Kernel must have same height and width.")
-
-        # - Input and output shapes
-        dimensions["output_shape"]["feature_count"] = layer.out_channels
-
-        # - Weights and biases
-        if layer.bias is not None:
-            weights, biases = layer.parameters()
-        else:
-            (weights,) = layer.parameters()
-            biases = torch.zeros(layer.out_channels)
-
-        # Transpose last two dimensions of weights to match cortexcontrol
-        weights = weights.transpose(2, 3)
-
-        return {
-            "dimensions": dimensions,
-            "weights": weights.int().tolist(),
-            "weights_kill_bit": torch.zeros_like(weights).bool().tolist(),
-            "biases": biases.int().tolist(),
-            "biases_kill_bit": torch.zeros_like(biases).bool().tolist(),
-            "leak_enable": biases.bool().any(),
-        }
-
-    @property
-    def conv_layer(self):
-        return self._conv_layer
-
-    @property
-    def pool_layer(self):
-        return self._pool_layer
-
-    @property
-    def pool(self):
-        return self._pool_layer.kernel_size
-
-    @pool.setter
-    def pool(self, size):
-        self._pool_layer.kernel_size = size
-        self._config_dict["Pooling"] = size
-        self._update_output_dimensions()
-
-    @property
-    def spk_layer(self):
-        return self._spk_layer
-
-    @property
-    def config_dict(self):
-        return self._config_dict
-
-    @property
-    def output_shape(self):
-        return self._output_shape
-
-    @property
-    def input_shape(self):
-        return self._input_shape
-
-    @input_shape.setter
-    def input_shape(self, in_shape):
-        error = "`in_shape` must be tuple of 3 integers corresponding to channel count, height and width."
-        try:
-            if len(in_shape) != 3:
-                raise ValueError(error)
-        except TypeError:
-            raise TypeError(error)
-        self._input_shape = tuple(int(x) for x in in_shape)
-        self._update_output_dimensions()
-
-    def summary(self):
-        return {
-            "pool": None if self.pool is None else list(self.pool_layer.kernel_shape),
+            "pool": None if self.pool_layer is None else list(self.pool_layer.kernel_size),
             "kernel": list(self.conv_layer.weight.data.shape),
-            "neuron": list(self.spk_layer.state.shape),
+            "neuron": self.get_neuron_shape(),
         }
 
     def memory_summary(self):
@@ -343,20 +266,18 @@ class DynapcnnLayer(nn.Module):
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        neuron_height = self.dimensions["output_shape"]["size"]["y"]
-        neuron_width = self.dimensions["output_shape"]["size"]["x"]
+        f, neuron_height, neuron_width = self.get_neuron_shape()
 
         return {
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
-            "neuron": f
-            * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
+            "neuron": f * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
 
     def forward(self, x):
         """Torch forward pass."""
-        x = self._conv_layer(x)
-        x = self._spk_layer(x)
-        if self._pool_layer is not None:
-            x = self._pool_layer(x)
+        x = self.conv_layer(x)
+        x = self.spk_layer(x)
+        if self.pool_layer is not None:
+            x = self.pool_layer(x)
         return x

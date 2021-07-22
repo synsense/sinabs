@@ -198,24 +198,27 @@ class DVSLayer(nn.Module):
             "feature_count": channel_count,
         }
 
-    def get_dimensions(self) -> dict:
-        """
-        Configuration dictionary for input and output dimensions
-
-        Returns
-        -------
-        dict
-        """
-        return {"input_shape": self.input_shape_dict, "output_shape": self.get_output_shape_dict()}
 
     def get_config_dict(self) -> dict:
+        crop = self.get_roi()
+        cut = {
+            "x": crop[1][1],
+            "y": crop[0][1]
+        }
+        origin = {
+            "x": crop[1][0],
+            "y": crop[0][0]
+        }
+        pooling = {"y": self.get_pooling()[0],
+                   "x": self.get_pooling()[1]}
+
         return {
             "merge": self.merge_polarities,
-            "dimensions": self.get_dimensions(),
             "mirror": self.get_flip_dict(),
             "mirror_diagonal": self.get_swap_xy(),
-            "crop": self.get_roi(),
-            "pooling": self.get_pooling(),
+            "cut": cut,
+            "origin": origin,
+            "pooling": pooling,
             "pass_sensor_events": not self.disable_pixel_array
         }
 

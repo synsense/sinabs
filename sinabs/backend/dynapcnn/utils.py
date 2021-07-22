@@ -1,5 +1,6 @@
+import sinabs
 import torch.nn as nn
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 from copy import deepcopy
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer, expand_to_pair
@@ -259,7 +260,7 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
         layers: sequence of layer objects
         in_shape: tuple of integers
             Shape of the input to the first layer in `layers`. Convention:
-            (height, width)
+            (channels, height, width)
         discretize: bool
             Discretize weights and thresholds if True
 
@@ -269,8 +270,8 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
     """
     compatible_layers = []
     lyr_indx_next = 0
-    # Find and populate dvs layer
-    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape, idx_start=lyr_indx_next)
+    # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
+    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape[1:], idx_start=lyr_indx_next)
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)
         in_shape = dvs_layer.get_output_shape()
@@ -283,7 +284,33 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
         dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
             layers, lyr_indx_next, in_shape=in_shape, discretize=discretize, rescale_factor=rescale_factor
         )
-        in_shape = dynapcnn_layer.output_shape
+        in_shape = dynapcnn_layer.get_output_shape()
         compatible_layers.append(dynapcnn_layer)
 
     return nn.Sequential(*compatible_layers)
+
+
+def convert_model_to_layer_list(model: Union[nn.Sequential, sinabs.Network]) -> List[nn.Module]:
+    """
+    Convert a model to a list of layers.
+
+    Parameters
+    ----------
+    model: nn.Sequential or sinabs.Network
+
+    Returns
+    -------
+    List[nn.Module]
+    """
+    if isinstance(model, sinabs.Network):
+        submodules = list(model.spiking_model.children())
+        if len(submodules) != 1:
+            raise ValueError("Found multiple submodules instead of sequential")
+        layers = [*submodules[0]]
+    elif isinstance(model, nn.Sequential):
+        layers = [*model]
+    else:
+        raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
+    return layers
+
+

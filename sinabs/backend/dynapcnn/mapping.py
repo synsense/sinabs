@@ -1,6 +1,8 @@
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from copy import deepcopy
+
+from .dvslayer import DVSLayer
 from .dynapcnnlayer import DynapcnnLayer
 from sinabs.layers import SumPool2d
 
@@ -69,7 +71,7 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
     netmap = recover_mapping(new_graph, layer_mapping)
     # return [x[1] for x in netmap]
     for layer in model.compatible_layers:
-        if isinstance(layer, SumPool2d):
+        if isinstance(layer, DVSLayer):
             # increment indices of netmask
             netmap = [(0, "dvs")] + [(i + 1, j) for (i, j) in netmap]
     return netmap

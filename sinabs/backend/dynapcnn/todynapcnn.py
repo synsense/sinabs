@@ -18,9 +18,11 @@ import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
 from .dynapcnnlayer import DynapcnnLayer
+from .dvslayer import DVSLayer
 from .flipdims import FlipDims
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
-from .utils import construct_next_dynapcnn_layer
+from .utils import convert_model_to_layer_list, build_from_list
+import json
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -46,7 +48,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
     def __init__(
         self,
         snn: Union[nn.Sequential, sinabs.Network],
-        input_shape: Optional[Tuple[int, int, int]] = None,
+        input_shape: Tuple[int, int, int],
         dvs_input: bool = False,
         discretize: bool = True,
     ):
@@ -68,135 +70,16 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 testing purposes.
         """
         super().__init__()
+        self.chip_layers_ordering = []
+        self.compatible_layers = []
 
+        # Convert models  to sequential
+        layers = convert_model_to_layer_list(model=snn)
+        # Build model from layers
+        self.sequence = build_from_list(layers, in_shape=input_shape, discretize=discretize)
         # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
-        self.compatible_layers = []
-        self.chip_layers_ordering = []
-
-        # TODO: Currently only spiking seq. models are supported
-        if isinstance(snn, sinabs.Network):
-            submodules = list(snn.spiking_model.children())
-            if len(submodules) != 1:
-                raise ValueError("Found multiple submodules instead of sequential")
-            layers = [*submodules[0]]
-        elif isinstance(snn, nn.Sequential):
-            layers = [*snn]
-        else:
-            raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
-
-        # index that goes over the layers of the input network
-        i_layer = 0
-        # used to carry pooling info to next conv, to rescale weights due to
-        # the difference between sum and average pooling
-        rescaling_from_pooling = 1
-
-        # - Input to start with
-        if isinstance(layers[0], sl.InputLayer):
-            input_layer = deepcopy(layers[0])
-            if input_shape is not None and input_shape != input_layer.input_shape:
-                warn(
-                    "Network starts with `InputLayer`. Will ignore `input_shape` argument."
-                )
-            input_shape = input_layer.input_shape
-            self.compatible_layers.append(input_layer)
-            i_layer += 1
-            # TODO: Convert to DVSLayer
-        elif isinstance(layers[0], sl.Cropping2dLayer):
-            ...
-        elif isinstance(layers[0], FlipDims):
-            ...
-        elif isinstance(layers[0], sl.SumPool2d):
-            ...
-        elif input_shape is None:
-            raise ValueError(
-                "`input_shape` must be provided if first layer is not `InputLayer`."
-            )
-            # TODO: Generate DVSLayer if applicable
-        self._dvs_input = dvs_input
-        self._external_input_shape = input_shape
-        self._discretize = discretize
-
-        # - Iterate over layers from model
-        while i_layer < len(layers):
-            # Layer to be ported to DYNAPCNN
-            lyr_curr = layers[i_layer]
-
-            if isinstance(lyr_curr, (nn.Conv2d, nn.Linear)):
-                # Check for batchnorm after conv
-                if len(layers) > i_layer + 1:
-                    if isinstance(layers[i_layer + 1], nn.BatchNorm2d):
-                        lyr_curr = _merge_conv_bn(lyr_curr, layers[i_layer + 1])
-                        i_layer += 1
-
-                # Linear and Conv layers are dealt with in the same way.
-                i_next, input_shape, rescaling_from_pooling = self._convert_conv2d_layer(
-                    [lyr_curr] + layers[i_layer + 1 :],
-                    input_shape,
-                    rescaling_from_pooling,
-                )
-
-                if i_next is None:
-                    # TODO: How to route to readout layer? Does destination need to be set?
-                    break
-                else:
-                    # Add 2 to i_layer to go to next layer, + i_next for number
-                    # of consolidated pooling layers
-                    i_layer += i_next + 2
-
-            # Move this case to init function
-            elif isinstance(lyr_curr, (sl.SumPool2d, nn.AvgPool2d)):
-                # This case can only happen if `self.sequence` starts with a pooling layer
-                # or input layer because all other pooling layers should get consolidated.
-                # Therefore, require that input comes from DVS.
-                if not dvs_input:
-                    raise TypeError(
-                        "First layer cannot be pooling if `dvs_input` is `False`."
-                    )
-                pooling, i_next, rescaling_from_pooling = consolidate_pooling(
-                    layers[i_layer:], dvs=True, discretize=self._discretize
-                )
-
-                input_shape = [
-                    input_shape[0],
-                    input_shape[1] // pooling[0],
-                    input_shape[2] // pooling[1],
-                ]
-
-                self.compatible_layers.append(
-                    sl.SumPool2d(kernel_size=pooling, stride=pooling)
-                )
-
-                # if isinstance(lyr_curr, nn.AvgPool2d):
-                #     rescaling_from_pooling = pooling[0] * pooling[1]
-
-                if i_next is not None:
-                    i_layer += i_next
-                else:
-                    break
-
-            elif isinstance(lyr_curr, (nn.Dropout, nn.Dropout2d, nn.Flatten)):
-                # - Ignore dropout and flatten layers
-                i_layer += 1
-
-            else:
-                raise TypeError(
-                    f"Layers of type {type(lyr_curr)} are not supported here."
-                )
-
-        # TODO: Does anything need to be done after iterating over layers?
-        # print("Finished configuration of DYNAPCNN.")
-
-        if rescaling_from_pooling != 1:
-            warn(
-                "Average pooling layer at the end of the network could not "
-                "be turned into sum pooling. The output will be different by "
-                f"a factor of {rescaling_from_pooling}!"
-            )
-
-        self.sequence = nn.Sequential(*self.compatible_layers)
-
-
+        self.compatible_layers = [*self.sequence]
 
     def to(
         self,
@@ -338,9 +221,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # Figure out layer ordering
         if chip_layers_ordering == "auto":
+            print(self.compatible_layers)
             mapping = get_valid_mapping(self, chip_constraints)
             # turn the mapping into a dict
             mapping = {m[0]: m[1] for m in mapping}
+            print(mapping)
             # apply the mapping
             chip_layers_ordering = [
                 mapping[i] for i in range(len(self.compatible_layers))
@@ -352,7 +237,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Save the chip layers
         self.chip_layers_ordering = chip_layers_ordering
         # Update config
-        self._set_dvs_config(config)
         write_model_to_config(self.sequence, config, chip_layers_ordering)
 
         # Enable monitors on the specified layers
@@ -377,56 +261,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             raise ValueError(f"Generated config is not valid for {device}")
 
-    def _set_dvs_config(self, config):
-        """
-        Update config of the dvs layer
 
-        Parameters
-        ----------
-        config
-
-        """
-        # Goal: Only has to look at DVSLayer
-        i_layer_chip = 0
-        dvs = config.dvs_layer
-        if self._dvs_input:
-            i_layer_chip += 1
-            if self._external_input_shape[0] == 1:
-                dvs.merge = True
-            elif self._external_input_shape[0] != 2:
-                message = "dvs layer must have 1 or 2 input channels"
-                raise ValueError("Network not valid for DYNAPCNN\n" + message)
-
-            # - Cut DVS output to match output shape of `lyr_curr`
-            dvs.cut.y = self._external_input_shape[1] - 1
-            dvs.cut.x = self._external_input_shape[2] - 1
-            # - Set DVS destination
-            dvs.destinations[0].enable = True
-            if len(self.chip_layers_ordering) > 1:
-                dvs.destinations[0].layer = self.chip_layers_ordering[i_layer_chip]
-            else:
-                # No more layers in the network
-                dvs.destinations[1].enable = False
-            # - Pooling will only be set to > 1 later if applicable
-            dvs.pooling.y, dvs.pooling.x = 1, 1
-
-        else:
-            dvs.destinations[0].enable = False
-        # TODO: Modify in case of non-sequential models
-        dvs.destinations[1].enable = False
-
-        # Update config object according to model specifications
-        # Check for first layer to be sumpool, while ignoring InputLayer
-        for first_layer in self.sequence:
-            if isinstance(first_layer, sl.InputLayer):
-                pass
-            else:
-                break
-        if isinstance(first_layer, sl.SumPool2d):
-            if self._dvs_input and (first_layer.stride == first_layer.kernel_size):
-                dvs.pooling.y, dvs.pooling.x = first_layer.kernel_size
-            else:
-                raise ValueError("Network cannot start with pooling if dvs_input=False")
 
     def find_chip_layer(self, layer_idx):
         """
@@ -759,56 +594,63 @@ def write_dynapcnn_layer_config(config_dict: dict, chip_layer: "CNNLayerConfig")
             DYNAPCNN configuration object representing the layer to which
             configuration is written.
     """
-
     # Update configuration of the DYNAPCNN layer
     chip_layer.dimensions = config_dict["dimensions"]
+    for i in range(len(config_dict["destinations"])):
+        if "pooling" in config_dict["destinations"][i]:
+            chip_layer.destinations[i].pooling = config_dict["destinations"][i]["pooling"]
 
-    chip_layer.weights = config_dict["weights"]
-    chip_layer.biases = config_dict["biases"]
-    chip_layer.weights_kill_bit = config_dict["weights_kill_bit"]
-    chip_layer.biases_kill_bit = config_dict["biases_kill_bit"]
-    chip_layer.neurons_initial_value = config_dict["neurons_state"]
-    chip_layer.neurons_value_kill_bit = config_dict["neurons_state_kill_bit"]
-    chip_layer.leak_enable = config_dict["leak_enable"]
+    for param, value in config_dict.items():
+        if (param != "dimensions") and (param != "destinations"):
+            try:
+                setattr(chip_layer, param, value)
+            except TypeError as e:
+                raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
-    for param, value in config_dict["layer_params"].items():
-        # print(f"Setting parameter {param}: {value}")
-        setattr(chip_layer, param, value)
+
+def write_dvs_layer_config(config_dict: dict, config: "DvsLayerConfig"):
+    """
+    Update config of the dvs layer
+
+    Parameters
+    ----------
+    config
+
+    """
+    print(config_dict)
+    # Apply to config
+    for param, value in config_dict.items():
+        setattr(config, param, value)
 
 
 def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[int]):
     i_layer_chip = 0
     for i, chip_equivalent_layer in enumerate(model):
-        # happens when the network starts with pooling
-        if isinstance(chip_equivalent_layer, sl.SumPool2d):
-            i_layer_chip += 1
+        if isinstance(chip_equivalent_layer, DVSLayer):
+            chip_layer = config.dvs_layer
+            write_dvs_layer_config(chip_equivalent_layer.get_config_dict(), chip_layer)
         elif isinstance(chip_equivalent_layer, DynapcnnLayer):
             # Object representing DYNAPCNN layer
             chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
             # read the configuration dictionary from DynapcnnLayer
             # and write it to the dynapcnn configuration object
-            write_dynapcnn_layer_config(chip_equivalent_layer.config_dict, chip_layer)
+            write_dynapcnn_layer_config(chip_equivalent_layer.get_config_dict(), chip_layer)
 
-            # For now: Sequential model, second destination always disabled
-            chip_layer.destinations[1].enable = False
-
-            if i == len(model) - 1:
-                # last layer
-                chip_layer.destinations[0].enable = False
-            else:
-                i_layer_chip += 1
-                # Set destination layer
-                chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
-                chip_layer.destinations[0].pooling = chip_equivalent_layer.config_dict[
-                    "Pooling"
-                ]
-                chip_layer.destinations[0].enable = True
         elif isinstance(chip_equivalent_layer, sl.InputLayer):
             pass
         else:
             # in our generated network there is a spurious layer...
             # should never happen
             raise TypeError("Unexpected layer in generated network")
+
+        if i == len(model) - 1:
+            # last layer
+            chip_layer.destinations[0].enable = False
+        else:
+            i_layer_chip += 1
+            # Set destination layer
+            chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
+            chip_layer.destinations[0].enable = True
 
 
 def validate_configuration(config, device: str) -> bool:

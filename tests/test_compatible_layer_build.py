@@ -127,10 +127,10 @@ def test_build_from_list_dynapcnn_layers_only():
     )
 
     assert len(chip_model) == 4
-    assert chip_model[0].output_shape == (8, 6, 6)
-    assert chip_model[1].output_shape == (16, 4, 4)
-    assert chip_model[2].output_shape == (2, 2, 2)
-    assert chip_model[3].output_shape == (5, 1, 1)
+    assert chip_model[0].get_output_shape() == (8, 6, 6)
+    assert chip_model[1].get_output_shape() == (16, 4, 4)
+    assert chip_model[2].get_output_shape() == (2, 2, 2)
+    assert chip_model[3].get_output_shape() == (5, 1, 1)
 
 
 def test_missing_spiking_layer():

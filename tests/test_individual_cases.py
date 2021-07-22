@@ -8,7 +8,7 @@ from sinabs.layers.iaf_bptt import SpikingLayer
 from sinabs.layers import SumPool2d
 import pytest
 
-
+torch.manual_seed(0)
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 
@@ -36,7 +36,9 @@ def networks_equal_output(input_data, snn):
     assert torch.equal(snn_out, spn_out)
 
     # this will give an error if the config is not compatible
-    return spn.make_config()
+    config = spn.make_config()
+    print(spn.chip_layers_ordering)
+    return config
 
 
 # --- TESTS --- #
