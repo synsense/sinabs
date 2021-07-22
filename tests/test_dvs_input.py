@@ -59,7 +59,7 @@ def verify_networks(
         assert np.array_equal(snn_out.detach(), spn_out)
     print(snn)
     print(spn)
-    print(spn.compatible_layers[0]._config_dict)
+    print(spn.compatible_layers[0].get_config_dict())
     # - Version without dvs
     if first_pooling:
         with pytest.raises(TypeError):

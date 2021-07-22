@@ -8,6 +8,7 @@ from sinabs.layers.iaf_bptt import SpikingLayer
 from sinabs.layers import SumPool2d
 import pytest
 
+
 torch.manual_seed(0)
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
@@ -200,7 +201,8 @@ def test_no_spk_ending():
         nn.Linear(512, 2),
     )
 
-    with pytest.raises(TypeError):
+    from sinabs.backend.dynapcnn.exceptions import MissingLayer
+    with pytest.raises(MissingLayer):
         DynapcnnCompatibleNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
