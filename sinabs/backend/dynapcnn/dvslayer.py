@@ -202,8 +202,8 @@ class DVSLayer(nn.Module):
     def get_config_dict(self) -> dict:
         crop = self.get_roi()
         cut = {
-            "x": crop[1][1],
-            "y": crop[0][1]
+            "x": crop[1][1]-1,
+            "y": crop[0][1]-1
         }
         origin = {
             "x": crop[1][0],
