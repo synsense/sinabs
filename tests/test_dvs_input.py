@@ -31,11 +31,17 @@ def verify_dvs_config(
         return
 
     assert dvs.destinations[0].enable is True
+    print("done")
     assert dvs.destinations[0].layer == destination
+    print("done")
     assert dvs.cut.y == INPUT_SHAPE[1] - 1
+    print("done")
     assert dvs.cut.x == INPUT_SHAPE[2] - 1
+    print("done")
     assert dvs.pooling.y == pooling[0]
+    print("done")
     assert dvs.pooling.x == pooling[1]
+    print("done")
 
 
 def verify_networks(

@@ -21,7 +21,7 @@ from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer
 from .flipdims import FlipDims
 from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
-from .utils import convert_model_to_layer_list, build_from_list
+from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
 import json
 
 
@@ -75,11 +75,25 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
+        # Check if dvs input is expected
+        if dvs_input or isinstance(layers[0], sl.InputLayer):
+            self.dvs_input = True
+        else:
+            self.dvs_input = False
+
+        input_shape = infer_input_shape(layers, input_shape=input_shape)
+
         # Build model from layers
         self.sequence = build_from_list(layers, in_shape=input_shape, discretize=discretize)
         # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = [*self.sequence]
+
+        # Add a DVS layer in case dvs_input is flagged
+        if self.dvs_input and not isinstance(self.compatible_layers[0], DVSLayer):
+            dvs_layer = DVSLayer(input_shape=input_shape[1:]) # Ignore the channel dimension
+            self.compatible_layers = [dvs_layer] + self.compatible_layers
+            self.sequence = nn.Sequential(*self.compatible_layers)
 
     def to(
         self,

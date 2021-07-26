@@ -198,7 +198,6 @@ class DVSLayer(nn.Module):
             "feature_count": channel_count,
         }
 
-
     def get_config_dict(self) -> dict:
         crop = self.get_roi()
         cut = {

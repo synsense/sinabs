@@ -9,7 +9,43 @@ from .exceptions import *
 from .flipdims import FlipDims
 
 
-def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], idx_start = 0) -> (Optional[DVSLayer], int, float):
+def infer_input_shape(layers: List[nn.Module],
+                      input_shape: Optional[Tuple[int, int, int]] = None) -> Tuple[int, int, int]:
+    """
+    Checks if the first layer is InputLayer or input_shape is specified.
+    If either of them are specified, then it checks if the information is consistent and returns the input shape.
+
+    Parameters
+    ----------
+    layers:
+        List of modules
+    input_shape :
+        (channels, height, width)
+
+    Returns
+    -------
+    Output shape:
+        (channels, height, width)
+    """
+    input_shape_from_layer = None
+    if isinstance(layers[0], sl.InputLayer):
+        input_shape_from_layer = layers[0].input_shape
+    if (input_shape is not None) and (input_shape_from_layer is not None):
+        if input_shape == input_shape_from_layer:
+            return input_shape
+        else:
+            raise Exception(
+                f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}")
+    elif input_shape_from_layer is not None:
+        return input_shape_from_layer
+    elif input_shape is not None:
+        return input_shape
+    else:
+        raise Exception("No input shape could be inferred")
+
+
+def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], idx_start=0) -> (
+        Optional[DVSLayer], int, float):
     """
     Generate a DVSLayer given a list of layers
     NOTE: The number of channels is implicitly assumed to be 2 because of DVS
@@ -37,6 +73,9 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
     layer_idx_next = idx_start
     crop_lyr = None
     flip_lyr = None
+    if len(layers) and isinstance(layers[0], sl.InputLayer):
+        # Ignore this layer and move on
+        layer_idx_next += 1
     # Construct pooling layer
     pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, layer_idx_next)
 
@@ -123,7 +162,6 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
             Rescaling factor needed when turning AvgPool to SumPool. May
             differ from the pooling kernel in certain cases.
     """
-
 
     rescale_factor = 1
     cumulative_pooling = expand_to_pair(1)
@@ -271,7 +309,8 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
     compatible_layers = []
     lyr_indx_next = 0
     # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
-    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape[1:], idx_start=lyr_indx_next)
+    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape[1:],
+                                                                   idx_start=lyr_indx_next)
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)
         in_shape = dvs_layer.get_output_shape()
@@ -312,5 +351,3 @@ def convert_model_to_layer_list(model: Union[nn.Sequential, sinabs.Network]) -> 
     else:
         raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
     return layers
-
-
