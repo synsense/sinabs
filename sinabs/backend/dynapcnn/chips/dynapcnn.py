@@ -70,7 +70,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen
-                raise TypeError("Unexpected layer in generated network")
+                raise TypeError("Unexpected layer in the model")
 
             if i == len(layers) - 1:
                 # last layer
@@ -142,21 +142,3 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
         return config
-
-    @classmethod
-    def get_valid_mapping(cls, model: "DynapcnnCompatibleNetwork") -> List[int]:
-        mapping = get_valid_mapping(model, cls.get_constriants())
-        # turn the mapping into a dict
-        mapping = {m[0]: m[1] for m in mapping}
-        # apply the mapping
-        chip_layers_ordering = [
-            mapping[i] for i in range(len(model.compatible_layers))
-        ]
-        return chip_layers_ordering
-
-    @classmethod
-    def validate_configuration(cls, config):
-        is_valid, message = cls.get_samna_module().validate_configuration(config)
-        if not is_valid:
-            print(message)
-        return is_valid

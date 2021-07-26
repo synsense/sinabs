@@ -1,7 +1,7 @@
 from typing import List
 from .io import _parse_device_string
 from .config_builder import ConfigBuilder
-from .chips.dynapcnn import DynapcnnConfigBuilder
+from .chips import *
 import samna
 
 
@@ -22,6 +22,10 @@ class ChipFactory:
     def get_config_builder(self) -> ConfigBuilder:
         if self.device_name == "dynapcnndevkit":
             return DynapcnnConfigBuilder()
+        elif self.device_name == "speck2":
+            return Speck2ConfigBuilder()
+        elif self.device_name == "speck2b":
+            return Speck2BConfigBuilder()
         else:
             raise Exception(f"Builder not found for device type: {self.device_name}")
 
