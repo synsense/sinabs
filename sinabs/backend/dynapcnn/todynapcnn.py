@@ -3,6 +3,7 @@ from copy import deepcopy
 from warnings import warn
 import time
 
+from sinabs.backend.dynapcnn.config_factory import ChipFactory
 
 try:
     import samna
@@ -222,28 +223,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if not SAMNA_AVAILABLE:
             raise ImportError("`samna` does not appear to be installed.")
 
-        device_name, _ = _parse_device_string(device)
-
-        if device_name == "dynapcnndevkit":
-            config = samna.dynapcnn.configuration.DynapcnnConfiguration()
-            chip_constraints = dynapcnndevkit_constraints
-        elif device_name == "speck2devkit":
-            config = samna.speck2.configuration.SpeckConfiguration()
-            chip_constraints = speck2_constraints
-        else:
-            raise Exception(f"Unknown device type {device_name}")
+        config_builder = ChipFactory(device).get_config_builder()
 
         # Figure out layer ordering
         if chip_layers_ordering == "auto":
-            print(self.compatible_layers)
-            mapping = get_valid_mapping(self, chip_constraints)
-            # turn the mapping into a dict
-            mapping = {m[0]: m[1] for m in mapping}
-            print(mapping)
-            # apply the mapping
-            chip_layers_ordering = [
-                mapping[i] for i in range(len(self.compatible_layers))
-            ]
+            chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
@@ -251,7 +235,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Save the chip layers
         self.chip_layers_ordering = chip_layers_ordering
         # Update config
-        write_model_to_config(self.sequence, config, chip_layers_ordering)
+        config = config_builder.build_config(self, chip_layers_ordering)
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
@@ -259,7 +243,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
             if "dvs" in monitor_layers:
                 monitor_chip_layers.append("dvs")
-            enable_monitors(config, monitor_chip_layers)
+            config_builder.monitor_layers(config, monitor_chip_layers)
 
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         config.factory_settings.monitor_input_enable = False
@@ -269,13 +253,11 @@ class DynapcnnCompatibleNetwork(nn.Module):
             config = config_modifier(config)
 
         # Validate config
-        if validate_configuration(config, device_name):
+        if config_builder.validate_configuration(config):
             print("Network is valid")
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
-
-
 
     def find_chip_layer(self, layer_idx):
         """
@@ -432,6 +414,7 @@ def enable_monitors(config, monitor_chip_layers: List):
     config:
         Returns the modified config. (The config object is modified in place)
     """
+    warnings.warn("Use ConfigBuilder.monitor_layers instead")
     monitor_layers = monitor_chip_layers.copy()
     if "dvs" in monitor_layers:
         config.dvs_layer.monitor_enable = True
@@ -608,6 +591,7 @@ def write_dynapcnn_layer_config(config_dict: dict, chip_layer: "CNNLayerConfig")
             DYNAPCNN configuration object representing the layer to which
             configuration is written.
     """
+    warnings.warn("Use ConfigBuilder.write_dynapcnn_layer_config() instead")
     # Update configuration of the DYNAPCNN layer
     chip_layer.dimensions = config_dict["dimensions"]
     for i in range(len(config_dict["destinations"])):
@@ -631,6 +615,7 @@ def write_dvs_layer_config(config_dict: dict, config: "DvsLayerConfig"):
     config
 
     """
+    warnings.warn("Use ConfigBuilder.write_dvs_layer_config() instead")
     print(config_dict)
     # Apply to config
     for param, value in config_dict.items():
@@ -638,6 +623,7 @@ def write_dvs_layer_config(config_dict: dict, config: "DvsLayerConfig"):
 
 
 def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[int]):
+    warnings.warn("Use ConfigBuilder.build_config() instead")
     i_layer_chip = 0
     for i, chip_equivalent_layer in enumerate(model):
         if isinstance(chip_equivalent_layer, DVSLayer):
@@ -682,6 +668,7 @@ def validate_configuration(config, device: str) -> bool:
     true if valid
 
     """
+    warnings.warn("Use ConfigBuilder.validate_configuration() instead")
     # Validate configuration
     if device == "dynapcnndevkit":
         is_valid, message = samna.dynapcnn.validate_configuration(config)

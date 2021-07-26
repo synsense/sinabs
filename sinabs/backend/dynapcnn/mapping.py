@@ -1,7 +1,7 @@
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from copy import deepcopy
-
+from collections import deque
 from .dvslayer import DVSLayer
 from .dynapcnnlayer import DynapcnnLayer
 from sinabs.layers import SumPool2d
@@ -77,7 +77,6 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
     return netmap
 
 
-from collections import deque
 
 
 @dataclass
