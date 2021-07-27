@@ -11,6 +11,7 @@ samna_devices = None
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
     "speck": "speck",
+    "speck2b": "Speck2bTestboard",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
     "speck2devkit": "Speck2DevKit",
@@ -90,6 +91,8 @@ def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapc
         Spike = samna.dynapcnn.event.Spike
     elif dev_name == "speck2devkit":
         Spike = samna.speck2.event.Spike
+    elif dev_name == "speck2b":
+        Spike = samna.speck2b.event.Spike
     else:
         raise NotImplementedError("Device type unknown")
     t, ch, y, x = torch.where(raster)

@@ -366,6 +366,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         if hasattr(self, "device") and _parse_device_string(self.device)[0] in (
             "dynapcnndevkit",
             "speck2devkit",
+            "speck2b",
         ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
