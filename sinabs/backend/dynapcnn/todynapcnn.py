@@ -135,7 +135,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, _ = _parse_device_string(device)
-            if device_name in ("dynapcnndevkit", "speck2devkit"):
+            # TODO: This should probably check with the device type from the factor
+            if device_name in ("dynapcnndevkit", "speck2devkit", "speck2b"):
                 # Generate config
                 config = self.make_config(
                     chip_layers_ordering=chip_layers_ordering,
@@ -160,6 +161,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     time.sleep(1)
                     self.samna_output_buffer = (
                         samna.BufferSinkNode_speck2_event_output_event()
+                    )
+                elif device_name == "speck2b":
+                    self.samna_device.get_model().apply_configuration(config)
+                    time.sleep(1)
+                    self.samna_output_buffer = (
+                        samna.BufferSinkNode_speck2b_event_output_event()
                     )
                 else:
                     raise ValueError(
