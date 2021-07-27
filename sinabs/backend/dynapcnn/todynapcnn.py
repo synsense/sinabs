@@ -135,7 +135,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, _ = _parse_device_string(device)
-            if device_name in ("dynapcnndevkit", "speck2devkit"):
+            # TODO: This should probably check with the device type from the factor
+            if device_name in ("dynapcnndevkit", "speck2devkit", "speck2b"):
                 # Generate config
                 config = self.make_config(
                     chip_layers_ordering=chip_layers_ordering,
