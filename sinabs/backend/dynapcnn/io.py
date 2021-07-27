@@ -87,6 +87,7 @@ def reset_timestamps(device: str) -> None:
         stopWatch = device.get_stop_watch()
         stopWatch.reset() # to reset to 0 (it doesn't disable it automatically, so it will go on coutning)
 
+
 def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapcnndevkit:0") -> List:
     """
     Convert spike raster to events for DynaapcnnDevKit

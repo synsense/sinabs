@@ -1,4 +1,3 @@
-import warnings
 from copy import deepcopy
 from warnings import warn
 import time
@@ -12,18 +11,15 @@ except (ImportError, ModuleNotFoundError):
 else:
     SAMNA_AVAILABLE = True
 
-import torch.nn as nn
 import torch
-import sinabs.layers as sl
+import torch.nn as nn
 import sinabs
+import sinabs.layers as sl
 from typing import Tuple, Union, Optional, Sequence, List
 from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps, reset_timestamps
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer
-from .flipdims import FlipDims
-from .mapping import get_valid_mapping, dynapcnndevkit_constraints, speck2_constraints
 from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
-import json
 
 
 class DynapcnnCompatibleNetwork(nn.Module):
@@ -387,33 +383,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return summary
 
 
-def enable_monitors(config, monitor_chip_layers: List):
-    """
-    Updates the config object in place.
-
-    Parameters
-    ----------
-    config:
-        samna config object
-    monitor_chip_layers:
-        The layers to be monitored on the chip.
-
-    Returns
-    -------
-    config:
-        Returns the modified config. (The config object is modified in place)
-    """
-    warnings.warn("Use ConfigBuilder.monitor_layers instead")
-    monitor_layers = monitor_chip_layers.copy()
-    if "dvs" in monitor_layers:
-        config.dvs_layer.monitor_enable = True
-        config.dvs_layer.monitor_sensor_enable = True
-        monitor_layers.remove("dvs")
-    for lyr_indx in monitor_layers:
-        config.cnn_layers[lyr_indx].monitor_enable = True
-    return config
-
-
 def consolidate_pooling(
     layers: Sequence[nn.Module], dvs: bool, discretize: bool
 ) -> Tuple[Union[List[int], int], int, int]:
@@ -447,7 +416,8 @@ def consolidate_pooling(
         if isinstance(lyr, nn.AvgPool2d):
             if discretize:
                 warn(
-                    "For average pooling, subsequent weights are scaled down. This can lead to larger quantization errors when `discretize` is `True`."
+                    "For average pooling, subsequent weights are scaled down. This can lead to larger quantization "
+                    "errors when `discretize` is `True`. "
                 )
             # Update pooling size
             new_pooling = get_pooling_size(lyr, dvs=dvs)
@@ -566,105 +536,3 @@ def _merge_conv_bn(conv, bn):
     conv.bias.data = beta + (c_bias - mu) * factor
 
     return conv
-
-
-def write_dynapcnn_layer_config(config_dict: dict, chip_layer: "CNNLayerConfig"):
-    """
-    Write a single layer configuration to the dynapcnn conf object.
-
-    Parameters
-    ----------
-        config_dict: dict
-            Dict containing the configuration
-        chip_layer: CNNLayerConfig
-            DYNAPCNN configuration object representing the layer to which
-            configuration is written.
-    """
-    warnings.warn("Use ConfigBuilder.write_dynapcnn_layer_config() instead")
-    # Update configuration of the DYNAPCNN layer
-    chip_layer.dimensions = config_dict["dimensions"]
-    for i in range(len(config_dict["destinations"])):
-        if "pooling" in config_dict["destinations"][i]:
-            chip_layer.destinations[i].pooling = config_dict["destinations"][i]["pooling"]
-
-    for param, value in config_dict.items():
-        if (param != "dimensions") and (param != "destinations"):
-            try:
-                setattr(chip_layer, param, value)
-            except TypeError as e:
-                raise TypeError(f"Unexpected parameter {param} or value. {e}")
-
-
-def write_dvs_layer_config(config_dict: dict, config: "DvsLayerConfig"):
-    """
-    Update config of the dvs layer
-
-    Parameters
-    ----------
-    config
-
-    """
-    warnings.warn("Use ConfigBuilder.write_dvs_layer_config() instead")
-    print(config_dict)
-    # Apply to config
-    for param, value in config_dict.items():
-        setattr(config, param, value)
-
-
-def write_model_to_config(model: nn.Sequential, config, chip_layers: Sequence[int]):
-    warnings.warn("Use ConfigBuilder.build_config() instead")
-    i_layer_chip = 0
-    for i, chip_equivalent_layer in enumerate(model):
-        if isinstance(chip_equivalent_layer, DVSLayer):
-            chip_layer = config.dvs_layer
-            write_dvs_layer_config(chip_equivalent_layer.get_config_dict(), chip_layer)
-        elif isinstance(chip_equivalent_layer, DynapcnnLayer):
-            # Object representing DYNAPCNN layer
-            chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
-            # read the configuration dictionary from DynapcnnLayer
-            # and write it to the dynapcnn configuration object
-            write_dynapcnn_layer_config(chip_equivalent_layer.get_config_dict(), chip_layer)
-
-        elif isinstance(chip_equivalent_layer, sl.InputLayer):
-            pass
-        else:
-            # in our generated network there is a spurious layer...
-            # should never happen
-            raise TypeError("Unexpected layer in generated network")
-
-        if i == len(model) - 1:
-            # last layer
-            chip_layer.destinations[0].enable = False
-        else:
-            i_layer_chip += 1
-            # Set destination layer
-            chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
-            chip_layer.destinations[0].enable = True
-
-
-def validate_configuration(config, device: str) -> bool:
-    """
-    Verify whether the config object is valid given a device's specifications
-    Parameters
-    ----------
-    config: Config object
-        Config object of a device
-    device: String
-        dynapcnndevkit or speck2devkit
-
-    Returns
-    -------
-    true if valid
-
-    """
-    warnings.warn("Use ConfigBuilder.validate_configuration() instead")
-    # Validate configuration
-    if device == "dynapcnndevkit":
-        is_valid, message = samna.dynapcnn.validate_configuration(config)
-    elif device == "speck2devkit":
-        is_valid, message = samna.speck2.validate_configuration(config)
-    else:
-        raise Exception(f"Unknown device type {device}")
-    if not is_valid:
-        print(message)
-    return is_valid

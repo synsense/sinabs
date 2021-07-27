@@ -30,5 +30,5 @@ class ChipFactory:
         except KeyError as e:
             raise Exception(f"Builder not found for device type: {self.device_name}")
 
-    def xytp_to_events(self) -> List["Spike"]:
+    def raster_to_events(self) -> List["Spike"]:
         raise NotImplementedError

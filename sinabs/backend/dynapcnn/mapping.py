@@ -4,7 +4,6 @@ from copy import deepcopy
 from collections import deque
 from .dvslayer import DVSLayer
 from .dynapcnnlayer import DynapcnnLayer
-from sinabs.layers import SumPool2d
 
 
 @dataclass
