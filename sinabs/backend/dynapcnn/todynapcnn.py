@@ -253,7 +253,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             config_builder.monitor_layers(config, monitor_chip_layers)
 
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
-        config.factory_settings.monitor_input_enable = False
+        # config.factory_settings.monitor_input_enable = False
 
         # Apply user config modifier
         if config_modifier is not None:
