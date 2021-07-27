@@ -96,6 +96,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
             self.compatible_layers = [dvs_layer] + self.compatible_layers
             self.sequence = nn.Sequential(*self.compatible_layers)
 
+        if self.dvs_input:
+            # Enable dvs pixels
+            self.compatible_layers[0].disable_pixel_array = False
+
     def to(
         self,
         device="cpu",
