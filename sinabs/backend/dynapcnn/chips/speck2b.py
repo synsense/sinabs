@@ -9,7 +9,7 @@ class Speck2BConfigBuilder(DynapcnnConfigBuilder):
 
     @classmethod
     def get_samna_module(cls):
-        return samna.speck2
+        return samna.speck2b
 
     @classmethod
     def get_default_config(cls) -> SpeckConfiguration:
