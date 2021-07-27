@@ -142,3 +142,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
         return config
+
+    @classmethod
+    def get_output_buffer(cls):
+        return samna.BufferSinkNode_dynapcnn_event_output_event()

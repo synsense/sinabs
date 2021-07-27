@@ -140,7 +140,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         elif isinstance(device, str):
             device_name, _ = _parse_device_string(device)
             # TODO: This should probably check with the device type from the factor
-            if device_name in ("dynapcnndevkit", "speck2devkit", "speck2b"):
+            if device_name in ChipFactory.supported_devices:
                 # Generate config
                 config = self.make_config(
                     chip_layers_ordering=chip_layers_ordering,
@@ -151,31 +151,12 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
                 # Apply configuration to device
                 self.samna_device = open_device(device)
+                self.samna_device.get_model().apply_configuration(config)
+                time.sleep(1)
 
-                if device_name == "dynapcnndevkit":
-                    self.samna_device.get_model().apply_configuration(config)
-                    time.sleep(1)
-                    self.samna_output_buffer = (
-                        samna.BufferSinkNode_dynapcnn_event_output_event()
-                    )
-                elif device_name == "speck2devkit":
-                    self.samna_device.get_daughter_board(
-                        0
-                    ).get_model().apply_configuration(config)
-                    time.sleep(1)
-                    self.samna_output_buffer = (
-                        samna.BufferSinkNode_speck2_event_output_event()
-                    )
-                elif device_name == "speck2b":
-                    self.samna_device.get_model().apply_configuration(config)
-                    time.sleep(1)
-                    self.samna_output_buffer = (
-                        samna.BufferSinkNode_speck2b_event_output_event()
-                    )
-                else:
-                    raise ValueError(
-                        "Unknown device description. device name has to be dynapcnndekit or speck2devkit"
-                    )
+                # Create output buffer sink node
+                builder = ChipFactory(device).get_config_builder()
+                self.samna_output_buffer = builder.get_output_buffer()
 
                 # Connect buffer sink node to device
                 self.samna_device.get_model().get_source_node().add_destination(
@@ -367,11 +348,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return i_next, output_shape, rescaling_from_pooling
 
     def forward(self, x):
-        if hasattr(self, "device") and _parse_device_string(self.device)[0] in (
-            "dynapcnndevkit",
-            "speck2devkit",
-            "speck2b",
-        ):
+        if hasattr(self, "device") and _parse_device_string(self.device)[0] in ChipFactory.supported_devices:
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
             reset_timestamps(self.device)

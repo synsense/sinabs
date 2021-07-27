@@ -54,3 +54,8 @@ class ConfigBuilder(ABC):
         if not is_valid:
             print(message)
         return is_valid
+
+    @classmethod
+    @abstractmethod
+    def get_output_buffer(cls):
+        ...
