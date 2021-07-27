@@ -84,7 +84,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config
 
     @classmethod
-    def get_constriants(cls) -> List[LayerConstraints]:
+    def get_constraints(cls) -> List[LayerConstraints]:
         ## Chip specific constraints
         weight_memory_size = [
             16 * 1024,  # 0

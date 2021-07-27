@@ -8,6 +8,8 @@ from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import io
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
     nn.ReLU(),
@@ -76,11 +78,13 @@ test_dataset = MNIST_Dataset("./data", train=False, spiking=True, tWindow=tWindo
 chip_layers_ordering = hardware_compatible_model.chip_layers_ordering
 print(f"The model was placed on the chip at the following layers: {chip_layers_ordering}")
 
+
+factory = ChipFactory("dynapcnndevkit:0")
 # Generate input events
-input_events = io.raster_to_events(
+input_events = factory.raster_to_events(
     test_dataset[0][0],
     layer=chip_layers_ordering[0],  # First layer on the chip
-    device="dynapcnndevkit:0")
+)
 
 # Flush buffer
 hardware_compatible_model.samna_output_buffer.get_events()

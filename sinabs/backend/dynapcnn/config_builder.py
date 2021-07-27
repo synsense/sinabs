@@ -29,7 +29,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def get_constriants(cls) -> List[LayerConstraints]:
+    def get_constraints(cls) -> List[LayerConstraints]:
         ...
 
     @classmethod
@@ -39,7 +39,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     def get_valid_mapping(cls, model: "DynapcnnCompatibleNetwork") -> List[int]:
-        mapping = get_valid_mapping(model, cls.get_constriants())
+        mapping = get_valid_mapping(model, cls.get_constraints())
         # turn the mapping into a dict
         mapping = {m[0]: m[1] for m in mapping}
         # apply the mapping

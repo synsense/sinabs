@@ -2,7 +2,7 @@ from copy import deepcopy
 from warnings import warn
 import time
 
-from sinabs.backend.dynapcnn.config_factory import ChipFactory
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 
 try:
     import samna
