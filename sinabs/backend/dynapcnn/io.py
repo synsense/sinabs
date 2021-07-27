@@ -28,6 +28,7 @@ device_type_map = {v: k for (k, v) in device_types.items()}
 
 def enable_timestamps(device: str) -> None:
     """
+    Enable timestamping of events
 
     Parameters
     ----------
@@ -37,14 +38,18 @@ def enable_timestamps(device: str) -> None:
 
     """
     dev_name, _ = _parse_device_string(device)
-    if dev_name != "dynapcnndevkit":
-        raise NotImplementedError
-    device = open_device(device)
-    device.get_io_module().write_config(0x0003, 1)
+    if dev_name == "dynapcnndevkit":
+        device = open_device(device)
+        device.get_io_module().write_config(0x0003, 1)
+    else:
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.set_enable_value(True) # to enable
 
 
 def disable_timestamps(device: str) -> None:
     """
+    Disable timestamping of events
 
     Parameters
     ----------
@@ -54,11 +59,33 @@ def disable_timestamps(device: str) -> None:
 
     """
     dev_name, _ = _parse_device_string(device)
-    if dev_name != "dynapcnndevkit":
-        raise NotImplementedError
-    device = open_device(device)
-    device.get_io_module().write_config(0x0003, 0)
+    if dev_name == "dynapcnndevkit":
+        device = open_device(device)
+        device.get_io_module().write_config(0x0003, 0)
+    else:
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.set_enable_value(False) # to enable
 
+
+def reset_timestamps(device: str) -> None:
+    """
+    Reset the timeer to 0
+
+    Parameters
+    ----------
+    device: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+    """
+    dev_name, _ = _parse_device_string(device)
+    if dev_name == "dynapcnndevkit":
+        disable_timestamps(device)
+    else:
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.reset() # to reset to 0 (it doesn't disable it automatically, so it will go on coutning)
 
 def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapcnndevkit:0") -> List:
     """

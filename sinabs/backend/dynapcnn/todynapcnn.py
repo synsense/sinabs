@@ -17,7 +17,7 @@ import torch
 import sinabs.layers as sl
 import sinabs
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps
+from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps, reset_timestamps
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer
 from .flipdims import FlipDims
@@ -374,7 +374,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
-            disable_timestamps(self.device)
+            reset_timestamps(self.device)
             enable_timestamps(self.device)
             # Send input
             self.samna_device.get_model().write(x)
