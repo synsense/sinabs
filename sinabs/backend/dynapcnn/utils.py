@@ -2,6 +2,8 @@ import sinabs
 import torch.nn as nn
 from typing import List, Optional, Tuple, Union
 from copy import deepcopy
+
+from .crop2d import Crop2d
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
@@ -88,6 +90,16 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
             break
         # Check layer type
         if isinstance(layer, sl.Cropping2dLayer):
+            # The shape after pooling is
+            h = input_shape[0]//pool_lyr.kernel_shape[0]
+            w = input_shape[1]//pool_lyr.kernel_shape[1]
+            # The cropping params
+            left = layer.left_crop
+            right = layer.right_crop
+            top = h-layer.top_crop
+            bottom = w-layer.bottom_crop
+            crop_lyr = Crop2d((top, bottom), (left, right))
+        elif isinstance(layer, Crop2d):
             crop_lyr = layer
         elif isinstance(layer, FlipDims):
             flip_lyr = layer
