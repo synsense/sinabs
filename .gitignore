@@ -4,3 +4,5 @@ __pycache__
 .idea
 build
 .ipynb_checkpoints
+venv
+.eggs
