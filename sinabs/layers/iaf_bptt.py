@@ -18,6 +18,7 @@ class IAF(SpikingLayer):
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
+        window: Optional[float] = None,
         *args,
         **kwargs,
     ):
@@ -27,15 +28,18 @@ class IAF(SpikingLayer):
 
         Parameters
         ----------
-        threshold: float
+        threshold : float
             Spiking threshold of the neuron.
-        threshold_low: float or None
+        threshold_low : float or None
             Lower bound for membrane potential.
-        membrane_subtract: float or None
+        membrane_subtract : float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
+        membrane_reset : bool
             If True, reset the membrane to 0 on spiking.
+        window : float
+            Distance between step of Heaviside surrogate gradient and threshold.
+            (Relative to size of threshold)
         """
         super().__init__(
             *args,
@@ -45,6 +49,8 @@ class IAF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
+
+        self.window_abs = threshold * window
 
     def forward(self, input_spikes: torch.Tensor):
         """
@@ -72,6 +78,7 @@ class IAF(SpikingLayer):
         # Local variables
         threshold = self.threshold
         threshold_low = self.threshold_low
+        window = self.window_abs
 
         state = self.state
         activations = self.activations
@@ -95,9 +102,9 @@ class IAF(SpikingLayer):
 
             # generate spikes
             if self.membrane_reset:
-                activations = threshold_reset(state, threshold, threshold * window)
+                activations = threshold_reset(state, threshold, window)
             else:
-                activations = threshold_subtract(state, threshold, threshold * window)
+                activations = threshold_subtract(state, threshold, window)
             spikes.append(activations)
 
         self.state = state
@@ -107,6 +114,11 @@ class IAF(SpikingLayer):
         self.spikes_number = all_spikes.abs().sum()
 
         return all_spikes
+
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict()
+        param_dict.update(window=self.window_abs / self.threshold)
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.

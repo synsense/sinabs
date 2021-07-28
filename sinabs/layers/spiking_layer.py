@@ -81,6 +81,34 @@ class SpikingLayer(torch.nn.Module, ABC):
         """
         return in_shape
 
+    def reset_states(self, shape=None, randomize=False):
+        """
+        Reset the state of all neurons in this layer
+
+        Parameters
+        ----------
+        shape : None or Tuple of ints
+            New shape for states. Generally states can be arbitrary and have no
+            time dimension.
+        randomize : bool
+            If `True`, draw states uniformly between `self.threshold` and
+            `self.threshold_low`, or -self.threshold if `self.threshold_low` is
+            `None`. Otherwise set states to 0.
+        """
+        device = self.state.device
+        if shape is None:
+            shape = self.state.shape
+
+        if randomize:
+            # State between lower and upper threshold
+            low = self.threshold_low or -self.threshold
+            width = self.threshold - low
+            self.state = torch.rand(shape, device=device) * width + low
+        else:
+            self.state = torch.zeros(shape, device=self.state.device)
+
+        self.activations = torch.zeros(shape, device=self.activations.device)
+
     def __deepcopy__(self, memo=None):
         # TODO: What is `memo`?
 
@@ -118,21 +146,3 @@ class SpikingLayer(torch.nn.Module, ABC):
     @membrane_subtract.setter
     def membrane_subtract(self, new_val):
         self._membrane_subtract = new_val
-
-    def reset_states(self, shape=None, randomize=False):
-        """
-        Reset the state of all neurons in this layer
-        """
-        device = self.state.device
-        if shape is None:
-            shape = self.state.shape
-
-        if randomize:
-            # State between lower and upper threshold
-            low = self.threshold_low or -self.threshold
-            width = self.threshold - low
-            self.state = torch.rand(shape, device=device) * width + low
-            self.activations = torch.zeros(shape, device=self.activations.device)
-        else:
-            self.state = torch.zeros(shape, device=self.state.device)
-            self.activations = torch.zeros(shape, device=self.activations.device)
