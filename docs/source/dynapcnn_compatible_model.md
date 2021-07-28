@@ -100,14 +100,14 @@ The device naming is inspired by `pytorch` device naming convention ie `DEVICE_T
 `dynapcnndevkit:0` refers to the `first` `Dynapcnn DevKit` accessible. 
 If there are multiple devices of the same kind connected to the PC, then they are referred by higher incremental indices.
 
-To see all the supported devices, please have a look at the `sinabs.dynapcnn.backend.io.device_types`
+To see all the recognized devices, please have a look at the `sinabs.dynapcnn.backend.io.device_types`
 
 ```python
 from sinabs.backend.dynapcnn import io
 print(io.device_types)
 ```
 
-At the time of writing this documentation, the list of all devices supported by `samna`.
+At the time of writing this documentation, the list of all devices recognized by `samna`.
 
 > Not all of these are supported by this plugin and not all of these are compatible with DYNAP-CNN
 
@@ -134,6 +134,13 @@ from sinabs.backend.dynapcnn import io
 io.get_all_samna_devices()
 ```
 
+Finally to get a list of all the supported devices that this plugin supports and allows you to port your models, 
+you can inspect `ChipFactory.supported_devices`
+
+```python
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+ChipFactory.supported_devices
+```
  
 Placement of layers on device cores
 -----------------------------------
@@ -148,7 +155,7 @@ Consequently, not all layers on the chip will be compatible with each layer in t
 If the `chip_layers_ordering` is set to `"auto"`, the network is going to be mapped onto the chip based on a placement algorithm.
 If the algorithm is unable to place the model onto the chip, you will receive an error message.
 
-Some methods helpful for debugging if you run into problems are `mapping.find_chip_layers` and the object `mapping.dynapcnndevkit_constraints`.
+Some methods helpful for debugging if you run into problems are `ConfigBuilder.get_valid_mapping()` and the object `ConfigBuilder.get_constraints()`.
 
 After successfully mapping a model, the `chip_layers_ordering` can be inspected by `DynapcnnCompatibleNetwork.chip_layers_ordering`.
 
@@ -217,8 +224,15 @@ Memory constraints
 Attributes of interest
 ----------------------
 
+Knowing the mapping of the various layers of the model to the layers of the chip is extremely crucial.
+`DynapcnnCompatibleNetwork.chip_layers_ordering` is a list of chip layer indices where a model was mapped. 
+This is useful when generating or interpreting events from `samna`, where the `layer` attribute refers to the layer on the chip. 
+
+
 Conversion between raster and spike streams
 -------------------------------------------
+
+You can use the convenience methods `raster_to_events()` or `xytp_to_events()` of the `ChipFactory` to generate `Spike` sequences of the appropriate type.
 
 Testing model performance (device-independent)
 ----------------------------------------------

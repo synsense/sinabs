@@ -19,6 +19,7 @@ Table of contents
 .. toctree::
    :maxdepth: 2
 
+   installation
    dynapcnn_compatible_model
    tutorials
    api/api.rst
