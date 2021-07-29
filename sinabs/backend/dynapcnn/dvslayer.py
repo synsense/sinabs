@@ -119,9 +119,12 @@ class DVSLayer(nn.Module):
         flip_y = None
         swap_xy = None
         if pool_layer is not None:
-            pool = pool_layer.kernel_size
+            pool = expand_to_pair(pool_layer.kernel_size)
         if crop_layer is not None:
-            crop = ((crop_layer.top_crop, crop_layer.bottom_crop), (crop_layer.left_crop, crop_layer.right_crop))
+            crop = (
+                (crop_layer.top_crop, crop_layer.bottom_crop),
+                (crop_layer.left_crop, crop_layer.right_crop)
+            )
         if flip_layer is not None:
             flip_x = flip_layer.flip_x
             flip_y = flip_layer.flip_y

@@ -21,8 +21,11 @@ Table of contents
 
    installation
    dynapcnn_compatible_model
+   advanced_concepts
+   dangers
    tutorials
    api/api.rst
+   development
 
 
 Indices and tables

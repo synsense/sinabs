@@ -46,6 +46,30 @@ def infer_input_shape(layers: List[nn.Module],
         raise Exception("No input shape could be inferred")
 
 
+def convert_cropping2dlayer_to_crop2d(layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]) -> Crop2d:
+    """
+    Convert a sinabs layer of type Cropping2dLayer to Crop2d layer
+
+    Parameters
+    ----------
+    layer:
+        Cropping2dLayer
+    input_shape:
+        (height, width) input dimensions
+
+    Returns
+    -------
+    Equivalent Crop2d layer
+    """
+    h, w = input_shape
+    top = layer.top_crop
+    left = layer.left_crop
+    bottom = h - layer.bottom_crop
+    right = w - layer.right_crop
+    print(h, w, left, right, top, bottom, layer.right_crop, layer.bottom_crop)
+    return Crop2d(((top, bottom), (left, right)))
+
+
 def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], idx_start=0) -> (
         Optional[DVSLayer], int, float):
     """
@@ -91,14 +115,12 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
         # Check layer type
         if isinstance(layer, sl.Cropping2dLayer):
             # The shape after pooling is
-            h = input_shape[0]//pool_lyr.kernel_shape[0]
-            w = input_shape[1]//pool_lyr.kernel_shape[1]
-            # The cropping params
-            left = layer.left_crop
-            right = layer.right_crop
-            top = h-layer.top_crop
-            bottom = w-layer.bottom_crop
-            crop_lyr = Crop2d((top, bottom), (left, right))
+            pool = expand_to_pair(pool_lyr.kernel_size)
+            h = input_shape[0]//pool[0]
+            w = input_shape[1]//pool[1]
+            print(f"Input shape to the cropping layer is {h}, {w}")
+            crop_lyr = convert_cropping2dlayer_to_crop2d(layer, (h, w))
+            print(crop_lyr)
         elif isinstance(layer, Crop2d):
             crop_lyr = layer
         elif isinstance(layer, FlipDims):
@@ -110,6 +132,7 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
 
     # If any parameters have been found
     if layer_idx_next > 0:
+        print(crop_lyr)
         dvs_layer = DVSLayer.from_layers(pool_layer=pool_lyr, crop_layer=crop_lyr, flip_layer=flip_lyr,
                                          input_shape=input_shape)
         return dvs_layer, layer_idx_next, rescale_factor
