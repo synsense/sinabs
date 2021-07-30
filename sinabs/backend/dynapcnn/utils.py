@@ -2,6 +2,8 @@ import sinabs
 import torch.nn as nn
 from typing import List, Optional, Tuple, Union
 from copy import deepcopy
+
+from .crop2d import Crop2d
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
@@ -44,6 +46,32 @@ def infer_input_shape(
         return input_shape
     else:
         raise InputConfigurationError("No input shape could be inferred")
+
+
+def convert_cropping2dlayer_to_crop2d(
+    layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
+) -> Crop2d:
+    """
+    Convert a sinabs layer of type Cropping2dLayer to Crop2d layer
+
+    Parameters
+    ----------
+    layer:
+        Cropping2dLayer
+    input_shape:
+        (height, width) input dimensions
+
+    Returns
+    -------
+    Equivalent Crop2d layer
+    """
+    h, w = input_shape
+    top = layer.top_crop
+    left = layer.left_crop
+    bottom = h - layer.bottom_crop
+    right = w - layer.right_crop
+    print(h, w, left, right, top, bottom, layer.right_crop, layer.bottom_crop)
+    return Crop2d(((top, bottom), (left, right)))
 
 
 def construct_dvs_layer(
@@ -98,6 +126,14 @@ def construct_dvs_layer(
             break
         # Check layer type
         if isinstance(layer, sl.Cropping2dLayer):
+            # The shape after pooling is
+            pool = expand_to_pair(pool_lyr.kernel_size)
+            h = input_shape[0] // pool[0]
+            w = input_shape[1] // pool[1]
+            print(f"Input shape to the cropping layer is {h}, {w}")
+            crop_lyr = convert_cropping2dlayer_to_crop2d(layer, (h, w))
+            print(crop_lyr)
+        elif isinstance(layer, Crop2d):
             crop_lyr = layer
         elif isinstance(layer, FlipDims):
             flip_lyr = layer
@@ -108,6 +144,7 @@ def construct_dvs_layer(
 
     # If any parameters have been found
     if layer_idx_next > 0:
+        print(crop_lyr)
         dvs_layer = DVSLayer.from_layers(
             pool_layer=pool_lyr,
             crop_layer=crop_lyr,

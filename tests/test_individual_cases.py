@@ -31,6 +31,7 @@ def networks_equal_output(input_data, snn):
         snn, input_shape=input_data.shape[1:], discretize=False,
         dvs_input = True,
     )
+    print(spn)
     spn_out = spn(input_data).squeeze()
 
     print(snn_out.sum(), spn_out.sum())

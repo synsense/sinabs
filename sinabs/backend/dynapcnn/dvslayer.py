@@ -1,8 +1,8 @@
 import torch.nn as nn
 from typing import Tuple, Optional
-from sinabs.layers import Cropping2dLayer
 from sinabs.layers import SumPool2d
 from .flipdims import FlipDims
+from .crop2d import Crop2d
 
 
 def expand_to_pair(value) -> (int, int):
@@ -75,10 +75,10 @@ class DVSLayer(nn.Module):
         self.pool_layer = SumPool2d(pool)
 
         # Initialize crop layer
-        if crop is not None:
-            self.crop_layer = Cropping2dLayer(crop)
-        else:
-            self.crop_layer = None
+        if crop is None:
+            num_channels, height, width = self.get_output_shape_after_pooling()
+            crop = ((0, height), (0, width))
+        self.crop_layer = Crop2d(crop)
 
         # Initialize flip layer
         self.flip_layer = FlipDims(flip_x, flip_y, swap_xy)
@@ -88,7 +88,7 @@ class DVSLayer(nn.Module):
         cls,
         input_shape: Tuple[int, int],
         pool_layer: Optional[SumPool2d] = None,
-        crop_layer: Optional[Cropping2dLayer] = None,
+        crop_layer: Optional[Crop2d] = None,
         flip_layer: Optional[FlipDims] = None,
     ) -> "DVSLayer":
         """
@@ -102,7 +102,7 @@ class DVSLayer(nn.Module):
         pool_layer:
             SumPool2d layer
         crop_layer:
-            Crop2dLayer layer
+            Crop2d layer
         flip_layer:
             FlipDims layer
 
@@ -117,7 +117,7 @@ class DVSLayer(nn.Module):
         flip_y = None
         swap_xy = None
         if pool_layer is not None:
-            pool = pool_layer.kernel_size
+            pool = expand_to_pair(pool_layer.kernel_size)
         if crop_layer is not None:
             crop = (
                 (crop_layer.top_crop, crop_layer.bottom_crop),
@@ -251,8 +251,8 @@ class DVSLayer(nn.Module):
         if self.crop_layer is not None:
             _, h, w = self.get_output_shape_after_pooling()
             return (
-                (self.crop_layer.top_crop, h - self.crop_layer.bottom_crop),
-                (self.crop_layer.left_crop, w - self.crop_layer.right_crop),
+                (self.crop_layer.top_crop, self.crop_layer.bottom_crop),
+                (self.crop_layer.left_crop, self.crop_layer.right_crop),
             )
         else:
             _, output_size_y, output_size_x = self.get_output_shape()

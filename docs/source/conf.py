@@ -35,6 +35,7 @@ extensions = [
     'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
+    'sphinxcontrib.mermaid',
     'm2r2'
 ]
 
