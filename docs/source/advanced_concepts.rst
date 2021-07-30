@@ -4,7 +4,7 @@ Advanced
 Under the hood
 --------------
 
-The DynapcnnCompatibleNetwork converts a given model into a sequence of `DVSLayer` (at most 1) and `DynapcnnLayer`'s.
+The DynapcnnCompatibleNetwork converts a given model into a sequence of DVSLayer (at most 1) and DynapcnnLayers.
 
 .. mermaid::
 
@@ -38,7 +38,7 @@ Memory constraints
 Attributes of interest
 ----------------------
 
-Knowing the mapping of the various layers of the model to the layers of the chip is extremely crucial.
+Know that the mapping of the various layers of the model to the layers of the chip is crucial.
 `DynapcnnCompatibleNetwork.chip_layers_ordering` is a list of chip layer indices where a model was mapped.
 This is useful when generating or interpreting events from `samna`, where the `layer` attribute refers to the layer on the chip.
 
