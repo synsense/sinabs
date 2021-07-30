@@ -204,6 +204,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
 
+            If this value is left as None, by default the last layer of the model is monitored.
+
         config_modifier:
             A user configuration modifier method.
             This function can be used to make any custom changes you want to make to the configuration object.
@@ -236,13 +238,16 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Update config
         config = config_builder.build_config(self, chip_layers_ordering)
 
+        # Check if any monitoring is enabled and if not, enable monitoring for the last layer
+        if monitor_layers is None:
+            monitor_layers = [-1]
+
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
-        if monitor_layers is not None:
-            monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
-            if "dvs" in monitor_layers:
-                monitor_chip_layers.append("dvs")
-            config_builder.monitor_layers(config, monitor_chip_layers)
+        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
+        if "dvs" in monitor_layers:
+            monitor_chip_layers.append("dvs")
+        config_builder.monitor_layers(config, monitor_chip_layers)
 
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         # config.factory_settings.monitor_input_enable = False
