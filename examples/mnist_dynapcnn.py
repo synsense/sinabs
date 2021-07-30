@@ -8,6 +8,8 @@ from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import io
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
 
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
     nn.ReLU(),
@@ -39,11 +41,12 @@ hardware_compatible_model = DynapcnnCompatibleNetwork(
     input_shape=input_shape,
 )
 
-# Apply model to device
+# Depending on the available hardware you have, you can choose to run the
+# network for example on 'dynapcnndevkit' or 'speck2b' among others. See
+# documentation for full list of supported devices
 hardware_compatible_model.to(
-    device="speck2b:0",
-    # monitor_layers=[-1]  # Last layer
-    monitor_layers=[0, 1, 2, 3, 4],
+    device="dynapcnndevkit:0",
+    monitor_layers=[-1]  # Last layer
 )
 
 
@@ -77,11 +80,13 @@ test_dataset = MNIST_Dataset("./data", train=False, spiking=True, tWindow=tWindo
 chip_layers_ordering = hardware_compatible_model.chip_layers_ordering
 print(f"The model was placed on the chip at the following layers: {chip_layers_ordering}")
 
+
+factory = ChipFactory("dynapcnndevkit:0")
 # Generate input events
-input_events = io.raster_to_events(
+input_events = factory.raster_to_events(
     test_dataset[0][0],
     layer=chip_layers_ordering[0],  # First layer on the chip
-    device="speck2b:0")
+)
 
 # Flush buffer
 hardware_compatible_model.samna_output_buffer.get_events()
@@ -92,10 +97,10 @@ evs_out = hardware_compatible_model(input_events)
 print(f"{len(evs_out)} output events read from time {evs_out[0].timestamp} to {evs_out[-1].timestamp}")
 
 # Filter readout events
-evs_out_filtered = list(filter(lambda x: isinstance(x, samna.speck2b.event.Spike), evs_out))
+evs_out = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike), evs_out))
 
 # Reading events out of the device
-for ev in evs_out_filtered:
+for ev in evs_out:
     print(ev.feature, ev.timestamp)
 
-io.close_device("speck2b:0")
+io.close_device("dynapcnndevkit")
