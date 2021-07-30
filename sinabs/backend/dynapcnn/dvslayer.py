@@ -49,15 +49,15 @@ class DVSLayer(nn.Module):
     """
 
     def __init__(
-            self,
-            input_shape: Tuple[int, int],
-            pool: Tuple[int, int] = (1, 1),
-            crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
-            merge_polarities: bool = False,
-            flip_x: bool = False,
-            flip_y: bool = False,
-            swap_xy: bool = False,
-            disable_pixel_array: bool = True,
+        self,
+        input_shape: Tuple[int, int],
+        pool: Tuple[int, int] = (1, 1),
+        crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
+        merge_polarities: bool = False,
+        flip_x: bool = False,
+        flip_y: bool = False,
+        swap_xy: bool = False,
+        disable_pixel_array: bool = True,
     ):
 
         super().__init__()
@@ -85,11 +85,11 @@ class DVSLayer(nn.Module):
 
     @classmethod
     def from_layers(
-            cls,
-            input_shape: Tuple[int, int],
-            pool_layer: Optional[SumPool2d] = None,
-            crop_layer: Optional[Cropping2dLayer] = None,
-            flip_layer: Optional[FlipDims] = None,
+        cls,
+        input_shape: Tuple[int, int],
+        pool_layer: Optional[SumPool2d] = None,
+        crop_layer: Optional[Cropping2dLayer] = None,
+        flip_layer: Optional[FlipDims] = None,
     ) -> "DVSLayer":
         """
         Alternative factory method.
@@ -119,7 +119,10 @@ class DVSLayer(nn.Module):
         if pool_layer is not None:
             pool = pool_layer.kernel_size
         if crop_layer is not None:
-            crop = ((crop_layer.top_crop, crop_layer.bottom_crop), (crop_layer.left_crop, crop_layer.right_crop))
+            crop = (
+                (crop_layer.top_crop, crop_layer.bottom_crop),
+                (crop_layer.left_crop, crop_layer.right_crop),
+            )
         if flip_layer is not None:
             flip_x = flip_layer.flip_x
             flip_y = flip_layer.flip_y
@@ -132,7 +135,6 @@ class DVSLayer(nn.Module):
             flip_x=False if flip_x is None else flip_x,
             flip_y=False if flip_y is None else flip_y,
             swap_xy=False if swap_xy is None else swap_xy,
-
         )
 
     @property
@@ -181,7 +183,9 @@ class DVSLayer(nn.Module):
         -------
         dict
         """
-        channel_count, output_size_y, output_size_x = self.get_output_shape_after_pooling()
+        channel_count, output_size_y, output_size_x = (
+            self.get_output_shape_after_pooling()
+        )
 
         # Compute dims after cropping
         if self.crop_layer is not None:
@@ -191,25 +195,15 @@ class DVSLayer(nn.Module):
 
         # Compute dims after pooling
         return {
-            "size": {
-                "x": output_size_x,
-                "y": output_size_y,
-            },
+            "size": {"x": output_size_x, "y": output_size_y},
             "feature_count": channel_count,
         }
 
     def get_config_dict(self) -> dict:
         crop = self.get_roi()
-        cut = {
-            "x": crop[1][1]-1,
-            "y": crop[0][1]-1
-        }
-        origin = {
-            "x": crop[1][0],
-            "y": crop[0][0]
-        }
-        pooling = {"y": self.get_pooling()[0],
-                   "x": self.get_pooling()[1]}
+        cut = {"x": crop[1][1] - 1, "y": crop[0][1] - 1}
+        origin = {"x": crop[1][0], "y": crop[0][0]}
+        pooling = {"y": self.get_pooling()[0], "x": self.get_pooling()[1]}
 
         return {
             "merge": self.merge_polarities,
@@ -218,7 +212,7 @@ class DVSLayer(nn.Module):
             "cut": cut,
             "origin": origin,
             "pooling": pooling,
-            "pass_sensor_events": not self.disable_pixel_array
+            "pass_sensor_events": not self.disable_pixel_array,
         }
 
     def forward(self, data):
@@ -258,7 +252,7 @@ class DVSLayer(nn.Module):
             _, h, w = self.get_output_shape_after_pooling()
             return (
                 (self.crop_layer.top_crop, h - self.crop_layer.bottom_crop),
-                (self.crop_layer.left_crop, h - self.crop_layer.right_crop)
+                (self.crop_layer.left_crop, w - self.crop_layer.right_crop),
             )
         else:
             _, output_size_y, output_size_x = self.get_output_shape()
@@ -299,10 +293,7 @@ class DVSLayer(nn.Module):
         dict
         """
 
-        return {
-            "flip_x": self.flip_layer.flip_x,
-            "flip_y": self.flip_layer.flip_y,
-        }
+        return {"x": self.flip_layer.flip_x, "y": self.flip_layer.flip_y}
 
     def get_swap_xy(self) -> bool:
         """
