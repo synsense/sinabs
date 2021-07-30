@@ -16,7 +16,13 @@ import torch.nn as nn
 import sinabs
 import sinabs.layers as sl
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import open_device, _parse_device_string, enable_timestamps, disable_timestamps, reset_timestamps
+from .io import (
+    open_device,
+    _parse_device_string,
+    enable_timestamps,
+    disable_timestamps,
+    reset_timestamps,
+)
 from .dynapcnnlayer import DynapcnnLayer
 from .dvslayer import DVSLayer
 from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
@@ -45,7 +51,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
     def __init__(
         self,
         snn: Union[nn.Sequential, sinabs.Network],
-        input_shape: Tuple[int, int, int],
+        input_shape: Optional[Tuple[int, int, int]] = None,
         dvs_input: bool = False,
         discretize: bool = True,
     ):
@@ -57,8 +63,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
         ----------
             snn: sinabs.Network
                 SNN that determines the structure of the `DynapcnnCompatibleNetwork`
-            input_shape: tuple of ints
+            input_shape: None or tuple of ints
                 Shape of the input, convention: (features, height, width)
+                If None, `snn` needs an InputLayer
             dvs_input: bool
                 Does dynapcnn receive input from its DVS camera?
             discretize: bool
@@ -81,14 +88,18 @@ class DynapcnnCompatibleNetwork(nn.Module):
         input_shape = infer_input_shape(layers, input_shape=input_shape)
 
         # Build model from layers
-        self.sequence = build_from_list(layers, in_shape=input_shape, discretize=discretize)
+        self.sequence = build_from_list(
+            layers, in_shape=input_shape, discretize=discretize
+        )
         # this holds the DynapcnnLayer objects which can be used for testing
         # and also deal with single-layer-level configuration issues
         self.compatible_layers = [*self.sequence]
 
         # Add a DVS layer in case dvs_input is flagged
         if self.dvs_input and not isinstance(self.compatible_layers[0], DVSLayer):
-            dvs_layer = DVSLayer(input_shape=input_shape[1:]) # Ignore the channel dimension
+            dvs_layer = DVSLayer(
+                input_shape=input_shape[1:]
+            )  # Ignore the channel dimension
             self.compatible_layers = [dvs_layer] + self.compatible_layers
             self.sequence = nn.Sequential(*self.compatible_layers)
 
@@ -267,7 +278,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
         return self.chip_layers_ordering[layer_idx]
 
     def forward(self, x):
-        if hasattr(self, "device") and _parse_device_string(self.device)[0] in ChipFactory.supported_devices:
+        if (
+            hasattr(self, "device")
+            and _parse_device_string(self.device)[0] in ChipFactory.supported_devices
+        ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
             reset_timestamps(self.device)

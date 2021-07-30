@@ -58,15 +58,18 @@ exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 # a list of builtin themes.
 #
 html_theme = "sphinx_rtd_theme"
-html_js_files = ['js/mermaid.js', ]
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+html_js_files = ['js/mermaid.js', ]
 
 # Include __init__ docstring in method documentation
 autoclass_content = 'both'
 
 # Include return type in line
 napoleon_use_rtype = False
+
+# API module name display
+add_module_names = False

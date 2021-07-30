@@ -6,7 +6,7 @@ This package automates this process for the end-user and enables quick deploymen
 
 TLDR;
 -----
-A short (and perhaps the quickest path) to deploying your model on one of our dev-kits is shown in the below example.
+A short (and perhaps the quickest path) to deploying your model on one of our dev-kits is shown in the example below.
 
 ```python
 import torch
@@ -62,26 +62,26 @@ Model conversion to DYNAP-CNN core structure
 DYNAP-CNN based chips like `DYNAP-CNN DevKit` or `Speck` series comprise several `cores` or `layers`. 
 Each of these `layers` comprises three functionalities:
 
-    - 2D Convolution
-    - Integrate and Fire Neurons
-    - Sum Pooling
+    1. 2D Convolution
+    2. Integrate and Fire Neurons
+    3. Sum Pooling
 
 Accordingly, the `DynapcnnLayer` class is a `sequential` model with three layers:
 
-    - conv_layer
-    - spk_layer
-    - pool_layer
+    1. conv_layer
+    2. spk_layer
+    3. pool_layer
 
-In order to deploy a model onto these chips, the network structure needs to be converted into a sequence of `DynapcnnLayer`s.
-The `DynapcnnCompatibleNetwork` class automates this model conversion from a sequential `sinabs` spiking neural network into a sequence of `DynapcnnLayer`s. 
+In order to deploy a model onto these chips, the network structure needs to be converted into a sequence of *DynapcnnLayer*s.
+The `DynapcnnCompatibleNetwork` class automates this model conversion from a sequential `sinabs` spiking neural network into a sequence of *DynapcnnLayer*s. 
 In addition, it also descretizes/quantizes the parameters to 8 bits (according to the chip specifications).
 
 
 Layer conversion
 ----------------
 
-Often, the network architectures comprise of layers like `AvgPool2d`, `Flatten` or `Linear`.
-The chips do not support these layers in their original form and requires some transformation.
+Often, the network architectures comprise of layers such as `AvgPool2d`, `Flatten` or `Linear`.
+The chips do not support these layers in their original form and require some transformation.
 For instance, while `AvgPool2d` works in simulations, spikes cannot really be averaged. Instead `SumPool2d` is a better fit for spiking networks.
 Similarly, a `Linear` layer can be replaced with `Conv2d` with a kernel size 1x1 such that it is compatible with `DynapcnnLayer`.
 Instantiating `DynapcnnCompatibleNetwork` takes care of all such conversions.
@@ -91,13 +91,13 @@ Parameter quantization
 
 The hardware suppports fixed point weights (8 bits for weights and 16 bits for membrane potentials for instance).
 The models trained in pytorch typically use floating point representation of weights. 
-Setting `discretize=True`, converts the model parameters from floating point to fixed point representation while preserving the highest possible precision.
+Setting `discretize=True` converts the model parameters from floating point to fixed point representation while preserving the highest possible precision.
 
 Device selection
 ----------------
 
 The device naming is inspired by `pytorch` device naming convention ie `DEVICE_TYPE:INDEX`.
-`dynapcnndevkit:0` refers to the `first` `Dynapcnn DevKit` accessible. 
+`dynapcnndevkit:0` refers to the _first_ `Dynapcnn DevKit` available. 
 If there are multiple devices of the same kind connected to the PC, then they are referred by higher incremental indices.
 
 To see all the recognized devices, please have a look at the `sinabs.dynapcnn.backend.io.device_types`
@@ -107,9 +107,11 @@ from sinabs.backend.dynapcnn import io
 print(io.device_types)
 ```
 
-At the time of writing this documentation, the list of all devices recognized by `samna`.
+List of devices currently recognized by *samna*
+-----------------------------------------------
 
-> Not all of these are supported by this plugin and not all of these are compatible with DYNAP-CNN
+.. note::
+    Not all of these are supported by this plugin and not all of these are compatible with DYNAP-CNN
 
 ```
 # A map of all device types and their corresponding samna `device_name`
@@ -127,7 +129,7 @@ device_types = {
 }
 ```
 
-You can also get a list of all supported devices currently connected/available by running the following:
+You can also get a list of all supported devices currently connected/available by running the following lines:
 
 ```python
 from sinabs.backend.dynapcnn import io
@@ -145,7 +147,7 @@ ChipFactory.supported_devices
 Placement of layers on device cores
 -----------------------------------
 
-A sequence of `DynapcnnLayer`s ie. a model converted to `DynapcnnCompatibleNetwork` is ready to be mapped onto the chip cores/layers.
+A sequence of *DynapcnnLayer*s (i.e. a model that has been converted to `DynapcnnCompatibleNetwork`) is ready to be mapped onto the chip cores/layers.
 This is done by placing each layer of the model onto a layer on the chip. The exact placement is specified by the parameter `chip_layers_ordering`.
 
 This is an important parameter because each layer of the model has a certain memory requirement for kernel parameters and neurons.
@@ -153,18 +155,18 @@ The chip layers are not homogenous and have a limited amount of memory allocated
 Consequently, not all layers on the chip will be compatible with each layer in the model.
 
 If the `chip_layers_ordering` is set to `"auto"`, the network is going to be mapped onto the chip based on a placement algorithm.
-If the algorithm is unable to place the model onto the chip, you will receive an error message.
+If the algorithm is unable to place the model onto the chip, it will throw an error message.
 
 Some methods helpful for debugging if you run into problems are `ConfigBuilder.get_valid_mapping()` and the object `ConfigBuilder.get_constraints()`.
 
-After successfully mapping a model, the `chip_layers_ordering` can be inspected by `DynapcnnCompatibleNetwork.chip_layers_ordering`.
+After successfully mapping a model, the `chip_layers_ordering` can be inspected by executing `DynapcnnCompatibleNetwork.chip_layers_ordering`.
 
 
 Porting model to device
 -----------------------
 
-`DynapcnnCompatibleModel` class has an API similar to that of native `pytorch` and the standard `.to` method works as expected.
-Similar to porting a model to cpu with `model.to("cpu")` and GPU with `model.to("cuda:0")` you can also port to a chip with `model.to("dynapcnndevkit:0")`.
+`DynapcnnCompatibleModel` class has an API similar to that of native `pytorch` and its `.to` method.
+Similar to porting a model to cpu with `model.to("cpu")` and GPU with `model.to("cuda:0")` you can also port your `DynapcnnCompatibleModel` to a chip with `model.to("dynapcnndevkit:0")`.
 
 You can also specify a few additional parameters as shown below.
 
@@ -180,7 +182,6 @@ hw_model.to(
 As shown in the above example, you can specify which layers are to be monitored. 
 Note here that the layer indices are that of the model. For instance -1 refers to the last layer of the model.
 In addition, for advanced users, a `config_modifier` can be passed.
-An optional argument `config_modifier` can also be passed. 
 This is a `callable` or a function that takes a config object and does any custom setting changes before writing this on the chip.
 
 See the `__doc__` string for further details on each of these parameters.
@@ -203,9 +204,8 @@ Monitoring layer activity
 -------------------------
 
 In order to monitor the spiking activity of a given layer, the corresponding layer has to be specified in the `monitor_layers` parameter. 
-In most use cases, you will want to monitor the activity of the last layer of the model and so this parameter must be set to [-1].
+In most use cases, you will want to monitor the activity of the last layer of the model and so this parameter will be set to [-1].
 
 Once enabled, all the corresponding spikes will be found in the sequence of returned events from the chip.
 The `samna_output_buffer` accumulates all the events sent out by the chip, including those from the monitored layers.
 The events from this buffer are then read out and returned to the user on calling the forward method.
-
