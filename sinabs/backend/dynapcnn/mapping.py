@@ -1,6 +1,8 @@
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from copy import deepcopy
+from collections import deque
+from .dvslayer import DVSLayer
 from .dynapcnnlayer import DynapcnnLayer
 
 
@@ -39,7 +41,7 @@ def find_chip_layers(layer: DynapcnnLayer, constraints: List[LayerConstraints]) 
     return idx
 
 
-def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[LayerConstraints]) -> List[int]:
+def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[LayerConstraints]) -> List[Tuple[int, int]]:
     """
     Given a model, find a valid layer ordering for its placement within the constraints provided.
 
@@ -57,7 +59,8 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
     layer_mapping = []
 
     for layer in model.compatible_layers:
-        layer_mapping.append(find_chip_layers(layer, constraints))
+        if isinstance(layer, DynapcnnLayer):
+            layer_mapping.append(find_chip_layers(layer, constraints))
 
     graph = make_flow_graph(layer_mapping, len(constraints))
 
@@ -66,10 +69,13 @@ def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[Laye
 
     netmap = recover_mapping(new_graph, layer_mapping)
     # return [x[1] for x in netmap]
+    for layer in model.compatible_layers:
+        if isinstance(layer, DVSLayer):
+            # increment indices of netmask
+            netmap = [(0, "dvs")] + [(i + 1, j) for (i, j) in netmap]
     return netmap
 
 
-from collections import deque
 
 
 @dataclass
@@ -185,34 +191,37 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
     if len(mapping) != len(layer_mapping):
         raise ValueError("No valid mapping found")
     return mapping
-
-
-## Chip specific constraints
-_WEIGHTS_MEMORY_SIZE = [
-    16 * 1024,  # 0
-    16 * 1024,  # 1
-    16 * 1024,  # 2
-    32 * 1024,  # 3
-    32 * 1024,  # 4
-    64 * 1024,  # 5
-    64 * 1024,  # 6
-    16 * 1024,  # 7
-    16 * 1024,
-]  # _WEIGHTS_MEMORY_SIZE
-
-_NEURONS_MEMORY_SIZE = [
-    64 * 1024,  # 0
-    64 * 1024,  # 1
-    64 * 1024,  # 2
-    32 * 1024,  # 3
-    32 * 1024,  # 4
-    16 * 1024,  # 5
-    16 * 1024,  # 6
-    16 * 1024,  # 7
-    16 * 1024,
-]  # 8
-_BIAS_MEMORY_SIZE = [1024] * 9
-
-dynapcnndevkit_constraints = [
-    LayerConstraints(km, nm, bm) for (km, nm, bm) in zip(_WEIGHTS_MEMORY_SIZE, _NEURONS_MEMORY_SIZE, _BIAS_MEMORY_SIZE)
-]
+#
+#
+### Chip specific constraints
+#_WEIGHTS_MEMORY_SIZE = [
+#    16 * 1024,  # 0
+#    16 * 1024,  # 1
+#    16 * 1024,  # 2
+#    32 * 1024,  # 3
+#    32 * 1024,  # 4
+#    64 * 1024,  # 5
+#    64 * 1024,  # 6
+#    16 * 1024,  # 7
+#    16 * 1024,
+#]  # _WEIGHTS_MEMORY_SIZE
+#
+#_NEURONS_MEMORY_SIZE = [
+#    64 * 1024,  # 0
+#    64 * 1024,  # 1
+#    64 * 1024,  # 2
+#    32 * 1024,  # 3
+#    32 * 1024,  # 4
+#    16 * 1024,  # 5
+#    16 * 1024,  # 6
+#    16 * 1024,  # 7
+#    16 * 1024,
+#]  # 8
+#_BIAS_MEMORY_SIZE = [1024] * 9
+#
+#dynapcnndevkit_constraints = [
+#    LayerConstraints(km, nm, bm) for (km, nm, bm) in zip(_WEIGHTS_MEMORY_SIZE, _NEURONS_MEMORY_SIZE, _BIAS_MEMORY_SIZE)
+#]
+#
+#speck2_constraints = dynapcnndevkit_constraints
+#

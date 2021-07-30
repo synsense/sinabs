@@ -11,6 +11,7 @@ samna_devices = None
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
     "speck": "speck",
+    "speck2b": "Speck2bTestboard",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
     "speck2devkit": "Speck2DevKit",
@@ -27,6 +28,7 @@ device_type_map = {v: k for (k, v) in device_types.items()}
 
 def enable_timestamps(device: str) -> None:
     """
+    Enable timestamping of events
 
     Parameters
     ----------
@@ -36,14 +38,18 @@ def enable_timestamps(device: str) -> None:
 
     """
     dev_name, _ = _parse_device_string(device)
-    if dev_name != "dynapcnndevkit":
-        raise NotImplementedError
-    device = open_device(device)
-    device.get_io_module().write_config(0x0003, 1)
+    if dev_name == "dynapcnndevkit":
+        device = open_device(device)
+        device.get_io_module().write_config(0x0003, 1)
+    else:
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.set_enable_value(True) # to enable
 
 
 def disable_timestamps(device: str) -> None:
     """
+    Disable timestamping of events
 
     Parameters
     ----------
@@ -51,103 +57,37 @@ def disable_timestamps(device: str) -> None:
         Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
-    """
-    dev_name, _ = _parse_device_string(device)
-    if dev_name != "dynapcnndevkit":
-        raise NotImplementedError
-    device = open_device(device)
-    device.get_io_module().write_config(0x0003, 0)
-
-
-def raster_to_events(raster: torch.Tensor, layer, dt=1e-3, device: str = "dynapcnndevkit:0") -> List:
-    """
-    Convert spike raster to events for DynaapcnnDevKit
-
-    Parameters
-    ----------
-
-    raster: torch.Tensor
-        A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
-
-    layer: int
-        The index of the layer to route the events to
-
-    dt: float
-        Length of time step of the raster in seconds
-
-    device: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
-        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-
-    Returns
-    -------
-
-    events: List[Spike]
-        A list of events that will be streamed to the device
     """
     dev_name, _ = _parse_device_string(device)
     if dev_name == "dynapcnndevkit":
-        Spike = samna.dynapcnn.event.Spike
-    elif dev_name == "speck2devkit":
-        Spike = samna.speck2.event.Spike
+        device = open_device(device)
+        device.get_io_module().write_config(0x0003, 0)
     else:
-        raise NotImplementedError("Device type unknown")
-    t, ch, y, x = torch.where(raster)
-    evData = torch.stack((t, ch, y, x), dim=0).T
-    events = []
-    for row in evData:
-        ev = Spike()
-        ev.layer = layer
-        ev.x = row[3]
-        ev.y = row[2]
-        ev.feature = row[1]
-        ev.timestamp = int(row[0].item()*1e6*dt)  # Time in uS
-        events.append(ev)
-    return events
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.set_enable_value(False) # to enable
 
 
-def xytp_to_events(xytp: torch.Tensor, layer, device: str = "dynapcnndevkit:0") -> List:
+def reset_timestamps(device: str) -> None:
     """
-    Convert spike raster to events for DynaapcnnDevKit
+    Reset the timeer to 0
 
     Parameters
     ----------
-
-    xytp: torch.Tensor
-        A numpy structured array with columns x, y, timestamp, polarity
-
-    layer: int
-        The index of the layer to route the events to
-
     device: str
         Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
-    Returns
-    -------
-
-    events: List[Spike]
-        A list of events that will be streamed to the device
     """
     dev_name, _ = _parse_device_string(device)
     if dev_name == "dynapcnndevkit":
-        Spike = samna.dynapcnn.event.Spike
-    elif dev_name == "speck2devkit":
-        Spike = samna.speck2.event.Spike
+        disable_timestamps(device)
     else:
-        raise NotImplementedError("Device type unknown")
+        device = open_device(device)
+        stopWatch = device.get_stop_watch()
+        stopWatch.reset() # to reset to 0 (it doesn't disable it automatically, so it will go on coutning)
 
-    events = []
-    tstart = xytp["t"].min()
-    for row in xytp:
-        ev = Spike()
-        ev.layer = layer
-        ev.x = row["x"]
-        ev.y = row["y"]
-        ev.feature = row["p"]
-        ev.timestamp = row["t"] - tstart  # Time in uS
-        events.append(ev)
-    return events
+
 
 
 def events_to_raster(event_list: List, layer: int) -> torch.Tensor:

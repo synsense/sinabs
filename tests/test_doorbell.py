@@ -68,6 +68,7 @@ def test_same_result():
 
 def test_auto_config():
     # - Should give an error with the normal layer ordering
+    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=True)
     dynapcnn_net.make_config(chip_layers_ordering=[0, 1, 2, 3, 4])
 
 

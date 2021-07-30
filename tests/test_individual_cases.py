@@ -9,6 +9,7 @@ from sinabs.layers import SumPool2d
 import pytest
 
 
+torch.manual_seed(0)
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 
@@ -30,13 +31,16 @@ def networks_equal_output(input_data, snn):
         snn, input_shape=input_data.shape[1:], discretize=False,
         dvs_input = True,
     )
+    print(spn)
     spn_out = spn(input_data).squeeze()
 
     print(snn_out.sum(), spn_out.sum())
     assert torch.equal(snn_out, spn_out)
 
     # this will give an error if the config is not compatible
-    return spn.make_config()
+    config = spn.make_config()
+    print(spn.chip_layers_ordering)
+    return config
 
 
 # --- TESTS --- #
@@ -198,7 +202,8 @@ def test_no_spk_ending():
         nn.Linear(512, 2),
     )
 
-    with pytest.raises(TypeError):
+    from sinabs.backend.dynapcnn.exceptions import MissingLayer
+    with pytest.raises(MissingLayer):
         DynapcnnCompatibleNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
