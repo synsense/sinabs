@@ -292,7 +292,7 @@ def test_dvs_crop():
 
     # - DYNAP-CNN layer arrangement
     target_layers = ["dvs", 5, 2]
-    crop = ((20, 86), (12, 34))
+    crop = ((20, 62), (12, 32))
     shape = (2, 128, 128)
     input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
     pool = (1, 2)
