@@ -9,8 +9,9 @@ from .exceptions import *
 from .flipdims import FlipDims
 
 
-def infer_input_shape(layers: List[nn.Module],
-                      input_shape: Optional[Tuple[int, int, int]] = None) -> Tuple[int, int, int]:
+def infer_input_shape(
+    layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
+) -> Tuple[int, int, int]:
     """
     Checks if the first layer is InputLayer or input_shape is specified.
     If either of them are specified, then it checks if the information is consistent and returns the input shape.
@@ -28,24 +29,26 @@ def infer_input_shape(layers: List[nn.Module],
         (channels, height, width)
     """
     input_shape_from_layer = None
-    if isinstance(layers[0], sl.InputLayer):
+    if isinstance(layers[0], (sl.InputLayer, DVSLayer)):
         input_shape_from_layer = layers[0].input_shape
     if (input_shape is not None) and (input_shape_from_layer is not None):
         if input_shape == input_shape_from_layer:
             return input_shape
         else:
-            raise Exception(
-                f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}")
+            raise InputConfigurationError(
+                f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}"
+            )
     elif input_shape_from_layer is not None:
         return input_shape_from_layer
     elif input_shape is not None:
         return input_shape
     else:
-        raise Exception("No input shape could be inferred")
+        raise InputConfigurationError("No input shape could be inferred")
 
 
-def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], idx_start=0) -> (
-        Optional[DVSLayer], int, float):
+def construct_dvs_layer(
+    layers: List[nn.Module], input_shape: Tuple[int, int], idx_start=0
+) -> (Optional[DVSLayer], int, float):
     """
     Generate a DVSLayer given a list of layers
     NOTE: The number of channels is implicitly assumed to be 2 because of DVS
@@ -73,11 +76,18 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
     layer_idx_next = idx_start
     crop_lyr = None
     flip_lyr = None
+
+    # Return existing DVS layer as is
+    if len(layers) and isinstance(layers[0], DVSLayer):
+        return deepcopy(layers[0]), 1, 1
+
     if len(layers) and isinstance(layers[0], sl.InputLayer):
         # Ignore this layer and move on
         layer_idx_next += 1
     # Construct pooling layer
-    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, layer_idx_next)
+    pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(
+        layers, layer_idx_next
+    )
 
     # Find next layer (check twice for two layers)
     for i in range(2):
@@ -98,8 +108,12 @@ def construct_dvs_layer(layers: List[nn.Module], input_shape: Tuple[int, int], i
 
     # If any parameters have been found
     if layer_idx_next > 0:
-        dvs_layer = DVSLayer.from_layers(pool_layer=pool_lyr, crop_layer=crop_lyr, flip_layer=flip_lyr,
-                                         input_shape=input_shape)
+        dvs_layer = DVSLayer.from_layers(
+            pool_layer=pool_lyr,
+            crop_layer=crop_lyr,
+            flip_layer=flip_lyr,
+            input_shape=input_shape,
+        )
         return dvs_layer, layer_idx_next, rescale_factor
     else:
         # No parameters/layers pertaining to DVS preprocessing found
@@ -142,7 +156,9 @@ def merge_conv_bn(conv, bn):
     return conv
 
 
-def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Optional[sl.SumPool2d], int, float):
+def construct_next_pooling_layer(
+    layers: List[nn.Module], idx_start: int
+) -> (Optional[sl.SumPool2d], int, float):
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -186,11 +202,12 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
             stride = expand_to_pair(lyr.stride)
             if pooling != stride:
                 raise ValueError(
-                    f"Stride length {lyr.stride} should be the same as pooling kernel size {lyr.kernel_size}")
+                    f"Stride length {lyr.stride} should be the same as pooling kernel size {lyr.kernel_size}"
+                )
         # Compute cumulative pooling
         cumulative_pooling = (
             cumulative_pooling[0] * pooling[0],
-            cumulative_pooling[1] * pooling[1]
+            cumulative_pooling[1] * pooling[1],
         )
         # Update rescaling factor
         if isinstance(lyr, nn.AvgPool2d):
@@ -205,7 +222,11 @@ def construct_next_pooling_layer(layers: List[nn.Module], idx_start: int) -> (Op
 
 
 def construct_next_dynapcnn_layer(
-        layers: List[nn.Module], idx_start: int, in_shape: (int, int, int), discretize: bool, rescale_factor: float = 1,
+    layers: List[nn.Module],
+    idx_start: int,
+    in_shape: (int, int, int),
+    discretize: bool,
+    rescale_factor: float = 1,
 ) -> (DynapcnnLayer, int, float):
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -260,7 +281,7 @@ def construct_next_dynapcnn_layer(
     try:
         lyr_spk = layers[layer_idx_next]
         layer_idx_next += 1
-    except IndexError as e:
+    except IndexError:
         raise MissingLayer(layer_idx_next)
 
     # Check that the next layer is spiking
@@ -271,7 +292,9 @@ def construct_next_dynapcnn_layer(
         )
 
     # Check for next pooling layer
-    lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(layers, layer_idx_next)
+    lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(
+        layers, layer_idx_next
+    )
     # Increment layer index to after the pooling layers
     layer_idx_next = i_next
 
@@ -288,7 +311,9 @@ def construct_next_dynapcnn_layer(
     return dynapcnn_layer, layer_idx_next, rescale_factor_after_pooling
 
 
-def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Sequential:
+def build_from_list(
+    layers: List[nn.Module], in_shape, discretize=True
+) -> nn.Sequential:
     """
     Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
 
@@ -309,8 +334,9 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
     compatible_layers = []
     lyr_indx_next = 0
     # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
-    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(layers, input_shape=in_shape[1:],
-                                                                   idx_start=lyr_indx_next)
+    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
+        layers, input_shape=in_shape[1:], idx_start=lyr_indx_next
+    )
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)
         in_shape = dvs_layer.get_output_shape()
@@ -321,7 +347,11 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
             lyr_indx_next += 1
             continue
         dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
-            layers, lyr_indx_next, in_shape=in_shape, discretize=discretize, rescale_factor=rescale_factor
+            layers,
+            lyr_indx_next,
+            in_shape=in_shape,
+            discretize=discretize,
+            rescale_factor=rescale_factor,
         )
         in_shape = dynapcnn_layer.get_output_shape()
         compatible_layers.append(dynapcnn_layer)
@@ -329,7 +359,9 @@ def build_from_list(layers: List[nn.Module], in_shape, discretize=True) -> nn.Se
     return nn.Sequential(*compatible_layers)
 
 
-def convert_model_to_layer_list(model: Union[nn.Sequential, sinabs.Network]) -> List[nn.Module]:
+def convert_model_to_layer_list(
+    model: Union[nn.Sequential, sinabs.Network]
+) -> List[nn.Module]:
     """
     Convert a model to a list of layers.
 

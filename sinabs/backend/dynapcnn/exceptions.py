@@ -11,3 +11,9 @@ class UnexpectedLayer(Exception):
 
     def __init__(self, expected, found):
         super().__init__(f"Expected {expected} but found {found}")
+
+
+class InputConfigurationError(Exception):
+    """Is raised when input to dynapcnn is not configured correctly"""
+
+    pass
