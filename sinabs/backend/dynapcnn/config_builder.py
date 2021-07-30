@@ -15,17 +15,33 @@ class ConfigBuilder(ABC):
         -------
         samna module
         """
-        ...
 
     @classmethod
     @abstractmethod
     def get_default_config(cls):
-        ...
+        """
+        Returns
+        -------
+        Returns the default configuration for the device type
+        """
 
     @classmethod
     @abstractmethod
     def build_config(cls, model: "DynapcnnCompatibleNetwork", chip_layers: List[int]):
-        ...
+        """
+        Build the configuration given a model
+
+        Parameters
+        ----------
+        model:
+            The target model
+        chip_layers:
+            Chip layers where the given model layers are to be mapped.
+
+        Returns
+        -------
+            Samna Configuration object
+        """
 
     @classmethod
     @abstractmethod

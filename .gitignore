@@ -6,3 +6,4 @@ build
 .ipynb_checkpoints
 venv
 .eggs
+htmlcov

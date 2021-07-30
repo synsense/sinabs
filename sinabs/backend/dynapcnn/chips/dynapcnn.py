@@ -65,8 +65,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             elif isinstance(chip_equivalent_layer, DynapcnnLayer):
                 chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
                 cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
-            elif isinstance(chip_equivalent_layer, sl.InputLayer):
-                pass
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen

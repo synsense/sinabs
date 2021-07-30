@@ -2,7 +2,7 @@ import pytest
 import torch.nn as nn
 from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
-from sinabs.backend.dynapcnn.mapping import get_valid_mapping, dynapcnndevkit_constraints, make_flow_graph, edmonds, recover_mapping
+from sinabs.backend.dynapcnn.mapping import make_flow_graph, edmonds, recover_mapping
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
