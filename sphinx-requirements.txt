@@ -3,4 +3,3 @@ pandoc
 nbsphinx
 sphinx_rtd_theme
 m2r2
-sphinxcontrib-mermaid

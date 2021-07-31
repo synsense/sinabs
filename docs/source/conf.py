@@ -35,8 +35,8 @@ extensions = [
     'nbsphinx',
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'sphinxcontrib.mermaid',
-    'm2r2'
+    'sphinx.ext.graphviz',
+    'm2r2',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -63,7 +63,6 @@ html_theme = "sphinx_rtd_theme"
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_js_files = ['js/mermaid.js', ]
 
 # Include __init__ docstring in method documentation
 autoclass_content = 'both'
