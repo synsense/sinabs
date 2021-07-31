@@ -1,5 +1,6 @@
 chip_factory
 ============
 
-.. automodule:: sinabs.backend.dynapcnn.chip_factory
+.. autoclass:: sinabs.backend.dynapcnn.chip_factory.ChipFactory
     :members:
+    :undoc-members:
