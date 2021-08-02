@@ -1,6 +1,7 @@
 image: aictx/ci-python-arch:latest
 
 before_script:
+  - pacman -Sy graphviz
   - pip install --upgrade pip
   - pip install -r requirements.txt
   - pip install . --no-cache-dir

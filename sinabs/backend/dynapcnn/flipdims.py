@@ -22,7 +22,7 @@ class FlipDims(nn.Module):
             data = data.flip(3)
 
         if self.swap_xy:
-            data = torch.swapaxes(data, 2, 3)
+            data = torch.transpose(data, 2, 3)
 
         return data
 
