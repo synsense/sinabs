@@ -12,7 +12,7 @@ from .flipdims import FlipDims
 
 
 def infer_input_shape(
-    layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
+        layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
 ) -> Tuple[int, int, int]:
     """
     Checks if the first layer is InputLayer or input_shape is specified.
@@ -30,9 +30,15 @@ def infer_input_shape(
     Output shape:
         (channels, height, width)
     """
+    if input_shape is not None and len(input_shape) != 3:
+        raise InputConfigurationError(f"input_shape expected to have length 3 or None but input_shape={input_shape} given.")
+
     input_shape_from_layer = None
     if isinstance(layers[0], (sl.InputLayer, DVSLayer)):
         input_shape_from_layer = layers[0].input_shape
+        if len(input_shape_from_layer) != 3:
+            raise InputConfigurationError(
+                f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found.")
     if (input_shape is not None) and (input_shape_from_layer is not None):
         if input_shape == input_shape_from_layer:
             return input_shape
@@ -49,7 +55,7 @@ def infer_input_shape(
 
 
 def convert_cropping2dlayer_to_crop2d(
-    layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
+        layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
 ) -> Crop2d:
     """
     Convert a sinabs layer of type Cropping2dLayer to Crop2d layer
@@ -75,7 +81,7 @@ def convert_cropping2dlayer_to_crop2d(
 
 
 def construct_dvs_layer(
-    layers: List[nn.Module], input_shape: Tuple[int, int], idx_start=0
+        layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start=0
 ) -> (Optional[DVSLayer], int, float):
     """
     Generate a DVSLayer given a list of layers
@@ -86,7 +92,7 @@ def construct_dvs_layer(
     layers:
         List of layers
     input_shape:
-        Shape of input (height, width)
+        Shape of input (channels, height, width)
     idx_start:
         Starting index to scan the list. Default 0
 
@@ -104,6 +110,9 @@ def construct_dvs_layer(
     layer_idx_next = idx_start
     crop_lyr = None
     flip_lyr = None
+
+    if len(input_shape) != 3:
+        raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
 
     # Return existing DVS layer as is
     if len(layers) and isinstance(layers[0], DVSLayer):
@@ -128,11 +137,10 @@ def construct_dvs_layer(
         if isinstance(layer, sl.Cropping2dLayer):
             # The shape after pooling is
             pool = expand_to_pair(pool_lyr.kernel_size)
-            h = input_shape[0] // pool[0]
-            w = input_shape[1] // pool[1]
+            h = input_shape[1] // pool[0]
+            w = input_shape[2] // pool[1]
             print(f"Input shape to the cropping layer is {h}, {w}")
             crop_lyr = convert_cropping2dlayer_to_crop2d(layer, (h, w))
-            print(crop_lyr)
         elif isinstance(layer, Crop2d):
             crop_lyr = layer
         elif isinstance(layer, FlipDims):
@@ -144,7 +152,6 @@ def construct_dvs_layer(
 
     # If any parameters have been found
     if layer_idx_next > 0:
-        print(crop_lyr)
         dvs_layer = DVSLayer.from_layers(
             pool_layer=pool_lyr,
             crop_layer=crop_lyr,
@@ -194,7 +201,7 @@ def merge_conv_bn(conv, bn):
 
 
 def construct_next_pooling_layer(
-    layers: List[nn.Module], idx_start: int
+        layers: List[nn.Module], idx_start: int
 ) -> (Optional[sl.SumPool2d], int, float):
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
@@ -259,11 +266,11 @@ def construct_next_pooling_layer(
 
 
 def construct_next_dynapcnn_layer(
-    layers: List[nn.Module],
-    idx_start: int,
-    in_shape: (int, int, int),
-    discretize: bool,
-    rescale_factor: float = 1,
+        layers: List[nn.Module],
+        idx_start: int,
+        in_shape: (int, int, int),
+        discretize: bool,
+        rescale_factor: float = 1,
 ) -> (DynapcnnLayer, int, float):
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
@@ -349,7 +356,7 @@ def construct_next_dynapcnn_layer(
 
 
 def build_from_list(
-    layers: List[nn.Module], in_shape, discretize=True
+        layers: List[nn.Module], in_shape, discretize=True
 ) -> nn.Sequential:
     """
     Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
@@ -372,7 +379,7 @@ def build_from_list(
     lyr_indx_next = 0
     # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
     dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
-        layers, input_shape=in_shape[1:], idx_start=lyr_indx_next
+        layers, input_shape=in_shape, idx_start=lyr_indx_next
     )
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)
@@ -397,7 +404,7 @@ def build_from_list(
 
 
 def convert_model_to_layer_list(
-    model: Union[nn.Sequential, sinabs.Network]
+        model: Union[nn.Sequential, sinabs.Network]
 ) -> List[nn.Module]:
     """
     Convert a model to a list of layers.

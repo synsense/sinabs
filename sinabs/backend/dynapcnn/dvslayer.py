@@ -49,15 +49,15 @@ class DVSLayer(nn.Module):
     """
 
     def __init__(
-        self,
-        input_shape: Tuple[int, int],
-        pool: Tuple[int, int] = (1, 1),
-        crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
-        merge_polarities: bool = False,
-        flip_x: bool = False,
-        flip_y: bool = False,
-        swap_xy: bool = False,
-        disable_pixel_array: bool = True,
+            self,
+            input_shape: Tuple[int, int],
+            pool: Tuple[int, int] = (1, 1),
+            crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
+            merge_polarities: bool = False,
+            flip_x: bool = False,
+            flip_y: bool = False,
+            swap_xy: bool = False,
+            disable_pixel_array: bool = True,
     ):
 
         super().__init__()
@@ -66,6 +66,8 @@ class DVSLayer(nn.Module):
         self.merge_polarities = merge_polarities
         self.disable_pixel_array = disable_pixel_array
 
+        if len(input_shape) != 2:
+            raise ValueError(f"Input shape should be 2 dimensional but input_shape={input_shape} was given.")
         if merge_polarities:
             self.input_shape: Tuple[int, int, int] = (1, *input_shape)
         else:
@@ -85,11 +87,11 @@ class DVSLayer(nn.Module):
 
     @classmethod
     def from_layers(
-        cls,
-        input_shape: Tuple[int, int],
-        pool_layer: Optional[SumPool2d] = None,
-        crop_layer: Optional[Crop2d] = None,
-        flip_layer: Optional[FlipDims] = None,
+            cls,
+            input_shape: Tuple[int, int, int],
+            pool_layer: Optional[SumPool2d] = None,
+            crop_layer: Optional[Crop2d] = None,
+            flip_layer: Optional[FlipDims] = None,
     ) -> "DVSLayer":
         """
         Alternative factory method.
@@ -98,7 +100,7 @@ class DVSLayer(nn.Module):
         Parameters
         ----------
         input_shape:
-            (height, width)
+            (channels, height, width)
         pool_layer:
             SumPool2d layer
         crop_layer:
@@ -116,6 +118,10 @@ class DVSLayer(nn.Module):
         flip_x = None
         flip_y = None
         swap_xy = None
+
+        if len(input_shape) != 3:
+            raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
+
         if pool_layer is not None:
             pool = expand_to_pair(pool_layer.kernel_size)
         if crop_layer is not None:
@@ -129,12 +135,13 @@ class DVSLayer(nn.Module):
             swap_xy = flip_layer.swap_xy
 
         return DVSLayer(
-            input_shape=input_shape,
+            input_shape=input_shape[1:],
             pool=pool,
             crop=crop,
             flip_x=False if flip_x is None else flip_x,
             flip_y=False if flip_y is None else flip_y,
             swap_xy=False if swap_xy is None else swap_xy,
+            merge_polarities=(input_shape[0] == 1)
         )
 
     @property

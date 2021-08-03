@@ -21,7 +21,7 @@ def test_from_layers_empty():
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.flipdims import FlipDims
 
-    dvs_layer = DVSLayer.from_layers(input_shape=(128, 128))
+    dvs_layer = DVSLayer.from_layers(input_shape=(2, 128, 128))
 
     print(dvs_layer.get_config_dict())
 
@@ -40,7 +40,7 @@ def test_from_layers():
     pool_layer = sl.SumPool2d(2)
     crop_layer = Crop2d(((0, 59), (0, 54)))
 
-    dvs_layer = DVSLayer.from_layers(input_shape=(128, 128), pool_layer=pool_layer, crop_layer=crop_layer)
+    dvs_layer = DVSLayer.from_layers(input_shape=(2, 128, 128), pool_layer=pool_layer, crop_layer=crop_layer)
 
     print(dvs_layer)
 
@@ -63,7 +63,7 @@ def test_construct_empty():
 
     layers = []
 
-    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(128, 128))
+    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(2, 128, 128))
 
     assert rescale_factor == 1
     assert layer_idx_next == 0
@@ -76,7 +76,7 @@ def test_construct_from_sumpool():
 
     layers = [sl.SumPool2d(2), sl.Cropping2dLayer(((1, 1), (1, 1)))]
 
-    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(128, 128))
+    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(layers, input_shape=(2, 128, 128))
 
     print(dvs_layer)
 
@@ -89,7 +89,7 @@ def test_convert_cropping2dlayer_to_crop2d():
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.utils import convert_cropping2dlayer_to_crop2d
 
-    input_shape = [64, 50]
+    input_shape = (64, 50)
     cropping_lyr = sl.Cropping2dLayer(((1, 4), (3, 7)))
     crop2d_lyr = convert_cropping2dlayer_to_crop2d(cropping_lyr, input_shape)
 

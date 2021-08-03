@@ -22,10 +22,10 @@ input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
 
 def verify_dvs_config(
     config,
-    input_shape: Tuple[int],
-    pooling: Optional[Tuple[int]] = (1, 1),
-    origin: Tuple[int] = (0, 0),
-    cut: Optional[Tuple[int]] = None,
+    input_shape: Tuple[int, int, int],
+    pooling: Optional[Tuple[int, int]] = (1, 1),
+    origin: Tuple[int, int] = (0, 0),
+    cut: Optional[Tuple[int, int]] = None,
     destination: Optional[int] = None,
     dvs_input: bool = True,
     flip: Optional[dict] = None,

@@ -3,6 +3,7 @@ from warnings import warn
 import time
 
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+from .exceptions import InputConfigurationError
 
 try:
     import samna
@@ -86,6 +87,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
             self.dvs_input = False
 
         input_shape = infer_input_shape(layers, input_shape=input_shape)
+
+        if len(input_shape) != 3:
+            raise InputConfigurationError(
+                f"input_shape expected to have length 3 or None but input_shape={input_shape} given.")
 
         # Build model from layers
         self.sequence = build_from_list(
