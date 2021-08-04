@@ -21,3 +21,11 @@ In order to add support for a new chip in, you will need to perform the followin
 That should be it! 
 You will now be able to call `make_config` or the `to` method in `DynapcnnCompatibleNetwork` 
 and refer to your device with the name you chose `device_name_string` in step `1`.
+
+
+Contact us
+----------
+
+- If you would like to report bugs or push any changes, you can do this on out [gitlab repository](https://gitlab.com/synsense/sinabs-dynapcnn).
+- We encourage you to join our [SynSense Discord community](https://discordapp.com/channels/852094154188259338/852094154188259342/852113196201934859) to get in touch with the maintainers and other users.
+
