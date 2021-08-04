@@ -32,6 +32,7 @@ def verify_dvs_config(
     merge_polarities: bool = False,
 ):
     dvs = config.dvs_layer
+    print(dvs.to_json())
     assert dvs.destinations[1].enable is False
     if destination is None:
         assert dvs.destinations[0].enable is False
@@ -226,6 +227,7 @@ class DvsNet(nn.Module):
         **kwargs_flip,
     ):
         super().__init__()
+        n_channels_in = 1 if merge_polarities else 2
         layers = [
             DVSLayer(
                 input_shape=input_shape[1:],
@@ -235,7 +237,7 @@ class DvsNet(nn.Module):
                 merge_polarities=merge_polarities,
                 **kwargs_flip,
             ),
-            nn.Conv2d(2, 4, kernel_size=2, stride=2),
+            nn.Conv2d(n_channels_in, 4, kernel_size=2, stride=2),
             SpikingLayer(),
         ]
         self.seq = nn.Sequential(*layers)
@@ -293,14 +295,14 @@ def test_dvs_crop():
     # - DYNAP-CNN layer arrangement
     target_layers = ["dvs", 5, 2]
     crop = ((20, 62), (12, 32))
-    shape = (2, 128, 128)
-    input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
     pool = (1, 2)
 
     for dvs_input in (True, False):
         for merge_polarities in (True, False):
+            shape = (1, 128, 128) if merge_polarities else (2, 128, 128)
+            input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
             # - ANN and SNN generation
-            ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape)
+            ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape, merge_polarities=merge_polarities)
             snn = from_model(ann)
             snn.eval()
 
@@ -320,7 +322,7 @@ def test_dvs_crop():
                 input_shape=shape,
                 pooling=pool,
                 origin=(20, 12),
-                cut=(42, 30),
+                cut=(62, 32),
                 destination=target_layers[1],
                 dvs_input=dvs_input,
                 merge_polarities=merge_polarities,
