@@ -18,7 +18,7 @@ class IAF(SpikingLayer):
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
-        window: Optional[float] = None,
+        window: float = 1,
         *args,
         **kwargs,
     ):

@@ -2,8 +2,16 @@ import copy
 from warnings import warn
 import torch
 from torch import nn
-import sinabs.layers as sl
+
 from sinabs import Network
+import sinabs.layers as sl
+
+try:
+    import sinabs.slayer.layers as sl_slayer
+
+    SLAYER_AVAILABLE = True
+except (ImportError, ModuleNotFoundError):
+    SLAYER_AVAILABLE = False
 
 
 def from_model(
@@ -17,6 +25,7 @@ def from_model(
     batch_size=1,
     synops=False,
     add_spiking_output=False,
+    backend="bptt",
 ):
     """
     Converts a Torch model and returns a Sinabs network object.
@@ -52,6 +61,8 @@ def from_model(
         num_timesteps=num_timesteps,
         synops=synops,
         add_spiking_output=add_spiking_output,
+        backend=backend,
+        kwargs_backend=None,
     ).convert(model)
 
 
@@ -91,6 +102,8 @@ class SpkConverter(object):
         batch_size=1,
         synops=False,
         add_spiking_output=False,
+        backend="bptt",
+        kwargs_backend=None,
     ):
         self.threshold_low = threshold_low
         self.threshold = threshold
@@ -101,15 +114,28 @@ class SpkConverter(object):
         self.synops = synops
         self.input_shape = input_shape
         self.add_spiking_output = add_spiking_output
+        self.backend = backend
+        self.kwargs_backend = kwargs_backend or dict()
 
     def relu2spiking(self):
 
-        return sl.IAFSqueeze(
+        if self.backend.lower() == "bptt":
+            layer_module = sl
+        elif self.backend.lower() == "slayer":
+            if SLAYER_AVAILABLE:
+                layer_module = sl_slayer
+            else:
+                raise RuntimeError("Slayer backend not available.")
+        else:
+            raise RuntimeError(f"Backend `{self.backend}` not supported.")
+
+        return layer_module.IAFSqueeze(
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
+            **self.kwargs_backend,
         ).to(self.device)
 
     def convert(self, model):
@@ -138,7 +164,8 @@ class SpkConverter(object):
 
         self.convert_module(spk_model)
         network = Network(
-            model, spk_model,
+            model,
+            spk_model,
             input_shape=self.input_shape,
             synops=self.synops,
             batch_size=self.batch_size,

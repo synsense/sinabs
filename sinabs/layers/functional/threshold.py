@@ -1,4 +1,4 @@
-from torch import Optional
+from typing import Optional
 
 import torch
 from torch.onnx.symbolic_opset9 import floor, div, relu
@@ -15,7 +15,7 @@ class ThresholdSubtract(torch.autograd.Function):
         ctx.save_for_backward(data.clone())
         ctx.threshold = threshold
         ctx.window = window or threshold
-        return (data > 0) * (data // threshold).float()
+        return (data > 0) * torch.div(data, threshold, rounding_mode="floor")
 
     @staticmethod
     def backward(ctx, grad_output):
