@@ -27,5 +27,5 @@ Contact us
 ----------
 
 - If you would like to report bugs or push any changes, you can do this on out [gitlab repository](https://gitlab.com/synsense/sinabs-dynapcnn).
-- We encourage you to join our [SynSense Discord community](https://discordapp.com/channels/852094154188259338/852094154188259342/852113196201934859) to get in touch with the maintainers and other users.
+- We encourage you to join our [SynSense Discord community](https://discord.gg/UkYWnuQPZh) to get in touch with the maintainers and other users.
 
