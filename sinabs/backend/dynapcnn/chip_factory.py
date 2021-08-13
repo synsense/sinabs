@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from typing import List
 from .io import _parse_device_string
 from .config_builder import ConfigBuilder
@@ -68,7 +69,7 @@ class ChipFactory:
             events.append(ev)
         return events
 
-    def xytp_to_events(self, xytp: torch.Tensor, layer) -> List:
+    def xytp_to_events(self, xytp: np.ndarray, layer) -> List:
         """
         Convert series of spikes in a structured array (eg. from aermanager) to events for DynaapcnnDevKit
 
