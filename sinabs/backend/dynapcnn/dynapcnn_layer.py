@@ -7,7 +7,7 @@ from warnings import warn
 from .discretize import discretize_conv_spike_
 from copy import deepcopy
 
-from .dvslayer import expand_to_pair
+from .dvs_layer import expand_to_pair
 
 
 class DynapcnnLayer(nn.Module):

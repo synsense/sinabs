@@ -2,8 +2,8 @@ from typing import List, Tuple, Optional
 from dataclasses import dataclass
 from copy import deepcopy
 from collections import deque
-from .dvslayer import DVSLayer
-from .dynapcnnlayer import DynapcnnLayer
+from .dvs_layer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
 
 
 @dataclass

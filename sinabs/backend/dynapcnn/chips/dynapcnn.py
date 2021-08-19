@@ -5,8 +5,8 @@ import sinabs.layers as sl
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.mapping import LayerConstraints, get_valid_mapping
 
-from sinabs.backend.dynapcnn.dvslayer import DVSLayer
-from sinabs.backend.dynapcnn.dynapcnnlayer import DynapcnnLayer
+from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 
 class DynapcnnConfigBuilder(ConfigBuilder):

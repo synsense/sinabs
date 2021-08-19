@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 def test_init_defaults():
-    from sinabs.backend.dynapcnn.dvslayer import DVSLayer
+    from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 
     dvs_layer = DVSLayer(input_shape=(128, 128))
 
@@ -17,7 +17,7 @@ def test_init_defaults():
 
 
 def test_from_layers_empty():
-    from sinabs.backend.dynapcnn.dvslayer import DVSLayer
+    from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.flipdims import FlipDims
 
@@ -33,7 +33,7 @@ def test_from_layers_empty():
 
 
 def test_from_layers():
-    from sinabs.backend.dynapcnn.dvslayer import DVSLayer
+    from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.crop2d import Crop2d
 

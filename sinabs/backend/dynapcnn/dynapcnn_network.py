@@ -24,12 +24,12 @@ from .io import (
     disable_timestamps,
     reset_timestamps,
 )
-from .dynapcnnlayer import DynapcnnLayer
-from .dvslayer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
+from .dvs_layer import DVSLayer
 from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
 
 
-class DynapcnnCompatibleNetwork(nn.Module):
+class DynapcnnNetwork(nn.Module):
     """
     Given a sinabs spiking network, prepare a dynapcnn-compatible network.
     This can be used to test the network will be equivalent once on DYNAPCNN.
@@ -57,13 +57,13 @@ class DynapcnnCompatibleNetwork(nn.Module):
         discretize: bool = True,
     ):
         """
-        DynapcnnCompatibleNetwork: a class turning sinabs networks into dynapcnn
+        DynapcnnNetwork: a class turning sinabs networks into dynapcnn
         compatible networks, and making dynapcnn configurations.
 
         Parameters
         ----------
             snn: sinabs.Network
-                SNN that determines the structure of the `DynapcnnCompatibleNetwork`
+                SNN that determines the structure of the `DynapcnnNetwork`
             input_shape: None or tuple of ints
                 Shape of the input, convention: (features, height, width)
                 If None, `snn` needs an InputLayer
@@ -199,7 +199,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             an automated procedure will be used to find a valid ordering.
 
         device: String
-            dynapcnndevkit:0 or speck2devkit:0
+            dynapcnndevkit, speck2b or speck2devkit
 
         monitor_layers: None/List
             A list of all chip-layers that you want to monitor.
@@ -297,6 +297,10 @@ class DynapcnnCompatibleNetwork(nn.Module):
             reset_timestamps(self.device)
             enable_timestamps(self.device)
             # Send input
+            
+            first_layer = self.chip_layers_ordering[0]
+            events_in = ChipFactory(self.device).raster_to_events(x, layer=first_layer)
+            
             self.samna_device.get_model().write(x)
             time.sleep((x[-1].timestamp - x[0].timestamp) * 1e-6 + 1)
             # Disable timestamp
