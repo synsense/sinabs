@@ -297,17 +297,16 @@ class DynapcnnNetwork(nn.Module):
             reset_timestamps(self.device)
             enable_timestamps(self.device)
             # Send input
-            
             first_layer = self.chip_layers_ordering[0]
             events_in = ChipFactory(self.device).raster_to_events(x, layer=first_layer)
-            
-            self.samna_device.get_model().write(x)
-            time.sleep((x[-1].timestamp - x[0].timestamp) * 1e-6 + 1)
+            self.samna_device.get_model().write(events_in)
+            time.sleep((events_in[-1].timestamp - events_in[0].timestamp) * 1e-6 + 1)
             # Disable timestamp
             disable_timestamps(self.device)
             # Read events back
-            evsOut = self.samna_output_buffer.get_events()
-            return evsOut
+            events_out = self.samna_output_buffer.get_events()
+            raster = ChipFactory(self.device).events_to_raster(events_out)
+            return raster
         else:
             """Torch's forward pass."""
             self.eval()

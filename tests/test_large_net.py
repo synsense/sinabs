@@ -10,7 +10,7 @@ from torch import nn
 import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn.todynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 import pytest
 
 
@@ -72,7 +72,7 @@ snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
 # NOTE: Test top_level_collect fails on dvs_input=False, but works if dvs_input=True
-dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
 dynapcnn_out = dynapcnn_net(input_data)
 
 
@@ -99,7 +99,7 @@ def test_was_copied():
 
 
 def test_make_config():
-    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
     dynapcnn_out = dynapcnn_net(input_data)
 
     config = dynapcnn_net.make_config(device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
@@ -109,7 +109,7 @@ def test_make_config():
 
 @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
-    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
     dynapcnn_out = dynapcnn_net(input_data)
 
 
@@ -122,7 +122,7 @@ def test_to_device():
     #dynapcnn_net.to(device="dynapcnndevkit:1")
 
 def test_memory_summary():
-    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
     summary = dynapcnn_net.memory_summary()
 
     print(summary)

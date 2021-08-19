@@ -32,7 +32,7 @@ class ChipFactory:
 
     def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3) -> List:
         """
-        Convert spike raster to events for DynaapcnnDevKit
+        Convert spike raster to events for DynapcnnNetworks
 
         Parameters
         ----------
@@ -102,3 +102,31 @@ class ChipFactory:
             ev.timestamp = row["t"] - tstart  # Time in uS
             events.append(ev)
         return events
+
+    def events_to_raster(self, events: List) -> torch.Tensor:
+        """
+        Convert events from DynapcnnNetworks to spike raster
+
+        Parameters
+        ----------
+
+        events: List[Spike]
+            A list of events that will be streamed to the device
+
+        Returns
+        -------
+        raster: torch.Tensor
+            A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
+        """
+        timestamps = [event.timestamp for event in events]
+        start_timestamp = min(timestamps)
+        timestamps = [ts - start_timestamp for ts in timestamps]
+        xs = [event.x for event in events]
+        ys = [event.y for event in events]
+        features = [event.feature for event in events]
+
+        raster = torch.zeros(max(timestamps)+1, max(features)+1, max(xs)+1, max(ys)+1)
+        for event in events:
+            raster[event.timestamp - start_timestamp, event.feature, event.x, event.y] = 1
+        return raster
+

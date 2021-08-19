@@ -1,6 +1,6 @@
 import samna
 
-from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model
@@ -27,7 +27,7 @@ def networks_equal_output(input_data, snn):
     snn_out = snn(input_data).squeeze()  # forward pass
     reset_states(snn)
 
-    spn = DynapcnnCompatibleNetwork(
+    spn = DynapcnnNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False,
         dvs_input = True,
     )
@@ -63,7 +63,7 @@ def test_with_class():
     snn_out = snn(input_data).squeeze()  # forward pass
 
     snn.reset_states()
-    spn = DynapcnnCompatibleNetwork(
+    spn = DynapcnnNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False
     )
     spn_out = spn(input_data).squeeze()
@@ -204,7 +204,7 @@ def test_no_spk_ending():
 
     from sinabs.backend.dynapcnn.exceptions import MissingLayer
     with pytest.raises(MissingLayer):
-        DynapcnnCompatibleNetwork(
+        DynapcnnNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
 
@@ -218,6 +218,6 @@ def test_no_spk_middle():
     )
 
     with pytest.raises(TypeError):
-        DynapcnnCompatibleNetwork(
+        DynapcnnNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
