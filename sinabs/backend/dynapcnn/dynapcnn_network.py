@@ -297,16 +297,13 @@ class DynapcnnNetwork(nn.Module):
             reset_timestamps(self.device)
             enable_timestamps(self.device)
             # Send input
-            first_layer = self.chip_layers_ordering[0]
-            events_in = ChipFactory(self.device).raster_to_events(x, layer=first_layer)
-            self.samna_device.get_model().write(events_in)
-            time.sleep((events_in[-1].timestamp - events_in[0].timestamp) * 1e-6 + 1)
+            self.samna_device.get_model().write(x)
+            time.sleep((x[-1].timestamp - x[0].timestamp) * 1e-6 + 1)
             # Disable timestamp
             disable_timestamps(self.device)
             # Read events back
             events_out = self.samna_output_buffer.get_events()
-            raster = ChipFactory(self.device).events_to_raster(events_out)
-            return raster
+            return events_out
         else:
             """Torch's forward pass."""
             self.eval()
@@ -331,3 +328,19 @@ class DynapcnnNetwork(nn.Module):
             for k, v in lyr_summary.items():
                 summary[k].append(v)
         return summary
+
+
+class DynapcnnCompatibleNetwork(DynapcnnNetwork):
+    """ Deprecated class, use DynapcnnNetwork instead."""
+    
+    def __init__(
+        self,
+        snn: Union[nn.Sequential, sinabs.Network],
+        input_shape: Optional[Tuple[int, int, int]] = None,
+        dvs_input: bool = False,
+        discretize: bool = True,
+    ):
+        from warnings import warn
+        warn("DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork " +
+             "and will be removed in a future release.")
+        super().__init__(snn, input_shape, dvs_input, discretize)
