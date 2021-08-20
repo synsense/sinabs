@@ -103,7 +103,7 @@ class ChipFactory:
             events.append(ev)
         return events
 
-    def events_to_raster(self, events: List) -> torch.Tensor:
+    def events_to_raster(self, events: List, dt=1e-3) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
 
@@ -125,8 +125,8 @@ class ChipFactory:
         ys = [event.y for event in events]
         features = [event.feature for event in events]
 
-        raster = torch.zeros(max(timestamps)+1, max(features)+1, max(xs)+1, max(ys)+1)
+        raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
         for event in events:
-            raster[event.timestamp - start_timestamp, event.feature, event.x, event.y] = 1
+            raster[int((event.timestamp - start_timestamp)*dt), event.feature, event.x, event.y] = 1
         return raster
 
