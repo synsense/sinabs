@@ -41,14 +41,14 @@ def find_chip_layers(layer: DynapcnnLayer, constraints: List[LayerConstraints]) 
     return idx
 
 
-def get_valid_mapping(model: "DynapcnnCompatibleNetwork", constraints: List[LayerConstraints]) -> List[Tuple[int, int]]:
+def get_valid_mapping(model: "DynapcnnNetwork", constraints: List[LayerConstraints]) -> List[Tuple[int, int]]:
     """
     Given a model, find a valid layer ordering for its placement within the constraints provided.
 
     Parameters
     ----------
     model:
-        DynapcnnCompatibleNetwork
+        DynapcnnNetwork
     constraints:
         A list of all the layer's constraints
 

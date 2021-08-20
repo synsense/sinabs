@@ -53,7 +53,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: "DynapcnnCompatibleNetwork", chip_layers: List[int]):
+    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
         layers = model.sequence
         config = cls.get_default_config()
 

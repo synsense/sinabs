@@ -20,7 +20,7 @@ Table of contents
    :maxdepth: 2
 
    installation
-   dynapcnn_compatible_model
+   dynapcnn_model
    advanced_concepts
    dangers
    tutorials
