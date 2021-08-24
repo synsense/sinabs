@@ -249,7 +249,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
-        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
+        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"]
         if "dvs" in monitor_layers:
             monitor_chip_layers.append("dvs")
         config_builder.monitor_layers(config, monitor_chip_layers)
