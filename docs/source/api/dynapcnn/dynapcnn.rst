@@ -6,9 +6,9 @@ sinabs.backend.dynapcnn
     config_builder
     crop2d
     discretize
-    dvslayer
-    dynapcnn_compatible_network
-    dynapcnnlayer
+    dvs_layer
+    dynapcnn_network
+    dynapcnn_layer
     exceptions
     flipdims
     io

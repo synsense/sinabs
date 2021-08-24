@@ -26,6 +26,7 @@ Table of contents
    tutorials
    api/api.rst
    development
+   change_log
 
 
 Indices and tables
