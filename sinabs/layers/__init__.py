@@ -9,6 +9,7 @@ from .sig_to_spk import Sig2SpikeLayer
 from .spiking_layer import SpikingLayer
 from .iaf_bptt import IAF, IAFSqueeze
 from .lif import LIF, LIFSqueeze
+from .alif import ALIF, ALIFSqueeze
 
 # Deprecated
 from .deprecated.flatten import FlattenLayer
