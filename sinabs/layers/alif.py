@@ -55,63 +55,37 @@ class ALIF(LIF):
         self.delta_thresh = delta_thresh
         self.thresh_state = None
 
-    def adapt_threshold_state(self, output_spikes):
-        self.thresh_state += output_spikes * self.delta_thresh
-
-    def forward(self, input_current: torch.Tensor):
-        """
-        Forward pass with given data.
-
-        Parameters
-        ----------
-        input_current : torch.Tensor
-            Data to be processed. Expected shape: (batch, time, ...)
-
-        Returns
-        -------
-        torch.Tensor
-            Output data. Same shape as `input_spikes`.
-        """
-        # Ensure the neuron states are initialized
+    def check_states(self, input_current):
         shape_notime = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_notime:
             self.reset_states(shape=shape_notime, randomize=False)
-            
-        # Ensure the threshold states are initialized
         if self.thresh_state == None:
             self.thresh_state = torch.ones_like(input_current[:,0]) * self.threshold
 
-        time_steps = input_current.shape[1]
-        output_spikes = torch.zeros_like(input_current)
-        
-        for step in range(time_steps):
-            # generate spikes
-            self.detect_spikes(threshold=self.thresh_state)
-            output_spikes[:, step] = self.activations
+    def detect_spikes(self):
+        """
+        Given the parameters, compute the spikes that will be generated.
+        NOTE: This method only computes the spikes but does not reset the membrane potential.
+        """
+        # generate spikes
+        if self.membrane_reset:
+            self.activations = threshold_reset(self.state, self.thresh_state, self.threshold * window)
+        else:
+            self.activations = threshold_subtract(self.state, self.thresh_state, self.threshold * window)
 
-            # Reset membrane potential for neurons that spiked
-            self.update_state_after_spike()
+    def update_state_after_spike(self):
+        if self.membrane_reset:
+            # sum the previous state only where there were no spikes
+            self.state = self.state * (self.activations == 0.0)
+        else:
+            # subtract a number of membrane_subtract's as there are spikes
+            self.state = self.state - self.activations * self.membrane_subtract
+        # Increase spike thresholds if neuron spiked
+        self.adapt_threshold_state(self.activations)
 
-            # Decay the membrane potential
-            self.state *= self.alpha
-            
-            # Decay the spike threshold
-            self.thresh_state *= self.beta
-
-            # Add the input currents to membrane potential
-            self.add_input(input_current[:, step])
-            
-            # Membrane potential lower bound
-            if self.threshold_low is not None:
-                self.state = torch.clamp(self.state, min=self.threshold_low)
-
-            # Increase spike thresholds if neuron spiked
-            self.adapt_threshold_state(self.activations)
-
-        self.tw = time_steps
-        self.spikes_number = output_spikes.abs().sum()
-
-        return output_spikes
-
+    def adapt_threshold_state(self, output_spikes):
+        # Decay the spike threshold
+        self.thresh_state *= self.beta
+        self.thresh_state += output_spikes * self.delta_thresh
 
 ALIFSqueeze = squeeze_class(ALIF)
