@@ -55,17 +55,6 @@ class ALIF(LIF):
         self.delta_thresh = delta_thresh
         self.thresh_state = None
 
-    def detect_spikes(self):
-        """
-        Given the parameters, compute the spikes that will be generated.
-        NOTE: This method only computes the spikes but does not reset the membrane potential.
-        """
-        # generate spikes
-        if self.membrane_reset:
-            self.activations = threshold_reset(self.state, self.thresh_state, self.threshold * window)
-        else:
-            self.activations = threshold_subtract(self.state, self.thresh_state, self.threshold * window)
-
     def adapt_threshold_state(self, output_spikes):
         self.thresh_state += output_spikes * self.delta_thresh
 
@@ -97,7 +86,7 @@ class ALIF(LIF):
         
         for step in range(time_steps):
             # generate spikes
-            self.detect_spikes()
+            self.detect_spikes(threshold=self.thresh_state)
             output_spikes[:, step] = self.activations
 
             # Reset membrane potential for neurons that spiked
