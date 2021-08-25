@@ -15,7 +15,7 @@ class LIF(SpikingLayer):
     def __init__(
         self,
         tau_mem: Union[float, torch.Tensor],
-        threshold: float = 1.0,
+        threshold: Union[float, torch.Tensor] = 1.0,
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
@@ -47,7 +47,7 @@ class LIF(SpikingLayer):
         )
         self.tau_mem = tau_mem
 
-    def generate_spikes(self):
+    def detect_spikes(self):
         """
         Given the parameters, compute the spikes that will be generated.
         NOTE: This method only computes the spikes but does not reset the membrate potential.
@@ -86,7 +86,7 @@ class LIF(SpikingLayer):
 
         for iCurrentTimeStep in range(time_steps):
             # generate spikes
-            self.generate_spikes()
+            self.detect_spikes()
             spikes.append(self.activations)
 
             # Reset membrane potential
