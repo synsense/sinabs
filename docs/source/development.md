@@ -19,7 +19,7 @@ In order to add support for a new chip in, you will need to perform the followin
 3. Add the `ConfigBuilder` implemented in step `2` to the `ChipFactory` in `chip_factory.py`.
 
 That should be it! 
-You will now be able to call `make_config` or the `to` method in `DynapcnnCompatibleNetwork` 
+You will now be able to call `make_config` or the `to` method in `DynapcnnNetwork` 
 and refer to your device with the name you chose `device_name_string` in step `1`.
 
 

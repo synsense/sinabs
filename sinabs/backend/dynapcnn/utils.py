@@ -4,8 +4,8 @@ from typing import List, Optional, Tuple, Union
 from copy import deepcopy
 
 from .crop2d import Crop2d
-from .dynapcnnlayer import DynapcnnLayer
-from .dvslayer import DVSLayer, expand_to_pair
+from .dynapcnn_layer import DynapcnnLayer
+from .dvs_layer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
 from .exceptions import *
 from .flipdims import FlipDims

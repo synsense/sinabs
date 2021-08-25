@@ -1,1 +1,1 @@
-from .todynapcnn import DynapcnnCompatibleNetwork
+from .dynapcnn_network import DynapcnnNetwork, DynapcnnCompatibleNetwork # second one for compatibility purposes

@@ -27,7 +27,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def build_config(cls, model: "DynapcnnCompatibleNetwork", chip_layers: List[int]):
+    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
         """
         Build the configuration given a model
 
@@ -62,13 +62,13 @@ class ConfigBuilder(ABC):
         """
 
     @classmethod
-    def get_valid_mapping(cls, model: "DynapcnnCompatibleNetwork") -> List[int]:
+    def get_valid_mapping(cls, model: "DynapcnnNetwork") -> List[int]:
         """
         Find a valid set of layers for a given model
 
         Parameters
         ----------
-        model (DynapcnnCompatibleNetwork):
+        model (DynapcnnNetwork):
             A model
 
         Returns
