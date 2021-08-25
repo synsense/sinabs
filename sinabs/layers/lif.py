@@ -45,12 +45,13 @@ class LIF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-        self.tau_mem = tau_mem
+        # pre-compute leakage factor for single time step
+        self.alpha = torch.exp(-1.0/torch.tensor(tau_mem))
 
     def detect_spikes(self):
         """
         Given the parameters, compute the spikes that will be generated.
-        NOTE: This method only computes the spikes but does not reset the membrate potential.
+        NOTE: This method only computes the spikes but does not reset the membrane potential.
         """
         # generate spikes
         if self.membrane_reset:
@@ -66,37 +67,44 @@ class LIF(SpikingLayer):
             # subtract a number of membrane_subtract's as there are spikes
             self.state = self.state - self.activations * self.membrane_subtract
 
-    def do_leak(self):
-        alpha = torch.exp(- 1.0/self.tau_mem)
-        return alpha * self.state
-
     def add_input(self, input_data):
-        self.state = self.state + input_data # Add input
+        self.state = self.state + input_data
 
     def forward(self, input_current: torch.Tensor):
+        """
+        Forward pass with given data.
+
+        Parameters
+        ----------
+        input_current : torch.Tensor
+            Data to be processed. Expected shape: (batch, time, ...)
+
+        Returns
+        -------
+        torch.Tensor
+            Output data. Same shape as `input_spikes`.
+        """
         # Ensure the neuron state are initialized
         shape_notime = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_notime:
             self.reset_states(shape=shape_notime, randomize=False)
 
-        # Determine no. of time steps from input
         time_steps = input_current.shape[1]
-
-        spikes = []
-
-        for iCurrentTimeStep in range(time_steps):
+        output_spikes = torch.zeros_like(input_current)
+        
+        for step in range(time_steps):
             # generate spikes
             self.detect_spikes()
-            spikes.append(self.activations)
+            output_spikes[:, step] = self.activations
 
-            # Reset membrane potential
+            # Reset membrane potential for neurons that spiked
             self.update_state_after_spike()
 
-            # Do leak
-            self.do_leak()
+            # Decay the membrane potential
+            self.state *= self.alpha
 
             # Add input
-            self.add_input(input_current[:, iCurrentTimeStep])  # Add input
+            self.add_input(input_current[:, step])  # Add input
 
             # Membrane potential lower bound
             if self.threshold_low is not None:
@@ -104,10 +112,9 @@ class LIF(SpikingLayer):
                 self.state = torch.nn.functional.relu(self.state - self.threshold_low) + self.threshold_low
 
         self.tw = time_steps
-        all_spikes = torch.stack(spikes).transpose(0, 1)
-        self.spikes_number = all_spikes.abs().sum()
+        self.spikes_number = output_spikes.abs().sum()
 
-        return all_spikes
+        return output_spikes
 
 
 LIFSqueeze = squeeze_class(LIF)

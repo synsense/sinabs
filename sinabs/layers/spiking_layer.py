@@ -83,13 +83,10 @@ class SpikingLayer(torch.nn.Module, ABC):
 
     def __deepcopy__(self, memo=None):
         # TODO: What is `memo`?
-
-        other = self.__class__(**self._param_dict)
-
-        other.state = self.state.detach().clone()
-        other.activations = self.activations.detach().clone()
-
-        return other
+        copy = self.__class__(**self._param_dict)
+        copy.state = self.state.detach().clone()
+        copy.activations = self.activations.detach().clone()
+        return copy
 
     @abstractmethod
     def forward(self, data):
