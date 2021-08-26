@@ -1,5 +1,5 @@
 import torch
-from .functional import quantize, stochastic_rounding
+from .functional import Quantize, StochasticRounding
 
 
 class NeuromorphicReLU(torch.nn.Module):
@@ -28,11 +28,11 @@ class NeuromorphicReLU(torch.nn.Module):
         if self.quantize:
             if self.stochastic_rounding:
                 if self.training:
-                    output = stochastic_rounding(output)
+                    output = StochasticRounding.apply(output)
                 else:
                     output = output.round()
             else:
-                output = quantize(output)
+                output = Quantize.apply(output)
 
         self.activity = output.sum() / len(output) * self.fanout
         return output
