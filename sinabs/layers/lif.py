@@ -2,7 +2,7 @@ from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
-from .functional import threshold_subtract, threshold_reset
+from .functional import ThresholdSubtract, ThresholdReset
 
 
 __all__ = ["LIF", "LIFSqueeze"]
@@ -45,24 +45,23 @@ class LIF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-        # pre-compute leakage factor for single time step
-        self.alpha = torch.exp(-1.0/torch.tensor(tau_mem))
-
+        self.tau_mem = torch.tensor(tau_mem)
+        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.learning_window = threshold * window
+        
     def check_states(self, input_current):
-        shape_notime = (input_current.shape[0], *input_current.shape[2:])
-        if self.state.shape != shape_notime:
-            self.reset_states(shape=shape_notime, randomize=False)
+        shape_without_time = (input_current.shape[0], *input_current.shape[2:])
+        if self.state.shape != shape_without_time:
+            self.reset_states(shape=shape_without_time, randomize=False)
 
     def detect_spikes(self):
         """
         Given the parameters, compute the spikes that will be generated.
         NOTE: This method only computes the spikes but does not reset the membrane potential.
         """
-        # generate spikes
-        if self.membrane_reset:
-            self.activations = threshold_reset(self.state, self.threshold, self.threshold * window)
-        else:
-            self.activations = threshold_subtract(self.state, self.threshold, self.threshold * window)
+        self.activations = self.reset_function.apply(self.state, 
+                                                     self.threshold, 
+                                                     self.learning_window)
 
     def update_state_after_spike(self):
         if self.membrane_reset:
@@ -71,9 +70,6 @@ class LIF(SpikingLayer):
         else:
             # subtract a number of membrane_subtract's as there are spikes
             self.state = self.state - self.activations * self.membrane_subtract
-
-    def add_input(self, input_data):
-        self.state = self.state + input_data
 
     def forward(self, input_current: torch.Tensor):
         """
@@ -104,18 +100,17 @@ class LIF(SpikingLayer):
             self.update_state_after_spike()
 
             # Decay the membrane potential
-            self.state *= self.alpha
+            alpha = torch.exp(-1.0/self.tau_mem)
+            self.state *= alpha
+            
+            # Add the input currents to membrane potential state
+            self.state += input_current[:, step]
 
-            # Add the input currents to membrane potential
-            self.add_input(input_current[:, step])
-
-            # Membrane potential lower bound
-            if self.threshold_low is not None:
-                self.state = torch.clamp(self.state, min=self.threshold_low)
+            # Clip membrane potential that is too low
+            if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
-
         return output_spikes
 
 
