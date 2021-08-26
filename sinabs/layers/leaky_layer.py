@@ -1,7 +1,6 @@
 from typing import Tuple, Union
 import torch
 from .pack_dims import squeeze_class
-from .functional import threshold_subtract, threshold_reset
 
 
 __all__ = ["ExpLeak", "ExpLeakSqueeze"]

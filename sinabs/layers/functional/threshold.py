@@ -30,9 +30,6 @@ class ThresholdSubtract(torch.autograd.Function):
         return x
 
 
-threshold_subtract = ThresholdSubtract().apply
-
-
 class ThresholdReset(torch.autograd.Function):
     """
     Threshold check
@@ -53,6 +50,3 @@ class ThresholdReset(torch.autograd.Function):
         (data,) = ctx.saved_tensors
         grad_input = grad_output * ((data >= (ctx.threshold - ctx.window)).float())
         return grad_input, None, None
-
-
-threshold_reset = ThresholdReset().apply

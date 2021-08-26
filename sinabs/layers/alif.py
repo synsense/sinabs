@@ -2,7 +2,6 @@ from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
-from .functional import threshold_subtract, threshold_reset
 from .lif import LIF
 
 

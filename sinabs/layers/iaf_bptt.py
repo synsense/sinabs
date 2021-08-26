@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import torch
 
-from .functional import threshold_subtract, threshold_reset
+from .functional import ThresholdSubtract, ThresholdReset
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
 
@@ -45,6 +45,8 @@ class IAF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
+        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.learning_window = threshold * window
 
     def forward(self, input_spikes: torch.Tensor):
         """
@@ -94,10 +96,7 @@ class IAF(SpikingLayer):
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
 
             # generate spikes
-            if self.membrane_reset:
-                activations = threshold_reset(state, threshold, threshold * window)
-            else:
-                activations = threshold_subtract(state, threshold, threshold * window)
+            activations = self.reset_function.apply(state, threshold, self.learning_window)
             spikes.append(activations)
 
         self.state = state
