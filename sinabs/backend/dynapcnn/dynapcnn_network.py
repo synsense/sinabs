@@ -237,12 +237,8 @@ class DynapcnnNetwork(nn.Module):
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
             if self.dvs_input and chip_layers_ordering[0] != "dvs":
-                raise Exception("self.dvs_input is True, but no \"dvs\" in chip_layers_ordering. Please add \"dvs\" "
-                                "into the chip_layers_ordering list.")
+                raise AssertionError("self.dvs_input is True. Please add \"dvs\" into the chip_layers_ordering list.")
 
-            if not self.dvs_input and chip_layers_ordering[0] == "dvs":
-                raise Exception("self.dvs_input is False, but find \"dvs\" in chip_layers_ordering. Please remove "
-                                "\"dvs\" from the chip_layers_ordering list.")
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
