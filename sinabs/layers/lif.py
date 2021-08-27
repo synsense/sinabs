@@ -47,7 +47,6 @@ class LIF(SpikingLayer):
         )
         self.tau_mem = torch.tensor(tau_mem)
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
-        self.learning_window = threshold * window
         
     def check_states(self, input_current):
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
@@ -60,8 +59,8 @@ class LIF(SpikingLayer):
         NOTE: This method only computes the spikes but does not reset the membrane potential.
         """
         self.activations = self.reset_function.apply(self.state, 
-                                                     self.threshold, 
-                                                     self.learning_window)
+                                                     self.threshold,
+                                                     self.threshold * window)
 
     def update_state_after_spike(self):
         if self.membrane_reset:

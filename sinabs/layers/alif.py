@@ -50,14 +50,14 @@ class ALIF(LIF):
         )
         self.tau_thresh = torch.tensor(tau_thresh)
         self.threshold_adaptation = torch.tensor(threshold_adaptation)
-        self.spike_threshold = self.threshold
+        self.resting_threshold = self.threshold
         delattr(self, 'threshold')
         self.register_buffer("threshold", torch.zeros(1))
 
     def check_states(self, input_current):
         super().check_states(input_current)
         if self.threshold.shape == torch.Size([1]):
-            self.threshold = torch.ones_like(input_current[:,0]) * self.spike_threshold
+            self.threshold = torch.ones_like(input_current[:,0]) * self.resting_threshold
 
     def update_state_after_spike(self):
         super().update_state_after_spike()
@@ -65,9 +65,10 @@ class ALIF(LIF):
 
     def adapt_threshold_state(self, output_spikes):
         """ Decay the spike threshold and add adaption constant to it. """
+        self.threshold -= self.resting_threshold
         beta = torch.exp(-1.0/self.tau_thresh)
         self.threshold *= beta
-        self.threshold += output_spikes * self.threshold_adaptation
+        self.threshold += output_spikes * self.threshold_adaptation + self.resting_threshold
 
     def reset_states(self, shape=None, randomize=False):
         """ Reset the state of all neurons and threshold states in this layer. """
@@ -77,6 +78,6 @@ class ALIF(LIF):
         if randomize:
             self.threshold = torch.rand(shape, device=self.threshold.device)
         else:
-            self.threshold = torch.ones(shape, device=self.threshold.device) * self.spike_threshold
+            self.threshold = torch.ones(shape, device=self.threshold.device) * self.resting_threshold
 
 ALIFSqueeze = squeeze_class(ALIF)
