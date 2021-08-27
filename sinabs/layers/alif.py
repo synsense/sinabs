@@ -15,7 +15,7 @@ class ALIF(LIF):
     def __init__(
         self,
         tau_mem: Union[float, torch.Tensor],
-        tau_thresh: Union[float, torch.Tensor],
+        tau_threshold: Union[float, torch.Tensor],
         threshold: Union[float, torch.Tensor] = 1.0,
         threshold_low: Union[float, None] = -1.0,
         threshold_adaptation: Union[float, torch.Tensor] = 0.1,
@@ -26,6 +26,14 @@ class ALIF(LIF):
     ):
         """
         Pytorch implementation of a Leaky Integrate and Fire neuron with threshold apdaption and learning enabled.
+        In addition to the LIF neuron mechanics, the firing threshold also adapts in the following way:
+
+        .. math ::
+            \\dot{\\theta} = - \\frac{\\theta - \\theta _{0}}{\\tau_{threshold}}
+
+            \\text{if } V_m(t) = V_{th} \\text{, then } \\theta \\rightarrow \\theta + \\alpha
+
+        where :math:`alpha` is the `threshold_adaptation` and :math:`\\theta` the `threshold` parameter.
 
         Parameters
         ----------
@@ -48,7 +56,7 @@ class ALIF(LIF):
             *args,
             **kwargs,
         )
-        self.tau_thresh = torch.tensor(tau_thresh)
+        self.tau_threshold = torch.tensor(tau_threshold)
         self.threshold_adaptation = torch.tensor(threshold_adaptation)
         self.resting_threshold = self.threshold
         delattr(self, 'threshold')
@@ -66,7 +74,7 @@ class ALIF(LIF):
     def adapt_threshold_state(self, output_spikes):
         """ Decay the spike threshold and add adaption constant to it. """
         self.threshold -= self.resting_threshold
-        beta = torch.exp(-1.0/self.tau_thresh)
+        beta = torch.exp(-1.0/self.tau_threshold)
         self.threshold *= beta
         self.threshold += output_spikes * self.threshold_adaptation + self.resting_threshold
 

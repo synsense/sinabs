@@ -25,6 +25,11 @@ class LIF(SpikingLayer):
         """
         Pytorch implementation of a Leaky Integrate and Fire neuron with learning enabled.
 
+        .. math ::
+            \\tau_{mem} \\dot{V}_{mem} = -V_{mem} + \\sum z(t)
+
+            \\text{if } V_m(t) = V_{th} \\text{, then } V_{m} \\rightarrow V_{reset}
+
         Parameters
         ----------
         threshold: float
@@ -47,7 +52,7 @@ class LIF(SpikingLayer):
         )
         self.tau_mem = torch.tensor(tau_mem)
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
-        
+
     def check_states(self, input_current):
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_without_time:
@@ -58,7 +63,7 @@ class LIF(SpikingLayer):
         Given the parameters, compute the spikes that will be generated.
         NOTE: This method only computes the spikes but does not reset the membrane potential.
         """
-        self.activations = self.reset_function.apply(self.state, 
+        self.activations = self.reset_function.apply(self.state,
                                                      self.threshold,
                                                      self.threshold * window)
 
@@ -86,10 +91,10 @@ class LIF(SpikingLayer):
         """
         # Ensure the neuron state are initialized
         self.check_states(input_current)
-        
+
         time_steps = input_current.shape[1]
         output_spikes = torch.zeros_like(input_current)
-        
+
         for step in range(time_steps):
             # generate spikes
             self.detect_spikes()
@@ -101,7 +106,7 @@ class LIF(SpikingLayer):
             # Decay the membrane potential
             alpha = torch.exp(-1.0/self.tau_mem)
             self.state *= alpha
-            
+
             # Add the input currents to membrane potential state
             self.state += input_current[:, step]
 
