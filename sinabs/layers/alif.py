@@ -26,21 +26,27 @@ class ALIF(LIF):
     ):
         """
         Pytorch implementation of a Leaky Integrate and Fire neuron with threshold apdaption and learning enabled.
-        In addition to the LIF neuron mechanics, the firing threshold also adapts in the following way:
+        In addition to the LIF neuron mechanics, the firing threshold :math:`\\theta` also adapts in the following way:
 
         .. math ::
-            \\dot{\\theta} = - \\frac{\\theta - \\theta _{0}}{\\tau_{threshold}}
+            \\frac{d\\theta}{dt} = - \\frac{\\theta - \\theta _{0}}{\\tau_{\\theta}}
 
             \\text{if } V_m(t) = V_{th} \\text{, then } \\theta \\rightarrow \\theta + \\alpha
 
-        where :math:`alpha` is the `threshold_adaptation` and :math:`\\theta` the `threshold` parameter.
+        where :math:`alpha` corresponds to the `threshold_adaptation` and :math:`\\theta` to the `threshold` parameter.
 
         Parameters
         ----------
+        tau_mem: float
+            Membrane potential decay time constant.
+        tau_threshold: float
+            Spike threshold decay time constant.
         threshold: float
             Spiking threshold of the neuron.
         threshold_low: float or None
             Lower bound for membrane potential.
+        threshold_adaption: float
+            The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
@@ -63,11 +69,13 @@ class ALIF(LIF):
         self.register_buffer("threshold", torch.zeros(1))
 
     def check_states(self, input_current):
+        """ Initialise spike threshold states when the first input is received. """
         super().check_states(input_current)
         if self.threshold.shape == torch.Size([1]):
             self.threshold = torch.ones_like(input_current[:,0]) * self.resting_threshold
 
     def update_state_after_spike(self):
+        """ Use LIF's update_state_after_spike method as a hook to update neuron threshold states. """
         super().update_state_after_spike()
         self.adapt_threshold_state(self.activations)
 
