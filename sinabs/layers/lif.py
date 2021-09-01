@@ -108,10 +108,10 @@ class LIF(SpikingLayer):
 
             # Decay the membrane potential
             alpha = torch.exp(-1.0/self.tau_mem)
-            self.state *= alpha
+            self.state = self.state * alpha
 
             # Add the input currents to membrane potential state
-            self.state += input_current[:, step]
+            self.state = self.state + input_current[:, step]
 
             # Clip membrane potential that is too low
             if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
