@@ -62,8 +62,8 @@ class ALIF(LIF):
             *args,
             **kwargs,
         )
-        self.tau_threshold = torch.tensor(tau_threshold)
-        self.threshold_adaptation = torch.tensor(threshold_adaptation)
+        self.tau_threshold = tau_threshold
+        self.threshold_adaptation = threshold_adaptation
         self.resting_threshold = self.threshold
         delattr(self, 'threshold')
         self.register_buffer("threshold", torch.zeros(1))

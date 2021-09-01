@@ -54,7 +54,7 @@ class LIF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-        self.tau_mem = torch.tensor(tau_mem)
+        self.tau_mem = tau_mem
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
 
     def check_states(self, input_current):
