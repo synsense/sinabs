@@ -124,7 +124,7 @@ def normalize_weights(ann: nn.Module, sample_data: torch.Tensor, output_layers: 
             _ = ann(sample_data)
 
             # Get max output
-            max_lyr_out = np.percentile(output_data[-1].numpy(), percentile)
+            max_lyr_out = np.percentile(output_data[-1].cpu().numpy(), percentile)
 
             # Rescale weights to normalize max output
             for p in param_layer.parameters():
