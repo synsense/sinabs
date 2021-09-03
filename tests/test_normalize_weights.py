@@ -28,6 +28,6 @@ def test_normalize_weights_cpu():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_normalize_weights_gpu():
     # test on cuda tensor
-    sample_input_cpu = torch.rand(8, 1, 28, 28).cuda()
-    normalize_weights(CNN.cuda(), sample_input_cpu, SPIKE_LAYERS, SPIKE_LAYERS, percentile=100)
+    sample_input_gpu = torch.rand(8, 1, 28, 28).cuda()
+    normalize_weights(CNN.cuda(), sample_input_gpu, SPIKE_LAYERS, SPIKE_LAYERS, percentile=100)
 
