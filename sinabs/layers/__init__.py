@@ -10,6 +10,7 @@ from .spiking_layer import SpikingLayer
 from .iaf_bptt import IAF, IAFSqueeze
 from .lif import LIF, LIFSqueeze
 from .alif import ALIF, ALIFSqueeze
+from .leaky_layer import ExpLeak, ExpLeakSqueeze
 
 # Deprecated
 from .deprecated.flatten import FlattenLayer

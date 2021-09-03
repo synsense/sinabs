@@ -8,7 +8,7 @@ def test_lif():
     batch_size = 10
     time_steps = 100
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
-    layer = LIF(tau_mem=1, threshold=1)
+    layer = LIF(tau_mem=torch.tensor(1), threshold=1)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -19,7 +19,7 @@ def test_lif_squeezed():
     batch_size = 10
     time_steps = 100
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7)
-    layer = LIFSqueeze(tau_mem=1, threshold=1, batch_size=batch_size)
+    layer = LIFSqueeze(tau_mem=torch.tensor(1), threshold=1, batch_size=batch_size)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -32,7 +32,7 @@ def test_lif_input_integration():
     threshold = 10
     input_current = torch.ones(batch_size, time_steps, 2, 7, 7) * threshold
     input_current[:,1:,:,:] = 0 # only inject current in the first time step
-    layer = LIF(tau_mem=time_steps, threshold=threshold)
+    layer = LIF(tau_mem=torch.tensor(time_steps), threshold=threshold)
     spike_output = layer(input_current)
 
     assert spike_output.sum() == np.product(input_current.shape) / time_steps, "Every neuron should spike exactly once."
@@ -43,7 +43,7 @@ def test_lif_membrane_decay():
     time_steps = 100
     input_current = torch.ones(batch_size, time_steps, 2, 7, 7)
     input_current[:,1:,:,:] = 0 # only inject current in the first time step
-    layer = LIF(tau_mem=time_steps, threshold=10)
+    layer = LIF(tau_mem=torch.tensor(time_steps), threshold=10)
     spike_output = layer(input_current)
 
     # first time step is not decayed
@@ -57,7 +57,7 @@ def test_lif_zero_grad():
     time_steps = 100
     n_neurons = 20
     threshold = 100
-    sl = LIF(tau_mem=time_steps, threshold=threshold)
+    sl = LIF(tau_mem=torch.tensor(time_steps), threshold=threshold)
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -65,7 +65,7 @@ def test_lif_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = LIF(tau_mem=time_steps, threshold=threshold)
+    sl_0 = LIF(tau_mem=torch.tensor(time_steps), threshold=threshold)
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
