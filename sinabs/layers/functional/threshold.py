@@ -13,7 +13,7 @@ class ThresholdSubtract(torch.autograd.Function):
         ctx.save_for_backward(data.clone())
         ctx.threshold = threshold
         ctx.window = window
-        return (data > 0) * (data // threshold).float()
+        return (data > 0) * torch.div(data, threshold, rounding_mode='trunc').float()
 
     @staticmethod
     def backward(ctx, grad_output):
