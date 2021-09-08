@@ -26,7 +26,7 @@ class LIF(SpikingLayer):
         Pytorch implementation of a Leaky Integrate and Fire neuron with learning enabled.
 
         .. math ::
-            \\tau_{mem} \\dot{V}_{mem} = -V_{mem} + \\sum z(t)
+            \\dot{V}_{mem} = \\frac{-V_{mem}}{\\tau_{mem}} + \\sum z(t)
 
             \\text{if } V_m(t) = V_{th} \\text{, then } V_{m} \\rightarrow V_{reset}
 
