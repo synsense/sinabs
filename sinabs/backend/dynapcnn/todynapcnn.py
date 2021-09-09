@@ -151,7 +151,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, _ = _parse_device_string(device)
-            # TODO: This should probably check with the device type from the factor
             if device_name in ChipFactory.supported_devices:
                 # Generate config
                 config = self.make_config(
@@ -174,7 +173,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 self.samna_device.get_model().get_source_node().add_destination(
                     self.samna_output_buffer.get_input_channel()
                 )
-
+                self.samna_config = config
                 return self
             else:
                 return super().to(device)
@@ -267,6 +266,19 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
+
+    def reset_model(self):
+        """
+        Reset the states
+        """
+        if isinstance(self.device, torch.device):
+            raise NotImplementedError
+        elif isinstance(self.device, str):
+            device_name, _ = _parse_device_string(device)
+            if device_name in ChipFactory.supported_devices:
+                self.samna_device.get_model().apply_configuration(self.samna_config)
+        else:
+            raise NotImplementedError
 
     def find_chip_layer(self, layer_idx):
         """
