@@ -267,14 +267,14 @@ class DynapcnnCompatibleNetwork(nn.Module):
         else:
             raise ValueError(f"Generated config is not valid for {device}")
 
-    def reset_model(self):
+    def reset_states(self):
         """
         Reset the states
         """
         if isinstance(self.device, torch.device):
             raise NotImplementedError
         elif isinstance(self.device, str):
-            device_name, _ = _parse_device_string(device)
+            device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
                 self.samna_device.get_model().apply_configuration(self.samna_config)
         else:
