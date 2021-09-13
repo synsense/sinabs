@@ -236,6 +236,9 @@ class DynapcnnNetwork(nn.Module):
             chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
+            if self.dvs_input and chip_layers_ordering[0] != "dvs":
+                raise AssertionError("self.dvs_input is True. Please add \"dvs\" into the chip_layers_ordering list.")
+
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
@@ -249,7 +252,7 @@ class DynapcnnNetwork(nn.Module):
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
-        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers]
+        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"]
         if "dvs" in monitor_layers:
             monitor_chip_layers.append("dvs")
         config_builder.monitor_layers(config, monitor_chip_layers)

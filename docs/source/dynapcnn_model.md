@@ -100,7 +100,7 @@ The device naming is inspired by `pytorch` device naming convention ie `DEVICE_T
 `dynapcnndevkit:0` refers to the _first_ `Dynapcnn DevKit` available. 
 If there are multiple devices of the same kind connected to the PC, then they are referred by higher incremental indices.
 
-To see all the recognized devices, please have a look at the `sinabs.dynapcnn.backend.io.device_types`
+To see all the recognized devices, please have a look at the `sinabs.backend.dynapcnn.io.device_types`
 
 ```python
 from sinabs.backend.dynapcnn import io
