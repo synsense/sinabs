@@ -14,8 +14,8 @@ window = 1.0
 class ALIF(LIF):
     def __init__(
         self,
-        tau_mem: Union[float, torch.Tensor],
-        tau_threshold: Union[float, torch.Tensor],
+        alpha_mem: Union[float, torch.Tensor],
+        alpha_threshold: Union[float, torch.Tensor],
         threshold: Union[float, torch.Tensor] = 1.0,
         threshold_low: Union[float, None] = -1.0,
         threshold_adaptation: Union[float, torch.Tensor] = 0.1,
@@ -37,9 +37,9 @@ class ALIF(LIF):
 
         Parameters
         ----------
-        tau_mem: float
+        alpha_mem: float
             Membrane potential decay time constant.
-        tau_threshold: float
+        alpha_threshold: float
             Spike threshold decay time constant.
         threshold: float
             Spiking threshold of the neuron.
@@ -54,7 +54,7 @@ class ALIF(LIF):
             If True, reset the membrane to 0 on spiking.
         """
         super().__init__(
-            tau_mem=tau_mem,
+            alpha_mem=alpha_mem,
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
@@ -62,7 +62,7 @@ class ALIF(LIF):
             *args,
             **kwargs,
         )
-        self.tau_threshold = tau_threshold
+        self.alpha_threshold = alpha_threshold
         self.threshold_adaptation = threshold_adaptation
         self.resting_threshold = self.threshold
         delattr(self, 'threshold')
@@ -82,8 +82,7 @@ class ALIF(LIF):
     def adapt_threshold_state(self, output_spikes):
         """ Decay the spike threshold and add adaption constant to it. """
         self.threshold = self.threshold - self.resting_threshold
-        beta = torch.exp(-1.0/self.tau_threshold)
-        self.threshold = self.threshold * beta
+        self.threshold = self.threshold * self.alpha_threshold
         self.threshold = self.threshold + output_spikes * self.threshold_adaptation + self.resting_threshold
 
     def reset_states(self, shape=None, randomize=False):

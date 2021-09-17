@@ -14,7 +14,7 @@ window = 1.0
 class LIF(SpikingLayer):
     def __init__(
         self,
-        tau_mem: Union[float, torch.Tensor],
+        alpha_mem: Union[float, torch.Tensor],
         threshold: Union[float, torch.Tensor] = 1.0,
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
@@ -34,7 +34,7 @@ class LIF(SpikingLayer):
 
         Parameters
         ----------
-        tau_mem: float
+        alpha_mem: float
             Membrane potential decay time constant.
         threshold: float
             Spiking threshold of the neuron.
@@ -54,7 +54,7 @@ class LIF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-        self.tau_mem = tau_mem
+        self.alpha_mem = alpha_mem
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
 
     def check_states(self, input_current):
@@ -107,8 +107,8 @@ class LIF(SpikingLayer):
             self.update_state_after_spike()
 
             # Decay the membrane potential
-            alpha = torch.exp(-1.0/self.tau_mem)
-            self.state = self.state * alpha
+#             alpha = torch.exp(-1.0/self.alpha_mem)
+            self.state = self.state * self.alpha_mem
 
             # Add the input currents to membrane potential state
             self.state = self.state + input_current[:, step]
