@@ -83,7 +83,8 @@ class ALIF(LIF):
         """ Decay the spike threshold and add adaption constant to it. """
         self.threshold = self.threshold - self.resting_threshold
         self.threshold = self.threshold * self.alpha_threshold
-        self.threshold = self.threshold + output_spikes * self.threshold_adaptation + self.resting_threshold
+        tau_threshold = -1/torch.log(self.alpha_threshold)
+        self.threshold = self.threshold + output_spikes * self.threshold_adaptation/tau_threshold + self.resting_threshold
 
     def reset_states(self, shape=None, randomize=False):
         """ Reset the state of all neurons and threshold states in this layer. """
