@@ -1,3 +1,5 @@
+import warnings
+
 import torch
 from sinabs.layers import NeuromorphicReLU
 from numpy import product
@@ -11,7 +13,6 @@ def synops_hook(layer, inp, out):
     layer.tot_out = out.sum().item()
     layer.synops = layer.tot_in * layer.fanout
     layer.tw = inp.shape[0]
-
 
 class SNNSynOpCounter:
     """
@@ -47,6 +48,7 @@ class SNNSynOpCounter:
                             product(layer.stride))
         elif isinstance(layer, torch.nn.Linear):
             layer.fanout = layer.out_features
+
         else:
             return None
 
@@ -70,16 +72,28 @@ class SNNSynOpCounter:
                 number of synaptic operations per second.
         """
         d = {}
+        scale_facts = []
         for i, lyr in enumerate(self.model.modules()):
+            if isinstance(lyr, torch.nn.AvgPool2d):
+                if lyr.kernel_size != lyr.stride:
+                    warnings.warn(f"In order for the Synops counter to work accurately the pooling "
+                                  f"layers kernel size should match their strides. At the moment at layer {i}, "
+                                  f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}.")
+                ks = lyr.kernel_size
+                scale_factor = ks**2 if isinstance(ks, int) else ks[0]*ks[1]
+                scale_facts.append(scale_factor)
             if hasattr(lyr, 'synops'):
+                scale_factor = 1
+                while len(scale_facts) != 0:
+                    scale_factor *= scale_facts.pop()
                 d[i] = {
                     "Layer": i,
-                    "In": lyr.tot_in,
+                    "In": lyr.tot_in * scale_factor,
                     "Fanout_Prev": lyr.fanout,
-                    "SynOps": lyr.synops,
+                    "SynOps": lyr.synops * scale_factor,
                     "N. timesteps": lyr.tw,
                     "Time window (ms)": lyr.tw * self.dt,
-                    "SynOps/s": lyr.synops / lyr.tw / self.dt * 1000,
+                    "SynOps/s": (lyr.synops * scale_factor) / lyr.tw / self.dt * 1000,
                 }
 
         SynOps_dataframe = pd.DataFrame.from_dict(d, "index")
