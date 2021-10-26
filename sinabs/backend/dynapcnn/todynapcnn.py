@@ -246,6 +246,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
+        elif monitor_layers == 'all':
+            monitor_layers = list(range(len(self.compatible_layers)))
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
