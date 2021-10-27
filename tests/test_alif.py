@@ -7,7 +7,7 @@ def test_alif():
     batch_size = 10
     time_steps = 100
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
-    layer = ALIF(tau_mem=torch.tensor(1), threshold=1, tau_threshold=torch.tensor(10), threshold_adaptation=0.3)
+    layer = ALIF(alpha_mem=torch.tensor(1), threshold=1, alpha_threshold=torch.tensor(1), threshold_adaptation=0.3)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -18,7 +18,7 @@ def test_alif_squeezed():
     batch_size = 10
     time_steps = 100
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7)
-    layer = ALIFSqueeze(tau_mem=torch.tensor(1), threshold=1, tau_threshold=torch.tensor(1), batch_size=batch_size)
+    layer = ALIFSqueeze(alpha_mem=torch.tensor(1), threshold=1, alpha_threshold=torch.tensor(1), batch_size=batch_size)
     spike_output = layer(input_current)
     
     assert input_current.shape == spike_output.shape
@@ -30,7 +30,7 @@ def test_alif_minimum_spike_threshold():
     time_steps = 100
     threshold = 10
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    layer = ALIF(tau_mem=torch.tensor(100), threshold=threshold, tau_threshold=torch.tensor(100),)
+    layer = ALIF(alpha_mem=torch.tensor(100), threshold=threshold, alpha_threshold=torch.tensor(1),)
     spike_output = layer(input_current)
 
     assert (layer.threshold >= threshold).all(), "Spike thresholds should not drop below initital threshold."
@@ -39,14 +39,16 @@ def test_alif_spike_threshold_decay():
     batch_size = 10
     time_steps = 100
     threshold = 1
+    alpha = torch.tensor(0.995)
     input_current = torch.ones(batch_size, time_steps, 2, 7, 7)
     input_current[:,1:,:,:] = 0 # only inject current in the first time step
-    layer = ALIF(tau_mem=torch.tensor(100), tau_threshold=torch.tensor(time_steps), threshold=threshold, threshold_adaptation=1)
+    layer = ALIF(alpha_mem=alpha, alpha_threshold=torch.tensor(alpha), threshold=threshold, threshold_adaptation=1)
     spike_output = layer(input_current)
 
     assert (layer.threshold >= threshold).all()
     # decay only starts after 2 time steps: current integration and adaption
-    threshold_decay = torch.exp(torch.tensor(-(time_steps-2)/time_steps))
+#     threshold_decay = torch.exp(torch.tensor(-(time_steps-2)/time_steps))
+    threshold_decay = alpha ** (time_steps-2)
     # account for rounding errors with .isclose()
     assert torch.isclose(layer.threshold-threshold, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
 
@@ -56,7 +58,8 @@ def test_alif_zero_grad():
     time_steps = 100
     n_neurons = 20
     threshold = 100
-    sl = ALIF(tau_mem=torch.tensor(time_steps), threshold=threshold, tau_threshold=torch.tensor(time_steps))
+    alpha = 0.995
+    sl = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_threshold=torch.tensor(alpha))
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -64,7 +67,7 @@ def test_alif_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = ALIF(tau_mem=torch.tensor(time_steps), threshold=threshold, tau_threshold=torch.tensor(time_steps))
+    sl_0 = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_threshold=torch.tensor(alpha))
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
