@@ -30,8 +30,8 @@ def test_lif_input_integration():
     batch_size = 10
     time_steps = 100
     threshold = 10
-    input_current = torch.ones(batch_size, time_steps, 2, 7, 7) * threshold
-    input_current[:,1:,:,:] = 0 # only inject current in the first time step
+    input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
+    input_current[:,0,:,:] = threshold # only inject current in the first time step
     layer = LIF(alpha_mem=torch.tensor(time_steps), threshold=threshold)
     spike_output = layer(input_current)
 
@@ -42,8 +42,8 @@ def test_lif_membrane_decay():
     batch_size = 10
     time_steps = 100
     alpha = torch.tensor(0.995)
-    input_current = torch.ones(batch_size, time_steps, 2, 7, 7)
-    input_current[:,1:,:,:] = 0 # only inject current in the first time step
+    input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
+    input_current[:,0,:,:] = 1 # only inject current in the first time step
     layer = LIF(alpha_mem=alpha, threshold=10)
     spike_output = layer(input_current)
 

@@ -15,17 +15,17 @@ class ALIF(LIF):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
-        alpha_threshold: Union[float, torch.Tensor],
+        alpha_adapt: Union[float, torch.Tensor],
+        adaptation: Union[float, torch.Tensor] = 0.1,
         threshold: Union[float, torch.Tensor] = 1.0,
         threshold_low: Union[float, None] = -1.0,
-        threshold_adaptation: Union[float, torch.Tensor] = 0.1,
+        membrane_reset: bool = False,
         membrane_subtract: Optional[float] = None,
-        membrane_reset=False,
         *args,
         **kwargs,
     ):
         """
-        Pytorch implementation of a Leaky Integrate and Fire neuron with threshold apdaption and learning enabled.
+        Pytorch implementation of a Leaky Integrate and Fire neuron with threshold apdaption.
         In addition to the LIF neuron mechanics, the firing threshold :math:`\\theta` also adapts in the following way:
 
         .. math ::
@@ -33,25 +33,25 @@ class ALIF(LIF):
 
             \\text{if } V_m(t) = V_{th} \\text{, then } \\theta \\rightarrow \\theta + \\alpha
 
-        where :math:`alpha` corresponds to the `threshold_adaptation` and :math:`\\theta` to the `threshold` parameter.
+        where :math:`alpha` corresponds to the `adaptation` and :math:`\\theta` to the `threshold` parameter.
 
         Parameters
         ----------
         alpha_mem: float
             Membrane potential decay time constant.
-        alpha_threshold: float
+        alpha_adapt: float
             Spike threshold decay time constant.
+        adaption: float
+            The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         threshold: float
             Spiking threshold of the neuron.
         threshold_low: float or None
             Lower bound for membrane potential.
-        threshold_adaption: float
-            The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
+        membrane_reset: bool
+            If True, reset the membrane to 0 on spiking.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
-            If True, reset the membrane to 0 on spiking.
         """
         super().__init__(
             alpha_mem=alpha_mem,
@@ -62,8 +62,8 @@ class ALIF(LIF):
             *args,
             **kwargs,
         )
-        self.alpha_threshold = alpha_threshold
-        self.threshold_adaptation = threshold_adaptation
+        self.alpha_adapt = alpha_adapt
+        self.adaptation = adaptation
         self.resting_threshold = self.threshold
         delattr(self, 'threshold')
         self.register_buffer("threshold", torch.zeros(1))
@@ -82,9 +82,10 @@ class ALIF(LIF):
     def adapt_threshold_state(self, output_spikes):
         """ Decay the spike threshold and add adaption constant to it. """
         self.threshold = self.threshold - self.resting_threshold
-        self.threshold = self.threshold * self.alpha_threshold
-        tau_threshold = -1/torch.log(self.alpha_threshold)
-        self.threshold = self.threshold + output_spikes * self.threshold_adaptation/tau_threshold + self.resting_threshold
+        self.threshold = self.threshold * self.alpha_adapt
+        self.threshold = self.threshold + output_spikes * self.adaptation + self.resting_threshold
+#         tau_threshold = -1/torch.log(self.alpha_adapt)
+#         self.threshold = self.threshold + output_spikes * self.adaptation/tau_threshold + self.resting_threshold
 
     def reset_states(self, shape=None, randomize=False):
         """ Reset the state of all neurons and threshold states in this layer. """

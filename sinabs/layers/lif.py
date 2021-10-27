@@ -15,20 +15,20 @@ class LIF(SpikingLayer):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
-        threshold: Union[float, torch.Tensor] = 1.0,
-        threshold_low: Union[float, None] = -1.0,
+        threshold: Union[float, torch.Tensor] = 1.,
+        threshold_low: Union[float, None] = -1.,
+        membrane_reset: bool = False,
         membrane_subtract: Optional[float] = None,
-        membrane_reset=False,
         *args,
         **kwargs,
     ):
         """
-        Pytorch implementation of a Leaky Integrate and Fire neuron with learning enabled.
+        Pytorch implementation of a Leaky Integrate and Fire neuron layer.
 
         .. math ::
-            \\dot{V}_{mem} = \\frac{-V_{mem}}{\\tau_{mem}} + \\sum z(t)
+            V_{mem}(t) = V_{mem}(t-1)\\alpha + \\sum z(t)
 
-            \\text{if } V_m(t) = V_{th} \\text{, then } V_{m} \\rightarrow V_{reset}
+            \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
 
         where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
@@ -37,14 +37,14 @@ class LIF(SpikingLayer):
         alpha_mem: float
             Membrane potential decay time constant.
         threshold: float
-            Spiking threshold of the neuron.
+            Spiking threshold of the neuron, defaults to 1.
+        membrane_reset: bool
+            If True, reset the membrane to 0 on spiking. Otherwise, will divide 
         threshold_low: float or None
-            Lower bound for membrane potential.
+            Lower bound for membrane potential, defaults to -1.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
-            If True, reset the membrane to 0 on spiking.
         """
         super().__init__(
             *args,
@@ -107,7 +107,6 @@ class LIF(SpikingLayer):
             self.update_state_after_spike()
 
             # Decay the membrane potential
-#             alpha = torch.exp(-1.0/self.alpha_mem)
             self.state = self.state * self.alpha_mem
 
             # Add the input currents to membrane potential state

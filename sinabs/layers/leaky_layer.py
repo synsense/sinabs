@@ -13,12 +13,12 @@ window = 1.0
 class ExpLeak(SpikingLayer):
     def __init__(
         self,
-        alpha_mem: Union[float, torch.Tensor],
+        alpha: Union[float, torch.Tensor],
         *args,
         **kwargs,
     ):
         """
-        Pytorch implementation of a exponential leaky layer, that is equivalent to a exponential synapse or a low-pass filter.
+        Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
 
         Parameters
         ----------
@@ -27,7 +27,7 @@ class ExpLeak(SpikingLayer):
         """
         super().__init__(*args, **kwargs)
         self.register_buffer("state", torch.zeros(1))
-        self.alpha_mem = alpha_mem
+        self.alpha = alpha
 
     def forward(self, input_current: torch.Tensor):
         # Ensure the neuron state are initialized
@@ -42,7 +42,7 @@ class ExpLeak(SpikingLayer):
 
         out_state = []
         for step in range(time_steps):
-            state = self.alpha_mem * state  # leak state
+            state = self.alpha * state  # leak state
             state = state + input_current[:, step]  # Add input
             out_state.append(state)
 
