@@ -135,7 +135,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         monitor_layers = layers.copy()
         if "dvs" in monitor_layers:
             config.dvs_layer.monitor_enable = True
-            config.dvs_layer.monitor_sensor_enable = True
             monitor_layers.remove("dvs")
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
