@@ -5,21 +5,21 @@ from .pack_dims import squeeze_class
 from .lif import LIF
 
 
-__all__ = ["ALIF", "ALIFSqueeze"]
+__all__ = ["LSNN", "LSNNSqueeze"]
 
 # Learning window for surrogate gradient
 window = 1.0
 
 
-class ALIF(LIF):
+class LSNN(LIF):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
         alpha_adapt: Union[float, torch.Tensor],
-        adaptation: Union[float, torch.Tensor] = 0.1,
-        threshold: Union[float, torch.Tensor] = 1.0,
-        threshold_low: Union[float, None] = -1.0,
+        adapt_scale: Union[float, torch.Tensor] = 1.8,
+        threshold: Union[float, torch.Tensor] = 0.01,
         membrane_reset: bool = False,
+        threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,
         *args,
         **kwargs,
@@ -63,7 +63,7 @@ class ALIF(LIF):
             **kwargs,
         )
         self.alpha_adapt = alpha_adapt
-        self.adaptation = adaptation
+        self.adapt_scale = adapt_scale
         self.resting_threshold = self.threshold
         delattr(self, 'threshold')
         self.register_buffer("threshold", torch.zeros(1))
@@ -79,13 +79,17 @@ class ALIF(LIF):
         super().update_state_after_spike()
         self.adapt_threshold_state(self.activations)
 
+    def detect_spikes(self):
+        """ Compute spike outputs for a single time step. This method does not reset the membrane potential. """
+        self.activations = self.reset_function.apply(self.state,
+                                                     self.threshold*self.adapt_scale+self.resting_threshold,
+                                                     (self.threshold*self.adapt_scale+self.resting_threshold) * window)
+
     def adapt_threshold_state(self, output_spikes):
         """ Decay the spike threshold and add adaption constant to it. """
-        self.threshold = self.threshold - self.resting_threshold
-        self.threshold = self.threshold * self.alpha_adapt
-        self.threshold = self.threshold + output_spikes * self.adaptation + self.resting_threshold
-#         tau_threshold = -1/torch.log(self.alpha_adapt)
-#         self.threshold = self.threshold + output_spikes * self.adaptation/tau_threshold + self.resting_threshold
+        self.threshold = self.alpha_adapt * self.threshold + (1-self.alpha_adapt) * output_spikes
+#         breakpoint()
+#         self.threshold = self.threshold + self.resting_threshold
 
     def reset_states(self, shape=None, randomize=False):
         """ Reset the state of all neurons and threshold states in this layer. """
@@ -97,4 +101,4 @@ class ALIF(LIF):
         else:
             self.threshold = torch.ones(shape, device=self.threshold.device) * self.resting_threshold
 
-ALIFSqueeze = squeeze_class(ALIF)
+LSNNSqueeze = squeeze_class(LSNN)

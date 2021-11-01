@@ -7,8 +7,9 @@ import pytest
 def test_lif():
     batch_size = 10
     time_steps = 100
-    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
-    layer = LIF(alpha_mem=torch.tensor(1), threshold=1)
+    alpha = torch.tensor(0.995)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
+    layer = LIF(alpha_mem=alpha, threshold=1)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -18,8 +19,9 @@ def test_lif():
 def test_lif_squeezed():
     batch_size = 10
     time_steps = 100
-    input_current = torch.rand(batch_size*time_steps, 2, 7, 7)
-    layer = LIFSqueeze(alpha_mem=torch.tensor(1), threshold=1, batch_size=batch_size)
+    alpha = torch.tensor(0.995)
+    input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
+    layer = LIFSqueeze(alpha_mem=alpha, threshold=1, batch_size=batch_size)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -30,9 +32,10 @@ def test_lif_input_integration():
     batch_size = 10
     time_steps = 100
     threshold = 10
+    alpha = torch.tensor(0.995)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    input_current[:,0,:,:] = threshold # only inject current in the first time step
-    layer = LIF(alpha_mem=torch.tensor(time_steps), threshold=threshold)
+    input_current[:,0,:,:] = threshold / (1-alpha)# only inject current in the first time step
+    layer = LIF(alpha_mem=alpha, threshold=threshold)
     spike_output = layer(input_current)
 
     assert spike_output.sum() == np.product(input_current.shape) / time_steps, "Every neuron should spike exactly once."
@@ -43,7 +46,7 @@ def test_lif_membrane_decay():
     time_steps = 100
     alpha = torch.tensor(0.995)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    input_current[:,0,:,:] = 1 # only inject current in the first time step
+    input_current[:,0,:,:] = 1 / (1-alpha) # only inject current in the first time step
     layer = LIF(alpha_mem=alpha, threshold=10)
     spike_output = layer(input_current)
 
@@ -52,13 +55,24 @@ def test_lif_membrane_decay():
     # account for rounding errors with .isclose()
     assert torch.isclose(layer.state, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
 
+def test_lif_membrane_reset():
+    batch_size = 10
+    time_steps = 100
+    alpha = torch.tensor(0.995)
+    input_current = torch.ones(batch_size, time_steps, 2, 7, 7) * 10 / (1-alpha) # inject lots of current
+    layer = LIF(alpha_mem=alpha, threshold=1., membrane_reset=True)
+    spike_output = layer(input_current)
+
+    assert spike_output.max() == 1
+    
 def test_lif_zero_grad():
     torch.autograd.set_detect_anomaly(True)
     batch_size = 7
     time_steps = 100
     n_neurons = 20
     threshold = 100
-    sl = LIF(alpha_mem=torch.tensor(time_steps), threshold=threshold)
+    alpha = torch.tensor(0.99)
+    sl = LIF(alpha_mem=alpha, threshold=threshold)
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -66,7 +80,7 @@ def test_lif_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = LIF(alpha_mem=torch.tensor(time_steps), threshold=threshold)
+    sl_0 = LIF(alpha_mem=alpha, threshold=threshold)
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -86,7 +100,7 @@ def test_lif_zero_grad():
 
     sl_0.zero_grad()
 
-    data0, data1, data2 = torch.rand((3, batch_size, time_steps, n_neurons))
+    data0, data1, data2 = torch.rand((3, batch_size, time_steps, n_neurons)) / (1-alpha)
     out0 = model(data0)
     out0_zg = model_zg(data0)
 

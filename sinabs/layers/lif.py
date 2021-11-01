@@ -16,8 +16,8 @@ class LIF(SpikingLayer):
         self,
         alpha_mem: Union[float, torch.Tensor],
         threshold: Union[float, torch.Tensor] = 1.,
-        threshold_low: Union[float, None] = -1.,
         membrane_reset: bool = False,
+        threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,
         *args,
         **kwargs,
@@ -39,9 +39,11 @@ class LIF(SpikingLayer):
         threshold: float
             Spiking threshold of the neuron, defaults to 1.
         membrane_reset: bool
-            If True, reset the membrane to 0 on spiking. Otherwise, will divide 
+            If True, reset the membrane to 0 on spiking. Otherwise, will divide the 
+            activation by spiking threshold and truncate to integers. That means that
+            muliple spikes can be generated within a single time step.
         threshold_low: float or None
-            Lower bound for membrane potential, defaults to -1.
+            Lower bound for membrane potential.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
@@ -109,8 +111,79 @@ class LIF(SpikingLayer):
             # Decay the membrane potential
             self.state = self.state * self.alpha_mem
 
-            # Add the input currents to membrane potential state
-            self.state = self.state + input_current[:, step]
+            # Add the input currents which are normalised by tau to membrane potential state
+            self.state = self.state + (1-self.alpha_mem) * input_current[:, step]
+
+            # Clip membrane potential that is too low
+            if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
+
+        self.tw = time_steps
+        self.spikes_number = output_spikes.abs().sum()
+        return output_spikes
+
+
+class LIFRecurrent(LIF):
+    def __init__(
+        self,
+        alpha_mem: Union[float, torch.Tensor],
+        hidden_layer,
+        threshold: Union[float, torch.Tensor] = 1.,
+        membrane_reset: bool = False,
+        threshold_low: Optional[float] = None,
+        membrane_subtract: Optional[float] = None,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(
+            *args,
+            **kwargs,
+            alpha_mem=alpha_mem,
+            threshold=threshold,
+            threshold_low=threshold_low,
+            membrane_subtract=membrane_subtract,
+            membrane_reset=membrane_reset,
+        )
+        self.alpha_mem = alpha_mem
+        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.hidden_layer = hidden_layer
+        
+    def forward(self, input_current: torch.Tensor):
+        """
+        Forward pass with given data. Will add to input the recurrent input at each time step. 
+
+        Parameters
+        ----------
+        input_current : torch.Tensor
+            Data to be processed. Expected shape: (batch, time, ...)
+
+        Returns
+        -------
+        torch.Tensor
+            Output data. Same shape as `input_spikes`.
+        """
+        # Ensure the neuron state are initialized
+        self.check_states(input_current)
+
+        batch_size, time_steps = input_current.shape[:2]
+        output_spikes = torch.zeros_like(input_current)
+
+        for step in range(time_steps):
+            # generate spikes
+            self.detect_spikes()
+            output_spikes[:, step] = self.activations
+
+            # Reset membrane potential for neurons that spiked
+            self.update_state_after_spike()
+
+            # Decay the membrane potential
+            self.state = self.state * self.alpha_mem
+
+            # add recurrent input
+            rec_input = self.hidden_layer(self.activations.reshape(batch_size, -1)).reshape(input_current[:, step].shape)
+            total_input = input_current[:, step] + rec_input
+
+            # Add the input currents which are normalised by tau to membrane potential state
+            self.state = self.state + total_input * (1-self.alpha_mem)
 
             # Clip membrane potential that is too low
             if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
@@ -121,3 +194,4 @@ class LIF(SpikingLayer):
 
 
 LIFSqueeze = squeeze_class(LIF)
+LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)
