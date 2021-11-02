@@ -122,11 +122,11 @@ class LIF(SpikingLayer):
         return output_spikes
 
 
-class LIFRecurrent(LIF):
+class LIFRecurrent(torch.nn.Module):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
-        hidden_layer,
+        rec_weights,
         threshold: Union[float, torch.Tensor] = 1.,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
@@ -134,22 +134,21 @@ class LIFRecurrent(LIF):
         *args,
         **kwargs,
     ):
-        super().__init__(
-            *args,
-            **kwargs,
+        super().__init__()
+        self.lif = LIF(
             alpha_mem=alpha_mem,
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
+            *args,
+            **kwargs,
         )
-        self.alpha_mem = alpha_mem
-        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
-        self.hidden_layer = hidden_layer
+        self.rec_weights = rec_weights
         
     def forward(self, input_current: torch.Tensor):
         """
-        Forward pass with given data. Will add to input the recurrent input at each time step. 
+        Helper loop to add recurrent input to forward input.
 
         Parameters
         ----------
@@ -161,37 +160,29 @@ class LIFRecurrent(LIF):
         torch.Tensor
             Output data. Same shape as `input_spikes`.
         """
-        # Ensure the neuron state are initialized
-        self.check_states(input_current)
-
-        batch_size, time_steps = input_current.shape[:2]
+        
+        batch_size, n_time_steps, *other_dimensions = input_current.shape
+        rec_out = torch.zeros((batch_size, 1, *other_dimensions))
         output_spikes = torch.zeros_like(input_current)
+        
+        for step in range(n_time_steps):
+            total_input = input_current[:, step:step+1] + rec_out
 
-        for step in range(time_steps):
-            # generate spikes
-            self.detect_spikes()
-            output_spikes[:, step] = self.activations
+            # compute output spikes
+            output = self.lif(total_input)
+            output_spikes[:, step:step+1] = output
+            
+            # compute recurrent output that will be added to the input at the next time step
+            rec_out = self.rec_weights(output.reshape(batch_size, -1)).reshape(input_current[:, step:step+1].shape)
 
-            # Reset membrane potential for neurons that spiked
-            self.update_state_after_spike()
-
-            # Decay the membrane potential
-            self.state = self.state * self.alpha_mem
-
-            # add recurrent input
-            rec_input = self.hidden_layer(self.activations.reshape(batch_size, -1)).reshape(input_current[:, step].shape)
-            total_input = input_current[:, step] + rec_input
-
-            # Add the input currents which are normalised by tau to membrane potential state
-            self.state = self.state + total_input * (1-self.alpha_mem)
-
-            # Clip membrane potential that is too low
-            if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
-
-        self.tw = time_steps
-        self.spikes_number = output_spikes.abs().sum()
         return output_spikes
 
+    def reset_states(self, shape=None, randomize=False):
+        self.LIF.reset_state(shape=shape, randomize=randomize)
+        
+    def zero_grad(self, set_to_none: bool = False):
+        self.LIF.zero_grad(set_to_none=set_to_none) 
+    
 
 LIFSqueeze = squeeze_class(LIF)
 LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)
