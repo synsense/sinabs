@@ -13,9 +13,9 @@ def test_lif_recurrent():
     n_neurons = np.product(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
     
-    hidden_layer = nn.Linear(n_neurons, n_neurons, bias=False)
-    hidden_layer.weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = LIFRecurrent(alpha_mem=alpha, hidden_layer=hidden_layer)
+    rec_weights = nn.Linear(n_neurons, n_neurons, bias=False)
+    rec_weights.weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = LIFRecurrent(alpha_mem=alpha, rec_weights=rec_weights)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape

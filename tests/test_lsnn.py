@@ -3,12 +3,12 @@ from sinabs.layers import LSNN, LSNNSqueeze
 import pytest
 
 
-def test_lsnn():
+def test_lsnn_basic():
     batch_size = 10
-    time_steps = 100
+    time_steps = 30
     alpha = torch.tensor(0.995)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
-    layer = LSNN(alpha_mem=alpha, threshold=1, alpha_adapt=alpha, adapt_scale=1)
+    layer = LSNN(alpha_mem=alpha, threshold=0.1, alpha_adapt=alpha, adapt_scale=1.8)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -36,26 +36,24 @@ def test_lsnn_minimum_spike_threshold():
     layer = LSNN(alpha_mem=alpha, threshold=threshold, alpha_adapt=alpha,)
     spike_output = layer(input_current)
 
-    assert (layer.threshold >= threshold).all(), "Spike thresholds should not drop below initital threshold."
+    assert (layer.b_0 + layer.adapt_scale + layer.b >= threshold).all(), "Spike thresholds should not drop below initital threshold."
 
-def test_lsnn_spike_threshold_decay():
-    batch_size = 10
-    time_steps = 100
-    threshold = 0.01
-    alpha = torch.tensor(0.995)
-    adapt_scale = float(1/(1-alpha))
-    breakpoint()
-    input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    input_current[:,0,:,:] = 1 / (1-alpha)# only inject current in the first time step
-    layer = LSNN(alpha_mem=alpha, alpha_adapt=alpha, threshold=threshold, adapt_scale=adapt_scale)
-    spike_output = layer(input_current)
+# def test_lsnn_spike_threshold_decay():
+#     batch_size = 10
+#     time_steps = 100
+#     threshold = 1
+#     alpha = torch.tensor(0.995)
+#     adapt_scale = float(1/(1-alpha))
+#     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
+#     input_current[:,0,:,:] = 1 / (1-alpha)# only inject current in the first time step
+#     layer = LSNN(alpha_mem=alpha, alpha_adapt=alpha, threshold=threshold, adapt_scale=adapt_scale)
+#     spike_output = layer(input_current)
 
-    assert (layer.threshold > threshold).all()
-    # decay only starts after 2 time steps: current integration and adaption
-    threshold_decay = alpha ** (time_steps-2)
-    # account for rounding errors with .isclose()
-    breakpoint()
-    assert torch.isclose(layer.threshold-threshold, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
+#     assert (layer.threshold > threshold).all()
+#     # decay only starts after 2 time steps: current integration and adaption
+#     threshold_decay = alpha ** (time_steps-2)
+#     # account for rounding errors with .isclose()
+#     assert torch.isclose(layer.threshold-threshold, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
 
 def test_lsnn_zero_grad():
     torch.autograd.set_detect_anomaly(True)
