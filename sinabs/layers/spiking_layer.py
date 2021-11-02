@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
 from typing import Tuple, Union, Optional
 import torch
 
 
-class SpikingLayer(torch.nn.Module, ABC):
+class SpikingLayer(torch.nn.Module):
     """
     Pytorch implementation of a spiking neuron with learning enabled.
     This class is the base class for any layer that need to implement leaky or
@@ -87,10 +86,6 @@ class SpikingLayer(torch.nn.Module, ABC):
         copy.state = self.state.detach().clone()
         copy.activations = self.activations.detach().clone()
         return copy
-
-    @abstractmethod
-    def forward(self, data):
-        pass
 
     @property
     def _param_dict(self) -> dict:
