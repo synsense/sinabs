@@ -1,6 +1,7 @@
 from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
+from .recurrent_module import RecurrentModule
 from .pack_dims import squeeze_class
 from .functional import ThresholdSubtract, ThresholdReset
 
@@ -122,11 +123,11 @@ class LIF(SpikingLayer):
         return output_spikes
 
 
-class LIFRecurrent(torch.nn.Module):
+class LIFRecurrent(RecurrentModule):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
-        rec_weights,
+        rec_connectivity: torch.nn.Module,
         threshold: Union[float, torch.Tensor] = 1.,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
@@ -134,55 +135,21 @@ class LIFRecurrent(torch.nn.Module):
         *args,
         **kwargs,
     ):
-        super().__init__()
-        self.lif = LIF(
-            alpha_mem=alpha_mem,
-            threshold=threshold,
-            threshold_low=threshold_low,
-            membrane_subtract=membrane_subtract,
-            membrane_reset=membrane_reset,
-            *args,
-            **kwargs,
-        )
-        self.rec_weights = rec_weights
-        
-    def forward(self, input_current: torch.Tensor):
-        """
-        Helper loop to add recurrent input to forward input.
-
-        Parameters
-        ----------
-        input_current : torch.Tensor
-            Data to be processed. Expected shape: (batch, time, ...)
-
-        Returns
-        -------
-        torch.Tensor
-            Output data. Same shape as `input_spikes`.
-        """
-        
-        batch_size, n_time_steps, *other_dimensions = input_current.shape
-        rec_out = torch.zeros((batch_size, 1, *other_dimensions))
-        output_spikes = torch.zeros_like(input_current)
-        
-        for step in range(n_time_steps):
-            total_input = input_current[:, step:step+1] + rec_out
-
-            # compute output spikes
-            output = self.lif(total_input)
-            output_spikes[:, step:step+1] = output
+        super().__init__(
+            layer = LIF(
+                alpha_mem=alpha_mem,
+                threshold=threshold,
+                threshold_low=threshold_low,
+                membrane_subtract=membrane_subtract,
+                membrane_reset=membrane_reset,
+                *args,
+                **kwargs,
+            ),
+            rec_connectivity=rec_connectivity
             
-            # compute recurrent output that will be added to the input at the next time step
-            rec_out = self.rec_weights(output.reshape(batch_size, -1)).reshape(input_current[:, step:step+1].shape)
-
-        return output_spikes
-
-    def reset_states(self, shape=None, randomize=False):
-        self.LIF.reset_state(shape=shape, randomize=randomize)
+        )
         
-    def zero_grad(self, set_to_none: bool = False):
-        self.LIF.zero_grad(set_to_none=set_to_none) 
-    
+
 
 LIFSqueeze = squeeze_class(LIF)
 LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)
