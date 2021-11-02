@@ -12,7 +12,7 @@ class SpikingLayer(torch.nn.Module):
 
     def __init__(
         self,
-        threshold: float = 1.,
+        threshold: float = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,

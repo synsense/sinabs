@@ -18,7 +18,7 @@ class LSNN(SpikingLayer):
         alpha_mem: Union[float, torch.Tensor],
         alpha_adapt: Union[float, torch.Tensor],
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        threshold: Union[float, torch.Tensor] = 1.,
+        threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,
@@ -28,7 +28,7 @@ class LSNN(SpikingLayer):
         """
         Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
         https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
-        
+
         In addition to the LIF neuron mechanics, the firing threshold :math:`\\theta` also adapts in the following way:
 
         .. math ::
@@ -72,7 +72,7 @@ class LSNN(SpikingLayer):
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
 
     def check_states(self, input_current):
-        """ Initialise spike threshold states when the first input is received. """
+        """Initialise spike threshold states when the first input is received."""
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
@@ -102,30 +102,34 @@ class LSNN(SpikingLayer):
             self.state = self.state * self.alpha_mem
 
             # Add the input currents which are normalised by tau to membrane potential state
-            self.state = self.state + (1-self.alpha_mem) * input_current[:, step]
+            self.state = self.state + (1 - self.alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
-            if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
-            
+            if self.threshold_low:
+                self.state = torch.clamp(self.state, min=self.threshold_low)
+
             # generate spikes
-            activations = self.reset_function.apply(self.state,
-                                                     self.b*self.adapt_scale+self.b_0,
-                                                     (self.b*self.adapt_scale+self.b_0) * window)
+            activations = self.reset_function.apply(
+                self.state,
+                self.b * self.adapt_scale + self.b_0,
+                (self.b * self.adapt_scale + self.b_0) * window,
+            )
             output_spikes[:, step] = activations
-            
-            self.state = self.state - activations * (self.b_0 + self.adapt_scale*self.b)
-            
+
+            self.state = self.state - activations * (
+                self.b_0 + self.adapt_scale * self.b
+            )
+
             # Decay the spike threshold and add adaption constant to it.
-            self.b = self.alpha_adapt * self.b + (1-self.alpha_adapt) * activations
+            self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * activations
             print(self.b.mean())
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes
 
-    
     def reset_states(self, shape=None, randomize=False):
-        """ Reset the state of all neurons and threshold states in this layer. """
+        """Reset the state of all neurons and threshold states in this layer."""
         super().reset_states(shape, randomize)
         if shape is None:
             shape = self.b.shape
@@ -133,5 +137,6 @@ class LSNN(SpikingLayer):
             self.b = torch.rand(shape, device=self.b.device)
         else:
             self.b = torch.zeros(shape, device=self.b.device)
+
 
 LSNNSqueeze = squeeze_class(LSNN)

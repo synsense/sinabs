@@ -16,7 +16,7 @@ class LIF(SpikingLayer):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
-        threshold: Union[float, torch.Tensor] = 1.,
+        threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,
@@ -40,7 +40,7 @@ class LIF(SpikingLayer):
         threshold: float
             Spiking threshold of the neuron, defaults to 1.
         membrane_reset: bool
-            If True, reset the membrane to 0 on spiking. Otherwise, will divide the 
+            If True, reset the membrane to 0 on spiking. Otherwise, will divide the
             activation by spiking threshold and truncate to integers. That means that
             muliple spikes can be generated within a single time step.
         threshold_low: float or None
@@ -61,19 +61,19 @@ class LIF(SpikingLayer):
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
 
     def check_states(self, input_current):
-        """ Initialise neuron membrane potential states when the first input is received. """
+        """Initialise neuron membrane potential states when the first input is received."""
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
 
     def detect_spikes(self):
-        """ Compute spike outputs for a single time step. This method does not reset the membrane potential. """
-        self.activations = self.reset_function.apply(self.state,
-                                                     self.threshold,
-                                                     self.threshold * window)
+        """Compute spike outputs for a single time step. This method does not reset the membrane potential."""
+        self.activations = self.reset_function.apply(
+            self.state, self.threshold, self.threshold * window
+        )
 
     def update_state_after_spike(self):
-        """ Update membrane potentials to either reset or subtract by given value after spikes occured at this time step. """
+        """Update membrane potentials to either reset or subtract by given value after spikes occured at this time step."""
         if self.membrane_reset:
             # sum the previous state only where there were no spikes
             self.state = self.state * (self.activations == 0.0)
@@ -113,10 +113,11 @@ class LIF(SpikingLayer):
             self.state = self.state * self.alpha_mem
 
             # Add the input currents which are normalised by tau to membrane potential state
-            self.state = self.state + (1-self.alpha_mem) * input_current[:, step]
+            self.state = self.state + (1 - self.alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
-            if self.threshold_low: self.state = torch.clamp(self.state, min=self.threshold_low)
+            if self.threshold_low:
+                self.state = torch.clamp(self.state, min=self.threshold_low)
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
@@ -128,7 +129,7 @@ class LIFRecurrent(RecurrentModule):
         self,
         alpha_mem: Union[float, torch.Tensor],
         rec_connectivity: torch.nn.Module,
-        threshold: Union[float, torch.Tensor] = 1.,
+        threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
         membrane_subtract: Optional[float] = None,
@@ -136,7 +137,7 @@ class LIFRecurrent(RecurrentModule):
         **kwargs,
     ):
         super().__init__(
-            layer = LIF(
+            layer=LIF(
                 alpha_mem=alpha_mem,
                 threshold=threshold,
                 threshold_low=threshold_low,
@@ -145,10 +146,8 @@ class LIFRecurrent(RecurrentModule):
                 *args,
                 **kwargs,
             ),
-            rec_connectivity=rec_connectivity
-            
+            rec_connectivity=rec_connectivity,
         )
-        
 
 
 LIFSqueeze = squeeze_class(LIF)
