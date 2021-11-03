@@ -185,7 +185,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
         device="dynapcnndevkit:0",
-        monitor_layers: Optional[List] = None,
+        monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
         """
@@ -201,13 +201,14 @@ class DynapcnnCompatibleNetwork(nn.Module):
         device: String
             dynapcnndevkit:0 or speck2devkit:0
 
-        monitor_layers: None/List
+        monitor_layers: None/List/Str
             A list of all chip-layers that you want to monitor.
             If you want to monitor the dvs layer for eg.
             ::
 
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
 
             If this value is left as None, by default the last layer of the model is monitored.
 
