@@ -272,16 +272,14 @@ class DynapcnnNetwork(nn.Module):
 
     def reset_states(self):
         """
-        Reset the states
+        Reset the states of the network.
         """
-        if isinstance(self.device, torch.device):
-            raise NotImplementedError
-        elif isinstance(self.device, str):
+        if isinstance(self.device, str):
             device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
                 self.samna_device.get_model().apply_configuration(self.samna_config)
-        else:
-            raise NotImplementedError
+                return
+        raise NotImplementedError
 
     def find_chip_layer(self, layer_idx):
         """
