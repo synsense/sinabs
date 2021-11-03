@@ -69,7 +69,7 @@ class ChipFactory:
             events.append(ev)
         return events
 
-    def xytp_to_events(self, xytp: np.ndarray, layer) -> List:
+    def xytp_to_events(self, xytp: np.ndarray, layer, reset_timestamps) -> List:
         """
         Convert series of spikes in a structured array (eg. from aermanager) to events for DynaapcnnDevKit
 
@@ -81,6 +81,10 @@ class ChipFactory:
 
         layer: int
             The index of the layer to route the events to
+
+        reset_timestamps: Boolean
+
+            If set to True, timestamps will be aligned to start from 0
 
         Returns
         -------
@@ -100,7 +104,10 @@ class ChipFactory:
             ev.x = row["x"]
             ev.y = row["y"]
             ev.feature = row["p"]
-            ev.timestamp = row["t"] - tstart  # Time in uS
+            if reset_timestamps:
+                ev.timestamp = row["t"] - tstart# Time in uS
+            else:
+                ev.timestamp = row["t"]
             events.append(ev)
         return events
 
