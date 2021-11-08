@@ -31,7 +31,7 @@ class ChipFactory:
     def get_config_builder(self) -> ConfigBuilder:
         return self.supported_devices[self.device_name]()
 
-    def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3) -> List:
+    def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3, truncate: bool = False) -> List:
         """
         Convert spike raster to events for DynaapcnnDevKit
 
@@ -47,6 +47,10 @@ class ChipFactory:
         dt: float
             Length of time step of the raster in seconds
 
+        truncate: bool
+            (default = False) Limit time-bins with more than one spikes to one spike.
+
+
         Returns
         -------
 
@@ -56,8 +60,19 @@ class ChipFactory:
         samna_module = self.get_config_builder().get_samna_module()
         # Get the appropriate Spike class
         Spike = samna_module.event.Spike
-        t, ch, y, x = torch.where(raster)
-        evData = torch.stack((t, ch, y, x), dim=0).T
+        if truncate:
+            t, ch, y, x = torch.where(raster)
+            evData = torch.stack((t, ch, y, x), dim=0).T
+        else:
+            event_list = []
+            max_raster = raster.max()
+            for val in range(int(max_raster), 0, -1):
+                t, ch, y, x = torch.where(raster == val)
+                evData = torch.stack((t, ch, y, x), dim=0).T
+                evData = evData.repeat(val, 1)
+                event_list.extend(evData)
+            evData = torch.stack(sorted(event_list, key=lambda event: event[0]), dim=0)
+
         events = []
         for row in evData:
             ev = Spike()
