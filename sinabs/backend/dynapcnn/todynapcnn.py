@@ -116,7 +116,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         self,
         device="cpu",
         chip_layers_ordering="auto",
-        monitor_layers: Optional[List] = None,
+        monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
         """
@@ -136,6 +136,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
 
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
 
         config_modifier:
             A user configuration modifier method.
