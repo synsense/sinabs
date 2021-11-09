@@ -23,7 +23,6 @@ ann = nn.Sequential(
 sinabs_model = from_model(ann, add_spiking_output=True)
 input_shape = (1, 28, 28)
 
-
 hardware_compatible_model = DynapcnnNetwork(
     sinabs_model.spiking_model.cpu(),
     discretize=True,

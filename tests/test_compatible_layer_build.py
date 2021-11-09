@@ -16,7 +16,7 @@ def test_construct_pooling_from_1_layer():
 
 
 def test_construct_pooling_from_2_layers():
-    layers = [sl.SumPool2d(2), nn.AvgPool2d(3), sl.SpikingLayer()]
+    layers = [sl.SumPool2d(2), nn.AvgPool2d(3), sl.IAF()]
 
     from sinabs.backend.dynapcnn.utils import construct_next_pooling_layer
 
@@ -30,7 +30,7 @@ def test_construct_pooling_from_2_layers():
 def test_non_square_pooling_kernel():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d((2, 3))
     ]
 
@@ -45,7 +45,7 @@ def test_non_square_pooling_kernel():
 def test_construct_dynapcnn_layer_from_3_layers():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d(2)
     ]
 
@@ -63,9 +63,9 @@ def test_construct_dynapcnn_layer_from_3_layers():
 def test_construct_dynapcnn_layer_no_pool_layers():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Conv2d(8, 2, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
     ]
 
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
@@ -82,13 +82,13 @@ def test_construct_dynapcnn_layer_no_pool_layers():
 def test_construct_dynapcnn_layer_from_8_layers():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
     ]
 
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
@@ -107,17 +107,17 @@ def test_build_from_list_dynapcnn_layers_only():
     in_shape = (2, 28, 28)
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
         nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Dropout2d(),
         nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Flatten(),
         nn.Linear(8, 5),
-        sl.SpikingLayer()
+        sl.IAF()
     ]
 
     from sinabs.backend.dynapcnn.utils import build_from_list
@@ -137,14 +137,14 @@ def test_missing_spiking_layer():
     in_shape = (2, 28, 28)
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
         nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Dropout2d(),
         nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
-        sl.SpikingLayer(),
+        sl.IAF(),
         nn.Flatten(),
         nn.Linear(8, 5),
     ]
@@ -160,7 +160,7 @@ def test_missing_spiking_layer():
 def test_incorrect_model_start():
     in_shape = (2, 28, 28)
     layers = [
-        sl.SpikingLayer(),
+        sl.IAF(),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
     ]

@@ -21,8 +21,8 @@ class DynapcnnLayer(nn.Module):
     ----------
         conv: torch.nn.Conv2d or torch.nn.Linear
             Convolutional or linear layer (linear will be converted to convolutional)
-        spk: sinabs.layers.SpikingLayer
-            Sinabs spiking layer
+        spk: sinabs.layers.IAFSqueeze
+            Sinabs IAF layer
         in_shape: tuple of int
             The input shape, needed to create dynapcnn configs if the network does not
             contain an input layer. Convention: (features, height, width)
@@ -38,7 +38,7 @@ class DynapcnnLayer(nn.Module):
     def __init__(
             self,
             conv: nn.Conv2d,
-            spk: sl.SpikingLayer,
+            spk: sl.IAFSqueeze,
             in_shape: Tuple[int, int, int],
             pool: Optional[sl.SumPool2d] = None,
             discretize: bool = True,
