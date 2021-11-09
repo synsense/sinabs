@@ -1,7 +1,7 @@
 from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
-from .recurrent_module import RecurrentModule
+from .recurrent_module import recurrent_class
 from .pack_dims import squeeze_class
 from .functional import ThresholdSubtract, ThresholdReset
 
@@ -124,31 +124,6 @@ class LIF(SpikingLayer):
         return output_spikes
 
 
-class LIFRecurrent(RecurrentModule):
-    def __init__(
-        self,
-        alpha_mem: Union[float, torch.Tensor],
-        rec_connectivity: torch.nn.Module,
-        threshold: Union[float, torch.Tensor] = 1.0,
-        membrane_reset: bool = False,
-        threshold_low: Optional[float] = None,
-        membrane_subtract: Optional[float] = None,
-        *args,
-        **kwargs,
-    ):
-        super().__init__(
-            layer=LIF(
-                alpha_mem=alpha_mem,
-                threshold=threshold,
-                threshold_low=threshold_low,
-                membrane_subtract=membrane_subtract,
-                membrane_reset=membrane_reset,
-                *args,
-                **kwargs,
-            ),
-            rec_connectivity=rec_connectivity,
-        )
-
-
+LIFRecurrent = recurrent_class(LIF)
 LIFSqueeze = squeeze_class(LIF)
 LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)

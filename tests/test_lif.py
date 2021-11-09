@@ -1,10 +1,11 @@
 import torch
-from sinabs.layers import LIF, LIFSqueeze
+import torch.nn as nn
+from sinabs.layers import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
 import numpy as np
 import pytest
 
 
-def test_lif():
+def test_lif_basic():
     batch_size = 10
     time_steps = 100
     alpha = torch.tensor(0.995)
@@ -132,3 +133,37 @@ def test_lif_zero_grad():
 
         loss = torch.nn.functional.mse_loss(out2, torch.ones_like(out2))
         loss.backward()
+        
+def test_lif_recurrent():
+    batch_size = 5
+    time_steps = 100
+    alpha = torch.tensor(0.99)
+    input_dimensions = (batch_size, time_steps, 2, 10)
+    n_neurons = np.product(input_dimensions[2:])
+    input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
+    
+    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = LIFRecurrent(alpha_mem=alpha, rec_connectivity=rec_connectivity)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+
+def test_lif_recurrent_squeezed():
+    batch_size = 10
+    time_steps = 100
+    alpha = torch.tensor(0.995)
+    input_dimensions = (batch_size*time_steps, 2, 7, 7)
+    n_neurons = np.product(input_dimensions[1:])
+    input_current = torch.rand(*input_dimensions) / (1-alpha)
+
+    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = LIFRecurrentSqueeze(alpha_mem=alpha, threshold=1, batch_size=batch_size, rec_connectivity=rec_connectivity)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
