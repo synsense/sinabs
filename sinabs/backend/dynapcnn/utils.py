@@ -280,7 +280,7 @@ def construct_next_dynapcnn_layer(
     ----------
 
         layers: sequence of layer objects
-            First object must be Conv2d, next must be a SpikingLayer. All pooling
+            First object must be Conv2d, next must be an IAF layer. All pooling
             layers that follow immediately are consolidated. Layers after this
             will be ignored.
         idx_start:
@@ -330,9 +330,9 @@ def construct_next_dynapcnn_layer(
 
     # Check that the next layer is spiking
     # TODO: Check that the next layer is an IAF layer
-    if not isinstance(lyr_spk, sl.SpikingLayer):
+    if not isinstance(lyr_spk, sl.IAF):
         raise TypeError(
-            f"Convolution must be followed by spiking layer, found {type(lyr_spk)}"
+            f"Convolution must be followed by IAF spiking layer, found {type(lyr_spk)}"
         )
 
     # Check for next pooling layer

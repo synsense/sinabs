@@ -2,7 +2,7 @@ from copy import deepcopy
 import numpy as np
 import torch
 from sinabs.backend.dynapcnn import discretize
-from sinabs.layers import SpikingLayer
+from sinabs.layers import IAF
 
 # - Test tensor to be discretized
 float_tensor = torch.tensor(
@@ -39,7 +39,7 @@ conv_lyr.weight = torch.nn.Parameter(weight)
 np.random.seed(4)
 thr = np.random.random() * 10
 thr_low = -np.random.random() * 10
-spk_lyr = SpikingLayer(threshold=thr, threshold_low=thr_low, membrane_subtract=True)
+spk_lyr = IAF(threshold=thr, threshold_low=thr_low, membrane_subtract=True)
 
 
 def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state):

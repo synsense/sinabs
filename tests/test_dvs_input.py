@@ -7,7 +7,7 @@ from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.exceptions import *
 from sinabs.from_torch import from_model
-from sinabs.layers import InputLayer, SpikingLayer
+from sinabs.layers import InputLayer, IAF
 
 import torch
 from torch import nn
@@ -238,7 +238,7 @@ class DvsNet(nn.Module):
                 **kwargs_flip,
             ),
             nn.Conv2d(n_channels_in, 4, kernel_size=2, stride=2),
-            SpikingLayer(),
+            IAF(),
         ]
         self.seq = nn.Sequential(*layers)
 
