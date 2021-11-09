@@ -9,7 +9,7 @@ from .sig_to_spk import Sig2SpikeLayer
 from .spiking_layer import SpikingLayer
 from .iaf_bptt import IAF, IAFSqueeze
 from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
-from .lsnn import LSNN, LSNNSqueeze
+from .alif import ALIF, ALIFSqueeze
 from .leaky_layer import ExpLeak, ExpLeakSqueeze
 
 # Deprecated

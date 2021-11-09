@@ -1,44 +1,44 @@
 import torch
-from sinabs.layers import LSNN, LSNNSqueeze
+from sinabs.layers import ALIF, ALIFSqueeze
 import pytest
 
 
-def test_lsnn_basic():
+def test_alif_basic():
     batch_size = 10
     time_steps = 30
     alpha = torch.tensor(0.995)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
-    layer = LSNN(alpha_mem=alpha, threshold=0.1, alpha_adapt=alpha, adapt_scale=1.8)
+    layer = ALIF(alpha_mem=alpha, threshold=0.1, alpha_adapt=alpha, adapt_scale=1.8)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
-def test_lsnn_squeezed():
+def test_alif_squeezed():
     batch_size = 10
     time_steps = 100
     alpha = torch.tensor(0.995)
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
-    layer = LSNNSqueeze(alpha_mem=alpha, threshold=1, alpha_adapt=alpha, batch_size=batch_size)
+    layer = ALIFSqueeze(alpha_mem=alpha, threshold=1, alpha_adapt=alpha, batch_size=batch_size)
     spike_output = layer(input_current)
     
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
-def test_lsnn_minimum_spike_threshold():
+def test_alif_minimum_spike_threshold():
     batch_size = 10
     time_steps = 100
     threshold = 10
     alpha = torch.tensor(0.9)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    layer = LSNN(alpha_mem=alpha, threshold=threshold, alpha_adapt=alpha,)
+    layer = ALIF(alpha_mem=alpha, threshold=threshold, alpha_adapt=alpha,)
     spike_output = layer(input_current)
 
     assert (layer.b_0 + layer.adapt_scale + layer.b >= threshold).all(), "Spike thresholds should not drop below initital threshold."
 
-# def test_lsnn_spike_threshold_decay():
+# def test_alif_spike_threshold_decay():
 #     batch_size = 10
 #     time_steps = 100
 #     threshold = 1
@@ -46,7 +46,7 @@ def test_lsnn_minimum_spike_threshold():
 #     adapt_scale = float(1/(1-alpha))
 #     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
 #     input_current[:,0,:,:] = 1 / (1-alpha)# only inject current in the first time step
-#     layer = LSNN(alpha_mem=alpha, alpha_adapt=alpha, threshold=threshold, adapt_scale=adapt_scale)
+#     layer = ALIF(alpha_mem=alpha, alpha_adapt=alpha, threshold=threshold, adapt_scale=adapt_scale)
 #     spike_output = layer(input_current)
 
 #     assert (layer.threshold > threshold).all()
@@ -55,14 +55,14 @@ def test_lsnn_minimum_spike_threshold():
 #     # account for rounding errors with .isclose()
 #     assert torch.isclose(layer.threshold-threshold, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
 
-def test_lsnn_zero_grad():
+def test_alif_zero_grad():
     torch.autograd.set_detect_anomaly(True)
     batch_size = 7
     time_steps = 100
     n_neurons = 20
     threshold = 100
     alpha = 0.995
-    sl = LSNN(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
+    sl = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -70,7 +70,7 @@ def test_lsnn_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = LSNN(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
+    sl_0 = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,

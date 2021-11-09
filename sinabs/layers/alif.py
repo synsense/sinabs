@@ -6,13 +6,13 @@ from .lif import LIF
 from .functional import ThresholdSubtract, ThresholdReset
 
 
-__all__ = ["LSNN", "LSNNSqueeze"]
+__all__ = ["ALIF", "ALIFSqueeze"]
 
 # Learning window for surrogate gradient
 window = 1.0
 
 
-class LSNN(SpikingLayer):
+class ALIF(SpikingLayer):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
@@ -139,4 +139,4 @@ class LSNN(SpikingLayer):
             self.b = torch.zeros(shape, device=self.b.device)
 
 
-LSNNSqueeze = squeeze_class(LSNN)
+ALIFSqueeze = squeeze_class(ALIF)
