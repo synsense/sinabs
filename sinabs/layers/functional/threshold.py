@@ -4,7 +4,11 @@ from torch.onnx.symbolic_opset9 import floor, div, relu
 
 class ThresholdSubtract(torch.autograd.Function):
     """
-    Subtract from membrane potential on reaching threshold
+    PyTorch-compatible function that returns the number of spikes emitted,
+    given a membrane potential value and in a "threshold subtracting" regime.
+    In other words, the integer division of the input by the threshold is returned.
+    In the backward pass, the gradient is zero if the membrane is at least
+    `threshold - window`, and is passed through otherwise.
     """
 
     @staticmethod
@@ -32,7 +36,8 @@ class ThresholdSubtract(torch.autograd.Function):
 
 class ThresholdReset(torch.autograd.Function):
     """
-    Threshold check
+    Same as `threshold_subtract`, except that the potential is reset, rather than
+    subtracted. In other words, only one output spike is possible.
     Step hat gradient ___---___
     """
 
