@@ -7,14 +7,14 @@ def test_threshold_subtract_onnx_eq():
     import torch
     import numpy as np
 
-    from sinabs.layers.functional import threshold_subtract
+    from sinabs.layers.functional import ThresholdSubtract
 
     class ThresholdTest(torch.nn.Module):
         def __init__(self):
             super().__init__()
 
         def forward(self, inp):
-            return threshold_subtract(inp, 1.0)
+            return ThresholdSubtract.apply(inp, 1.0)
 
     inp = (torch.rand(10)-0.5)*3
     model = ThresholdTest()

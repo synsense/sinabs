@@ -14,8 +14,8 @@ class ThresholdSubtract(torch.autograd.Function):
         """"""
         ctx.save_for_backward(data.clone())
         ctx.threshold = threshold
-        ctx.window = window or threshold
-        return (data > 0) * torch.div(data, threshold, rounding_mode="floor")
+        ctx.window = window
+        return (data > 0) * torch.div(data, threshold, rounding_mode="trunc").float()
 
     @staticmethod
     def backward(ctx, grad_output):
@@ -32,9 +32,6 @@ class ThresholdSubtract(torch.autograd.Function):
         x = div(g, x, torch.tensor(threshold))
         x = floor(g, x)
         return x
-
-
-threshold_subtract = ThresholdSubtract().apply
 
 
 class ThresholdReset(torch.autograd.Function):
@@ -57,6 +54,3 @@ class ThresholdReset(torch.autograd.Function):
         (data,) = ctx.saved_tensors
         grad_input = grad_output * ((data >= (ctx.threshold - ctx.window)).float())
         return grad_input, None, None
-
-
-threshold_reset = ThresholdReset().apply

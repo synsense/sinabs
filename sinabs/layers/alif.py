@@ -1,21 +1,23 @@
 from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
-from .recurrent_module import recurrent_class
 from .pack_dims import squeeze_class
+from .lif import LIF
 from .functional import ThresholdSubtract, ThresholdReset
 
 
-__all__ = ["LIF", "LIFSqueeze"]
+__all__ = ["ALIF", "ALIFSqueeze"]
 
 # Learning window for surrogate gradient
 window = 1.0
 
 
-class LIF(SpikingLayer):
+class ALIF(SpikingLayer):
     def __init__(
         self,
         alpha_mem: Union[float, torch.Tensor],
+        alpha_adapt: Union[float, torch.Tensor],
+        adapt_scale: Union[float, torch.Tensor] = 1.8,
         threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
@@ -24,62 +26,56 @@ class LIF(SpikingLayer):
         **kwargs,
     ):
         """
-        Pytorch implementation of a Leaky Integrate and Fire neuron layer.
+        Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
+        https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
+
+        In addition to the LIF neuron mechanics, the firing threshold :math:`\\theta` also adapts in the following way:
 
         .. math ::
-            V_{mem}(t) = V_{mem}(t-1)\\alpha + \\sum z(t)
+            \\frac{d\\theta}{dt} = - \\frac{\\theta - \\theta _{0}}{\\tau_{\\theta}}
 
-            \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
+            \\text{if } V_m(t) = V_{th} \\text{, then } \\theta \\rightarrow \\theta + \\alpha
 
-        where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
+        where :math:`alpha` corresponds to the `adaptation` and :math:`\\theta` to the `threshold` parameter.
 
         Parameters
         ----------
         alpha_mem: float
             Membrane potential decay time constant.
+        alpha_adapt: float
+            Spike threshold decay time constant.
+        adaption: float
+            The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         threshold: float
-            Spiking threshold of the neuron, defaults to 1.
-        membrane_reset: bool
-            If True, reset the membrane to 0 on spiking. Otherwise, will divide the
-            activation by spiking threshold and truncate to integers. That means that
-            muliple spikes can be generated within a single time step.
+            Spiking threshold of the neuron.
         threshold_low: float or None
             Lower bound for membrane potential.
+        membrane_reset: bool
+            If True, reset the membrane to 0 on spiking.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
         """
         super().__init__(
-            *args,
-            **kwargs,
             threshold=threshold,
             threshold_low=threshold_low,
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
+            *args,
+            **kwargs,
         )
         self.alpha_mem = alpha_mem
+        self.alpha_adapt = alpha_adapt
+        self.adapt_scale = adapt_scale
+        self.b_0 = threshold
+        self.register_buffer("b", torch.zeros(1))
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
 
     def check_states(self, input_current):
-        """Initialise neuron membrane potential states when the first input is received."""
+        """Initialise spike threshold states when the first input is received."""
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
         if self.state.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
-
-    def detect_spikes(self):
-        """Compute spike outputs for a single time step. This method does not reset the membrane potential."""
-        self.activations = self.reset_function.apply(
-            self.state, self.threshold, self.threshold * window
-        )
-
-    def update_state_after_spike(self):
-        """Update membrane potentials to either reset or subtract by given value after spikes occured at this time step."""
-        if self.membrane_reset:
-            # sum the previous state only where there were no spikes
-            self.state = self.state * (self.activations == 0.0)
-        else:
-            # subtract a number of membrane_subtract's as there are spikes
-            self.state = self.state - self.activations * self.membrane_subtract
 
     def forward(self, input_current: torch.Tensor):
         """
@@ -102,13 +98,6 @@ class LIF(SpikingLayer):
         output_spikes = torch.zeros_like(input_current)
 
         for step in range(time_steps):
-            # generate spikes
-            self.detect_spikes()
-            output_spikes[:, step] = self.activations
-
-            # Reset membrane potential for neurons that spiked
-            self.update_state_after_spike()
-
             # Decay the membrane potential
             self.state = self.state * self.alpha_mem
 
@@ -119,11 +108,35 @@ class LIF(SpikingLayer):
             if self.threshold_low:
                 self.state = torch.clamp(self.state, min=self.threshold_low)
 
+            # generate spikes
+            activations = self.reset_function.apply(
+                self.state,
+                self.b * self.adapt_scale + self.b_0,
+                (self.b * self.adapt_scale + self.b_0) * window,
+            )
+            output_spikes[:, step] = activations
+
+            self.state = self.state - activations * (
+                self.b_0 + self.adapt_scale * self.b
+            )
+
+            # Decay the spike threshold and add adaption constant to it.
+            self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * activations
+            print(self.b.mean())
+
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes
 
+    def reset_states(self, shape=None, randomize=False):
+        """Reset the state of all neurons and threshold states in this layer."""
+        super().reset_states(shape, randomize)
+        if shape is None:
+            shape = self.b.shape
+        if randomize:
+            self.b = torch.rand(shape, device=self.b.device)
+        else:
+            self.b = torch.zeros(shape, device=self.b.device)
 
-LIFRecurrent = recurrent_class(LIF)
-LIFSqueeze = squeeze_class(LIF)
-LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)
+
+ALIFSqueeze = squeeze_class(ALIF)

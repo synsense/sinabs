@@ -28,7 +28,3 @@ class StochasticRounding(torch.autograd.Function):
         """"""
         grad_input = grad_output.clone()
         return grad_input
-
-
-quantize = Quantize().apply
-stochastic_rounding = StochasticRounding().apply

@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import torch
 
-from .functional import threshold_subtract, threshold_reset
+from .functional import ThresholdSubtract, ThresholdReset
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
 
@@ -49,8 +49,8 @@ class IAF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-
-        self.window_abs = threshold * window
+        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.learning_window = threshold * window
 
     def forward(self, input_spikes: torch.Tensor):
         """
@@ -78,7 +78,6 @@ class IAF(SpikingLayer):
         # Local variables
         threshold = self.threshold
         threshold_low = self.threshold_low
-        window = self.window_abs
 
         state = self.state
         activations = self.activations
@@ -101,10 +100,9 @@ class IAF(SpikingLayer):
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
 
             # generate spikes
-            if self.membrane_reset:
-                activations = threshold_reset(state, threshold, window)
-            else:
-                activations = threshold_subtract(state, threshold, window)
+            activations = self.reset_function.apply(
+                state, threshold, self.learning_window
+            )
             spikes.append(activations)
 
         self.state = state
@@ -118,7 +116,7 @@ class IAF(SpikingLayer):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict()
-        param_dict.update(window=self.window_abs / self.threshold)
+        param_dict.update(window=self.learning_window / self.threshold)
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.

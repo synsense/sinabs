@@ -11,6 +11,7 @@ def test_spikelayer_init():
 
     out = layer(inp)
     print(out.shape)
+    assert inp.shape == out.shape
 
 
 def test_membrane_subtract():

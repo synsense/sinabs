@@ -8,6 +8,9 @@ from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .spiking_layer import SpikingLayer
 from .iaf_bptt import IAF, IAFSqueeze
+from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
+from .alif import ALIF, ALIFSqueeze
+from .leaky_layer import ExpLeak, ExpLeakSqueeze
 
 # Deprecated
 from .deprecated.flatten import FlattenLayer

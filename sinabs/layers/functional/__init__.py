@@ -1,2 +1,2 @@
-from .threshold import threshold_subtract, threshold_reset
-from .quant import quantize, stochastic_rounding
+from .threshold import ThresholdSubtract, ThresholdReset
+from .quantize import Quantize, StochasticRounding
