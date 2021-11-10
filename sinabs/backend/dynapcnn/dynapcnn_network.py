@@ -116,7 +116,7 @@ class DynapcnnNetwork(nn.Module):
         self,
         device="cpu",
         chip_layers_ordering="auto",
-        monitor_layers: Optional[List] = None,
+        monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
         """
@@ -136,6 +136,7 @@ class DynapcnnNetwork(nn.Module):
 
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
 
         config_modifier:
             A user configuration modifier method.
@@ -184,7 +185,7 @@ class DynapcnnNetwork(nn.Module):
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
         device="dynapcnndevkit:0",
-        monitor_layers: Optional[List] = None,
+        monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
         """
@@ -200,13 +201,14 @@ class DynapcnnNetwork(nn.Module):
         device: String
             dynapcnndevkit, speck2b or speck2devkit
 
-        monitor_layers: None/List
+        monitor_layers: None/List/Str
             A list of all chip-layers that you want to monitor.
             If you want to monitor the dvs layer for eg.
             ::
 
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
 
             If this value is left as None, by default the last layer of the model is monitored.
 
@@ -248,6 +250,8 @@ class DynapcnnNetwork(nn.Module):
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
+        elif monitor_layers == 'all':
+            monitor_layers = list(range(len(self.compatible_layers)))
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
