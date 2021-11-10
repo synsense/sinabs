@@ -17,7 +17,7 @@ Main spiking layers
 -------------------
 
 SpikingLayer
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~
 .. autoclass:: SpikingLayer
     :members:
 
@@ -34,17 +34,17 @@ Adaptive Leaky Integrate Fire (ALIF) layer
 Auxiliary spiking layers
 ------------------------
 Cropping2dLayer
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. autoclass:: Cropping2dLayer
     :members:
 
 SpikingMaxPooling2dLayer
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
 .. autoclass:: SpikingMaxPooling2dLayer
     :members:
 
 InputLayer
-~~~~~~~~~~~~
+~~~~~~~~~~
 .. autoclass:: InputLayer
     :members:
 
@@ -53,12 +53,12 @@ Hybrid layers
 The hybrid layers have inputs and outputs of different formats (eg. take analog values as inputs and produce spikes as outputs.)
 
 Img2SpikeLayer
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 .. autoclass:: Img2SpikeLayer
     :members:
 
 Sig2SpikeLayer
-~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 .. autoclass:: Sig2SpikeLayer
     :members:
 
@@ -67,17 +67,17 @@ ANN layers
 These are utility layers used in the training of ANNs, in order to provide specific features suitable for SNN conversion.
 
 NeuromorphicReLU
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~
 .. autoclass:: NeuromorphicReLU
     :members:
 
 QuantizeLayer
-~~~~~~~~~~~~~~
+~~~~~~~~~~~~~
 .. autoclass:: QuantizeLayer
     :members:
 
 SumPool2d
-~~~~~~~~~~~
+~~~~~~~~~
 .. autoclass:: SumPool2d
     :members:
 
@@ -88,7 +88,7 @@ Quantization tools
 ------------------
 
 quantize
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~
 .. function:: quantize(x)
 
    PyTorch-compatible function that applies a floor() operation on the input,
@@ -118,7 +118,7 @@ threshold_subtract
    `threshold - window`, and is passed through otherwise.
 
 threshold_reset
-~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
 .. function:: threshold_reset(data, threshold=1, window=0.5)
 
    Same as `threshold_subtract`, except that the potential is reset, rather than
