@@ -87,7 +87,7 @@ def test_initial_pooling():
     seq = nn.Sequential(
         nn.AvgPool2d(kernel_size=(2, 1), stride=(2, 1)),
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -121,11 +121,11 @@ def test_pooling_consolidation():
 def test_sumpooling_consolidation():
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
         SumPool2d(kernel_size=2, stride=2),
         SumPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1)
     )
 
     networks_equal_output(input_data, seq)
