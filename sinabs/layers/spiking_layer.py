@@ -1,13 +1,13 @@
-from typing import Tuple, Union, Optional
+from typing import Optional
 import torch
+from .stateful_layer import StatefulLayer
 
 
-class SpikingLayer(torch.nn.Module):
+class SpikingLayer(StatefulLayer):
     """
     Pytorch implementation of a spiking neuron with learning enabled.
     This class is the base class for any layer that need to implement leaky or
     non-leaky integrate-and-fire operations.
-    This is an abstract base class.
     """
 
     def __init__(
@@ -23,7 +23,6 @@ class SpikingLayer(torch.nn.Module):
         Pytorch implementation of a spiking neuron with learning enabled.
         This class is the base class for any layer that need to implement leaky or
         non-leaky integrate-and-fire operations.
-        This is an abstract base class.
 
         Parameters
         ----------
@@ -37,7 +36,7 @@ class SpikingLayer(torch.nn.Module):
         membrane_reset: bool
             If True, reset the membrane to 0 on spiking.
         """
-        super().__init__()
+        super().__init__(state_name="state", *args, **kwargs)
 
         # Initialize neuron states
         self.threshold = threshold
@@ -46,46 +45,8 @@ class SpikingLayer(torch.nn.Module):
         self.membrane_reset = membrane_reset
 
         # Blank parameter place holders
-        self.register_buffer("state", torch.zeros(1))
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
-
-    def zero_grad(self, set_to_none: bool = False) -> None:
-        r"""
-        Zero's the gradients for buffers/states along with the parameters.
-        See :meth:`torch.nn.Module.zero_grad` for details
-        """
-        # Zero grad parameters
-        super().zero_grad(set_to_none)
-        # Zero grad buffers
-        for b in self.buffers():
-            if b.grad_fn is not None:
-                b.detach_()
-            else:
-                b.requires_grad_(False)
-
-    def get_output_shape(self, in_shape: Tuple[int]) -> Tuple[int]:
-        """
-        Returns the output shape for passthrough implementation
-
-        Parameters
-        ----------
-        in_shape: Tuple of integers
-            Input shape
-
-        Returns
-        -------
-        Tuple of input shape
-            Output shape at given input shape
-        """
-        return in_shape
-
-    def __deepcopy__(self, memo=None):
-        # TODO: What is `memo`?
-        copy = self.__class__(**self._param_dict)
-        copy.state = self.state.detach().clone()
-        copy.activations = self.activations.detach().clone()
-        return copy
 
     @property
     def _param_dict(self) -> dict:
@@ -93,12 +54,13 @@ class SpikingLayer(torch.nn.Module):
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
         """
-        return dict(
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self._membrane_subtract,
-            membrane_reset=self.membrane_reset,
-        )
+        param_dict = super()._param_dict()
+        param_dict["threshold"] = self.threshold
+        param_dict["threshold_low"] = self.threshold_low
+        param_dict["membrane_reset"] = self.membrane_reset
+        param_dict["membrane_subtract"] = self._membrane_subtract
+
+        return param_dict
 
     @property
     def membrane_subtract(self):
