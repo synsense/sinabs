@@ -83,8 +83,8 @@ class SpikingLayer(torch.nn.Module, ABC):
 
     def __deepcopy__(self, memo=None):
         # TODO: What is `memo`?
-
-        other = self.__class__(**self._param_dict)
+        param_dict = self.get_neuron_params()
+        other = self.__class__(**param_dict)
 
         other.state = self.state.detach().clone()
         other.activations = self.activations.detach().clone()
@@ -95,8 +95,7 @@ class SpikingLayer(torch.nn.Module, ABC):
     def forward(self, data):
         pass
 
-    @property
-    def _param_dict(self) -> dict:
+    def get_neuron_params(self) -> dict:
         """
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
