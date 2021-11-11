@@ -2,6 +2,10 @@ import torch.autograd
 
 
 class Quantize(torch.autograd.Function):
+    """PyTorch-compatible function that applies a floor() operation on the input,
+   while providing a surrogate gradient (equivalent to that of a linear
+   function) in the backward pass."""
+
     @staticmethod
     def forward(ctx, inp):
         """"""
@@ -15,6 +19,11 @@ class Quantize(torch.autograd.Function):
 
 
 class StochasticRounding(torch.autograd.Function):
+    """PyTorch-compatible function that applies stochastic rounding. The input x
+   is quantized to ceil(x) with probability (x - floor(x)), and to floor(x)
+   otherwise. The backward pass is provided as a surrogate gradient
+   (equivalent to that of a linear function)."""
+
     @staticmethod
     def forward(ctx, inp):
         """"""
