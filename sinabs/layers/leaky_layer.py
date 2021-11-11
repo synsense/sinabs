@@ -1,7 +1,7 @@
-from typing import Tuple, Union
+from typing import Union
 import torch
 from .pack_dims import squeeze_class
-from .spiking_layer import SpikingLayer
+from .stateful_layer import StatefulLayer
 
 
 __all__ = ["ExpLeak", "ExpLeakSqueeze"]
@@ -10,13 +10,8 @@ __all__ = ["ExpLeak", "ExpLeakSqueeze"]
 window = 1.0
 
 
-class ExpLeak(SpikingLayer):
-    def __init__(
-        self,
-        alpha: Union[float, torch.Tensor],
-        *args,
-        **kwargs,
-    ):
+class ExpLeak(StatefulLayer):
+    def __init__(self, alpha: Union[float, torch.Tensor], *args, **kwargs):
         """
         Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
 
@@ -26,7 +21,6 @@ class ExpLeak(SpikingLayer):
             Rate of leak of the state
         """
         super().__init__(*args, **kwargs)
-        self.register_buffer("state", torch.zeros(1))
         self.alpha = alpha
 
     def forward(self, input_current: torch.Tensor):
@@ -52,6 +46,17 @@ class ExpLeak(SpikingLayer):
         out_state = torch.stack(out_state).transpose(0, 1)
 
         return out_state
+
+    @property
+    def _param_dict(self) -> dict:
+        """
+        Dict of all parameters relevant for creating a new instance with same
+        parameters as `self`
+        """
+        param_dict = super()._param_dict
+        param_dict["alpha"] = self.alpha
+
+        return param_dict
 
 
 ExpLeakSqueeze = squeeze_class(ExpLeak)
