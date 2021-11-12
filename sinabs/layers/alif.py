@@ -138,5 +138,16 @@ class ALIF(SpikingLayer):
         else:
             self.b = torch.zeros(shape, device=self.b.device)
 
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(
+            alpha_mem=self.alpha_mem,
+            alpha_adapt=self.alpha_adapt,
+            adapt_scale=self.adapt_scale,
+        )
+
+        return param_dict
+
 
 ALIFSqueeze = squeeze_class(ALIF)
