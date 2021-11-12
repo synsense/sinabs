@@ -6,17 +6,11 @@ from .functional import ThresholdSubtract, ThresholdReset
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
 
-try:
-    from ..slayer.layers import IAF as IAFSlayer
-except ModuleNotFoundError:
-    SLAYER_AVAILABLE = False
-    IAFSlayer = None
-else:
-    SLAYER_AVAILABLE = True
-
 window = 1.0
 
 __all__ = ["IAF", "IAFSqueeze"]
+
+_backends_iaf = dict()
 
 
 class IAF(SpikingLayer):
@@ -122,15 +116,11 @@ class IAF(SpikingLayer):
         return all_spikes
 
     @property
-    def _supported_backends_dict(self) -> dict:
-        backends = {"sinabs": self.__class__}
-        if SLAYER_AVAILABLE:
-            backends["slayer"] = IAFSlayer
-
-    @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(window=self.learning_window / self.threshold)
+
+        return param_dict
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.
