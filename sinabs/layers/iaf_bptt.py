@@ -10,8 +10,6 @@ window = 1.0
 
 __all__ = ["IAF", "IAFSqueeze"]
 
-_backends_iaf = dict()
-
 
 class IAF(SpikingLayer):
     def __init__(
