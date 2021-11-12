@@ -99,7 +99,15 @@ class StatefulLayer(torch.nn.Module):
 
         # Generate new instance of corresponding backend class
         new_instance = backend_class(**self._param_dict)
-        new_instance.load_state_dict(self.state_dict())
+
+        # Copy parameters
+        for name, param in self.named_parameters():
+            new_inst_param = getattr(new_instance, name)
+            new_inst_param.data = param.data.clone()
+        # Copy buffers (using state dict will fail if buffers have non-default shapes)
+        for name, buffer in self.named_buffers():
+            new_inst_buffer = getattr(new_instance, name)
+            new_inst_buffer.data = buffer.data.clone()
 
         # Warn if parameters of self are not part of new instance
         dropped_params = set(self._param_dict.keys()).difference(
@@ -140,7 +148,16 @@ class StatefulLayer(torch.nn.Module):
 
     def __deepcopy__(self, memo=None):
         copy = self.__class__(**self._param_dict)
-        copy.load_state_dict(self.state_dict())
+
+        # Copy parameters
+        for name, param in self.named_parameters():
+            new_inst_param = getattr(copy, name)
+            new_inst_param.data = param.data.clone()
+        # Copy buffers (using state dict will fail if buffers have non-default shapes)
+        for name, buffer in self.named_buffers():
+            new_inst_buffer = getattr(copy, name)
+            new_inst_buffer.data = buffer.data.clone()  # Copy parameters
+
         return copy
 
     @property

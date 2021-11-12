@@ -25,7 +25,8 @@ def from_model(
     batch_size=1,
     synops=False,
     add_spiking_output=False,
-    backend="bptt",
+    backend="sinabs",
+    kwargs_backend=None,
 ):
     """
     Converts a Torch model and returns a Sinabs network object.
@@ -50,6 +51,8 @@ def from_model(
     operations during forward passes.
     :param add_spiking_output: If True (default: False), add a spiking layer \
     to the end of a sequential model if not present.
+    :param backend: String defining the simulation backend (currently sinabs or slayer)
+    :param kwargs_backend: Dict with additional kwargs for the simulation backend
     """
     return SpkConverter(
         input_shape=input_shape,
@@ -89,6 +92,8 @@ class SpkConverter(object):
     operations during foward passes.
     :param add_spiking_output: If True (default: False), add a spiking \
     layer to the end of a sequential model if not present.
+    :param backend: String defining the simulation backend (currently sinabs or slayer)
+    :param kwargs_backend: Dict with additional kwargs for the simulation backend
     """
 
     def __init__(
@@ -119,7 +124,7 @@ class SpkConverter(object):
 
     def relu2spiking(self):
 
-        if self.backend.lower() == "bptt":
+        if self.backend.lower() in ("sinabs", "bptt"):
             layer_module = sl
         elif self.backend.lower() == "slayer":
             if SLAYER_AVAILABLE:
