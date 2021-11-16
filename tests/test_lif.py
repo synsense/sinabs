@@ -43,7 +43,7 @@ def test_lif_input_integration():
     spike_output = layer(input_current)
 
     assert spike_output.sum() == np.product(input_current.shape) / time_steps, "Every neuron should spike exactly once."
-    assert spike_output[:,1].sum() == spike_output.sum(), "First output time step should contain all the spikes."
+    assert spike_output[:,0].sum() == spike_output.sum(), "First output time step should contain all the spikes."
 
 def test_lif_membrane_decay():
     batch_size = 10
@@ -55,7 +55,7 @@ def test_lif_membrane_decay():
     layer = LIF(tau_mem=tau_mem, threshold=10)
     spike_output = layer(input_current)
 
-    # first time step is not decayed
+    # decay only starts after first time step
     membrane_decay = alpha ** (time_steps-1)
     # account for rounding errors with .isclose()
     assert torch.isclose(layer.v_mem, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
@@ -72,7 +72,7 @@ def test_lif_membrane_reset():
     assert spike_output.max() == 1
     
 def test_lif_zero_grad():
-    torch.autograd.set_detect_anomaly(True)
+    torch.autograd.set_detect_anomaly(False)
     batch_size = 7
     time_steps = 100
     n_neurons = 20

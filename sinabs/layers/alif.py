@@ -130,7 +130,6 @@ class ALIF(SpikingLayer):
 
             # Decay the spike threshold and add adaption constant to it.
             self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * activations
-            print(self.b.mean())
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()

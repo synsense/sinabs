@@ -106,10 +106,6 @@ class LIF(SpikingLayer):
         output_spikes = torch.zeros_like(input_current)
 
         for step in range(time_steps):
-            # generate spikes
-            self.detect_spikes()
-            output_spikes[:, step] = self.activations
-
             # Reset membrane potential for neurons that spiked
             self.update_state_after_spike()
 
@@ -123,6 +119,10 @@ class LIF(SpikingLayer):
             # Clip membrane potential that is too low
             if self.threshold_low:
                 self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
+
+            # generate spikes
+            self.detect_spikes()
+            output_spikes[:, step] = self.activations
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
