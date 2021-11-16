@@ -57,7 +57,7 @@ def test_backend_lif():
 
     from sinabs.layers import LIF, LIFSqueeze
 
-    layer = LIF(alpha_mem=0.8)
+    layer = LIF(tau_mem=20)
 
     # Modify default parameters and buffers
     for b in layer.buffers():
@@ -74,7 +74,7 @@ def test_backend_lif():
     # Make sure that parameters and buffers have not been changed during `to_backend` call
     compare_layers(layer_copy, layer_sinabs_backend)
 
-    layer = LIFSqueeze(alpha_mem=0.8, num_timesteps=10)
+    layer = LIFSqueeze(tau_mem=20, num_timesteps=10)
 
     # Modify default parameters and buffers
     for b in layer.buffers():

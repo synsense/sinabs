@@ -15,8 +15,8 @@ window = 1.0
 class ALIF(SpikingLayer):
     def __init__(
         self,
-        alpha_mem: Union[float, torch.Tensor],
-        alpha_adapt: Union[float, torch.Tensor],
+        tau_mem: Union[float, torch.Tensor],
+        tau_adapt: Union[float, torch.Tensor],
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
@@ -40,10 +40,10 @@ class ALIF(SpikingLayer):
 
         Parameters
         ----------
-        alpha_mem: float
-            Membrane potential decay time constant.
-        alpha_adapt: float
-            Spike threshold decay time constant.
+        tau_mem: float
+            Membrane potential time constant.
+        tau_adapt: float
+            Spike threshold time constant.
         adaption: float
             The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         threshold: float
@@ -64,12 +64,20 @@ class ALIF(SpikingLayer):
             *args,
             **kwargs,
         )
-        self.alpha_mem = alpha_mem
-        self.alpha_adapt = alpha_adapt
+        self.tau_mem = tau_mem
+        self.tau_adapt = tau_adapt
         self.adapt_scale = adapt_scale
         self.b_0 = threshold
         self.register_buffer("b", torch.zeros(1))
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+
+    @property
+    def alpha_mem(self):
+        return torch.exp(-1/self.tau_mem)
+
+    @property
+    def alpha_adapt(self):
+        return torch.exp(-1/self.tau_adapt)
 
     def check_states(self, input_current):
         """Initialise spike threshold states when the first input is received."""
@@ -142,8 +150,8 @@ class ALIF(SpikingLayer):
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
-            alpha_mem=self.alpha_mem,
-            alpha_adapt=self.alpha_adapt,
+            tau_mem=self.tau_mem,
+            tau_adapt=self.tau_adapt,
             adapt_scale=self.adapt_scale,
         )
 

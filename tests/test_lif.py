@@ -8,9 +8,10 @@ import pytest
 def test_lif_basic():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
-    layer = LIF(alpha_mem=alpha, threshold=1)
+    layer = LIF(tau_mem=tau_mem, threshold=1)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -20,9 +21,10 @@ def test_lif_basic():
 def test_lif_squeezed():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
-    layer = LIFSqueeze(alpha_mem=alpha, threshold=1, batch_size=batch_size)
+    layer = LIFSqueeze(tau_mem=tau_mem, threshold=1, batch_size=batch_size)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -33,10 +35,11 @@ def test_lif_input_integration():
     batch_size = 10
     time_steps = 100
     threshold = 10
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
     input_current[:,0,:,:] = threshold / (1-alpha)# only inject current in the first time step
-    layer = LIF(alpha_mem=alpha, threshold=threshold)
+    layer = LIF(tau_mem=tau_mem, threshold=threshold)
     spike_output = layer(input_current)
 
     assert spike_output.sum() == np.product(input_current.shape) / time_steps, "Every neuron should spike exactly once."
@@ -45,10 +48,11 @@ def test_lif_input_integration():
 def test_lif_membrane_decay():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
     input_current[:,0,:,:] = 1 / (1-alpha) # only inject current in the first time step
-    layer = LIF(alpha_mem=alpha, threshold=10)
+    layer = LIF(tau_mem=tau_mem, threshold=10)
     spike_output = layer(input_current)
 
     # first time step is not decayed
@@ -59,9 +63,10 @@ def test_lif_membrane_decay():
 def test_lif_membrane_reset():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.ones(batch_size, time_steps, 2, 7, 7) * 10 / (1-alpha) # inject lots of current
-    layer = LIF(alpha_mem=alpha, threshold=1., membrane_reset=True)
+    layer = LIF(tau_mem=tau_mem, threshold=1., membrane_reset=True)
     spike_output = layer(input_current)
 
     assert spike_output.max() == 1
@@ -72,8 +77,9 @@ def test_lif_zero_grad():
     time_steps = 100
     n_neurons = 20
     threshold = 100
-    alpha = torch.tensor(0.99)
-    sl = LIF(alpha_mem=alpha, threshold=threshold)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
+    sl = LIF(tau_mem=tau_mem, threshold=threshold)
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -81,7 +87,7 @@ def test_lif_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = LIF(alpha_mem=alpha, threshold=threshold)
+    sl_0 = LIF(tau_mem=tau_mem, threshold=threshold)
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -137,6 +143,7 @@ def test_lif_zero_grad():
 def test_lif_recurrent():
     batch_size = 5
     time_steps = 100
+    tau_mem = torch.tensor(30)
     alpha = torch.tensor(0.99)
     input_dimensions = (batch_size, time_steps, 2, 10)
     n_neurons = np.product(input_dimensions[2:])
@@ -144,7 +151,7 @@ def test_lif_recurrent():
     
     rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
     rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = LIFRecurrent(alpha_mem=alpha, rec_connectivity=rec_connectivity)
+    layer = LIFRecurrent(tau_mem=tau_mem, rec_connectivity=rec_connectivity)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -154,14 +161,15 @@ def test_lif_recurrent():
 def test_lif_recurrent_squeezed():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.tensor(0.99)
     input_dimensions = (batch_size*time_steps, 2, 7, 7)
     n_neurons = np.product(input_dimensions[1:])
     input_current = torch.rand(*input_dimensions) / (1-alpha)
 
     rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
     rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = LIFRecurrentSqueeze(alpha_mem=alpha, threshold=1, batch_size=batch_size, rec_connectivity=rec_connectivity)
+    layer = LIFRecurrentSqueeze(tau_mem=tau_mem, threshold=1, batch_size=batch_size, rec_connectivity=rec_connectivity)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape

@@ -6,12 +6,9 @@ from .stateful_layer import StatefulLayer
 
 __all__ = ["ExpLeak", "ExpLeakSqueeze"]
 
-# Learning window for surrogate gradient
-window = 1.0
-
 
 class ExpLeak(StatefulLayer):
-    def __init__(self, alpha: Union[float, torch.Tensor], *args, **kwargs):
+    def __init__(self, tau: Union[float, torch.Tensor], *args, **kwargs):
         """
         Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
 
@@ -21,8 +18,12 @@ class ExpLeak(StatefulLayer):
             Rate of leak of the state
         """
         super().__init__(*args, **kwargs)
-        self.alpha = alpha
+        self.tau = tau
 
+    @property
+    def alpha(self):
+        return torch.exp(-1/self.tau)
+    
     def forward(self, input_current: torch.Tensor):
         # Ensure the neuron state are initialized
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
@@ -54,7 +55,7 @@ class ExpLeak(StatefulLayer):
         parameters as `self`
         """
         param_dict = super()._param_dict
-        param_dict["alpha"] = self.alpha
+        param_dict["tau"] = self.tau
 
         return param_dict
 

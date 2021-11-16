@@ -6,9 +6,10 @@ import pytest
 def test_alif_basic():
     batch_size = 10
     time_steps = 30
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
-    layer = ALIF(alpha_mem=alpha, threshold=0.1, alpha_adapt=alpha, adapt_scale=1.8)
+    layer = ALIF(tau_mem=tau_mem, threshold=0.1, tau_adapt=tau_mem, adapt_scale=1.8)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -18,9 +19,10 @@ def test_alif_basic():
 def test_alif_squeezed():
     batch_size = 10
     time_steps = 100
-    alpha = torch.tensor(0.995)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
-    layer = ALIFSqueeze(alpha_mem=alpha, threshold=1, alpha_adapt=alpha, batch_size=batch_size)
+    layer = ALIFSqueeze(tau_mem=tau_mem, threshold=1, tau_adapt=tau_mem, batch_size=batch_size)
     spike_output = layer(input_current)
     
     assert input_current.shape == spike_output.shape
@@ -31,9 +33,10 @@ def test_alif_minimum_spike_threshold():
     batch_size = 10
     time_steps = 100
     threshold = 10
-    alpha = torch.tensor(0.9)
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    layer = ALIF(alpha_mem=alpha, threshold=threshold, alpha_adapt=alpha,)
+    layer = ALIF(tau_mem=tau_mem, threshold=threshold, tau_adapt=tau_mem,)
     spike_output = layer(input_current)
 
     assert (layer.b_0 + layer.adapt_scale + layer.b >= threshold).all(), "Spike thresholds should not drop below initital threshold."
@@ -46,7 +49,7 @@ def test_alif_minimum_spike_threshold():
 #     adapt_scale = float(1/(1-alpha))
 #     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
 #     input_current[:,0,:,:] = 1 / (1-alpha)# only inject current in the first time step
-#     layer = ALIF(alpha_mem=alpha, alpha_adapt=alpha, threshold=threshold, adapt_scale=adapt_scale)
+#     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, threshold=threshold, adapt_scale=adapt_scale)
 #     spike_output = layer(input_current)
 
 #     assert (layer.threshold > threshold).all()
@@ -61,8 +64,9 @@ def test_alif_zero_grad():
     time_steps = 100
     n_neurons = 20
     threshold = 100
-    alpha = 0.995
-    sl = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
+    tau_mem = torch.tensor(30)
+    alpha = torch.exp(-1/tau_mem)
+    sl = ALIF(tau_mem=tau_mem, threshold=threshold, tau_adapt=tau_mem)
     conv = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,
@@ -70,7 +74,7 @@ def test_alif_zero_grad():
         padding=1,
         groups=time_steps,
     )
-    sl_0 = ALIF(alpha_mem=torch.tensor(alpha), threshold=threshold, alpha_adapt=torch.tensor(alpha))
+    sl_0 = ALIF(tau_mem=tau_mem, threshold=threshold, tau_adapt=tau_mem)
     conv_0 = torch.nn.Conv1d(
         in_channels=time_steps,
         out_channels=time_steps,

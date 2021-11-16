@@ -15,7 +15,7 @@ window = 1.0
 class LIF(SpikingLayer):
     def __init__(
         self,
-        alpha_mem: Union[float, torch.Tensor],
+        tau_mem: Union[float, torch.Tensor],
         threshold: Union[float, torch.Tensor] = 1.0,
         membrane_reset: bool = False,
         threshold_low: Optional[float] = None,
@@ -35,8 +35,8 @@ class LIF(SpikingLayer):
 
         Parameters
         ----------
-        alpha_mem: float
-            Membrane potential decay time constant.
+        tau_mem: float
+            Membrane potential time constant.
         threshold: float
             Spiking threshold of the neuron, defaults to 1.
         membrane_reset: bool
@@ -57,8 +57,12 @@ class LIF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
-        self.alpha_mem = alpha_mem
+        self.tau_mem = tau_mem
         self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+
+    @property
+    def alpha_mem(self):
+        return torch.exp(-1/self.tau_mem)
 
     def check_states(self, input_current):
         """Initialise neuron membrane potential states when the first input is received."""
@@ -110,10 +114,11 @@ class LIF(SpikingLayer):
             self.update_state_after_spike()
 
             # Decay the membrane potential
-            self.v_mem = self.v_mem * self.alpha_mem
+            alpha_mem = self.alpha_mem
+            self.v_mem = self.v_mem * alpha_mem
 
             # Add the input currents which are normalised by tau to membrane potential state
-            self.v_mem = self.v_mem + (1 - self.alpha_mem) * input_current[:, step]
+            self.v_mem = self.v_mem + (1 - alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
             if self.threshold_low:
@@ -126,7 +131,7 @@ class LIF(SpikingLayer):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict["alpha_mem"] = self.alpha_mem
+        param_dict["tau_mem"] = self.tau_mem
 
         return param_dict
 

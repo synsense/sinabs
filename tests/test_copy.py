@@ -48,7 +48,7 @@ def test_deepcopy_lif():
     from sinabs.layers import LIF, LIFSqueeze
 
     kwargs = dict(
-        threshold=0.5, threshold_low=-0.4, membrane_subtract=0.45, alpha_mem=0.8
+        threshold=0.5, threshold_low=-0.4, membrane_subtract=0.45, tau_mem=20
     )
 
     for reset in (True, False):
@@ -82,7 +82,7 @@ def test_deepcopy_lif():
             assert layer_copy.threshold_low == layer_orig.threshold_low
             assert layer_copy.membrane_subtract == layer_orig.membrane_subtract
             assert layer_copy.membrane_reset == layer_orig.membrane_reset
-            assert layer_copy.alpha_mem == layer_orig.alpha_mem
+            assert layer_copy.tau_mem == layer_orig.tau_mem
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size
             if hasattr(layer_orig, "num_timesteps"):
@@ -93,8 +93,8 @@ def test_deepcopy_alif():
     from sinabs.layers import ALIF, ALIFSqueeze
 
     kwargs = dict(
-        alpha_mem=0.9,
-        alpha_adapt=0.99,
+        tau_mem=20,
+        tau_adapt=10,
         adapt_scale=1.3,
         threshold=0.5,
         threshold_low=-0.4,
@@ -132,8 +132,8 @@ def test_deepcopy_alif():
             assert layer_copy.threshold_low == layer_orig.threshold_low
             assert layer_copy.membrane_subtract == layer_orig.membrane_subtract
             assert layer_copy.membrane_reset == layer_orig.membrane_reset
-            assert layer_copy.alpha_mem == layer_orig.alpha_mem
-            assert layer_copy.alpha_adapt == layer_orig.alpha_adapt
+            assert layer_copy.tau_mem == layer_orig.tau_mem
+            assert layer_copy.tau_adapt == layer_orig.tau_adapt
             assert layer_copy.adapt_scale == layer_orig.adapt_scale
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size
@@ -144,9 +144,9 @@ def test_deepcopy_alif():
 def test_deepcopy_expleak():
     from sinabs.layers import ExpLeak, ExpLeakSqueeze
 
-    layer = ExpLeak(alpha=0.8)
-    layer_squeeze_nts = ExpLeakSqueeze(alpha=0.9, num_timesteps=10)
-    layer_squeeze_batch = ExpLeakSqueeze(alpha=0.9, batch_size=10)
+    layer = ExpLeak(tau=10)
+    layer_squeeze_nts = ExpLeakSqueeze(tau=10, num_timesteps=10)
+    layer_squeeze_batch = ExpLeakSqueeze(tau=10, batch_size=10)
 
     for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts):
 
@@ -165,7 +165,7 @@ def test_deepcopy_expleak():
             assert (b0 == b1).all()
             assert b0 is not b1
 
-        assert layer_copy.alpha == layer_orig.alpha
+        assert layer_copy.tau == layer_orig.tau
         if hasattr(layer_orig, "batch_size"):
             assert layer_orig.batch_size == layer_copy.batch_size
         if hasattr(layer_orig, "num_timesteps"):
