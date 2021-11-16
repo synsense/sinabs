@@ -48,13 +48,41 @@ class SpikingLayer(StatefulLayer):
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
 
+    def reset_states(self, shape=None, randomize=False):
+        """
+        Reset the state of all neurons in this layer
+
+        Parameters
+        ----------
+        shape : None or Tuple of ints
+            New shape for states. Generally states can be arbitrary and have no
+            time dimension.
+        randomize : bool
+            If `True`, draw states uniformly between `self.threshold` and
+            `self.threshold_low`, or -self.threshold if `self.threshold_low` is
+            `None`. Otherwise set states to 0.
+        """
+        device = self.state.device
+        if shape is None:
+            shape = self.state.shape
+
+        if randomize:
+            # State between lower and upper threshold
+            low = self.threshold_low or -self.threshold
+            width = self.threshold - low
+            self.state = torch.rand(shape, device=device) * width + low
+        else:
+            self.state = torch.zeros(shape, device=self.state.device)
+
+        self.activations = torch.zeros(shape, device=self.activations.device)
+
     @property
     def _param_dict(self) -> dict:
         """
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
         """
-        param_dict = super()._param_dict()
+        param_dict = super()._param_dict
         param_dict["threshold"] = self.threshold
         param_dict["threshold_low"] = self.threshold_low
         param_dict["membrane_reset"] = self.membrane_reset
@@ -72,21 +100,3 @@ class SpikingLayer(StatefulLayer):
     @membrane_subtract.setter
     def membrane_subtract(self, new_val):
         self._membrane_subtract = new_val
-
-    def reset_states(self, shape=None, randomize=False):
-        """
-        Reset the state of all neurons in this layer
-        """
-        device = self.state.device
-        if shape is None:
-            shape = self.state.shape
-
-        if randomize:
-            # State between lower and upper threshold
-            low = self.threshold_low or -self.threshold
-            width = self.threshold - low
-            self.state = torch.rand(shape, device=device) * width + low
-            self.activations = torch.zeros(shape, device=self.activations.device)
-        else:
-            self.state = torch.zeros(shape, device=self.state.device)
-            self.activations = torch.zeros(shape, device=self.activations.device)

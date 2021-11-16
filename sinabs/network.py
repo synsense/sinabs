@@ -5,10 +5,7 @@ import torch.nn as nn
 import numpy as np
 import pandas as pd
 from typing import Optional, Union, List, Tuple
-from .utils import (
-    get_network_activations,
-    get_activations,
-)
+from .utils import get_network_activations, get_activations
 from .layers import SpikingLayer
 from .synopcounter import SNNSynOpCounter
 
@@ -46,7 +43,9 @@ class Network(torch.nn.Module):
             self.synops_counter = SNNSynOpCounter(self.spiking_model)
 
         if input_shape is not None and spiking_model is not None:
-            self._compute_shapes(input_shape, batch_size=batch_size, num_timesteps=num_timesteps)
+            self._compute_shapes(
+                input_shape, batch_size=batch_size, num_timesteps=num_timesteps
+            )
 
     @property
     def layers(self):
@@ -69,10 +68,7 @@ class Network(torch.nn.Module):
         if num_timesteps is None:
             num_timesteps = 1
         shape = [batch_size * num_timesteps] + list(input_shape)
-        dummy_input = torch.zeros(
-            shape,
-            requires_grad=False
-        ).to(device)
+        dummy_input = torch.zeros(shape, requires_grad=False).to(device)
         # do a forward pass
         self(dummy_input)
 
@@ -131,10 +127,7 @@ class Network(torch.nn.Module):
         return analog_activations, spike_rates, name_list
 
     def plot_comparison(
-        self,
-        data,
-        name_list: Optional[ArrayLike] = None,
-        compute_rate=False,
+        self, data, name_list: Optional[ArrayLike] = None, compute_rate=False
     ):
         """
         Plots a scatter plot of all the activations
@@ -150,10 +143,9 @@ class Network(torch.nn.Module):
         """
         import pylab
 
-        analog_activations, spike_rates, name_list = self.compare_activations(data,
-                                                                              name_list=name_list,
-                                                                              compute_rate=compute_rate,
-                                                                              )
+        analog_activations, spike_rates, name_list = self.compare_activations(
+            data, name_list=name_list, compute_rate=compute_rate
+        )
         for nLyrIdx in range(len(name_list)):
             pylab.scatter(
                 spike_rates[nLyrIdx],
@@ -184,3 +176,54 @@ class Network(torch.nn.Module):
             warnings.warn("num_evs_in is deprecated and has no effect")
 
         return self.synops_counter.get_synops()
+
+    def to_backend(self, backend):
+        converted_module_names = list()
+        for name, module in self.named_modules():
+            # Don't call the method on `self` (empty name)
+            if name and hasattr(module, "to_backend"):
+                try:
+                    # Convert module backend
+                    new_module = module.to_backend(backend)
+                except RuntimeError:
+                    # Module could not be converted. Go on to next.
+                    continue
+                else:
+                    # If-statement prevents nested modules being replaced multiple times
+                    if not isinstance(module, Network):
+                        # Replace module inside self
+                        parent, child_name = get_parent_module_by_name(self, name)
+                        setattr(parent, child_name, new_module)
+                        # Add module to list of converted modules
+                        converted_module_names.append(name)
+        converted_modules_string = "\n".join(converted_module_names)
+        print(f"Converted the following modules:\n{converted_modules_string}")
+        return self
+
+
+def get_parent_module_by_name(
+    root: torch.nn.Module, name: str
+) -> (torch.nn.Module, str):
+    """
+    Find a nested Module of a given name inside a Module, and return its parent
+    Module.
+
+    Args:
+        root: The Module inside which to look for the nested Module
+        name: Name of the Module that is being searched for within root. Must
+              contain all parent modules, separated by a `.` , e.g.
+              "root.nested_module1.nested_module2.desired_module"
+    Returns:
+        torch.nn.Module: The Module that contains the Module with the given name. In the example
+        above this would be `nested_module2`.
+        str: The name of the child, without parent modules, e.g. "desired_module"
+    """
+    if "." not in name:
+        if not hasattr(root, name):
+            raise KeyError(f"The requested module `{name}` could not be found.")
+
+        return root, name
+    else:
+        child_name, *rest = name.split(".")
+        child = getattr(root, child_name)
+        return get_parent_module_by_name(child, ".".join(rest))

@@ -123,6 +123,13 @@ class LIF(SpikingLayer):
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes
 
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict["alpha_mem"] = self.alpha_mem
+
+        return param_dict
+
 
 LIFRecurrent = recurrent_class(LIF)
 LIFSqueeze = squeeze_class(LIF)

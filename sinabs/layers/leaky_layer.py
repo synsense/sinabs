@@ -47,5 +47,16 @@ class ExpLeak(StatefulLayer):
 
         return out_state
 
+    @property
+    def _param_dict(self) -> dict:
+        """
+        Dict of all parameters relevant for creating a new instance with same
+        parameters as `self`
+        """
+        param_dict = super()._param_dict
+        param_dict["alpha"] = self.alpha
+
+        return param_dict
+
 
 ExpLeakSqueeze = squeeze_class(ExpLeak)

@@ -18,6 +18,7 @@ class IAF(SpikingLayer):
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
+        window: float = 1,
         *args,
         **kwargs,
     ):
@@ -27,15 +28,18 @@ class IAF(SpikingLayer):
 
         Parameters
         ----------
-        threshold: float
+        threshold : float
             Spiking threshold of the neuron.
-        threshold_low: float or None
+        threshold_low : float or None
             Lower bound for membrane potential.
-        membrane_subtract: float or None
+        membrane_subtract : float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
+        membrane_reset : bool
             If True, reset the membrane to 0 on spiking.
+        window : float
+            Distance between step of Heaviside surrogate gradient and threshold.
+            (Relative to size of threshold)
         """
         super().__init__(
             *args,
@@ -96,7 +100,9 @@ class IAF(SpikingLayer):
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
 
             # generate spikes
-            activations = self.reset_function.apply(state, threshold, self.learning_window)
+            activations = self.reset_function.apply(
+                state, threshold, self.learning_window
+            )
             spikes.append(activations)
 
         self.state = state
@@ -106,6 +112,13 @@ class IAF(SpikingLayer):
         self.spikes_number = all_spikes.abs().sum()
 
         return all_spikes
+
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(window=self.learning_window / self.threshold)
+
+        return param_dict
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.
