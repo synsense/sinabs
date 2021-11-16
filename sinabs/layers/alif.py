@@ -74,7 +74,7 @@ class ALIF(SpikingLayer):
     def check_states(self, input_current):
         """Initialise spike threshold states when the first input is received."""
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
-        if self.state.shape != shape_without_time:
+        if self.v_mem.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
 
     def forward(self, input_current: torch.Tensor):
@@ -99,24 +99,24 @@ class ALIF(SpikingLayer):
 
         for step in range(time_steps):
             # Decay the membrane potential
-            self.state = self.state * self.alpha_mem
+            self.v_mem = self.v_mem * self.alpha_mem
 
             # Add the input currents which are normalised by tau to membrane potential state
-            self.state = self.state + (1 - self.alpha_mem) * input_current[:, step]
+            self.v_mem = self.v_mem + (1 - self.alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
             if self.threshold_low:
-                self.state = torch.clamp(self.state, min=self.threshold_low)
+                self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
 
             # generate spikes
             activations = self.reset_function.apply(
-                self.state,
+                self.v_mem,
                 self.b * self.adapt_scale + self.b_0,
                 (self.b * self.adapt_scale + self.b_0) * window,
             )
             output_spikes[:, step] = activations
 
-            self.state = self.state - activations * (
+            self.v_mem = self.v_mem - activations * (
                 self.b_0 + self.adapt_scale * self.b
             )
 

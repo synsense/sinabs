@@ -38,6 +38,6 @@ def test_leaky_membrane_decay():
     membrane_decay = alpha ** (time_steps-1)
     # account for rounding errors with .isclose()
     assert (membrane_output[:,0] == 1).all(), "Output for first time step is not correct."
-    assert (membrane_output[:,-1] == layer.state).all(), "Output of last time step does not correspond to last layer state."
-    assert torch.isclose(layer.state, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
+    assert (membrane_output[:,-1] == layer.v_mem).all(), "Output of last time step does not correspond to last layer state."
+    assert torch.isclose(layer.v_mem, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
 

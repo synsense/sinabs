@@ -36,7 +36,7 @@ class SpikingLayer(StatefulLayer):
         membrane_reset: bool
             If True, reset the membrane to 0 on spiking.
         """
-        super().__init__(state_name="state", *args, **kwargs)
+        super().__init__(state_name="v_mem", *args, **kwargs)
 
         # Initialize neuron states
         self.threshold = threshold
@@ -62,17 +62,17 @@ class SpikingLayer(StatefulLayer):
             `self.threshold_low`, or -self.threshold if `self.threshold_low` is
             `None`. Otherwise set states to 0.
         """
-        device = self.state.device
+        device = self.v_mem.device
         if shape is None:
-            shape = self.state.shape
+            shape = self.v_mem.shape
 
         if randomize:
             # State between lower and upper threshold
             low = self.threshold_low or -self.threshold
             width = self.threshold - low
-            self.state = torch.rand(shape, device=device) * width + low
+            self.v_mem = torch.rand(shape, device=device) * width + low
         else:
-            self.state = torch.zeros(shape, device=self.state.device)
+            self.v_mem = torch.zeros(shape, device=self.v_mem.device)
 
         self.activations = torch.zeros(shape, device=self.activations.device)
 

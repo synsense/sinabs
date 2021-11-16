@@ -54,7 +54,7 @@ def test_lif_membrane_decay():
     # first time step is not decayed
     membrane_decay = alpha ** (time_steps-1)
     # account for rounding errors with .isclose()
-    assert torch.isclose(layer.state, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
+    assert torch.isclose(layer.v_mem, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
 
 def test_lif_membrane_reset():
     batch_size = 10

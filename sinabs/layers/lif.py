@@ -63,23 +63,23 @@ class LIF(SpikingLayer):
     def check_states(self, input_current):
         """Initialise neuron membrane potential states when the first input is received."""
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
-        if self.state.shape != shape_without_time:
+        if self.v_mem.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
 
     def detect_spikes(self):
         """Compute spike outputs for a single time step. This method does not reset the membrane potential."""
         self.activations = self.reset_function.apply(
-            self.state, self.threshold, self.threshold * window
+            self.v_mem, self.threshold, self.threshold * window
         )
 
     def update_state_after_spike(self):
         """Update membrane potentials to either reset or subtract by given value after spikes occured at this time step."""
         if self.membrane_reset:
             # sum the previous state only where there were no spikes
-            self.state = self.state * (self.activations == 0.0)
+            self.v_mem = self.v_mem * (self.activations == 0.0)
         else:
             # subtract a number of membrane_subtract's as there are spikes
-            self.state = self.state - self.activations * self.membrane_subtract
+            self.v_mem = self.v_mem - self.activations * self.membrane_subtract
 
     def forward(self, input_current: torch.Tensor):
         """
@@ -110,14 +110,14 @@ class LIF(SpikingLayer):
             self.update_state_after_spike()
 
             # Decay the membrane potential
-            self.state = self.state * self.alpha_mem
+            self.v_mem = self.v_mem * self.alpha_mem
 
             # Add the input currents which are normalised by tau to membrane potential state
-            self.state = self.state + (1 - self.alpha_mem) * input_current[:, step]
+            self.v_mem = self.v_mem + (1 - self.alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
             if self.threshold_low:
-                self.state = torch.clamp(self.state, min=self.threshold_low)
+                self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
 
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()

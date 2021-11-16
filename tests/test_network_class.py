@@ -62,9 +62,9 @@ def compare_networks(net0, net1):
 
 def test_reset_states():
     network(data)
-    assert network.spiking_model[1].state.sum() != 0
+    assert network.spiking_model[1].v_mem.sum() != 0
     network.reset_states()
-    assert network.spiking_model[1].state.sum() == 0
+    assert network.spiking_model[1].v_mem.sum() == 0
 
 
 def test_compare_activations():

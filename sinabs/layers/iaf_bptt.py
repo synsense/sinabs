@@ -69,7 +69,7 @@ class IAF(SpikingLayer):
 
         # Ensure the neuron state are initialized
         shape_notime = (input_spikes.shape[0], *input_spikes.shape[2:])
-        if self.state.shape != shape_notime:
+        if self.v_mem.shape != shape_notime:
             self.reset_states(shape=shape_notime, randomize=False)
 
         # Determine no. of time steps from input
@@ -79,7 +79,7 @@ class IAF(SpikingLayer):
         threshold = self.threshold
         threshold_low = self.threshold_low
 
-        state = self.state
+        state = self.v_mem
         activations = self.activations
         spikes = []
         for iCurrentTimeStep in range(time_steps):
@@ -105,7 +105,7 @@ class IAF(SpikingLayer):
             )
             spikes.append(activations)
 
-        self.state = state
+        self.v_mem = state
         self.tw = time_steps
         self.activations = activations
         all_spikes = torch.stack(spikes).transpose(0, 1)

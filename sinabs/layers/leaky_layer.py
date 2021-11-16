@@ -26,13 +26,13 @@ class ExpLeak(StatefulLayer):
     def forward(self, input_current: torch.Tensor):
         # Ensure the neuron state are initialized
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
-        if self.state.shape != shape_without_time:
+        if self.v_mem.shape != shape_without_time:
             self.reset_states(shape=shape_without_time, randomize=False)
 
         # Determine no. of time steps from input
         time_steps = input_current.shape[1]
 
-        state = self.state
+        state = self.v_mem
 
         out_state = []
         for step in range(time_steps):
@@ -40,7 +40,7 @@ class ExpLeak(StatefulLayer):
             state = state + input_current[:, step]  # Add input
             out_state.append(state)
 
-        self.state = state
+        self.v_mem = state
         self.tw = time_steps
 
         out_state = torch.stack(out_state).transpose(0, 1)

@@ -2,7 +2,7 @@ from typing import Tuple
 from warnings import warn
 import torch
 
-DEFAULT_STATE_NAME = "state"
+DEFAULT_STATE_NAME = "v_mem"
 
 
 class StatefulLayer(torch.nn.Module):
@@ -76,7 +76,7 @@ class StatefulLayer(torch.nn.Module):
         Reset the states in this layer
         """
 
-        device = self.state.device
+        device = self.v_mem.device
 
         for b in self.buffers():
             if shape is None:
@@ -84,9 +84,9 @@ class StatefulLayer(torch.nn.Module):
 
             if randomize:
                 # State between 0 and 1
-                self.state = torch.rand(shape, device=device)
+                self.v_mem = torch.rand(shape, device=device)
             else:
-                self.state = torch.zeros(shape, device=device)
+                self.v_mem = torch.zeros(shape, device=device)
 
     def to_backend(self, backend):
         if backend == self.backend:
