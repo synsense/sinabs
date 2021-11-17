@@ -132,7 +132,7 @@ class ALIF(SpikingLayer):
             )
             output_spikes.append(self.activations)
 
-        output_spikes = torch.stack(output_spikes,1)
+        output_spikes = torch.stack(output_spikes, 1)
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes

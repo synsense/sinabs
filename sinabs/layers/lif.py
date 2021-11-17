@@ -105,8 +105,8 @@ class LIF(SpikingLayer):
         self.check_states(input_current)
 
         time_steps = input_current.shape[1]
-        output_spikes = torch.zeros_like(input_current)
 
+        output_spikes = []
         for step in range(time_steps):
             # Reset membrane potential for neurons that spiked
             self.update_state_after_spike()
@@ -124,8 +124,9 @@ class LIF(SpikingLayer):
 
             # generate spikes
             self.detect_spikes()
-            output_spikes[:, step] = self.activations
+            output_spikes.append(self.activations)
 
+        output_spikes = torch.stack(output_spikes, 1)
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes
