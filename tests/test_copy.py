@@ -144,9 +144,9 @@ def test_deepcopy_alif():
 def test_deepcopy_expleak():
     from sinabs.layers import ExpLeak, ExpLeakSqueeze
 
-    layer = ExpLeak(tau=10)
-    layer_squeeze_nts = ExpLeakSqueeze(tau=10, num_timesteps=10)
-    layer_squeeze_batch = ExpLeakSqueeze(tau=10, batch_size=10)
+    layer = ExpLeak(tau_leak=10)
+    layer_squeeze_nts = ExpLeakSqueeze(tau_leak=10, num_timesteps=10)
+    layer_squeeze_batch = ExpLeakSqueeze(tau_leak=10, batch_size=10)
 
     for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts):
 
@@ -165,7 +165,7 @@ def test_deepcopy_expleak():
             assert (b0 == b1).all()
             assert b0 is not b1
 
-        assert layer_copy.tau == layer_orig.tau
+        assert layer_copy.tau_leak == layer_orig.tau_leak
         if hasattr(layer_orig, "batch_size"):
             assert layer_orig.batch_size == layer_copy.batch_size
         if hasattr(layer_orig, "num_timesteps"):

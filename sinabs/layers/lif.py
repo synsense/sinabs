@@ -26,12 +26,14 @@ class LIF(SpikingLayer):
         """
         Pytorch implementation of a Leaky Integrate and Fire neuron layer.
 
+        Neuron dynamics in discrete time: 
+
         .. math ::
-            V_{mem}(t) = V_{mem}(t-1)\\alpha + \\sum z(t)
+            V_{mem}(t+1) = \\alpha V_{mem}(t) + (1-\\alpha)\\sum z(t)
 
             \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
 
-        where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
+        where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
         Parameters
         ----------

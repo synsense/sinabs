@@ -6,9 +6,9 @@ import pytest
 
 def test_leaky_basic():
     time_steps = 100
-    tau = torch.tensor(30)
+    tau_leak = torch.tensor(30)
     input_current = torch.rand(time_steps, 2, 7, 7)
-    layer = ExpLeak(tau=tau)
+    layer = ExpLeak(tau_leak=tau_leak)
     membrane_output = layer(input_current)
 
     assert input_current.shape == membrane_output.shape
@@ -18,9 +18,9 @@ def test_leaky_basic():
 def test_leaky_squeezed():
     batch_size = 10
     time_steps = 100
-    tau = torch.tensor(30)
+    tau_leak = torch.tensor(30)
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7)
-    layer = ExpLeakSqueeze(tau=tau, batch_size=batch_size)
+    layer = ExpLeakSqueeze(tau_leak=tau_leak, batch_size=batch_size)
     membrane_output = layer(input_current)
 
     assert input_current.shape == membrane_output.shape
@@ -30,11 +30,11 @@ def test_leaky_squeezed():
 def test_leaky_membrane_decay():
     batch_size = 10
     time_steps = 100
-    tau = torch.tensor(30)
-    alpha = torch.exp(-1/tau)
+    tau_leak = torch.tensor(30)
+    alpha = torch.exp(-1/tau_leak)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
     input_current[:,0] = 1 # only inject current in the first time step
-    layer = ExpLeak(tau=tau)
+    layer = ExpLeak(tau_leak=tau_leak)
     membrane_output = layer(input_current)
 
     # first time step is not decayed

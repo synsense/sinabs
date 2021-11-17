@@ -30,8 +30,8 @@ Adaptive Leaky Integrate Fire (ALIF) layer
 .. autoclass:: ALIF
     :members:
 
-Auxiliary spiking layers
-------------------------
+Auxiliary layers
+----------------
 Cropping2dLayer
 ~~~~~~~~~~~~~~~
 .. autoclass:: Cropping2dLayer
@@ -45,6 +45,16 @@ SpikingMaxPooling2dLayer
 InputLayer
 ~~~~~~~~~~
 .. autoclass:: InputLayer
+    :members:
+
+ExpLeak
+~~~~~~~
+.. autoclass:: ExpLeak
+    :members:
+
+StatefulLayer
+~~~~~~~~~~~~~
+.. autoclass:: StatefulLayer
     :members:
 
 Hybrid layers

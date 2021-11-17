@@ -30,14 +30,19 @@ class ALIF(SpikingLayer):
         Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
         https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
 
-        In addition to the LIF neuron mechanics, the firing threshold :math:`\\theta` also adapts in the following way:
+        Neuron dynamics in discrete time: 
 
         .. math ::
-            \\frac{d\\theta}{dt} = - \\frac{\\theta - \\theta _{0}}{\\tau_{\\theta}}
+            V(t+1) = \\alpha V(t) + (1-\\alpha) \\sum w.s(t)
 
-            \\text{if } V_m(t) = V_{th} \\text{, then } \\theta \\rightarrow \\theta + \\alpha
+            B(t+1) = b0 + \\text{adapt_scale } b(t)
 
-        where :math:`alpha` corresponds to the `adaptation` and :math:`\\theta` to the `threshold` parameter.
+            b(t+1) = \\rho b(t) + (1-\\rho) s(t)
+
+            \\text{if } V_{mem}(t) >= B(t) \\text{, then } V_{mem} \\rightarrow V_{mem} - b0, b \\rightarrow 0
+
+        where :math:`\\alpha = e^{-1/\\tau_{mem}}`, :math:`\\rho = e^{-1/\\tau_{adapt}}` 
+        and :math:`w.s(t)` is the input current for a spike s and weight w.
 
         Parameters
         ----------

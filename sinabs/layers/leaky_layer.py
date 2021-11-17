@@ -8,21 +8,21 @@ __all__ = ["ExpLeak", "ExpLeakSqueeze"]
 
 
 class ExpLeak(StatefulLayer):
-    def __init__(self, tau: Union[float, torch.Tensor], *args, **kwargs):
+    def __init__(self, tau_leak: Union[float, torch.Tensor], *args, **kwargs):
         """
         Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
 
         Parameters
         ----------
-        tau_leak: float
+        tau: float
             Rate of leak of the state
         """
         super().__init__(*args, **kwargs)
-        self.tau = tau
+        self.tau_leak = tau_leak
 
     @property
     def alpha(self):
-        return torch.exp(-1/self.tau)
+        return torch.exp(-1/self.tau_leak)
     
     def forward(self, input_current: torch.Tensor):
         # Ensure the neuron state are initialized
@@ -55,7 +55,7 @@ class ExpLeak(StatefulLayer):
         parameters as `self`
         """
         param_dict = super()._param_dict
-        param_dict["tau"] = self.tau
+        param_dict["tau_leak"] = self.tau_leak
 
         return param_dict
 
