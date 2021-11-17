@@ -10,7 +10,7 @@ from .spiking_layer import SpikingLayer
 from .stateful_layer import StatefulLayer
 from .iaf_bptt import IAF, IAFSqueeze
 from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
-from .alif import ALIF, ALIFSqueeze
+from .alif import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
 from .leaky_layer import ExpLeak, ExpLeakSqueeze
 
 try:

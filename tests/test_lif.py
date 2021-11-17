@@ -144,7 +144,7 @@ def test_lif_recurrent():
     batch_size = 5
     time_steps = 100
     tau_mem = torch.tensor(30)
-    alpha = torch.tensor(0.99)
+    alpha = torch.exp(-1/tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
     n_neurons = np.product(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
@@ -162,7 +162,7 @@ def test_lif_recurrent_squeezed():
     batch_size = 10
     time_steps = 100
     tau_mem = torch.tensor(30)
-    alpha = torch.tensor(0.99)
+    alpha = torch.exp(-1/tau_mem)
     input_dimensions = (batch_size*time_steps, 2, 7, 7)
     n_neurons = np.product(input_dimensions[1:])
     input_current = torch.rand(*input_dimensions) / (1-alpha)

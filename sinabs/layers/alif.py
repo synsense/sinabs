@@ -2,6 +2,7 @@ from typing import Optional, Union
 import torch
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
+from .recurrent_module import recurrent_class
 from .lif import LIF
 from .functional import ThresholdSubtract, ThresholdReset
 
@@ -157,4 +158,6 @@ class ALIF(SpikingLayer):
         return param_dict
 
 
+ALIFRecurrent = recurrent_class(ALIF)
 ALIFSqueeze = squeeze_class(ALIF)
+ALIFRecurrentSqueeze = squeeze_class(ALIFRecurrent)
