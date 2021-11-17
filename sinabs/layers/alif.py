@@ -109,34 +109,30 @@ class ALIF(SpikingLayer):
         self.check_states(input_current)
 
         time_steps = input_current.shape[1]
-        output_spikes = torch.zeros_like(input_current)
-
+        
+        output_spikes = []
         for step in range(time_steps):
-            # Decay the membrane potential
-            self.v_mem = self.v_mem * self.alpha_mem
+            # Decay the spike threshold and add adaptation factor to it.
+            self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * self.activations
+            
+            self.threshold = self.b_0 + self.adapt_scale*self.b
 
-            # Add the input currents which are normalised by tau to membrane potential state
-            self.v_mem = self.v_mem + (1 - self.alpha_mem) * input_current[:, step]
+            # Decay the membrane potential and add the input currents which are normalised by tau
+            self.v_mem = self.alpha_mem * self.v_mem + (1 - self.alpha_mem) * input_current[:, step]  - self.threshold * self.activations
 
             # Clip membrane potential that is too low
             if self.threshold_low:
                 self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
 
             # generate spikes
-            activations = self.reset_function.apply(
+            self.activations = self.reset_function.apply(
                 self.v_mem,
-                self.b * self.adapt_scale + self.b_0,
-                (self.b * self.adapt_scale + self.b_0) * window,
+                self.threshold,
+                self.threshold * window,
             )
-            output_spikes[:, step] = activations
+            output_spikes.append(self.activations)
 
-            self.v_mem = self.v_mem - activations * (
-                self.b_0 + self.adapt_scale * self.b
-            )
-
-            # Decay the spike threshold and add adaption constant to it.
-            self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * activations
-
+        output_spikes = torch.stack(output_spikes,1)
         self.tw = time_steps
         self.spikes_number = output_spikes.abs().sum()
         return output_spikes
