@@ -125,8 +125,8 @@ class ChipFactory:
             ev.y = row["y"]
             ev.feature = row["p"]
             if reset_timestamps:
-                ev.timestamp = row["t"] - tstart + (delay_factor * 1e6)# Time in uS
+                ev.timestamp = row["t"] - tstart + int(delay_factor * 1e6)# Time in uS
             else:
-                ev.timestamp = row["t"] + (delay_factor * 1e6)
+                ev.timestamp = row["t"] + int(delay_factor * 1e6)
             events.append(ev)
         return events
