@@ -50,6 +50,15 @@ def squeeze_class(cls: Type) -> Type:
 
         """
 
+        # New dict to prevent sharing object with parent classs
+        if hasattr(cls, "external_backends"):
+            external_backends = {
+                name: squeeze_class(backend)
+                for name, backend in cls.external_backends.items()
+            }
+        else:
+            external_backends = dict()
+
         def __init__(
             self,
             num_timesteps: Optional[int] = None,
@@ -98,12 +107,13 @@ def squeeze_class(cls: Type) -> Type:
         Same as :py:class:`{cls.__name__}`.forward but expects and returns batch
         and time as a single dimension: (batch x time, ...)"""
 
-        def get_neuron_params(self) -> dict:
+        @property
+        def _param_dict(self) -> dict:
             """
             Dict of all parameters relevant for creating a new instance with same
             parameters as `self`
             """
-            param_dict = super().get_neuron_params()
+            param_dict = super()._param_dict
             param_dict.update(
                 batch_size=self._batch_size, num_timesteps=self._num_timesteps
             )

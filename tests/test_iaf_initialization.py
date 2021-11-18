@@ -11,6 +11,7 @@ def test_spikelayer_init():
 
     out = layer(inp)
     print(out.shape)
+    assert inp.shape == out.shape
 
 
 def test_membrane_subtract():
@@ -24,7 +25,7 @@ def test_membrane_subtract():
     out = layer(inp.unsqueeze(0)).squeeze(0)
     assert torch.equal(out, exp)
     assert layer.activations.item() == 0.0
-    assert np.allclose(layer.state.item(), 1.6)
+    assert np.allclose(layer.v_mem.item(), 1.6)
 
 
 def test_membrane_subtract_multiple_spikes():
@@ -37,7 +38,7 @@ def test_membrane_subtract_multiple_spikes():
     out = layer(inp.unsqueeze(0)).squeeze(0)
     assert torch.equal(out, torch.tensor([[2.0], [0.0]]))
     assert layer.activations.item() == 0.0
-    assert np.allclose(layer.state.item(), 0.5)
+    assert np.allclose(layer.v_mem.item(), 0.5)
 
 
 def test_membrane_reset():
@@ -51,7 +52,7 @@ def test_membrane_reset():
     out = layer(inp.unsqueeze(0)).squeeze(0)
     assert torch.equal(out, exp)
     assert layer.activations.item() == 0.0
-    assert np.allclose(layer.state.item(), 0.5)
+    assert np.allclose(layer.v_mem.item(), 0.5)
 
 
 def test_membrane_reset_multiple_spikes():
@@ -64,7 +65,7 @@ def test_membrane_reset_multiple_spikes():
     out = layer(inp.unsqueeze(0)).squeeze(0)
     assert torch.equal(out, torch.tensor([[1.0], [0.0]]))
     assert layer.activations.item() == 0.0
-    assert np.allclose(layer.state.item(), 0.0)
+    assert np.allclose(layer.v_mem.item(), 0.0)
 
 
 def test_iaf_batching():

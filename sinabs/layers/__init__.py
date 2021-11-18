@@ -7,8 +7,32 @@ from .sumpool2d import SumPool2d
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .spiking_layer import SpikingLayer
+from .stateful_layer import StatefulLayer
 from .iaf_bptt import IAF, IAFSqueeze
-from .lif import LIF, LIFSqueeze
+from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
+from .alif import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
+from .leaky_layer import ExpLeak, ExpLeakSqueeze
+
+try:
+    from sinabs.slayer import layers as slayer_layers
+except ModuleNotFoundError:
+    pass
+else:
+    _layers_with_backend = (IAF, IAFSqueeze, LIF, LIFSqueeze)
+
+    for lyr in _layers_with_backend:
+        # Find equivalent slayer layer classes by name
+        lyr_slayer = getattr(slayer_layers, lyr.__name__)
+        # Add sinabs layer class to slayer version's external backends
+        if hasattr(lyr_slayer, "external_backends"):
+            lyr_slayer.external_backends[lyr.backend] = lyr
+        else:
+            lyr_slayer.external_backends = {lyr.backend: lyr}
+        # Add slayer version to sinabs layer class' external backends
+        if hasattr(lyr, "external_backends"):
+            lyr.external_backends[lyr_slayer.backend] = lyr_slayer
+        else:
+            lyr.external_backends = {lyr_slayer.backend: lyr_slayer}
 
 # Deprecated
 from .deprecated.flatten import FlattenLayer

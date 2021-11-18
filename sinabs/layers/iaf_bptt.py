@@ -2,7 +2,7 @@ from typing import Optional, Union
 
 import torch
 
-from .functional import threshold_subtract, threshold_reset
+from .functional import ThresholdSubtract, ThresholdReset
 from .spiking_layer import SpikingLayer
 from .pack_dims import squeeze_class
 
@@ -18,6 +18,7 @@ class IAF(SpikingLayer):
         threshold_low: Union[float, None] = -1.0,
         membrane_subtract: Optional[float] = None,
         membrane_reset=False,
+        window: float = 1,
         *args,
         **kwargs,
     ):
@@ -27,15 +28,18 @@ class IAF(SpikingLayer):
 
         Parameters
         ----------
-        threshold: float
+        threshold : float
             Spiking threshold of the neuron.
-        threshold_low: float or None
+        threshold_low : float or None
             Lower bound for membrane potential.
-        membrane_subtract: float or None
+        membrane_subtract : float or None
             The amount to subtract from the membrane potential upon spiking.
             Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
+        membrane_reset : bool
             If True, reset the membrane to 0 on spiking.
+        window : float
+            Distance between step of Heaviside surrogate gradient and threshold.
+            (Relative to size of threshold)
         """
         super().__init__(
             *args,
@@ -45,6 +49,8 @@ class IAF(SpikingLayer):
             membrane_subtract=membrane_subtract,
             membrane_reset=membrane_reset,
         )
+        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.learning_window = threshold * window
 
     def forward(self, input_spikes: torch.Tensor):
         """
@@ -63,7 +69,7 @@ class IAF(SpikingLayer):
 
         # Ensure the neuron state are initialized
         shape_notime = (input_spikes.shape[0], *input_spikes.shape[2:])
-        if self.state.shape != shape_notime:
+        if self.v_mem.shape != shape_notime:
             self.reset_states(shape=shape_notime, randomize=False)
 
         # Determine no. of time steps from input
@@ -73,7 +79,7 @@ class IAF(SpikingLayer):
         threshold = self.threshold
         threshold_low = self.threshold_low
 
-        state = self.state
+        state = self.v_mem
         activations = self.activations
         spikes = []
         for iCurrentTimeStep in range(time_steps):
@@ -94,19 +100,25 @@ class IAF(SpikingLayer):
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
 
             # generate spikes
-            if self.membrane_reset:
-                activations = threshold_reset(state, threshold, threshold * window)
-            else:
-                activations = threshold_subtract(state, threshold, threshold * window)
+            activations = self.reset_function.apply(
+                state, threshold, self.learning_window
+            )
             spikes.append(activations)
 
-        self.state = state
+        self.v_mem = state
         self.tw = time_steps
         self.activations = activations
         all_spikes = torch.stack(spikes).transpose(0, 1)
         self.spikes_number = all_spikes.abs().sum()
 
         return all_spikes
+
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(window=self.learning_window / self.threshold)
+
+        return param_dict
 
 
 # - Subclass to IAF, that accepts and returns data with batch and time dimensions squeezed.
