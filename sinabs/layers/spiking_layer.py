@@ -50,7 +50,7 @@ class SpikingLayer(StatefulLayer):
 
     def __deepcopy__(self, memo=None):
         # TODO: What is `memo`?
-        param_dict = self.get_neuron_params()
+        param_dict = self._param_dict
         other = self.__class__(**param_dict)
 
         other.v_mem = self.v_mem.detach().clone()
@@ -58,11 +58,8 @@ class SpikingLayer(StatefulLayer):
 
         return other
 
-    @abstractmethod
-    def forward(self, data):
-        pass
-
-    def get_neuron_params(self) -> dict:
+    @property
+    def _param_dict(self) -> dict:
         """
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
