@@ -48,6 +48,43 @@ class SpikingLayer(StatefulLayer):
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
 
+    def __deepcopy__(self, memo=None):
+        # TODO: What is `memo`?
+        param_dict = self.get_neuron_params()
+        other = self.__class__(**param_dict)
+
+        other.v_mem = self.v_mem.detach().clone()
+        other.activations = self.activations.detach().clone()
+
+        return other
+
+    @abstractmethod
+    def forward(self, data):
+        pass
+
+    def get_neuron_params(self) -> dict:
+        """
+        Dict of all parameters relevant for creating a new instance with same
+        parameters as `self`
+        """
+        return dict(
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self._membrane_subtract,
+            membrane_reset=self.membrane_reset,
+        )
+
+    @property
+    def membrane_subtract(self):
+        if self._membrane_subtract is not None:
+            return self._membrane_subtract
+        else:
+            return self.threshold
+
+    @membrane_subtract.setter
+    def membrane_subtract(self, new_val):
+        self._membrane_subtract = new_val
+
     def reset_states(self, shape=None, randomize=False):
         """
         Reset the state of all neurons in this layer
@@ -75,28 +112,3 @@ class SpikingLayer(StatefulLayer):
             self.v_mem = torch.zeros(shape, device=self.v_mem.device)
 
         self.activations = torch.zeros(shape, device=self.activations.device)
-
-    @property
-    def _param_dict(self) -> dict:
-        """
-        Dict of all parameters relevant for creating a new instance with same
-        parameters as `self`
-        """
-        param_dict = super()._param_dict
-        param_dict["threshold"] = self.threshold
-        param_dict["threshold_low"] = self.threshold_low
-        param_dict["membrane_reset"] = self.membrane_reset
-        param_dict["membrane_subtract"] = self._membrane_subtract
-
-        return param_dict
-
-    @property
-    def membrane_subtract(self):
-        if self._membrane_subtract is not None:
-            return self._membrane_subtract
-        else:
-            return self.threshold
-
-    @membrane_subtract.setter
-    def membrane_subtract(self, new_val):
-        self._membrane_subtract = new_val

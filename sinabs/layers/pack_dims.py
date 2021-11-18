@@ -107,13 +107,12 @@ def squeeze_class(cls: Type) -> Type:
         Same as :py:class:`{cls.__name__}`.forward but expects and returns batch
         and time as a single dimension: (batch x time, ...)"""
 
-        @property
-        def _param_dict(self) -> dict:
+        def get_neuron_params(self) -> dict:
             """
             Dict of all parameters relevant for creating a new instance with same
             parameters as `self`
             """
-            param_dict = super()._param_dict
+            param_dict = super().get_neuron_params()
             param_dict.update(
                 batch_size=self._batch_size, num_timesteps=self._num_timesteps
             )
