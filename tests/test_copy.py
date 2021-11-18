@@ -124,7 +124,7 @@ def test_deepcopy_alif():
             for p0, p1 in zip(layer_orig.parameters(), layer_copy.parameters()):
                 assert (p0 == p1).all()
                 assert p0 is not p1
-            for b0, b1 in zip(layer_orig.buffers(), layer_copy.buffers()):
+            for (name, b0), (name, b1) in zip(layer_orig.named_buffers(), layer_copy.named_buffers()):
                 assert (b0 == b1).all()
                 assert b0 is not b1
 

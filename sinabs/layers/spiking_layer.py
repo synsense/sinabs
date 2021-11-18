@@ -48,16 +48,6 @@ class SpikingLayer(StatefulLayer):
         self.register_buffer("activations", torch.zeros(1))
         self.spikes_number = None
 
-    def __deepcopy__(self, memo=None):
-        # TODO: What is `memo`?
-        param_dict = self._param_dict
-        other = self.__class__(**param_dict)
-
-        other.v_mem = self.v_mem.detach().clone()
-        other.activations = self.activations.detach().clone()
-
-        return other
-
     @property
     def _param_dict(self) -> dict:
         """
