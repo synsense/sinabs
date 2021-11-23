@@ -64,7 +64,7 @@ class LIF(SpikingLayer):
 
     @property
     def alpha_mem(self):
-        return torch.exp(-1/self.tau_mem)
+        return torch.exp(-torch.tensor(1 / self.tau_mem))
 
     def check_states(self, input_current):
         """Initialise neuron membrane potential states when the first input is received."""
@@ -120,8 +120,10 @@ class LIF(SpikingLayer):
 
             # Clip membrane potential that is too low
             if self.threshold_low:
-                self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
-
+                self.v_mem = (
+                    torch.nn.functional.relu(self.v_mem - self.threshold_low)
+                    + self.threshold_low
+                )
             # generate spikes
             self.detect_spikes()
             output_spikes.append(self.activations)

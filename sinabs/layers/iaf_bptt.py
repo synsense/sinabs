@@ -84,17 +84,17 @@ class IAF(SpikingLayer):
         spikes = []
         for iCurrentTimeStep in range(time_steps):
 
-            # update neuron states (membrane potentials)
+            # Reset or subtraction mechanism after spikes
             if self.membrane_reset:
                 # sum the previous state only where there were no spikes
-                state = input_spikes[:, iCurrentTimeStep] + state * (activations == 0.0)
+                state = state * (activations == 0.0)
             else:
                 # subtract a number of membrane_subtract's as there are spikes
-                state = (
-                    input_spikes[:, iCurrentTimeStep]
-                    + state
-                    - activations * self.membrane_subtract
-                )
+                state = state - activations * self.membrane_subtract
+
+            # Add synaptic input
+            state = input_spikes[:, iCurrentTimeStep] + state
+
             if threshold_low is not None:
                 # This is equivalent to functional.threshold. non zero threshold is not supported for onnx
                 state = torch.nn.functional.relu(state - threshold_low) + threshold_low
