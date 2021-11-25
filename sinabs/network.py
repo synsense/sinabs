@@ -177,27 +177,50 @@ class Network(torch.nn.Module):
 
         return self.synops_counter.get_synops()
 
-    def to_backend(self, backend):
+    def to_backend(self, backend, verbose=True):
         converted_module_names = list()
+        update_device = None
         for name, module in self.named_modules():
-            # Don't call the method on `self` (empty name)
+            # Don't call the method on `self` (empty name) to avoid unnecessary recursion
             if name and hasattr(module, "to_backend"):
-                try:
+                with warnings.catch_warnings():
+                    if not verbose:
+                        warnings.filterwarnings("ignore", category=RuntimeWarning)
                     # Convert module backend
                     new_module = module.to_backend(backend)
-                except RuntimeError:
-                    # Module could not be converted. Go on to next.
-                    continue
-                else:
-                    # If-statement prevents nested modules being replaced multiple times
-                    if not isinstance(module, Network):
-                        # Replace module inside self
-                        parent, child_name = get_parent_module_by_name(self, name)
-                        setattr(parent, child_name, new_module)
-                        # Add module to list of converted modules
-                        converted_module_names.append(name)
+
+                # If-statement prevents nested modules being replaced multiple times
+                if not isinstance(module, Network):
+                    # Replace module inside self
+                    parent, child_name = get_parent_module_by_name(self, name)
+
+                    # Test whether device changes
+                    old_module = getattr(parent, child_name)
+                    old_device = infer_module_device(old_module)
+                    new_device = infer_module_device(new_module)
+                    print(name, old_device, new_device)
+                    if old_device is not None and old_device != new_device:
+                        update_device = new_device
+
+                    # Replace module with version of different backend
+                    setattr(parent, child_name, new_module)
+
+                    # Add module to list of converted modules
+                    converted_module_names.append(name)
+
         converted_modules_string = "\n".join(converted_module_names)
-        print(f"Converted the following modules:\n{converted_modules_string}")
+        if verbose:
+            print(
+                f"Converted the following modules to backend {backend}:"
+                f"\n{converted_modules_string}"
+            )
+
+        # If any layer's device was changed, make sure all modules are on same device
+        if update_device is not None:
+            self.to(update_device)
+            if verbose:
+                print(f"Changed network device to {update_device}")
+
         return self
 
 
@@ -227,3 +250,26 @@ def get_parent_module_by_name(
         child_name, *rest = name.split(".")
         child = getattr(root, child_name)
         return get_parent_module_by_name(child, ".".join(rest))
+
+
+def infer_module_device(module: torch.nn.Module) -> Union[torch.device, None]:
+    """
+    Infere on which device a module is operating by first looking at its parameters
+    and then, if no parameters are found, at its buffers.
+
+    Args:
+        module: The module whose device is to be inferred.
+
+    Returns:
+        torch.device: The device of 'module', or `None` if no device has been found.
+    """
+
+    try:
+        return next(module.parameters()).device
+    except StopIteration:
+        # No parameters, try buffers
+        try:
+            return next(module.buffers()).device
+        except StopIteration:
+            # No buffers, don't infer device
+            return None
