@@ -6,13 +6,6 @@ from torch import nn
 from sinabs import Network
 import sinabs.layers as sl
 
-try:
-    import sinabs.slayer.layers as sl_slayer
-
-    SLAYER_AVAILABLE = True
-except (ImportError, ModuleNotFoundError):
-    SLAYER_AVAILABLE = False
-
 
 def from_model(
     model,
@@ -124,17 +117,7 @@ class SpkConverter(object):
 
     def relu2spiking(self):
 
-        if self.backend.lower() in ("sinabs", "bptt"):
-            layer_module = sl
-        elif self.backend.lower() == "slayer":
-            if SLAYER_AVAILABLE:
-                layer_module = sl_slayer
-            else:
-                raise RuntimeError("Slayer backend not available.")
-        else:
-            raise RuntimeError(f"Backend `{self.backend}` not supported.")
-
-        return layer_module.IAFSqueeze(
+        return sl.IAFSqueeze(
             threshold=self.threshold,
             threshold_low=self.threshold_low,
             membrane_subtract=self.membrane_subtract,
@@ -175,7 +158,7 @@ class SpkConverter(object):
             synops=self.synops,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
-        )
+        ).to_backend(self.backend, verbose=False)
 
         return network
 

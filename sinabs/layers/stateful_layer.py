@@ -103,11 +103,11 @@ class StatefulLayer(torch.nn.Module):
         # Copy parameters
         for name, param in self.named_parameters():
             new_inst_param = getattr(new_instance, name)
-            new_inst_param.data = param.data.clone()
+            new_inst_param.data = param.data.clone().to(new_inst_param.device)
         # Copy buffers (using state dict will fail if buffers have non-default shapes)
         for name, buffer in self.named_buffers():
             new_inst_buffer = getattr(new_instance, name)
-            new_inst_buffer.data = buffer.data.clone()
+            new_inst_buffer.data = buffer.data.clone().to(new_inst_buffer.device)
 
         # Warn if parameters of self are not part of new instance
         dropped_params = set(self._param_dict.keys()).difference(
@@ -130,6 +130,7 @@ class StatefulLayer(torch.nn.Module):
                 " in current backend. Default values will be applied.",
                 category=RuntimeWarning,
             )
+
         return new_instance
 
     def __repr__(self):
