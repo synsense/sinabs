@@ -1,8 +1,6 @@
-from typing import Tuple
+from typing import Tuple, List
 from warnings import warn
 import torch
-
-DEFAULT_STATE_NAME = "v_mem"
 
 
 class StatefulLayer(torch.nn.Module):
@@ -12,7 +10,7 @@ class StatefulLayer(torch.nn.Module):
 
     backend = "sinabs"
 
-    def __init__(self, state_name=None, *args, **kwargs):
+    def __init__(self, state_names: List[str]):
         """
         Pytorch implementation of a stateful layer, to be used as base class.
 
@@ -30,8 +28,8 @@ class StatefulLayer(torch.nn.Module):
         """
         super().__init__()
 
-        # Blank parameter place holders
-        self.register_buffer(state_name or DEFAULT_STATE_NAME, torch.zeros(1))
+        for state_name in state_names:
+            self.register_buffer(state_name, torch.nn.parameter.UninitializedBuffer())
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         r"""
@@ -47,22 +45,6 @@ class StatefulLayer(torch.nn.Module):
             else:
                 b.requires_grad_(False)
 
-    def get_output_shape(self, in_shape: Tuple[int]) -> Tuple[int]:
-        """
-        Returns the output shape for passthrough implementation
-
-        Parameters
-        ----------
-        in_shape: Tuple of integers
-            Input shape
-
-        Returns
-        -------
-        Tuple of input shape
-            Output shape at given input shape
-        """
-        return in_shape
-
     def forward(self, *args, **kwargs):
         """
         Not implemented - You need to implement a forward method in child class
@@ -71,22 +53,31 @@ class StatefulLayer(torch.nn.Module):
             "No forward method has been implemented for this class"
         )
 
+    def are_states_initialised(self) -> bool:
+        """ 
+        Checks if buffers are of type UninitializedBuffer and returns 
+        True only if none of them are.
+        """
+        return torch.Tensor([type(buffer) != torch.nn.parameter.UninitializedBuffer for buffer in self.buffers()]).all()
+    
+    def init_states_with_shape(self, shape, randomize: bool = False) -> None:
+        """
+        Initialise states/buffers with either zeros or random
+        tensor of specific shape.
+        """
+        for name, buffer in self.named_buffers():
+            state = torch.rand(shape) if randomize else torch.zeros(shape)
+            self.register_buffer(name, state, persistent=False)
+
+    def states(self):
+        return dict(self.named_buffers())
+
     def reset_states(self, shape=None, randomize=False):
         """
-        Reset the states in this layer
+        Reset the states/buffers in a layer.
         """
-
-        device = self.v_mem.device
-
-        for b in self.buffers():
-            if shape is None:
-                shape = b.shape
-
-            if randomize:
-                # State between 0 and 1
-                self.v_mem = torch.rand(shape, device=device)
-            else:
-                self.v_mem = torch.zeros(shape, device=device)
+        for name, buffer in self.named_buffers():
+            self.register_buffer(name, torch.nn.parameter.UninitializedBuffer())
 
     def to_backend(self, backend):
         if backend == self.backend:

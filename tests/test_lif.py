@@ -8,10 +8,10 @@ import pytest
 def test_lif_basic():
     batch_size = 10
     time_steps = 100
-    tau_mem = torch.tensor(30)
+    tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
-    layer = LIF(tau_mem=tau_mem, threshold=1)
+    layer = LIF(tau_mem=tau_mem)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
