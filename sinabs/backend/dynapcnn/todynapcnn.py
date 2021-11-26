@@ -77,7 +77,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         super().__init__()
         self.chip_layers_ordering = []
         self.compatible_layers = []
-
+        self.input_shape = input_shape
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
@@ -244,7 +244,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
         self.chip_layers_ordering = chip_layers_ordering
         # Update config
         config = config_builder.build_config(self, chip_layers_ordering)
-
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
