@@ -22,8 +22,8 @@ class ExpLeak(StatefulLayer):
 
     @property
     def alpha(self):
-        return torch.exp(-1/self.tau_leak)
-    
+        return torch.exp(torch.tensor(-1 / self.tau_leak))
+
     def forward(self, input_current: torch.Tensor):
         # Ensure the neuron state are initialized
         shape_without_time = (input_current.shape[0], *input_current.shape[2:])
