@@ -9,14 +9,15 @@ class ActivationFunction:
                  surrogate_window: float = 1.,
                 ):
         self.spike_treshold = spike_threshold
-        self.spike_mechanism = spike_mechanism
         self.surrogate_window = surrogate_window
-        
-    def __call__(self, states):
-        if self.spike_mechanism == 'divide':
-            return ThresholdDivide.apply(states['v_mem'], self.spike_treshold, self.surrogate_window)
+        if spike_mechanism == 'divide':
+            self.activation = ThresholdDivide
         else:
             raise NotImplementedError
+            
+    def __call__(self, states):
+        return self.activation.apply(states['v_mem'], self.spike_treshold, self.surrogate_window)
+
 
 
 class ThresholdDivide(torch.autograd.Function):

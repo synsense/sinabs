@@ -14,6 +14,8 @@ class LIF(StatefulLayer):
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
         v_mem_min: Optional[float] = None,
+        *args,
+        **kwargs,
     ):
         """
         Pytorch implementation of a Leaky Integrate and Fire neuron layer.
@@ -76,10 +78,8 @@ class LIF(StatefulLayer):
 
         output_spikes = []
         for step in range(time_steps):
-            # Decay the membrane potential and add the input currents,
-            # which are normalised by tau to membrane potential state
-            alpha_mem = self.alpha_mem
-            self.v_mem = self.v_mem * alpha_mem + (1 - alpha_mem) * input_current[:, step]
+            # Decay the membrane potential and add the input currents which are normalised by tau
+            self.v_mem = self.v_mem * self.alpha_mem + (1 - self.alpha_mem) * input_current[:, step]
 
             # Clip membrane potential that is too low
             if self.v_mem_min:
