@@ -36,6 +36,8 @@ class LIF(StatefulLayer):
             Membrane potential time constant.
         tau_syn: float
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+        activation_fn: Callable
+            a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
         v_mem_min: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: bool
@@ -47,12 +49,12 @@ class LIF(StatefulLayer):
         if train_alphas:
             self.params = nn.ParameterDict({
                     'alpha_mem': nn.Parameter(torch.exp(-1/tau_mem)),
-                    'alpha_syn': nn.Parameter(torch.exp(-1/tau_syn)),
+                    'alpha_syn': nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None,
             })
         else:
             self.params = nn.ParameterDict({
                     'tau_mem': nn.Parameter(tau_mem),
-                    'tau_syn': nn.Parameter(tau_syn),
+                    'tau_syn': nn.Parameter(tau_syn) if tau_syn else None,
             })
         self.activation_fn = activation_fn
         self.v_mem_min = v_mem_min
@@ -87,11 +89,11 @@ class LIF(StatefulLayer):
             self.init_states_with_shape((batch_size, *trailing_dim))
 
         alpha_mem = self.alpha_mem
-        alpha_syn = self.alpha_syn
+        alpha_syn = self.alpha_syn if self.params['tau_syn'] else None
         output_spikes = []
         for step in range(time_steps):
             # if t_syn was provided, we're going to use synaptic current dynamics
-            if self.params['tau_syn'].nelement() > 0:
+            if self.params['tau_syn']:
                 self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
             else:
                 self.i_syn = input_current[:, step]
