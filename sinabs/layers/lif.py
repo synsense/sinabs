@@ -1,10 +1,10 @@
-from typing import Optional, Union, Callable
 import torch
 import torch.nn as nn
+from typing import Optional, Union, Callable
+from sinabs.activation import ActivationFunction
 from .stateful_layer import StatefulLayer
 from .recurrent_module import recurrent_class
 from .pack_dims import squeeze_class
-from sinabs.activation import ActivationFunction
 
 
 class LIF(StatefulLayer):
@@ -103,10 +103,11 @@ class LIF(StatefulLayer):
 
             # Clip membrane potential that is too low
             if self.v_mem_min:
-                self.v_mem = torch.clamp(self.v_mem, min=self.v_mem_min)
+                self.v_mem = torch.nn.functional.relu(self.v_mem - self.v_mem_min) + self.v_mem_min
 
-            # generate spikes
-            spikes = self.activation_fn(self.states())
+            # generate spikes and adjust v_mem
+            spikes, states = self.activation_fn(self.states())
+            self.v_mem = states['v_mem']
             output_spikes.append(spikes)
 
         return torch.stack(output_spikes, 1)

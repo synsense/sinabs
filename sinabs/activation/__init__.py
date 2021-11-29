@@ -1,1 +1,1 @@
-from .threshold import ActivationFunction
+from .functional import ActivationFunction
