@@ -1,1 +1,1 @@
-from .functional import ActivationFunction
+from .functional import *

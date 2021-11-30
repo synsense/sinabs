@@ -58,9 +58,11 @@ class StatefulLayer(torch.nn.Module):
         Checks if buffers are of type UninitializedBuffer and returns 
         True only if none of them are.
         """
-        return torch.Tensor([type(buffer) != torch.nn.parameter.UninitializedBuffer 
-                             for buffer in self.buffers()]).all()
-    
+        for buff in self.buffers():
+            if isinstance(buff, torch.nn.parameter.UninitializedBuffer):
+                return False
+        return True
+
     def init_states_with_shape(self, shape, randomize: bool = False) -> None:
         """
         Initialise states/buffers with either zeros or random
@@ -69,9 +71,6 @@ class StatefulLayer(torch.nn.Module):
         for name, buffer in self.named_buffers():
             state = torch.rand(shape) if randomize else torch.zeros(shape)
             self.register_buffer(name, state, persistent=False)
-
-    def states(self):
-        return dict(self.named_buffers())
 
     def reset_states(self, shape=None, randomize=False):
         """

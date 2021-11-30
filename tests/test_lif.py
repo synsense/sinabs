@@ -6,8 +6,7 @@ import pytest
 
 
 def test_lif_basic():
-    batch_size = 10
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
@@ -17,10 +16,47 @@ def test_lif_basic():
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
+    
+def test_lif_with_current_dynamics():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.tensor(30.)
+    tau_syn = torch.tensor(10.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
+    layer = LIF(tau_mem=tau_mem, tau_syn=tau_syn)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+
+def test_lif_train_alphas():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
+    layer = LIF(tau_mem=tau_mem, train_alphas=True)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+    
+def test_lif_train_alphas_with_current_dynamics():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.tensor(30.)
+    tau_syn = torch.tensor(10.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
+    layer = LIF(tau_mem=tau_mem, tau_syn=tau_syn, train_alphas=True)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
 
 def test_lif_input_integration():
-    batch_size = 10
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
@@ -32,8 +68,7 @@ def test_lif_input_integration():
     assert spike_output[:,0].sum() == spike_output.sum(), "First output time step should contain all the spikes."
 
 def test_lif_membrane_decay():
-    batch_size = 10
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     start_value = 0.75
     alpha = torch.exp(-1/tau_mem)
@@ -48,8 +83,7 @@ def test_lif_membrane_decay():
     assert torch.isclose(layer.v_mem, membrane_decay, atol=1e-08).all(), "Neuron membrane potentials do not seems to decay correctly."
 
 def test_lif_squeezed():
-    batch_size = 10
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
@@ -61,8 +95,7 @@ def test_lif_squeezed():
     assert spike_output.sum() > 0
     
 def test_lif_recurrent():
-    batch_size = 5
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
@@ -79,8 +112,7 @@ def test_lif_recurrent():
     assert spike_output.sum() > 0
 
 def test_lif_recurrent_squeezed():
-    batch_size = 10
-    time_steps = 100
+    batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_dimensions = (batch_size*time_steps, 2, 7, 7)

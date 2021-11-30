@@ -1,12 +1,12 @@
 import torch
-from sinabs.activation import ActivationFunction
+from sinabs.activation import ActivationFunction, IntegerDivide, SubtractThreshold, ResetMembrane
 
 
 def test_divide_spiking():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_mechanism='divide')
+    activation_fn = ActivationFunction(spike_mechanism=IntegerDivide)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 2
@@ -16,7 +16,7 @@ def test_subtract_spiking():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_mechanism='subtract')
+    activation_fn = ActivationFunction(spike_mechanism=SubtractThreshold)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1
@@ -26,7 +26,7 @@ def test_reset_spiking():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_mechanism='reset')
+    activation_fn = ActivationFunction(spike_mechanism=ResetMembrane)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1

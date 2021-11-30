@@ -47,26 +47,27 @@ class LIF(StatefulLayer):
             state_names = ['v_mem', 'i_syn']
         )
         if train_alphas:
-            self.params = nn.ParameterDict({
-                    'alpha_mem': nn.Parameter(torch.exp(-1/tau_mem)),
-                    'alpha_syn': nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None,
-            })
+            self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
+            self.alpha_syn = nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None
         else:
-            self.params = nn.ParameterDict({
-                    'tau_mem': nn.Parameter(tau_mem),
-                    'tau_syn': nn.Parameter(tau_syn) if tau_syn else None,
-            })
+            self.tau_mem = nn.Parameter(tau_mem)
+            self.tau_syn = nn.Parameter(tau_syn) if tau_syn else None
         self.activation_fn = activation_fn
         self.v_mem_min = v_mem_min
         self.train_alphas = train_alphas
 
     @property
-    def alpha_mem(self):
-        return self.params['alpha_mem'] if self.train_alphas else torch.exp(-1/self.params['tau_mem'])
+    def alpha_mem_calculated(self):
+        return self.alpha_mem if self.train_alphas else torch.exp(-1/self.tau_mem)
     
     @property
-    def alpha_syn(self):
-        return self.params['alpha_syn'] if self.train_alphas else torch.exp(-1/self.params['tau_syn'])
+    def alpha_syn_calculated(self):
+        if self.train_alphas:
+            return self.alpha_syn
+        elif not self.train_alphas and self.tau_syn:
+            return torch.exp(-1/self.tau_syn)
+        else:
+            return None
 
     def forward(self, input_current: torch.Tensor):
         """
@@ -88,12 +89,12 @@ class LIF(StatefulLayer):
         if not self.are_states_initialised():
             self.init_states_with_shape((batch_size, *trailing_dim))
 
-        alpha_mem = self.alpha_mem
-        alpha_syn = self.alpha_syn if self.params['tau_syn'] else None
+        alpha_mem = self.alpha_mem_calculated
+        alpha_syn = self.alpha_syn_calculated
         output_spikes = []
         for step in range(time_steps):
             # if t_syn was provided, we're going to use synaptic current dynamics
-            if self.params['tau_syn']:
+            if alpha_syn:
                 self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
             else:
                 self.i_syn = input_current[:, step]
@@ -106,7 +107,7 @@ class LIF(StatefulLayer):
                 self.v_mem = torch.nn.functional.relu(self.v_mem - self.v_mem_min) + self.v_mem_min
 
             # generate spikes and adjust v_mem
-            spikes, states = self.activation_fn(self.states())
+            spikes, states = self.activation_fn(dict(self.named_buffers()))
             self.v_mem = states['v_mem']
             output_spikes.append(spikes)
 
