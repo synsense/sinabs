@@ -1,3 +1,4 @@
+import torch
 from copy import deepcopy
 
 
@@ -45,32 +46,24 @@ def test_deepcopy_iaf():
 
 
 def test_deepcopy_lif():
-    from sinabs.layers import LIF, LIFSqueeze
+    from sinabs.layers import LIF, LIFSqueeze, LIFRecurrent
 
-    kwargs = dict(
-        threshold=0.5, threshold_low=-0.4, membrane_subtract=0.45, tau_mem=20
-    )
+    for train_alphas in (True, False):
+        kwargs = dict(tau_mem=torch.tensor(30.), tau_syn=torch.tensor(10.))
 
-    for reset in (True, False):
-
-        kwargs["membrane_reset"] = reset
+        input_current = torch.rand(10,10,10)
+        kwargs["train_alphas"] = train_alphas
 
         layer = LIF(**kwargs)
-
         layer_squeeze_nts = LIFSqueeze(**kwargs, num_timesteps=10)
-
         layer_squeeze_batch = LIFSqueeze(**kwargs, batch_size=10)
+        layer_recurrent = LIFRecurrent(**kwargs, rec_connectivity=torch.nn.Linear(10,10))
 
-        for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts):
-
-            # Modify default parameters and buffers
-            for b in layer_orig.buffers():
-                b += 1
-            for p in layer_orig.parameters():
-                p += 1
+        for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts, layer_recurrent):
+            layer_orig(input_current)
 
             layer_copy = deepcopy(layer_orig)
-
+            
             for p0, p1 in zip(layer_orig.parameters(), layer_copy.parameters()):
                 assert (p0 == p1).all()
                 assert p0 is not p1
@@ -78,15 +71,19 @@ def test_deepcopy_lif():
                 assert (b0 == b1).all()
                 assert b0 is not b1
 
-            assert layer_copy.threshold == layer_orig.threshold
-            assert layer_copy.threshold_low == layer_orig.threshold_low
-            assert layer_copy.membrane_subtract == layer_orig.membrane_subtract
-            assert layer_copy.membrane_reset == layer_orig.membrane_reset
-            assert layer_copy.tau_mem == layer_orig.tau_mem
+            if train_alphas:
+                assert layer_copy.alpha_mem == layer_orig.alpha_mem
+            else:
+                assert layer_copy.tau_mem == layer_orig.tau_mem
+            assert layer_copy.activation_fn == layer_orig.activation_fn
+            assert layer_copy.v_mem_min == layer_orig.v_mem_min
+            assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size
             if hasattr(layer_orig, "num_timesteps"):
                 assert layer_orig.num_timesteps == layer_copy.num_timesteps
+            if hasattr(layer_orig, "rec_connectivity"):
+                assert layer_orig.rec_connectivity.in_features == layer_copy.rec_connectivity.in_features
 
 
 def test_deepcopy_alif():

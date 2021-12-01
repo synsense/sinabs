@@ -44,7 +44,7 @@ class LIF(StatefulLayer):
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
         super().__init__(
-            state_names = ['v_mem', 'i_syn']
+            state_names = ['v_mem', 'i_syn'] if tau_syn else ['v_mem']
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
@@ -94,14 +94,15 @@ class LIF(StatefulLayer):
         output_spikes = []
         for step in range(time_steps):
             # if t_syn was provided, we're going to use synaptic current dynamics
-            if alpha_syn:
-                self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
-            else:
-                self.i_syn = input_current[:, step]
-
+            with torch.no_grad():
+                if alpha_syn:
+                    self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
+                else:
+                    self.i_syn = input_current[:, step]
+            
             # Decay the membrane potential and add the input currents which are normalised by tau
             self.v_mem = alpha_mem * self.v_mem + (1 - alpha_mem) * self.i_syn
-
+            
             # Clip membrane potential that is too low
             if self.v_mem_min:
                 self.v_mem = torch.nn.functional.relu(self.v_mem - self.v_mem_min) + self.v_mem_min
@@ -112,13 +113,6 @@ class LIF(StatefulLayer):
             output_spikes.append(spikes)
 
         return torch.stack(output_spikes, 1)
-
-    @property
-    def _param_dict(self) -> dict:
-        param_dict = super()._param_dict
-        param_dict["tau_mem"] = self.tau_mem
-
-        return param_dict
 
 
 LIFRecurrent = recurrent_class(LIF)
