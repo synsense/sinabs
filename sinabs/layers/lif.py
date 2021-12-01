@@ -94,11 +94,10 @@ class LIF(StatefulLayer):
         output_spikes = []
         for step in range(time_steps):
             # if t_syn was provided, we're going to use synaptic current dynamics
-            with torch.no_grad():
-                if alpha_syn:
-                    self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
-                else:
-                    self.i_syn = input_current[:, step]
+            if alpha_syn:
+                self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
+            else:
+                self.i_syn = input_current[:, step]
             
             # Decay the membrane potential and add the input currents which are normalised by tau
             self.v_mem = alpha_mem * self.v_mem + (1 - alpha_mem) * self.i_syn
