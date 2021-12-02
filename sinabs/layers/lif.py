@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
 from sinabs.activation import ActivationFunction
+from sinabs.functional.lif import lif_forward
 from .stateful_layer import StatefulLayer
 from .recurrent_module import recurrent_class
 from .pack_dims import squeeze_class
@@ -13,7 +14,7 @@ class LIF(StatefulLayer):
         tau_mem: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
-        v_mem_min: Optional[float] = None,
+        threshold_low: Optional[float] = None,
         train_alphas: bool = False,
         *args,
         **kwargs,
@@ -38,7 +39,7 @@ class LIF(StatefulLayer):
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-        v_mem_min: float or None
+        threhsold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
@@ -53,7 +54,7 @@ class LIF(StatefulLayer):
             self.tau_mem = nn.Parameter(tau_mem)
             self.tau_syn = nn.Parameter(tau_syn) if tau_syn else None
         self.activation_fn = activation_fn
-        self.v_mem_min = v_mem_min
+        self.threshold_low = threshold_low
         self.train_alphas = train_alphas
 
     @property
@@ -69,13 +70,13 @@ class LIF(StatefulLayer):
         else:
             return None
 
-    def forward(self, input_current: torch.Tensor):
+    def forward(self, input_data: torch.Tensor):
         """
         Forward pass with given data.
 
         Parameters
         ----------
-        input_current : torch.Tensor
+        input_data : torch.Tensor
             Data to be processed. Expected shape: (batch, time, ...)
 
         Returns
@@ -83,7 +84,7 @@ class LIF(StatefulLayer):
         torch.Tensor
             Output data. Same shape as `input_spikes`.
         """
-        batch_size, time_steps, *trailing_dim = input_current.shape
+        batch_size, time_steps, *trailing_dim = input_data.shape
 
         # Ensure the neuron states are initialized
         if not self.are_states_initialised():
@@ -91,28 +92,19 @@ class LIF(StatefulLayer):
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
-        output_spikes = []
-        for step in range(time_steps):
-            # if t_syn was provided, we're going to use synaptic current dynamics
-            if alpha_syn:
-                self.i_syn = alpha_syn * self.i_syn + input_current[:, step]
-            else:
-                self.i_syn = input_current[:, step]
-            
-            # Decay the membrane potential and add the input currents which are normalised by tau
-            self.v_mem = alpha_mem * self.v_mem + (1 - alpha_mem) * self.i_syn
-            
-            # Clip membrane potential that is too low
-            if self.v_mem_min:
-                self.v_mem = torch.nn.functional.relu(self.v_mem - self.v_mem_min) + self.v_mem_min
-
-            # generate spikes and adjust v_mem
-            spikes, states = self.activation_fn(dict(self.named_buffers()))
-            self.v_mem = states['v_mem']
-            output_spikes.append(spikes)
-
-        return torch.stack(output_spikes, 1)
-
+        
+        spikes, state = lif_forward(
+            input_data=input_data,
+            alpha_mem=alpha_mem,
+            alpha_syn=alpha_syn,
+            state=dict(self.named_buffers()),
+            activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
+        )
+        self.v_mem = state['v_mem']
+        self.i_syn = state['i_syn'] if alpha_syn else None
+        
+        return spikes
 
 LIFRecurrent = recurrent_class(LIF)
 LIFSqueeze = squeeze_class(LIF)
