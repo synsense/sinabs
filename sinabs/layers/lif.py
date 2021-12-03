@@ -15,6 +15,7 @@ class LIF(StatefulLayer):
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
         threshold_low: Optional[float] = None,
+        shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         *args,
         **kwargs,
@@ -39,8 +40,10 @@ class LIF(StatefulLayer):
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-        threhsold_low: float or None
+        threshold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
+        shape: 
+            Initialise states if you know the shape.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
@@ -56,6 +59,8 @@ class LIF(StatefulLayer):
         self.activation_fn = activation_fn
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
+        if shape:
+            self.init_states_with_shape(shape)
 
     @property
     def alpha_mem_calculated(self):

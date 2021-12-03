@@ -32,7 +32,7 @@ class Activation(torch.autograd.Function):
         return spikes, state
 
     @staticmethod
-    def backward(ctx, grad_output: torch.tensor):
+    def backward(ctx, grad_output: torch.tensor, grad_output_states: torch.tensor):
         """"""
         (v_mem,) = ctx.saved_tensors
         grad = ctx.surrogate_grad_fn(v_mem, ctx.threshold) 
