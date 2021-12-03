@@ -2,8 +2,7 @@ from typing import Optional, Union
 
 import torch
 
-from .functional import ThresholdSubtract, ThresholdReset
-from .spiking_layer import SpikingLayer
+from .stateful_layer import StatefulLayer
 from .pack_dims import squeeze_class
 
 window = 1.0
@@ -11,7 +10,7 @@ window = 1.0
 __all__ = ["IAF", "IAFSqueeze"]
 
 
-class IAF(SpikingLayer):
+class IAF(StatefulLayer):
     def __init__(
         self,
         threshold: float = 1.0,

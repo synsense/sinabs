@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from typing import Optional, Union, List, Tuple
 from .utils import get_network_activations, get_activations
-from .layers import SpikingLayer
+from .layers import StatefulLayer
 from .synopcounter import SNNSynOpCounter
 
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -104,7 +104,7 @@ class Network(torch.nn.Module):
         if name_list is None:
             name_list = ["Input"]
             for layer_name, lyr in self.spiking_model.named_modules():
-                if isinstance(lyr, SpikingLayer):
+                if isinstance(lyr, StatefulLayer):
                     name_list.append(layer_name)
 
         if verbose:
@@ -165,7 +165,7 @@ class Network(torch.nn.Module):
         Reset all neuron states in the submodules.
         """
         for lyr in self.modules():
-            if isinstance(lyr, SpikingLayer):
+            if isinstance(lyr, StatefulLayer):
                 lyr.reset_states()
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:
