@@ -1,37 +1,48 @@
 import torch
-from sinabs.activation import ActivationFunction, IntegerDivide, SubtractThreshold, ResetMembrane
+from sinabs.activation import ActivationFunction, membrane_subtract, membrane_reset, multi_spike, single_spike
 
 
-def test_divide_spiking():
+def test_single_spike_subtract():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_mechanism=IntegerDivide)
-    spikes, new_states = activation_fn(states)
-
-    assert spikes == 2
-    assert new_states['v_mem'] == 0.5
-    
-def test_subtract_spiking():
-    v_mem = torch.tensor(2.5)
-    states = {'v_mem': v_mem}
-
-    activation_fn = ActivationFunction(spike_mechanism=SubtractThreshold)
+    activation_fn = ActivationFunction(spike_fn=single_spike, reset_fn=membrane_subtract)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1
     assert new_states['v_mem'] == 1.5
     
-def test_reset_spiking():
+def test_single_spike_reset():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_mechanism=ResetMembrane)
+    activation_fn = ActivationFunction(spike_fn=single_spike, reset_fn=membrane_reset)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1
     assert new_states['v_mem'] == 0
     
+def test_multi_spike_subtract():
+    v_mem = torch.tensor(2.5)
+    states = {'v_mem': v_mem}
+
+    activation_fn = ActivationFunction(spike_fn=multi_spike, reset_fn=membrane_subtract)
+    spikes, new_states = activation_fn(states)
+
+    assert spikes == 2
+    assert new_states['v_mem'] == 0.5
+    
+def test_multi_spike_reset():
+    v_mem = torch.tensor(2.5)
+    states = {'v_mem': v_mem}
+
+    activation_fn = ActivationFunction(spike_fn=multi_spike, reset_fn=membrane_reset)
+    spikes, new_states = activation_fn(states)
+
+    assert spikes == 2
+    assert new_states['v_mem'] == 0
+    
+
 # def test_lif_zero_grad():
 #     torch.autograd.set_detect_anomaly(False)
 #     batch_size = 7
