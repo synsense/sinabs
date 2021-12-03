@@ -18,7 +18,7 @@ try:
 except ModuleNotFoundError:
     pass
 else:
-    _layers_with_backend = (IAF, IAFSqueeze, LIF, LIFSqueeze)
+    _layers_with_backend = (IAF, IAFSqueeze, LIF, LIFSqueeze, ExpLeak, ExpLeakSqueeze)
 
     for lyr in _layers_with_backend:
         # Find equivalent slayer layer classes by name
