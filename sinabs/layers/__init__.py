@@ -11,7 +11,7 @@ from .stateful_layer import StatefulLayer
 from .iaf_bptt import IAF, IAFSqueeze
 from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
 from .alif import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
-from .leaky_layer import ExpLeak, ExpLeakSqueeze
+from .exp_leak import ExpLeak, ExpLeakSqueeze
 
 try:
     from sinabs.slayer import layers as slayer_layers
