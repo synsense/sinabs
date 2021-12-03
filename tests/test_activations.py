@@ -1,12 +1,12 @@
 import torch
-from sinabs.activation import ActivationFunction, membrane_subtract, membrane_reset, multi_spike, single_spike
+from sinabs.activation import ActivationFunction, membrane_subtract, membrane_reset, MultiSpike, SingleSpike
 
 
 def test_single_spike_subtract():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_fn=single_spike, reset_fn=membrane_subtract)
+    activation_fn = ActivationFunction(spike_fn=SingleSpike, reset_fn=membrane_subtract)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1
@@ -16,7 +16,7 @@ def test_single_spike_reset():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_fn=single_spike, reset_fn=membrane_reset)
+    activation_fn = ActivationFunction(spike_fn=SingleSpike, reset_fn=membrane_reset)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 1
@@ -26,7 +26,7 @@ def test_multi_spike_subtract():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_fn=multi_spike, reset_fn=membrane_subtract)
+    activation_fn = ActivationFunction(spike_fn=MultiSpike, reset_fn=membrane_subtract)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 2
@@ -36,7 +36,7 @@ def test_multi_spike_reset():
     v_mem = torch.tensor(2.5)
     states = {'v_mem': v_mem}
 
-    activation_fn = ActivationFunction(spike_fn=multi_spike, reset_fn=membrane_reset)
+    activation_fn = ActivationFunction(spike_fn=MultiSpike, reset_fn=membrane_reset)
     spikes, new_states = activation_fn(states)
 
     assert spikes == 2
