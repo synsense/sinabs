@@ -167,4 +167,9 @@ class StatefulLayer(torch.nn.Module):
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
         """
-        return dict()
+        return dict(
+            threshold=self.threshold,
+            threshold_low=self.threshold_low,
+            membrane_subtract=self._membrane_subtract,
+            membrane_reset=self.membrane_reset,
+        )
