@@ -87,7 +87,7 @@ class LIF(StatefulLayer):
         batch_size, time_steps, *trailing_dim = input_data.shape
 
         # Ensure the neuron states are initialized
-        if not self.are_states_initialised():
+        if not self.are_states_initialised() or not self.states_have_shape((batch_size, *trailing_dim)):
             self.init_states_with_shape((batch_size, *trailing_dim))
 
         alpha_mem = self.alpha_mem_calculated

@@ -62,6 +62,15 @@ class StatefulLayer(torch.nn.Module):
             if isinstance(buff, torch.nn.parameter.UninitializedBuffer):
                 return False
         return True
+    
+    def states_have_shape(self, shape) -> bool:
+        """
+        Checks if all states have a given shape.
+        """
+        for buff in self.buffers():
+            if buff.shape != shape:
+                return False
+        return True
 
     def init_states_with_shape(self, shape, randomize: bool = False) -> None:
         """
