@@ -1,28 +1,24 @@
-from typing import Optional, Union
 import torch
-from .spiking_layer import SpikingLayer
-from .pack_dims import squeeze_class
+import torch.nn as nn
+from typing import Optional, Union, Callable
+from sinabs.activation import ActivationFunction, MembraneSubtract
+from sinabs.functional.alif import alif_forward
+from .stateful_layer import StatefulLayer
 from .recurrent_module import recurrent_class
-from .lif import LIF
-from .functional import ThresholdSubtract, ThresholdReset
+from .pack_dims import squeeze_class
 
 
-__all__ = ["ALIF", "ALIFSqueeze"]
-
-# Learning window for surrogate gradient
-window = 1.0
-
-
-class ALIF(SpikingLayer):
+class ALIF(StatefulLayer):
     def __init__(
         self,
         tau_mem: Union[float, torch.Tensor],
         tau_adapt: Union[float, torch.Tensor],
+        tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        threshold: Union[float, torch.Tensor] = 1.0,
-        membrane_reset: bool = False,
+        activation_fn: Callable = ActivationFunction(reset_fn=MembraneSubtract()),
         threshold_low: Optional[float] = None,
-        membrane_subtract: Optional[float] = None,
+        shape: Optional[torch.Size] = None,
+        train_alphas: bool = False,
         *args,
         **kwargs,
     ):
@@ -63,35 +59,43 @@ class ALIF(SpikingLayer):
             Default is equal to threshold. Ignored if membrane_reset is set.
         """
         super().__init__(
-            threshold=threshold,
-            threshold_low=threshold_low,
-            membrane_subtract=membrane_subtract,
-            membrane_reset=membrane_reset,
-            *args,
-            **kwargs,
+            state_names = ['v_mem', 'i_syn', 'b'] if tau_syn else ['v_mem', 'b']
         )
-        self.tau_mem = tau_mem
-        self.tau_adapt = tau_adapt
+        if train_alphas:
+            self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
+            self.alpha_adapt = nn.Parameter(torch.exp(-1/tau_adapt))
+            self.alpha_syn = nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None
+        else:
+            self.tau_mem = nn.Parameter(tau_mem)
+            self.tau_adapt = nn.Parameter(tau_adapt)
+            self.tau_syn = nn.Parameter(tau_syn) if tau_syn else None
         self.adapt_scale = adapt_scale
-        self.b_0 = threshold
-        self.register_buffer("b", torch.zeros(1))
-        self.reset_function = ThresholdReset if membrane_reset else ThresholdSubtract
+        self.activation_fn = activation_fn
+        self.threshold_low = threshold_low
+        self.train_alphas = train_alphas
+        if shape:
+            self.init_state_with_shape(shape)
+        self.b_0 = activation_fn.spike_threshold
 
     @property
-    def alpha_mem(self):
-        return torch.exp(-1/self.tau_mem)
-
+    def alpha_mem_calculated(self):
+        return self.alpha_mem if self.train_alphas else torch.exp(-1/self.tau_mem)
+    
     @property
-    def alpha_adapt(self):
-        return torch.exp(-1/self.tau_adapt)
+    def alpha_adapt_calculated(self):
+        return self.alpha_adapt if self.train_alphas else torch.exp(-1/self.tau_adapt)
+    
+    @property
+    def alpha_syn_calculated(self):
+        if self.train_alphas:
+            return self.alpha_syn
+        elif not self.train_alphas and self.tau_syn:
+            return torch.exp(-1/self.tau_syn)
+        else:
+            return None
 
-    def check_states(self, input_current):
-        """Initialise spike threshold states when the first input is received."""
-        shape_without_time = (input_current.shape[0], *input_current.shape[2:])
-        if self.v_mem.shape != shape_without_time:
-            self.reset_states(shape=shape_without_time, randomize=False)
 
-    def forward(self, input_current: torch.Tensor):
+    def forward(self, input_data: torch.Tensor):
         """
         Forward pass with given data.
 
@@ -105,47 +109,28 @@ class ALIF(SpikingLayer):
         torch.Tensor
             Output data. Same shape as `input_spikes`.
         """
+        batch_size, time_steps, *trailing_dim = input_data.shape
+
         # Ensure the neuron state are initialized
-        self.check_states(input_current)
+        if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
+            self.init_state_with_shape((batch_size, *trailing_dim))
 
-        time_steps = input_current.shape[1]
-        
-        output_spikes = []
-        for step in range(time_steps):
-            # Decay the spike threshold and add adaptation factor to it.
-            self.b = self.alpha_adapt * self.b + (1 - self.alpha_adapt) * self.activations
-            
-            self.threshold = self.b_0 + self.adapt_scale*self.b
+        alpha_mem = self.alpha_mem_calculated
+        alpha_syn = self.alpha_syn_calculated
+        alpha_adapt = self.alpha_adapt_calculated
 
-            # Decay the membrane potential and add the input currents which are normalised by tau
-            self.v_mem = self.alpha_mem * self.v_mem + (1 - self.alpha_mem) * input_current[:, step]  - self.threshold * self.activations
+        spikes, state = alif_forward(
+            input_data=input_data,
+            alpha_mem=alpha_mem,
+            alpha_adapt=alpha_adapt,
+            alpha_syn=alpha_syn,
+            adapt_scale=self.adapt_scale,
+            state=dict(self.named_buffers()),
+            activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
+        )
 
-            # Clip membrane potential that is too low
-            if self.threshold_low:
-                self.v_mem = torch.clamp(self.v_mem, min=self.threshold_low)
-
-            # generate spikes
-            self.activations = self.reset_function.apply(
-                self.v_mem,
-                self.threshold,
-                self.threshold * window,
-            )
-            output_spikes.append(self.activations)
-
-        output_spikes = torch.stack(output_spikes, 1)
-        self.tw = time_steps
-        self.spikes_number = output_spikes.abs().sum()
-        return output_spikes
-
-    def reset_states(self, shape=None, randomize=False):
-        """Reset the state of all neurons and threshold states in this layer."""
-        super().reset_states(shape, randomize)
-        if shape is None:
-            shape = self.b.shape
-        if randomize:
-            self.b = torch.rand(shape, device=self.b.device)
-        else:
-            self.b = torch.zeros(shape, device=self.b.device)
+        return spikes
 
     @property
     def _param_dict(self) -> dict:
