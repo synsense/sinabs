@@ -1,7 +1,7 @@
 import torch
 from typing import Dict, Tuple, Callable
 from dataclasses import dataclass, field
-from .reset_mechanism import membrane_subtract
+from .reset_mechanism import MembraneSubtract
 from .spike_generation import MultiSpike
 from .surrogate_gradient_fn import Heaviside
 
@@ -29,7 +29,7 @@ class ActivationFunction:
     
     spike_threshold: float = 1.
     spike_fn: Callable = MultiSpike
-    reset_fn: Callable = membrane_subtract
+    reset_fn: Callable = MembraneSubtract()
     surrogate_grad_fn: Callable = Heaviside()
 
     def __call__(self, state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
