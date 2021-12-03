@@ -43,7 +43,7 @@ class LIF(StatefulLayer):
         threshold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
         shape: 
-            Initialise states if you know the shape.
+            Initialise state if you know the shape.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
@@ -60,7 +60,7 @@ class LIF(StatefulLayer):
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
         if shape:
-            self.init_states_with_shape(shape)
+            self.init_state_with_shape(shape)
 
     @property
     def alpha_mem_calculated(self):
@@ -91,9 +91,9 @@ class LIF(StatefulLayer):
         """
         batch_size, time_steps, *trailing_dim = input_data.shape
 
-        # Ensure the neuron states are initialized
-        if not self.are_states_initialised() or not self.states_have_shape((batch_size, *trailing_dim)):
-            self.init_states_with_shape((batch_size, *trailing_dim))
+        # Ensure the neuron state are initialized
+        if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
+            self.init_state_with_shape((batch_size, *trailing_dim))
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated

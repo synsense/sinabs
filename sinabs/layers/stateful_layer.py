@@ -33,7 +33,7 @@ class StatefulLayer(torch.nn.Module):
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         r"""
-        Zero's the gradients for buffers/states along with the parameters.
+        Zero's the gradients for buffers/state along with the parameters.
         See :meth:`torch.nn.Module.zero_grad` for details
         """
         # Zero grad parameters
@@ -53,7 +53,7 @@ class StatefulLayer(torch.nn.Module):
             "No forward method has been implemented for this class"
         )
 
-    def are_states_initialised(self) -> bool:
+    def is_state_initialised(self) -> bool:
         """ 
         Checks if buffers are of type UninitializedBuffer and returns 
         True only if none of them are.
@@ -63,27 +63,27 @@ class StatefulLayer(torch.nn.Module):
                 return False
         return True
     
-    def states_have_shape(self, shape) -> bool:
+    def state_has_shape(self, shape) -> bool:
         """
-        Checks if all states have a given shape.
+        Checks if all state have a given shape.
         """
         for buff in self.buffers():
             if buff.shape != shape:
                 return False
         return True
 
-    def init_states_with_shape(self, shape, randomize: bool = False) -> None:
+    def init_state_with_shape(self, shape, randomize: bool = False) -> None:
         """
-        Initialise states/buffers with either zeros or random
+        Initialise state/buffers with either zeros or random
         tensor of specific shape.
         """
         for name, buffer in self.named_buffers():
             state = torch.rand(shape) if randomize else torch.zeros(shape)
             self.register_buffer(name, state, persistent=False)
 
-    def reset_states(self, shape=None, randomize=False):
+    def reset_state(self, shape=None, randomize=False):
         """
-        Reset the states/buffers in a layer.
+        Reset the state/buffers in a layer.
         """
         for name, buffer in self.named_buffers():
             self.register_buffer(name, torch.nn.parameter.UninitializedBuffer())
