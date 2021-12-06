@@ -12,14 +12,17 @@ class ActivationFunction:
     Wrapper class for torch.autograd.Function with custom forward and backward passes.
     The goal is to provide flexibility in terms of spike mechanism and how to replace
     the non-differential Dirac delta activation by means of a surrogate gradient
-    function.
+    function. The default is an activation function with threshold = 1., multiple spikes
+    per time step, a membrane subtract function and a Heaviside surrogate gradient. 
     
     Parameters:
         spike_threshold: float
             Spikes are emitted if v_mem is above that threshold.
-        spike_fn: Callable
-            Choose a Sinabs or custom spike function that takes a dict of states, a spike
-            threshold and a surrogate gradient function and returns spikes.
+        spike_fn: torch.autograd.Function
+            Choose a Sinabs or custom torch.autograd.Function that takes a dict of states, 
+            a spike threshold and a surrogate gradient function and returns spikes. Be aware 
+            that the class itself is passed here (because torch.autograd methods are static)
+            rather than an object instance.
         reset_fn: Callable
             A function that defines how the membrane potential is reset after a spike.
         surrogate_grad_fn: Callable

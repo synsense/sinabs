@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ActivationFunction, MembraneSubtract
+from sinabs.activation import ActivationFunction, MembraneSubtract, ALIFSingleSpike
 from sinabs.functional.alif import alif_forward
 from .stateful_layer import StatefulLayer
 from .recurrent_module import recurrent_class
@@ -15,7 +15,7 @@ class ALIF(StatefulLayer):
         tau_adapt: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        activation_fn: Callable = ActivationFunction(reset_fn=MembraneSubtract()),
+        activation_fn: Callable = ActivationFunction(spike_fn=ALIFSingleSpike, reset_fn=MembraneSubtract()),
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
@@ -39,6 +39,12 @@ class ALIF(StatefulLayer):
 
         where :math:`\\alpha = e^{-1/\\tau_{mem}}`, :math:`\\rho = e^{-1/\\tau_{adapt}}` 
         and :math:`w.s(t)` is the input current for a spike s and weight w.
+        
+        By default there will not be any synaptic current dynamics used. You can specify tau_syn to apply an
+        exponential decay kernel to the input:
+        
+        .. math ::
+            i(t+1) = \\alpha_{syn} i(t) (1-\\alpha_{syn}) + input
 
         Parameters
         ----------
@@ -46,17 +52,18 @@ class ALIF(StatefulLayer):
             Membrane potential time constant.
         tau_adapt: float
             Spike threshold time constant.
-        adaption: float
+        tau_syn: float
+            Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+        adapt_scale: float
             The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
-        threshold: float
-            Spiking threshold of the neuron.
+        activation_fn: Callable
+            a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
         threshold_low: float or None
-            Lower bound for membrane potential.
-        membrane_reset: bool
-            If True, reset the membrane to 0 on spiking.
-        membrane_subtract: float or None
-            The amount to subtract from the membrane potential upon spiking.
-            Default is equal to threshold. Ignored if membrane_reset is set.
+            Lower bound for membrane potential v_mem, clipped at every time step.
+        shape: torch.Size
+            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+        train_alphas: bool
+            When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
         super().__init__(
             state_names = ['v_mem', 'i_syn', 'b'] if tau_syn else ['v_mem', 'b']
@@ -99,15 +106,13 @@ class ALIF(StatefulLayer):
         """
         Forward pass with given data.
 
-        Parameters
-        ----------
-        input_current : torch.Tensor
-            Data to be processed. Expected shape: (batch, time, ...)
+        Parameters:
+            input_current : torch.Tensor
+                Data to be processed. Expected shape: (batch, time, ...)
 
-        Returns
-        -------
-        torch.Tensor
-            Output data. Same shape as `input_spikes`.
+        Returns:
+            torch.Tensor
+                Output data. Same shape as `input_data`.
         """
         batch_size, time_steps, *trailing_dim = input_data.shape
 

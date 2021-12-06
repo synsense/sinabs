@@ -42,8 +42,8 @@ class LIF(StatefulLayer):
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
         threshold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
-        shape: 
-            Initialise state if you know the shape.
+        shape: torch.Size
+            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
@@ -79,15 +79,13 @@ class LIF(StatefulLayer):
         """
         Forward pass with given data.
 
-        Parameters
-        ----------
-        input_data : torch.Tensor
-            Data to be processed. Expected shape: (batch, time, ...)
+        Parameters:
+            input_current : torch.Tensor
+                Data to be processed. Expected shape: (batch, time, ...)
 
-        Returns
-        -------
-        torch.Tensor
-            Output data. Same shape as `input_spikes`.
+        Returns:
+            torch.Tensor
+                Output data. Same shape as `input_data`.
         """
         batch_size, time_steps, *trailing_dim = input_data.shape
 
