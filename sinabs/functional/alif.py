@@ -13,7 +13,8 @@ def alif_forward(
     threshold_low: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
-
+    b_0 = activation_fn.spike_threshold
+    
     output_spikes = []
     for step in range(time_steps):
         # if t_syn was provided, we're going to use synaptic current dynamics
@@ -33,10 +34,8 @@ def alif_forward(
         spikes, state = activation_fn(state)
         output_spikes.append(spikes)
 
-        self.v_mem = state['v_mem']
-        self.i_syn = state['i_syn'] if alpha_syn else None
         # Decay the spike threshold and add adaptation factor to it.
-        self.b = alpha_adapt * self.b + (1 - alpha_adapt) * spikes
-        self.threshold = self.b_0 + self.adapt_scale*self.b
+        state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
+        state['threshold'] = b_0 + adapt_scale*state['b']
 
-        output_spikes.append(self.activations)
+    return torch.stack(output_spikes, 1), state

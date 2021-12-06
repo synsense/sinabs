@@ -129,6 +129,9 @@ class ALIF(StatefulLayer):
             activation_fn=self.activation_fn,
             threshold_low=self.threshold_low,
         )
+        self.threshold = state['threshold']
+        self.b = state['b']
+        self.v_mem = state['v_mem']
 
         return spikes
 
