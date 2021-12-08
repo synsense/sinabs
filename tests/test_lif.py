@@ -94,7 +94,7 @@ def test_lif_squeezed():
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
     
-def test_lif_recurrent():
+def test_lif_recurrent_basic():
     batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
@@ -102,9 +102,9 @@ def test_lif_recurrent():
     n_neurons = np.product(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
     
-    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
-    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = LIFRecurrent(tau_mem=tau_mem, rec_connectivity=rec_connectivity)
+    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connect[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = LIFRecurrent(tau_mem=tau_mem, rec_connect=rec_connect)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -119,9 +119,9 @@ def test_lif_recurrent_squeezed():
     n_neurons = np.product(input_dimensions[1:])
     input_current = torch.rand(*input_dimensions) / (1-alpha)
 
-    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
-    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = LIFRecurrentSqueeze(tau_mem=tau_mem, batch_size=batch_size, rec_connectivity=rec_connectivity)
+    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connect[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = LIFRecurrentSqueeze(tau_mem=tau_mem, batch_size=batch_size, rec_connect=rec_connect)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
