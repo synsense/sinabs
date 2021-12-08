@@ -62,6 +62,7 @@ def test_deepcopy_lif():
         for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts, layer_recurrent):
             layer_orig(input_current)
 
+#             breakpoint()
             layer_copy = deepcopy(layer_orig)
             
             for p0, p1 in zip(layer_orig.parameters(), layer_copy.parameters()):
@@ -76,7 +77,7 @@ def test_deepcopy_lif():
             else:
                 assert layer_copy.tau_mem == layer_orig.tau_mem
             assert layer_copy.activation_fn == layer_orig.activation_fn
-            assert layer_copy.v_mem_min == layer_orig.v_mem_min
+            assert layer_copy.threshold_low == layer_orig.threshold_low
             assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size

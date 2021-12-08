@@ -147,19 +147,19 @@ class StatefulLayer(torch.nn.Module):
         else:
             return {cls.backend: cls}
 
-#     def __deepcopy__(self, memo=None):
-#         copy = self.__class__(**self._param_dict)
+    def __deepcopy__(self, memo=None):
+        copy = self.__class__(**self._param_dict)
 
-#         # Copy parameters
-#         for name, param in self.named_parameters():
-#             new_inst_param = getattr(copy, name)
-#             new_inst_param.data = param.data.clone()
-#         # Copy buffers (using state dict will fail if buffers have non-default shapes)
-#         for name, buffer in self.named_buffers():
-#             new_inst_buffer = getattr(copy, name)
-#             new_inst_buffer.data = buffer.data.clone()  # Copy parameters
+        # Copy parameters
+        for name, param in self.named_parameters():
+            new_inst_param = getattr(copy, name)
+            new_inst_param.data = param.data.clone()
+        # Copy buffers (using state dict will fail if buffers have non-default shapes)
+        for name, buffer in self.named_buffers():
+            new_inst_buffer = getattr(copy, name)
+            new_inst_buffer.data = buffer.data.clone()  # Copy parameters
 
-#         return copy
+        return copy
 
     @property
     def _param_dict(self) -> dict:
@@ -167,9 +167,4 @@ class StatefulLayer(torch.nn.Module):
         Dict of all parameters relevant for creating a new instance with same
         parameters as `self`
         """
-        return dict(
-            threshold=self.threshold,
-            threshold_low=self.threshold_low,
-            membrane_subtract=self._membrane_subtract,
-            membrane_reset=self.membrane_reset,
-        )
+        return dict()

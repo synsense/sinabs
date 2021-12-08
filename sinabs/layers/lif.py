@@ -75,6 +75,17 @@ class LIF(StatefulLayer):
         else:
             return None
 
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = {}
+        param_dict["activation_fn"] = self.activation_fn
+        param_dict["threshold_low"] = self.threshold_low
+        param_dict["train_alphas"] = self.train_alphas
+        param_dict["tau_mem"] = 1/torch.log(self.alpha_mem) if self.train_alphas else self.tau_mem
+        param_dict["tau_syn"] = 1/torch.log(self.alpha_syn) if self.train_alphas else self.tau_syn
+        param_dict["shape"] = self.v_mem.shape
+        return param_dict
+
     def forward(self, input_data: torch.Tensor):
         """
         Forward pass with given data.
@@ -108,6 +119,8 @@ class LIF(StatefulLayer):
         self.i_syn = state['i_syn'] if alpha_syn else None
         
         return spikes
+
+
 
 LIFRecurrent = recurrent_class(LIF)
 LIFSqueeze = squeeze_class(LIF)

@@ -66,7 +66,7 @@ class ALIF(StatefulLayer):
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
         super().__init__(
-            state_names = ['v_mem', 'i_syn', 'b'] if tau_syn else ['v_mem', 'b']
+            state_names = ['v_mem', 'i_syn', 'b', 'threshold'] if tau_syn else ['v_mem', 'b', 'threshold']
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
