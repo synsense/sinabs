@@ -37,20 +37,20 @@ class LIF(StatefulLayer):
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-        shape: torch.Size
-            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
+        shape: torch.Size
+            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         """
         super().__init__(
             state_names = ['v_mem', 'i_syn'] if tau_syn else ['v_mem']
         )
         if train_alphas:
-            self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
-            self.alpha_syn = nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None
+            self.alpha_mem = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_mem)))
+            self.alpha_syn = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_syn))) if tau_syn else None
         else:
-            self.tau_mem = nn.Parameter(tau_mem)
-            self.tau_syn = nn.Parameter(tau_syn) if tau_syn else None
+            self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem))
+            self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.activation_fn = activation_fn
         self.train_alphas = train_alphas
         if shape: self.init_state_with_shape(shape)
@@ -102,14 +102,14 @@ class LIF(StatefulLayer):
         return spikes
 
 
-class LIFRecurrent(StatefulLayer):
+class LIFRecurrent(LIF):
     def __init__(
         self,
         tau_mem: Union[float, torch.Tensor],
         rec_connect: torch.nn.Module,
+        tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
         train_alphas: bool = False,
-        tau_syn: Optional[Union[float, torch.Tensor]] = None,
         shape: Optional[torch.Size] = None,
     ):
         """
@@ -128,41 +128,25 @@ class LIFRecurrent(StatefulLayer):
         ----------
         tau_mem: float
             Membrane potential time constant.
+        rec_connect: torch.nn.Module
+            An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
         tau_syn: float
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-        shape: torch.Size
-            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
+        shape: torch.Size
+            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         """
         super().__init__(
-            state_names = ['v_mem', 'i_syn'] if tau_syn else ['v_mem']
+            tau_mem=tau_mem,
+            tau_syn=tau_syn,
+            activation_fn=activation_fn,
+            shape=shape,
+            train_alphas=train_alphas
         )
-        if train_alphas:
-            self.alpha_mem = nn.Parameter(torch.exp(-1/tau_mem))
-            self.alpha_syn = nn.Parameter(torch.exp(-1/tau_syn)) if tau_syn else None
-        else:
-            self.tau_mem = nn.Parameter(tau_mem)
-            self.tau_syn = nn.Parameter(tau_syn) if tau_syn else None
         self.rec_connect = rec_connect
-        self.activation_fn = activation_fn
-        self.train_alphas = train_alphas
-        if shape: self.init_state_with_shape(shape)
-
-    @property
-    def alpha_mem_calculated(self):
-        return self.alpha_mem if self.train_alphas else torch.exp(-1/self.tau_mem)
-    
-    @property
-    def alpha_syn_calculated(self):
-        if self.train_alphas:
-            return self.alpha_syn
-        if not self.train_alphas and self.tau_syn:
-            return torch.exp(-1/self.tau_syn)
-        else:
-            return None
 
     def forward(self, input_data: torch.Tensor):
         """
@@ -197,8 +181,3 @@ class LIFRecurrent(StatefulLayer):
         self.i_syn = state['i_syn'] if alpha_syn else None
         
         return spikes
-
-    
-    
-LIFSqueeze = squeeze_class(LIF)
-LIFRecurrentSqueeze = squeeze_class(LIFRecurrent)
