@@ -2,10 +2,8 @@ import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
 from sinabs.activation import ActivationFunction
-from sinabs.functional.lif import lif_forward, lif_recurrent
+from . import functional
 from .stateful_layer import StatefulLayer
-from .recurrent_module import recurrent_class
-from .pack_dims import squeeze_class
 
 
 class LIF(StatefulLayer):
@@ -14,6 +12,7 @@ class LIF(StatefulLayer):
         tau_mem: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
+        threshold_low: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
     ):
@@ -37,6 +36,8 @@ class LIF(StatefulLayer):
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
+        threshold_low: float or None
+            Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         shape: torch.Size
@@ -52,6 +53,7 @@ class LIF(StatefulLayer):
             self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.activation_fn = activation_fn
+        self.threshold_low = threshold_low
         self.train_alphas = train_alphas
         if shape: self.init_state_with_shape(shape)
 
@@ -89,7 +91,7 @@ class LIF(StatefulLayer):
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
         
-        spikes, state = lif_forward(
+        spikes, state = functional.lif_forward(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
@@ -101,6 +103,19 @@ class LIF(StatefulLayer):
         
         return spikes
 
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(
+            tau_mem=-1/torch.log(self.alpha_mem.detach_()) if self.train_alphas else self.tau_mem,
+            tau_syn=-1/torch.log(self.alpha_syn.detach_()) if self.train_alphas else self.tau_syn,
+            activation_fn=self.activation_fn,
+            train_alphas=self.train_alphas,
+            shape=self.v_mem.shape,
+            threshold_low=self.threshold_low,
+        )
+        return param_dict
+    
 
 class LIFRecurrent(LIF):
     def __init__(
@@ -109,6 +124,7 @@ class LIFRecurrent(LIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
+        threshold_low: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
     ):
@@ -134,6 +150,8 @@ class LIFRecurrent(LIF):
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
             a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
+        threshold_low: float or None
+            Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: bool
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         shape: torch.Size
@@ -169,7 +187,7 @@ class LIFRecurrent(LIF):
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
         
-        spikes, state = lif_recurrent(
+        spikes, state = functional.lif_recurrent(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
@@ -181,3 +199,47 @@ class LIFRecurrent(LIF):
         self.i_syn = state['i_syn'] if alpha_syn else None
         
         return spikes
+
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(
+            rec_connect=self.rec_connect
+        )
+        return param_dict
+
+
+class LIFSqueeze(LIF):
+    """
+    ***Deprecated class, will be removed in future release.***
+    """
+    def __init__(self,
+                 batch_size = None,
+                 num_timesteps = None,
+                 **kwargs,
+                ):
+        super().__init__(**kwargs)
+        if not batch_size and not num_timesteps:
+            raise TypeError("You need to specify either batch_size or num_timesteps.")
+        if not batch_size:
+            batch_size = -1 
+        if not num_timesteps:
+            num_timesteps = -1
+        self.batch_size = batch_size
+        self.num_timesteps = num_timesteps
+    
+    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
+        inflated_input = input_data.reshape(self.batch_size, self.num_timesteps, *input_data.shape[1:])
+        
+        inflated_output = super().forward(inflated_input)
+        
+        return inflated_output.flatten(start_dim=0, end_dim=1)
+
+    @property
+    def _param_dict(self) -> dict:
+        param_dict = super()._param_dict
+        param_dict.update(
+            batch_size=self.batch_size,
+            num_timesteps=self.num_timesteps,
+        )
+        return param_dict

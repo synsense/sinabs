@@ -81,7 +81,7 @@ class StatefulLayer(torch.nn.Module):
             state = torch.rand(shape) if randomize else torch.zeros(shape)
             self.register_buffer(name, state, persistent=False)
 
-    def reset_state(self, shape=None, randomize=False):
+    def reset_states(self, shape=None, randomize=False):
         """
         Reset the state/buffers in a layer.
         """

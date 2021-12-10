@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from sinabs.layers import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
+from sinabs.layers import ALIF, ALIFRecurrent
 import pytest
 import numpy as np
 
@@ -85,19 +85,6 @@ def test_alif_train_alphas_with_current_dynamics():
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
-    
-def test_alif_squeezed():
-    batch_size = 10
-    time_steps = 100
-    tau_mem = torch.tensor(30.)
-    alpha = torch.exp(-1/tau_mem)
-    input_current = torch.rand(batch_size*time_steps, 2, 7, 7) / (1-alpha)
-    layer = ALIFSqueeze(tau_mem=tau_mem, tau_adapt=tau_mem, batch_size=batch_size)
-    spike_output = layer(input_current)
-    
-    assert input_current.shape == spike_output.shape
-    assert torch.isnan(spike_output).sum() == 0
-    assert spike_output.sum() > 0
      
 def test_alif_recurrent():
     batch_size = 5
@@ -108,27 +95,9 @@ def test_alif_recurrent():
     n_neurons = np.product(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
     
-    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
-    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = ALIFRecurrent(tau_mem=tau_mem, tau_adapt=tau_mem, rec_connectivity=rec_connectivity)
-    spike_output = layer(input_current)
-
-    assert input_current.shape == spike_output.shape
-    assert torch.isnan(spike_output).sum() == 0
-    assert spike_output.sum() > 0
-
-def test_alif_recurrent_squeezed():
-    batch_size = 10
-    time_steps = 100
-    tau_mem = torch.tensor(30.)
-    alpha = torch.exp(-1/tau_mem)
-    input_dimensions = (batch_size*time_steps, 2, 7, 7)
-    n_neurons = np.product(input_dimensions[1:])
-    input_current = torch.rand(*input_dimensions) / (1-alpha)
-
-    rec_connectivity = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
-    rec_connectivity[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
-    layer = ALIFRecurrentSqueeze(tau_mem=tau_mem, tau_adapt=tau_mem, threshold=1, batch_size=batch_size, rec_connectivity=rec_connectivity)
+    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connect[1].weight = nn.Parameter(torch.ones(n_neurons,n_neurons)/n_neurons*0.5/(1-alpha))
+    layer = ALIFRecurrent(tau_mem=tau_mem, tau_adapt=tau_mem, rec_connect=rec_connect)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape

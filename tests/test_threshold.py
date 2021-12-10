@@ -1,20 +1,24 @@
+import torch
+import numpy as np
+
+from sinabs.activation import ActivationFunction, MembraneSubtract
 from pathlib import Path
 
 MODELS_FOLDER = Path(__file__).resolve().parent / "models"
 
 
 def test_threshold_subtract_onnx_eq():
-    import torch
-    import numpy as np
-
-    from sinabs.layers.functional import ThresholdSubtract
 
     class ThresholdTest(torch.nn.Module):
         def __init__(self):
             super().__init__()
+            self.activation_fn = ActivationFunction(spike_threshold=1.,
+                                                    reset_fn=MembraneSubtract(),
+                                                   )
 
         def forward(self, inp):
-            return ThresholdSubtract.apply(inp, 1.0)
+            state = {'v_mem': inp}
+            return self.activation_fn(state)
 
     inp = (torch.rand(10)-0.5)*3
     model = ThresholdTest()
