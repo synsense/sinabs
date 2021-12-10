@@ -1,5 +1,5 @@
 import torch
-from .functional import Quantize, StochasticRounding
+from sinabs.activation import Quantize, StochasticRounding
 
 
 class NeuromorphicReLU(torch.nn.Module):
