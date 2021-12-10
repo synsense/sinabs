@@ -4,6 +4,26 @@ import numpy as np
 from typing import List
 
 
+class Squeeze(nn.Module):
+    def __init__(self, module: torch.nn.Module):
+        super().__init__()
+        self.module = module
+        
+    def __call__(self, x):
+        batch_size, n_time_steps, *_ = x.shape
+        y = x.view(-1, *x.shape[2:])
+        y = self.module(y)
+        return y.reshape(batch_size, n_time_steps, *y.shape[1:])
+
+def squeeze_input_for_module(module: torch.nn.Module) -> Callable:
+    """
+    Wraps an nn.Module so that first two dimensions are flattened and
+    passed to the inner module. Helpful when you want to pass an input
+    with dimensions (batch_size, n_time_steps, channels, height, width)
+    to a Conv2d module which only accepts 4-dimensional tensors.
+    """
+    return Squeeze(module)
+
 def get_activations(torchanalog_model, tsrData, name_list=None):
     """
     Return torch analog model activations for the specified layers

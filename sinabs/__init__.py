@@ -9,4 +9,6 @@ from .from_torch import from_model as convert_torch_ann
 from .utils import (
     get_activations,
     get_network_activations,
+    squeeze_input_for_module,
+    Squeeze,
 )

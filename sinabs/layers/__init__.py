@@ -8,7 +8,7 @@ from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
 from .stateful_layer import StatefulLayer
 from .iaf import IAF, IAFSqueeze, IAFRecurrent, IAFRecurrentSqueeze
-from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
+from .lif import LIF, LIFRecurrent
 from .alif import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
 from .exp_leak import ExpLeak, ExpLeakSqueeze
 
