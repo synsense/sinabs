@@ -121,7 +121,7 @@ def test_network_conversion_add_spk_out():
         snn(spk_img).mean(0)
 
 
-def test_network_conversion_compicated_model():
+def test_network_conversion_complicated_model():
     """
     Try converting rather complicated network model with nested structures, which used
     to fail before.
