@@ -78,8 +78,8 @@ class StatefulLayer(torch.nn.Module):
         tensor of specific shape.
         """
         for name, buffer in self.named_buffers():
-            state = torch.rand(shape) if randomize else torch.zeros(shape)
-            self.register_buffer(name, state, persistent=False)
+            state = torch.rand(shape, device=buffer.device) if randomize else torch.zeros(shape, device=buffer.device)
+            self.register_buffer(name, state, persistent=True)
 
     def reset_states(self, shape=None, randomize=False):
         """
