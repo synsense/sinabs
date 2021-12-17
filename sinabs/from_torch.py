@@ -2,6 +2,7 @@ import copy
 from warnings import warn
 import torch
 from torch import nn
+from sinabs.activation import ActivationFunction, MembraneSubtract
 
 from sinabs import Network
 import sinabs.layers as sl
@@ -118,9 +119,10 @@ class SpkConverter(object):
     def relu2spiking(self):
 
         return sl.IAFSqueeze(
-            threshold=self.threshold,
+            activation_fn=ActivationFunction(spike_threshold=self.threshold,
+                                             reset_fn=MembraneSubtract(),
+                                            ),
             threshold_low=self.threshold_low,
-            membrane_subtract=self.membrane_subtract,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
             **self.kwargs_backend,

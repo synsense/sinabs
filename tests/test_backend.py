@@ -1,3 +1,4 @@
+import torch
 from copy import deepcopy
 
 
@@ -19,11 +20,7 @@ def test_backend_iaf():
 
     layer = IAF()
 
-    # Modify default parameters and buffers
-    for b in layer.buffers():
-        b += 1
-    for p in layer.parameters():
-        p += 1
+    layer(torch.rand(10,10,10))
 
     layer_copy = deepcopy(layer)
 
@@ -36,11 +33,7 @@ def test_backend_iaf():
 
     layer = IAFSqueeze(num_timesteps=10)
 
-    # Modify default parameters and buffers
-    for b in layer.buffers():
-        b += 1
-    for p in layer.parameters():
-        p += 1
+    layer(torch.rand(10,10,10))
 
     layer_copy = deepcopy(layer)
 
@@ -57,14 +50,10 @@ def test_backend_lif():
 
     from sinabs.layers import LIF, LIFSqueeze
 
-    layer = LIF(tau_mem=20)
+    layer = LIF(tau_mem=20.)
 
-    # Modify default parameters and buffers
-    for b in layer.buffers():
-        b += 1
-    for p in layer.parameters():
-        p += 1
-
+    layer(torch.rand(10,10,10))
+    
     layer_copy = deepcopy(layer)
 
     # Backend remains the same. Therefore layer should not change.
@@ -74,13 +63,9 @@ def test_backend_lif():
     # Make sure that parameters and buffers have not been changed during `to_backend` call
     compare_layers(layer_copy, layer_sinabs_backend)
 
-    layer = LIFSqueeze(tau_mem=20, num_timesteps=10)
+    layer = LIFSqueeze(tau_mem=20., num_timesteps=10)
 
-    # Modify default parameters and buffers
-    for b in layer.buffers():
-        b += 1
-    for p in layer.parameters():
-        p += 1
+    layer(torch.rand(10,10,10))
 
     layer_copy = deepcopy(layer)
 

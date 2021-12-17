@@ -1,17 +1,16 @@
 from .crop2d import Cropping2dLayer
 from .maxpool2d import SpikingMaxPooling2dLayer
-from .inputlayer import InputLayer
+from .input_layer import InputLayer
 from .quantize import QuantizeLayer
 from .neuromorphic_relu import NeuromorphicReLU
 from .sumpool2d import SumPool2d
 from .img_to_spk import Img2SpikeLayer
 from .sig_to_spk import Sig2SpikeLayer
-from .spiking_layer import SpikingLayer
 from .stateful_layer import StatefulLayer
-from .iaf_bptt import IAF, IAFSqueeze
-from .lif import LIF, LIFSqueeze, LIFRecurrent, LIFRecurrentSqueeze
-from .alif import ALIF, ALIFSqueeze, ALIFRecurrent, ALIFRecurrentSqueeze
-from .leaky_layer import ExpLeak, ExpLeakSqueeze
+from .iaf import IAF, IAFRecurrent, IAFSqueeze
+from .lif import LIF, LIFRecurrent, LIFSqueeze
+from .alif import ALIF, ALIFRecurrent
+from .exp_leak import ExpLeak, ExpLeakSqueeze
 
 try:
     from sinabs.slayer import layers as slayer_layers

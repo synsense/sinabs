@@ -1,5 +1,5 @@
 import torch.nn as nn
-from .functional import quantize
+from sinabs.activation import Quantize
 
 
 class QuantizeLayer(nn.Module):
@@ -15,6 +15,6 @@ class QuantizeLayer(nn.Module):
 
     def forward(self, data):
         if self.quantize:
-            return quantize(data)
+            return Quantize.apply(data)
         else:
             return data
