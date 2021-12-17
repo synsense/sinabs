@@ -13,6 +13,7 @@ class ALIF(StatefulLayer):
         tau_adapt: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
+        b0: float = 1.,
         activation_fn: Callable = None,
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
@@ -78,7 +79,7 @@ class ALIF(StatefulLayer):
         self.train_alphas = train_alphas
         if shape:
             self.init_state_with_shape(shape)
-        self.b0 = self.activation_fn.spike_threshold
+        self.b0 = b0
 
     @property
     def alpha_mem_calculated(self):
@@ -160,6 +161,7 @@ class ALIFRecurrent(ALIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
+        b0: float = 1.,
         activation_fn: Callable = None,
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
@@ -217,6 +219,7 @@ class ALIFRecurrent(ALIF):
             threshold_low=threshold_low,
             shape=shape,
             train_alphas=train_alphas,
+            b0=b0,
         )
         self.rec_connect = rec_connect
 
