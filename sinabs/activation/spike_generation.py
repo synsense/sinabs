@@ -1,5 +1,5 @@
 import torch
-from typing import Dict, Tuple, Callable
+from typing import Dict, Tuple, Callable, Union
 
 
 class BackwardClass:
@@ -22,7 +22,7 @@ class MultiSpike(torch.autograd.Function, BackwardClass):
     """
 
     @staticmethod
-    def forward(ctx, state: Dict[str, torch.Tensor], threshold: float, surrogate_grad_fn: Callable):
+    def forward(ctx, state: Dict[str, torch.Tensor], threshold: Union[float, torch.Tensor], surrogate_grad_fn: Callable):
         """"""
         ctx.save_for_backward(state['v_mem'].clone())
         ctx.threshold = threshold
@@ -41,7 +41,7 @@ class SingleSpike(torch.autograd.Function, BackwardClass):
     """
 
     @staticmethod
-    def forward(ctx, state: Dict[str, torch.Tensor], threshold: float, surrogate_grad_fn: Callable):
+    def forward(ctx, state: Dict[str, torch.Tensor], threshold: Union[float, torch.Tensor], surrogate_grad_fn: Callable):
         """"""
         ctx.save_for_backward(state['v_mem'].clone())
         ctx.threshold = threshold

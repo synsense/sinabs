@@ -33,8 +33,7 @@ def alif_forward_single(
 
     # Decay the spike threshold and add adaptation factor to it.
     state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
-#     breakpoint()
-    activation_fn.spike_threshold = b0 + adapt_scale*state['b']
+    state['threshold'] = b0 + adapt_scale*state['b']
 
     return spikes, state
 

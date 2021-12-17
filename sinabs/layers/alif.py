@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ActivationFunction, MembraneSubtract
+from sinabs.activation import ALIFActivationFunction, MembraneSubtract, SingleSpike
 from . import functional
 from .stateful_layer import StatefulLayer
 
@@ -62,7 +62,7 @@ class ALIF(StatefulLayer):
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
         super().__init__(
-            state_names = ['v_mem', 'i_syn', 'b'] if tau_syn else ['v_mem', 'b']
+            state_names = ['v_mem', 'i_syn', 'b', 'threshold'] if tau_syn else ['v_mem', 'b', 'threshold']
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_mem)))
@@ -73,7 +73,7 @@ class ALIF(StatefulLayer):
             self.tau_adapt = nn.Parameter(torch.as_tensor(tau_adapt))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.adapt_scale = adapt_scale
-        self.activation_fn = ActivationFunction(reset_fn=MembraneSubtract())
+        self.activation_fn = ALIFActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneSubtract())
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
         if shape:
@@ -97,7 +97,6 @@ class ALIF(StatefulLayer):
         else:
             return None
 
-
     def forward(self, input_data: torch.Tensor):
         """
         Forward pass with given data.
@@ -115,8 +114,6 @@ class ALIF(StatefulLayer):
         # Ensure the neuron state are initialized
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
-        if not torch.is_tensor(self.activation_fn.spike_threshold):
-            self.activation_fn.spike_threshold = torch.ones((batch_size, *trailing_dim)) * self.b0
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
@@ -133,6 +130,7 @@ class ALIF(StatefulLayer):
             threshold_low=self.threshold_low,
             b0=self.b0,
         )
+        self.threshold = state['threshold']
         self.b = state['b']
         self.v_mem = state['v_mem']
 
@@ -256,6 +254,7 @@ class ALIFRecurrent(ALIF):
             rec_connect=self.rec_connect,
             b0=self.b0,
         )
+        self.threshold = state['threshold']
         self.b = state['b']
         self.v_mem = state['v_mem']
 

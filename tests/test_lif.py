@@ -99,3 +99,13 @@ def test_lif_recurrent_basic():
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_lif_device_movement():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.as_tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
+    layer = LIF(tau_mem=tau_mem)
+    
+    layer = layer.to("cuda")
+    layer(input_current.to("cuda"))

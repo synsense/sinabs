@@ -42,3 +42,19 @@ class ActivationFunction:
                                      self.surrogate_grad_fn)
         state = self.reset_fn(spikes, state, self.spike_threshold)
         return spikes, state
+
+
+@dataclass
+class ALIFActivationFunction(ActivationFunction):
+    """
+    Modifies the class to pass the neuron layer's threshold state instead of the initial
+    spike threshold defined.
+    """
+
+    def __call__(self, state: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+        """ Takes in neuron states and returns a tuple of (spikes, new states). """
+        spikes = self.spike_fn.apply(state, 
+                                     state['threshold'], 
+                                     self.surrogate_grad_fn)
+        state = self.reset_fn(spikes, state, self.spike_threshold)
+        return spikes, state
