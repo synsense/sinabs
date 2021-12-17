@@ -198,7 +198,6 @@ class Network(torch.nn.Module):
                     old_module = getattr(parent, child_name)
                     old_device = infer_module_device(old_module)
                     new_device = infer_module_device(new_module)
-                    print(name, old_device, new_device)
                     if old_device is not None and old_device != new_device:
                         update_device = new_device
 
