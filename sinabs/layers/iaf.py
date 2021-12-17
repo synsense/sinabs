@@ -115,7 +115,7 @@ class IAFRecurrent(IAF):
             self.init_state_with_shape((batch_size, *trailing_dim))
 
         output_spikes = []
-        rec_out = torch.zeros((batch_size, *trailing_dim))
+        rec_out = torch.zeros((batch_size, *trailing_dim), device=input_data.device)
         for step in range(time_steps):
             total_input = input_data[:, step] + rec_out
 

@@ -100,12 +100,27 @@ def test_lif_recurrent_basic():
     assert spike_output.sum() > 0
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
-def test_lif_device_movement():
+def test_lif_on_gpu():
     batch_size, time_steps = 10, 100
     tau_mem = torch.as_tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
     layer = LIF(tau_mem=tau_mem)
+    
+    layer = layer.to("cuda")
+    layer(input_current.to("cuda"))
+    
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_lif_recurrent_on_gpu():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.as_tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_dimensions = (batch_size, time_steps, 2, 10)
+    n_neurons = np.product(input_dimensions[2:])
+    input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
+    
+    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    layer = LIFRecurrent(tau_mem=tau_mem, rec_connect=rec_connect)
     
     layer = layer.to("cuda")
     layer(input_current.to("cuda"))

@@ -17,6 +17,18 @@ def test_alif_basic():
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
+def test_alif_basic_audio_input():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.as_tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 64)  / (1-alpha)
+    layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1.8)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+
 def test_alif_minimum_spike_threshold():
     batch_size, time_steps = 10, 100
     tau_mem = torch.as_tensor(30.)
@@ -103,12 +115,27 @@ def test_alif_recurrent():
     assert spike_output.sum() > 0
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
-def test_alif_device_movement():
+def test_alif_on_gpu():
     batch_size, time_steps = 10, 100
     tau_mem = torch.as_tensor(30.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)  / (1-alpha)
-    layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1.8)
+    layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem)
+    
+    layer = layer.to("cuda")
+    layer(input_current.to("cuda"))
+    
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_alif_recurrent_on_gpu():
+    batch_size, time_steps = 10, 100
+    tau_mem = torch.as_tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_dimensions = (batch_size, time_steps, 2, 10)
+    n_neurons = np.product(input_dimensions[2:])
+    input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
+    
+    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    layer = ALIFRecurrent(tau_mem=tau_mem, tau_adapt=tau_mem, rec_connect=rec_connect)
     
     layer = layer.to("cuda")
     layer(input_current.to("cuda"))

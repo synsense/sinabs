@@ -84,7 +84,7 @@ def alif_recurrent(
     batch_size, n_time_steps, *trailing_dim = input_data.shape
 
     output_spikes = []
-    rec_out = torch.zeros((batch_size, *trailing_dim))
+    rec_out = torch.zeros((batch_size, *trailing_dim), device=input_data.device)
     for step in range(n_time_steps):
         total_input = input_data[:, step] + rec_out
 
