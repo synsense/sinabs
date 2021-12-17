@@ -10,8 +10,6 @@ class ExpLeak(StatefulLayer):
                  shape: Optional[torch.Size] = None,
                  train_alphas: bool = False,
                  threshold_low: Optional[float] = None,
-                 *args, 
-                 **kwargs
                 ):
         """
         Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
@@ -78,6 +76,7 @@ class ExpLeakSqueeze(ExpLeak):
     def __init__(self,
                  batch_size = None,
                  num_timesteps = None,
+                 *args,
                  **kwargs,
                 ):
         super().__init__(**kwargs)

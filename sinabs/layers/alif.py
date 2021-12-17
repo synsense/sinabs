@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ActivationFunction, MembraneSubtract, ALIFSingleSpike
+from sinabs.activation import ActivationFunction, MembraneSubtract
 from . import functional
 from .stateful_layer import StatefulLayer
 
@@ -13,7 +13,7 @@ class ALIF(StatefulLayer):
         tau_adapt: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        activation_fn: Callable = ActivationFunction(spike_fn=ALIFSingleSpike, reset_fn=MembraneSubtract()),
+        activation_fn: Callable = None,
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
@@ -62,7 +62,7 @@ class ALIF(StatefulLayer):
             When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself. 
         """
         super().__init__(
-            state_names = ['v_mem', 'i_syn', 'b', 'threshold'] if tau_syn else ['v_mem', 'b', 'threshold']
+            state_names = ['v_mem', 'i_syn', 'b'] if tau_syn else ['v_mem', 'b']
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_mem)))
@@ -73,12 +73,12 @@ class ALIF(StatefulLayer):
             self.tau_adapt = nn.Parameter(torch.as_tensor(tau_adapt))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.adapt_scale = adapt_scale
-        self.activation_fn = activation_fn
+        self.activation_fn = ActivationFunction(reset_fn=MembraneSubtract())
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
         if shape:
             self.init_state_with_shape(shape)
-        self.b_0 = activation_fn.spike_threshold
+        self.b0 = self.activation_fn.spike_threshold
 
     @property
     def alpha_mem_calculated(self):
@@ -115,6 +115,8 @@ class ALIF(StatefulLayer):
         # Ensure the neuron state are initialized
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
+        if not torch.is_tensor(self.activation_fn.spike_threshold):
+            self.activation_fn.spike_threshold = torch.ones((batch_size, *trailing_dim)) * self.b0
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
@@ -129,8 +131,8 @@ class ALIF(StatefulLayer):
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
             threshold_low=self.threshold_low,
+            b0=self.b0,
         )
-        self.threshold = state['threshold']
         self.b = state['b']
         self.v_mem = state['v_mem']
 
@@ -151,6 +153,7 @@ class ALIF(StatefulLayer):
         )
         return param_dict
 
+
 class ALIFRecurrent(ALIF):
     def __init__(
         self,
@@ -159,7 +162,7 @@ class ALIFRecurrent(ALIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        activation_fn: Callable = ActivationFunction(spike_fn=ALIFSingleSpike, reset_fn=MembraneSubtract()),
+        activation_fn: Callable = None,
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
@@ -251,8 +254,8 @@ class ALIFRecurrent(ALIF):
             activation_fn=self.activation_fn,
             threshold_low=self.threshold_low,
             rec_connect=self.rec_connect,
+            b0=self.b0,
         )
-        self.threshold = state['threshold']
         self.b = state['b']
         self.v_mem = state['v_mem']
 

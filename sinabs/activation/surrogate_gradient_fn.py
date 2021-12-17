@@ -27,7 +27,6 @@ class MultiGaussian:
     """
     mu: float = 0.
     sigma: float = 0.5
-    
+
     def __call__(self, v_mem, threshold):
         return torch.exp(-(((v_mem-threshold) - self.mu) ** 2) / (2 * self.sigma ** 2)) / torch.sqrt(2 * torch.tensor(math.pi)) / self.sigma
-

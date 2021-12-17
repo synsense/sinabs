@@ -80,8 +80,6 @@ class IAFRecurrent(IAF):
         rec_connect: torch.nn.Module,
         activation_fn: Callable = ActivationFunction(),
         threshold_low: Optional[float] = None,
-        *args,
-        **kwargs,
     ):
         """
         Pytorch implementation of a Integrate and Fire neuron with learning enabled.

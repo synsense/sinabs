@@ -27,26 +27,28 @@ def test_alif_minimum_spike_threshold():
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem,)
     spike_output = layer(input_current)
 
-    assert (layer.b_0 + layer.b >= 1.).all(), "Spike thresholds should not drop below initital threshold."
+    assert (layer.b0 + layer.b >= 1.).all(), "Spike thresholds should not drop below initital threshold."
     assert spike_output.sum() > 0
-    assert (layer.b_0 + layer.b > 1.).all(), "Spike thresholds should be above default threshold if any spikes occured."
+    assert (layer.b0 + layer.b > 1.).all(), "Spike thresholds should be above default threshold if any spikes occured."
 
 def test_alif_spike_threshold_decay():
     batch_size = 10
     time_steps = 100
     tau_mem = torch.tensor(30.)
     alpha = torch.exp(-1/tau_mem)
-    adapt_scale = float(1/(1-alpha))
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
     input_current[:,0] = 1 / (1-alpha) # only inject current in the first time step and make it spike
-    layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=adapt_scale)
+    layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1-alpha))
     spike_output = layer(input_current)
+    
+    layer2 = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1-alpha))
 
-    assert (layer.threshold > 1).all()
+    assert (layer.activation_fn.spike_threshold > 1).all()
+    assert spike_output.sum() == torch.prod(torch.as_tensor(input_current.size())) / time_steps, "All neurons should spike exactly once."
     # decay only starts after 1 time step
     threshold_decay = alpha ** (time_steps-1)
     # account for rounding errors with .isclose()
-    assert torch.isclose(layer.threshold-1, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
+    assert torch.isclose(layer.activation_fn.spike_threshold-1, threshold_decay, atol=1e-08).all(), "Neuron spike thresholds do not seems to decay correctly."
 
 def test_alif_with_current_dynamics():
     batch_size, time_steps = 10, 100

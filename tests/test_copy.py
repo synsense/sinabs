@@ -97,7 +97,7 @@ def test_deepcopy_alif():
         assert b0 is not b1
 
     assert layer_copy.threshold_low == layer_orig.threshold_low
-    assert layer_copy.activation_fn == layer_orig.activation_fn
+    assert (layer_copy.activation_fn.spike_threshold == layer_orig.activation_fn.spike_threshold).all()
     assert layer_copy.tau_mem == layer_orig.tau_mem
     assert layer_copy.tau_adapt == layer_orig.tau_adapt
     assert layer_copy.adapt_scale == layer_orig.adapt_scale

@@ -79,7 +79,7 @@ class StatefulLayer(torch.nn.Module):
         """
         for name, buffer in self.named_buffers():
             state = torch.rand(shape, device=buffer.device) if randomize else torch.zeros(shape, device=buffer.device)
-            self.register_buffer(name, state, persistent=True)
+            self.register_buffer(name, state)
 
     def reset_states(self, shape=None, randomize=False):
         """

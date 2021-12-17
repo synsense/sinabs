@@ -11,9 +11,9 @@ def alif_forward_single(
     state: dict,
     activation_fn: Callable,
     threshold_low: float,
+    b0: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
-    b_0 = activation_fn.spike_threshold
     
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
@@ -33,7 +33,8 @@ def alif_forward_single(
 
     # Decay the spike threshold and add adaptation factor to it.
     state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
-    state['threshold'] = b_0 + adapt_scale*state['b']
+#     breakpoint()
+    activation_fn.spike_threshold = b0 + adapt_scale*state['b']
 
     return spikes, state
 
@@ -47,9 +48,9 @@ def alif_forward(
     state: dict,
     activation_fn: Callable,
     threshold_low: float,
+    b0: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
-    b_0 = activation_fn.spike_threshold
     
     output_spikes = []
     for step in range(time_steps):
@@ -62,6 +63,7 @@ def alif_forward(
             state=state,
             activation_fn=activation_fn,
             threshold_low=threshold_low,
+            b0=b0,
         )
         output_spikes.append(spikes)
 
@@ -78,9 +80,9 @@ def alif_recurrent(
     activation_fn: Callable,
     threshold_low: float,
     rec_connect: torch.nn.Module,
+    b0: float,
 ):
     batch_size, n_time_steps, *trailing_dim = input_data.shape
-    b_0 = activation_fn.spike_threshold
 
     output_spikes = []
     rec_out = torch.zeros((batch_size, *trailing_dim))
@@ -96,6 +98,7 @@ def alif_recurrent(
             state=state,
             activation_fn=activation_fn,
             threshold_low=threshold_low,
+            b0=b0,
         )
         output_spikes.append(spikes)
         
