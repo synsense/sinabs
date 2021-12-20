@@ -86,7 +86,7 @@ class StatefulLayer(torch.nn.Module):
         Reset the state/buffers in a layer.
         """
         for name, buffer in self.named_buffers():
-            self.register_buffer(name, torch.nn.parameter.UninitializedBuffer())
+            self.register_buffer(name, torch.nn.parameter.UninitializedBuffer(device=buffer.device))
 
     def to_backend(self, backend):
         if backend == self.backend:
