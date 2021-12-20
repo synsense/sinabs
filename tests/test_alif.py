@@ -123,19 +123,20 @@ def test_alif_on_gpu():
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem)
     
     layer = layer.to("cuda")
+    layer.reset_states()
     layer(input_current.to("cuda"))
     
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_alif_recurrent_on_gpu():
-    batch_size, time_steps = 10, 100
+    batch_size, time_steps, n_neurons = 10, 100, 5
     tau_mem = torch.as_tensor(30.)
     alpha = torch.exp(-1/tau_mem)
-    input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
-    input_current = torch.ones(*input_dimensions) * 0.5 / (1-alpha)
+    input_current = torch.zeros((batch_size, time_steps, n_neurons))
+    input_current[:,0] = 1 / (1-alpha)
     
-    rec_connect = nn.Sequential(nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False))
+    rec_connect = nn.Linear(n_neurons, n_neurons, bias=False)
     layer = ALIFRecurrent(tau_mem=tau_mem, tau_adapt=tau_mem, rec_connect=rec_connect)
     
     layer = layer.to("cuda")
     layer(input_current.to("cuda"))
+

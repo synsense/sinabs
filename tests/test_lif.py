@@ -98,6 +98,22 @@ def test_lif_recurrent_basic():
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
+    
+def test_lif_with_shape():
+    batch_size, time_steps, n_neurons = 10, 100, 5
+    tau_mem = torch.tensor(30.)
+    alpha = torch.exp(-1/tau_mem)
+    input_current = torch.zeros((batch_size, time_steps, n_neurons))
+    input_current[:,0] = 1 / (1-alpha)
+    
+    rec_connect = nn.Linear(n_neurons, n_neurons, bias=False)
+    rec_connect.weight = nn.Parameter(torch.ones(n_neurons, n_neurons))
+    layer = LIFRecurrent(tau_mem=tau_mem, rec_connect=rec_connect, shape=(batch_size, n_neurons))
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() == batch_size * n_neurons
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_lif_on_gpu():
