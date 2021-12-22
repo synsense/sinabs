@@ -1,46 +1,72 @@
 import torch
-from sinabs.activation import ActivationFunction, MembraneSubtract, MembraneReset, MultiSpike, SingleSpike
+from sinabs.activation import ActivationFunction, ALIFActivationFunction, MembraneSubtract, MembraneReset, MultiSpike, SingleSpike
 
 
 def test_single_spike_subtract():
-    v_mem = torch.tensor(2.5)
-    states = {'v_mem': v_mem}
+    state = {'v_mem': torch.tensor([2.5, 0.3])}
 
     activation_fn = ActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneSubtract())
-    spikes, new_states = activation_fn(states)
+    spikes, new_state = activation_fn(state)
 
-    assert spikes == 1
-    assert new_states['v_mem'] == 1.5
+    assert torch.allclose(spikes, torch.tensor([1., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([1.5, 0.3]))
     
 def test_single_spike_reset():
-    v_mem = torch.tensor(2.5)
-    states = {'v_mem': v_mem}
+    state = {'v_mem': torch.tensor([2.5, 0.3])}
 
     activation_fn = ActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneReset())
-    spikes, new_states = activation_fn(states)
+    spikes, new_state = activation_fn(state)
 
-    assert spikes == 1
-    assert new_states['v_mem'] == 0
+    assert torch.allclose(spikes, torch.tensor([1., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([0., 0.3]))
     
 def test_multi_spike_subtract():
-    v_mem = torch.tensor(2.5)
-    states = {'v_mem': v_mem}
+    state = {'v_mem': torch.tensor([2.5, 0.3])}
 
     activation_fn = ActivationFunction(spike_fn=MultiSpike, reset_fn=MembraneSubtract())
-    spikes, new_states = activation_fn(states)
+    spikes, new_state = activation_fn(state)
 
-    assert spikes == 2
-    assert new_states['v_mem'] == 0.5
+    assert torch.allclose(spikes, torch.tensor([2., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([0.5, 0.3]))
     
 def test_multi_spike_reset():
-    v_mem = torch.tensor(2.5)
-    states = {'v_mem': v_mem}
+    state = {'v_mem': torch.tensor([2.5, 0.3])}
 
     activation_fn = ActivationFunction(spike_fn=MultiSpike, reset_fn=MembraneReset())
-    spikes, new_states = activation_fn(states)
+    spikes, new_state = activation_fn(state)
 
-    assert spikes == 2
-    assert new_states['v_mem'] == 0
+    assert torch.allclose(spikes, torch.tensor([2., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([0., 0.3]))
+    
+def test_alif_activation_single_spike_reset():
+    state = {'v_mem': torch.tensor([0.5, 1.5]),
+             'threshold': torch.tensor([0.3, 2.]),
+            }
+    activation_fn = ALIFActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneReset())
+    spikes, new_state = activation_fn(state)
+    
+    assert torch.allclose(spikes, torch.tensor([1., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([0., 1.5]))
+    
+def test_alif_activation_multi_spike_subtract():
+    state = {'v_mem': torch.tensor([0.7, 1.5]),
+             'threshold': torch.tensor([0.3, 2.]),
+            }
+    activation_fn = ALIFActivationFunction(spike_fn=MultiSpike, reset_fn=MembraneSubtract())
+    spikes, new_state = activation_fn(state)
+    
+    assert torch.allclose(spikes, torch.tensor([2., 0.]))
+    assert torch.allclose(new_state['v_mem'], torch.tensor([0.1, 1.5]))
+    
+# def test_calculates_grads():
+#     state = {'v_mem': torch.tensor([0.5, 1.5]),
+#              'threshold': torch.tensor([0.3, 2.]),
+#             }
+#     activation_fn = ALIFActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneReset())
+#     spikes, new_state = activation_fn(state)
+    
+#     loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
+#     loss.backward()
     
 
 # def test_lif_zero_grad():
@@ -97,7 +123,7 @@ def test_multi_spike_reset():
 #     optimizer.step()
 #     optimizer.zero_grad()
 
-#     # Detach state gradients to avoid backpropagating through stored states.
+#     # Detach state gradients to avoid backpropagating through stored state.
 #     sl.zero_grad()
 
 #     out1 = model(data1)
