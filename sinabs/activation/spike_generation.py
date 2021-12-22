@@ -1,5 +1,5 @@
 import torch
-from typing import Dict, Tuple, Callable, Union
+from typing import Dict, Tuple, Callable, Union, List
 
 
 class BackwardClass:
@@ -7,12 +7,12 @@ class BackwardClass:
     def backward(ctx, grad_output: torch.tensor):
         """"""
         (v_mem,) = ctx.saved_tensors
-        grad = ctx.surrogate_grad_fn(v_mem, ctx.threshold) 
+        grad = ctx.surrogate_grad_fn(v_mem, ctx.threshold)
         grad_input = grad_output * grad
         return grad_input, None, None
 
 
-class MultiSpike(torch.autograd.Function, BackwardClass):
+class MultiSpike(BackwardClass, torch.autograd.Function):
     """
     PyTorch-compatible function that returns the number of spikes emitted,
     given a membrane potential value and in a "threshold subtracting" regime.
@@ -21,17 +21,26 @@ class MultiSpike(torch.autograd.Function, BackwardClass):
     `threshold - window`, and is passed through otherwise.
     """
 
+    required_states: List[str] = ["v_mem"]
+
     @staticmethod
-    def forward(ctx, state: Dict[str, torch.Tensor], threshold: Union[float, torch.Tensor], surrogate_grad_fn: Callable):
+    def forward(
+        ctx,
+        v_mem: torch.Tensor,
+        threshold: Union[float, torch.Tensor],
+        surrogate_grad_fn: Callable,
+    ):
         """"""
-        ctx.save_for_backward(state['v_mem'].clone())
+        ctx.save_for_backward(v_mem.clone())
         ctx.threshold = threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
-        spikes = (state['v_mem'] > 0) * torch.div(state['v_mem'], threshold, rounding_mode="trunc").float()
+        spikes = (v_mem > 0) * torch.div(
+            v_mem, threshold, rounding_mode="trunc"
+        ).float()
         return spikes
 
 
-class SingleSpike(torch.autograd.Function, BackwardClass):
+class SingleSpike(BackwardClass, torch.autograd.Function):
     """
     PyTorch-compatible function that returns the number of spikes emitted,
     given a membrane potential value and in a "threshold subtracting" regime.
@@ -40,11 +49,18 @@ class SingleSpike(torch.autograd.Function, BackwardClass):
     `threshold - window`, and is passed through otherwise.
     """
 
+    required_states: List[str] = ["v_mem"]
+
     @staticmethod
-    def forward(ctx, state: Dict[str, torch.Tensor], threshold: Union[float, torch.Tensor], surrogate_grad_fn: Callable):
+    def forward(
+        ctx,
+        v_mem: torch.Tensor,
+        threshold: Union[float, torch.Tensor],
+        surrogate_grad_fn: Callable,
+    ):
         """"""
-        ctx.save_for_backward(state['v_mem'].clone())
+        ctx.save_for_backward(v_mem.clone())
         ctx.threshold = threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
-        spikes = (state['v_mem'] - threshold > 0).float()
+        spikes = (v_mem - threshold > 0).float()
         return spikes
