@@ -77,16 +77,20 @@ class StatefulLayer(torch.nn.Module):
         Initialise state/buffers with either zeros or random
         tensor of specific shape.
         """
-        for name, buffer in self.named_buffers():
-            state = torch.rand(shape, device=buffer.device) if randomize else torch.zeros(shape, device=buffer.device)
-            self.register_buffer(name, state)
-
-    def reset_states(self, shape=None, randomize=False):
+        for buffer in self.buffers():
+            buffer.materialize(shape)
+        self.reset_states(randomize=randomize)
+        
+    def reset_states(self, randomize=False):
         """
         Reset the state/buffers in a layer.
         """
-        for name, buffer in self.named_buffers():
-            self.register_buffer(name, torch.nn.parameter.UninitializedBuffer(device=buffer.device))
+        if self.is_state_initialised():
+            for buffer in self.buffers():
+                if randomize:
+                    torch.nn.init.uniform_(buffer)
+                else:
+                    buffer.zero_()
 
     def to_backend(self, backend):
         if backend == self.backend:

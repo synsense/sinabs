@@ -59,14 +59,6 @@ def compare_networks(net0, net1):
                 if key in neuron_params1:
                     assert neuron_params1[key] == val
 
-
-def test_reset_states():
-    network(data)
-    assert network.spiking_model[1].v_mem.sum() != 0
-    network.reset_states()
-    assert isinstance(network.spiking_model[1].v_mem, torch.nn.parameter.UninitializedBuffer)
-
-
 def test_compare_activations():
     analog, rates, layer_names = network.compare_activations(data)
     assert len(analog) == len(rates) == len(layer_names) == 2
