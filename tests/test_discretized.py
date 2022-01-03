@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from sinabs.backend.dynapcnn import discretize
 from sinabs.layers import IAF
+from sinabs.activation import ActivationFunction, MembraneSubtract
 
 # - Test tensor to be discretized
 float_tensor = torch.tensor(
@@ -39,10 +40,10 @@ conv_lyr.weight = torch.nn.Parameter(weight)
 np.random.seed(4)
 thr = np.random.random() * 10
 thr_low = -np.random.random() * 10
-spk_lyr = IAF(threshold=thr, threshold_low=thr_low, membrane_subtract=True)
+spk_lyr = IAF(threshold_low=thr_low, activation_fn=ActivationFunction(spike_threshold=thr, reset_fn=MembraneSubtract()))
 
 
-def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state):
+def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem):
     """
     Make sure that all discretized values are scaled by same factor and within
     their allowed range.
@@ -50,11 +51,11 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
 
     if thr is not None:
         # Guess scaling based on threshold
-        scale = thr / spk_lyr.threshold
-        reference = spk_lyr.threshold
+        scale = thr / spk_lyr.activation_fn.spike_threshold
+        reference = spk_lyr.activation_fn.spike_threshold
 
         thrs = torch.tensor((thr, thr_low))
-        thrs_old = torch.tensor((spk_lyr.threshold, spk_lyr.threshold_low))
+        thrs_old = torch.tensor((spk_lyr.activation_fn.spike_threshold, spk_lyr.threshold_low))
     else:
         with torch.no_grad():
             scale = torch.true_divide(torch.max(weight), torch.max(conv_lyr.weight))
@@ -63,10 +64,10 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
 
     # Error should be within what is expected from rounding
     for orig, new in zip(
-        (conv_lyr.weight, conv_lyr.bias, spk_lyr.state, thrs_old),
-        (weight, bias, state, thrs),
+        (conv_lyr.weight, conv_lyr.bias, spk_lyr.v_mem, thrs_old),
+        (weight, bias, v_mem, thrs),
     ):
-        if new is not None:
+        if (new is not None) and (not isinstance(new, torch.nn.parameter.UninitializedBuffer)):
             # Explanation for the tolerance:
             # Let ref_d be the scaled and discretized `reference` value, and `s` the (true)
             # scaling factor. Then the difference `diff` between ref_d and reference * scaling
@@ -83,10 +84,10 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, state
         if new is not None:
             assert (new <= MAX_WEIGHT).all()
             assert (new >= MIN_WEIGHT).all()
-    for new in (thrs, state):
-        if new is not None:
-            assert (state <= MAX_STATE).all()
-            assert (state >= MIN_STATE).all()
+    for new in (thrs, v_mem):
+        if new is not None and (not isinstance(new, torch.nn.parameter.UninitializedBuffer)):
+            assert (new <= MAX_STATE).all()
+            assert (new >= MIN_STATE).all()
 
 
 def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
@@ -106,7 +107,7 @@ def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
         conv_discr.bias,
         spk_discr.threshold,
         spk_discr.threshold_low,
-        spk_discr.state,
+        spk_discr.v_mem,
     )
     return conv_discr, spk_discr
 
@@ -136,12 +137,12 @@ def test_discretize_conv_spike():
     # Make sure that discretization did not happen in-place
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
-    assert (spk_lyr.state == spk_copy.state).all()
-    assert spk_lyr.threshold == spk_copy.threshold
+    assert (spk_lyr.v_mem == spk_copy.v_mem).all()
+    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
     # Make sure that elements are integers
-    for obj in (conv_discr.weight, conv_discr.bias, spk_discr.state):
+    for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
         assert obj.dtype == torch.int
     for obj in (spk_discr.threshold, spk_discr.threshold):
         assert isinstance(obj, (int, np.integer))
@@ -152,8 +153,8 @@ def test_discretize_conv_spike():
     # Make sure that discretization did happen in-place
     assert (conv_discr.weight == conv_copy.weight).all()
     assert (conv_discr.bias == conv_copy.bias).all()
-    assert (spk_discr.state == spk_copy.state).all()
-    assert spk_discr.threshold == spk_copy.threshold
+    assert (spk_discr.v_mem== spk_copy.v_mem).all()
+    assert spk_discr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_discr.threshold_low == spk_copy.threshold_low
 
     # - No conversion to integers
@@ -165,12 +166,12 @@ def test_discretize_conv_spike():
     # Make sure that discretization did not happen in-place
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
-    assert (spk_lyr.state == spk_copy.state).all()
-    assert spk_lyr.threshold == spk_copy.threshold
+    assert (spk_lyr.v_mem== spk_copy.v_mem).all()
+    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
     # Make sure that elements are floats
-    for obj in (conv_discr.weight, conv_discr.bias, spk_discr.state):
+    for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
         assert obj.dtype == torch.float
 
 
@@ -189,7 +190,7 @@ def test_discr_conv():
     spk_lyr(out_conv)
 
     conv_discr = discretize.discretize_conv(
-        conv_copy, spk_copy.threshold, spk_copy.threshold_low, spk_copy.state
+        conv_copy, spk_copy.activation_fn.spike_threshold, spk_copy.threshold_low, spk_copy.v_mem
     )
     validate_common_scaling(
         conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None,
@@ -201,7 +202,7 @@ def test_discr_conv():
 
     # - In-place
     conv_discr = discretize.discretize_conv_(
-        conv_copy, spk_copy.threshold, spk_copy.threshold_low, spk_copy.state
+        conv_copy, spk_copy.activation_fn.spike_threshold, spk_copy.threshold_low, spk_copy.v_mem
     )
     validate_common_scaling(
         conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None,
@@ -212,8 +213,8 @@ def test_discr_conv():
     assert (conv_discr.bias == conv_copy.bias).all()
 
     # - Make sure that spike layer elements did not get mutated
-    assert (spk_lyr.state == spk_copy.state).all()
-    assert spk_lyr.threshold == spk_copy.threshold
+    assert (spk_lyr.v_mem == spk_copy.v_mem).all()
+    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
 
@@ -240,14 +241,14 @@ def test_discr_spk():
         spk_copy,
         None,
         None,
-        spk_discr.threshold,
+        spk_discr.activation_fn.spike_threshold,
         spk_discr.threshold_low,
-        spk_discr.state,
+        spk_discr.v_mem,
     )
 
     # Make sure that discretization did not happen in-place
-    assert (spk_lyr.state == spk_copy.state).all()
-    assert spk_lyr.threshold == spk_copy.threshold
+    assert (spk_lyr.v_mem == spk_copy.v_mem).all()
+    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
     # - In-place
@@ -257,14 +258,14 @@ def test_discr_spk():
         spk_copy,
         None,
         None,
-        spk_discr.threshold,
+        spk_discr.activation_fn.spike_threshold,
         spk_discr.threshold_low,
-        spk_discr.state,
+        spk_discr.v_mem,
     )
 
     # Make sure that discretization did happen in-place
-    assert (spk_discr.state == spk_copy.state).all()
-    assert spk_discr.threshold == spk_copy.threshold
+    assert (spk_discr.v_mem == spk_copy.v_mem).all()
+    assert spk_discr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_discr.threshold_low == spk_copy.threshold_low
 
     # - Make sure that conv layer elements did not get mutated

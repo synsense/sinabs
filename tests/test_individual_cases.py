@@ -4,7 +4,7 @@ from sinabs.backend.dynapcnn import DynapcnnNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model
-from sinabs.layers.iaf_bptt import IAFSqueeze
+from sinabs.layers.iaf import IAFSqueeze
 from sinabs.layers import SumPool2d
 import pytest
 

@@ -306,9 +306,13 @@ def _discretize_conv_spk_(
             raise TypeError("`spike_lyr` must be of type `IAF`")
 
         discr_spk = True
-
+        if spike_lyr.threshold_low is None:
+            threshold_low = -2**15
+        else:
+            threshold_low = spike_lyr.threshold_low
         # - Lower and upper thresholds in a tensor for easier handling
-        thresholds = torch.tensor((spike_lyr.threshold_low, spike_lyr.threshold))
+        # TODO: This is a tight assumption that the activation function will have an attribute named spike_threshold
+        thresholds = torch.tensor((threshold_low, spike_lyr.activation_fn.spike_threshold))
 
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
@@ -316,13 +320,13 @@ def _discretize_conv_spk_(
     scaling_w = determine_discretization_scale(conv_weight, DYNAPCNN_WEIGHT_PRECISION_BITS)
     scaling_b = determine_discretization_scale(conv_bias, DYNAPCNN_WEIGHT_PRECISION_BITS)
     scaling_t = determine_discretization_scale(thresholds, DYNAPCNN_STATE_PRECISION_BITS)
-    if spike_lyr is not None and spike_lyr.state is not None:
+    if spike_lyr is not None and spike_lyr.is_state_initialised():
         scaling_n = determine_discretization_scale(
-            spike_lyr.state, DYNAPCNN_STATE_PRECISION_BITS
+            spike_lyr.v_mem, DYNAPCNN_STATE_PRECISION_BITS
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize
-        spike_lyr.state = discretize_tensor(spike_lyr.state, scaling, to_int=to_int)
+        spike_lyr.v_mem.data = discretize_tensor(spike_lyr.v_mem.data, scaling, to_int=to_int)
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
 
@@ -334,10 +338,12 @@ def _discretize_conv_spk_(
         spike_lyr.threshold_low, spike_lyr.threshold = (
             discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
         )
-        if spike_lyr.membrane_subtract != spike_lyr.threshold:
-            warn(
-                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
-            )
+        # Logic changes with use of activation functions
+        # TODO: Add check for the activation function in use
+        #if spike_lyr.membrane_subtract != spike_lyr.threshold:
+        #    warn(
+        #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
+        #    )
 
     return conv_lyr, spike_lyr
 

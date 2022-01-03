@@ -1,3 +1,4 @@
+import sinabs.activation
 import torch
 from torch import nn
 import numpy as np
@@ -51,13 +52,10 @@ class DynapcnnLayer(nn.Module):
         spk = deepcopy(spk)
         if isinstance(conv, nn.Linear):
             conv = self._convert_linear_to_conv(conv)
-            if spk.state.dim() == 1 and len(spk.state) == 1 and spk.state.item() == 0.0:
-                # Layer is uninitialized. Leave it as it is
-                pass
-            else:
+            if spk.is_state_initialised():
                 # Expand dims
-                spk.state = spk.state.unsqueeze(-1).unsqueeze(-1)
-                spk.activations = spk.activations.unsqueeze(-1).unsqueeze(-1)
+                spk.v_mem_data = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)
+                spk.activations.data = spk.activations.data.unsqueeze(-1).unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
@@ -118,37 +116,38 @@ class DynapcnnLayer(nn.Module):
         # Update parameters from the spiking layer
 
         # - Neuron states
-        if (
-                self.spk_layer.state.dim() == 1
-                and len(self.spk_layer.state) == 1
-                and self.spk_layer.state.item() == 0.0
-        ):
-            # this should happen when the state is tensor([0.]), which is the
-            # Sinabs default for non-initialized networks. We check that and
+        if not self.spk_layer.is_state_initialised():
             # then we assign no initial neuron state to DYNAP-CNN.
             f, h, w = self.get_neuron_shape()
             neurons_state = torch.zeros(f, w, h)
-        elif self.spk_layer.state.dim() == 3:
-            # 3-d is the norm when there is no batch dimension in sinabs
-            neurons_state = self.spk_layer.state.transpose(1, 2)
-        elif self.spk_layer.state.dim() == 4:
+        elif self.spk_layer.v_mem.dim() == 4:
             # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = self.spk_layer.state.transpose(2, 3)[0]
+            neurons_state = self.spk_layer.v_mem.transpose(2, 3)[0]
         else:
             raise ValueError(
-                f"Current state (shape: {self.spk_layer.state.shape}) of spiking layer not understood."
+                f"Current v_mem (shape: {self.spk_layer.v_mem.shape}) of spiking layer not understood."
             )
 
         # - Resetting vs returning to 0
-        return_to_zero = self.spk_layer.membrane_reset
-        if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
-            warn(
-                "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
-            )
+        if isinstance(self.spk_layer.activation_fn.reset_fn, sinabs.activation.MembraneReset):
+            return_to_zero = True
+        elif isinstance(self.spk_layer.activation_fn.reset_fn, sinabs.activation.MembraneSubtract):
+            return_to_zero = False
+        else:
+            raise Exception("Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood.")
+
+        #if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
+        #    warn(
+        #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
+        #    )
+        if self.spk_layer.threshold_low is None:
+            threshold_low = -2**15
+        else:
+            threshold_low = int(self.spk_layer.threshold_low)
         config_dict.update({
             "return_to_zero": return_to_zero,
-            "threshold_high": int(self.spk_layer.threshold),
-            "threshold_low": int(self.spk_layer.threshold_low),
+            "threshold_high": int(self.spk_layer.activation_fn.spike_threshold),
+            "threshold_low": threshold_low,
             "monitor_enable": False,
             "neurons_initial_value": neurons_state.int().tolist(),
             "neurons_value_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),
