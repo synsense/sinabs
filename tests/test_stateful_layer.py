@@ -14,7 +14,6 @@ def test_stateful_layer():
     assert not layer.is_state_initialised()
     assert isinstance(layer.v_mem, torch.nn.parameter.UninitializedBuffer)
     
-    
 def test_lif_reset():
     layer = LIF(tau_mem=30.)
     assert not layer.is_state_initialised()
@@ -33,5 +32,16 @@ def test_lif_reset():
     assert layer.v_mem.shape == (2,4)
     assert layer.v_mem.sum() != 0
     
+def test_changing_batch_size():
+    layer = LIF(tau_mem=30.)
+    assert not layer.is_state_initialised()
+    assert isinstance(layer.v_mem, torch.nn.parameter.UninitializedBuffer)
     
-
+    layer(torch.rand((2,3,4)))
+    assert layer.is_state_initialised()
+    assert layer.v_mem.shape == (2,4)
+    
+    layer(torch.rand((5,3,4)))
+    assert layer.is_state_initialised()
+    assert layer.v_mem.shape == (5,4)
+    
