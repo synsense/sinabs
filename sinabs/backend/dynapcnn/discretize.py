@@ -330,12 +330,14 @@ def _discretize_conv_spk_(
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
 
+    print(scaling, "scale in discretize")
+
     # Scale conv_weight, conv_bias and thresholds with common scaling factor and discretize
     if discr_conv:
         conv_weight.data = discretize_tensor(conv_weight, scaling, to_int=to_int)
         conv_bias.data = discretize_tensor(conv_bias, scaling, to_int=to_int)
     if discr_spk:
-        spike_lyr.threshold_low, spike_lyr.threshold = (
+        spike_lyr.threshold_low, spike_lyr.activation_fn.spike_threshold = (
             discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
         )
         # Logic changes with use of activation functions

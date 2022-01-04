@@ -77,8 +77,10 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem
             # orig * |scale - s| + 0.5, where 0.5 is from rounding and scale - s the
             # difference between guessed and true scaling factor. |scale - s| = |diff| / |reference|
             # and |diff| <= 0.5, therefore the total error is at most 0.5 * |orig/referece| + 0.5
-            tol = 0.5 * (1 + torch.abs(torch.true_divide(new, reference)))
+            breakpoint()
+            tol = 1.01 * 0.5 * (1 + torch.abs(torch.true_divide(new, reference)))
             assert (torch.abs(scale * orig - new) <= tol).all()
+            print(scale, "scale in test")
     # Make sure that new values are in allowed range
     for new in (weight, bias):
         if new is not None:
@@ -105,7 +107,7 @@ def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
         spk_lyr,
         conv_discr.weight,
         conv_discr.bias,
-        spk_discr.threshold,
+        spk_discr.activation_fn.spike_threshold,
         spk_discr.threshold_low,
         spk_discr.v_mem,
     )
@@ -140,11 +142,10 @@ def test_discretize_conv_spike():
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
     assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
     assert spk_lyr.threshold_low == spk_copy.threshold_low
-
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
         assert obj.dtype == torch.int
-    for obj in (spk_discr.threshold, spk_discr.threshold):
+    for obj in (spk_discr.activation_fn.spike_threshold, spk_discr.activation_fn.spike_threshold):
         assert isinstance(obj, (int, np.integer))
 
     # - In-place mutations
