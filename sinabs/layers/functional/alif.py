@@ -14,7 +14,14 @@ def alif_forward_single(
     b0: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
-    
+ 
+    # generate spikes and adjust v_mem
+    spikes, state = activation_fn(state)
+
+    # Decay the spike threshold and add adaptation factor to it.
+    state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
+    state['threshold'] = b0 + adapt_scale*state['b']
+   
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
         state['i_syn'] = alpha_syn * (state['i_syn'] + input_data)
@@ -27,13 +34,6 @@ def alif_forward_single(
     # Clip membrane potential that is too low
     if threshold_low:
         state['v_mem'] = torch.nn.functional.relu(state['v_mem'] - threshold_low) + threshold_low
-
-    # generate spikes and adjust v_mem
-    spikes, state = activation_fn(state)
-
-    # Decay the spike threshold and add adaptation factor to it.
-    state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
-    state['threshold'] = b0 + adapt_scale*state['b']
 
     return spikes, state
 
