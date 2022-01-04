@@ -62,5 +62,5 @@ class SingleSpike(BackwardClass, torch.autograd.Function):
         ctx.save_for_backward(v_mem.clone())
         ctx.threshold = threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
-        spikes = (v_mem - threshold > 0).float()
+        spikes = (v_mem - threshold >= 0).float()
         return spikes

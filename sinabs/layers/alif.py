@@ -80,9 +80,9 @@ class ALIF(StatefulLayer):
             self.activation_fn = activation_fn
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
+        self.b0 = b0
         if shape:
             self.init_state_with_shape(shape)
-        self.b0 = b0
 
     @property
     def alpha_mem_calculated(self):
@@ -154,6 +154,7 @@ class ALIF(StatefulLayer):
             tau_adapt=-1/torch.log(self.alpha_adapt.detach_()) if self.train_alphas else self.tau_adapt,
             tau_syn=-1/torch.log(self.alpha_syn.detach_()) if self.train_alphas else self.tau_syn,
             adapt_scale=self.adapt_scale,
+            b0=self.b0,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.v_mem.shape,
