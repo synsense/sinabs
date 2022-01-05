@@ -40,7 +40,10 @@ conv_lyr.weight = torch.nn.Parameter(weight)
 np.random.seed(4)
 thr = np.random.random() * 10
 thr_low = -np.random.random() * 10
-spk_lyr = IAF(threshold_low=thr_low, activation_fn=ActivationFunction(spike_threshold=thr, reset_fn=MembraneSubtract()))
+spk_lyr = IAF(
+    threshold_low=thr_low,
+    activation_fn=ActivationFunction(spike_threshold=thr, reset_fn=MembraneSubtract()),
+)
 
 
 def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem):
@@ -55,7 +58,9 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem
         reference = spk_lyr.activation_fn.spike_threshold
 
         thrs = torch.tensor((thr, thr_low))
-        thrs_old = torch.tensor((spk_lyr.activation_fn.spike_threshold, spk_lyr.threshold_low))
+        thrs_old = torch.tensor(
+            (spk_lyr.activation_fn.spike_threshold, spk_lyr.threshold_low)
+        )
     else:
         with torch.no_grad():
             scale = torch.true_divide(torch.max(weight), torch.max(conv_lyr.weight))
@@ -67,27 +72,39 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem
         (conv_lyr.weight, conv_lyr.bias, spk_lyr.v_mem, thrs_old),
         (weight, bias, v_mem, thrs),
     ):
-        if (new is not None) and (not isinstance(new, torch.nn.parameter.UninitializedBuffer)):
+        if (new is not None) and (
+            not isinstance(new, torch.nn.parameter.UninitializedBuffer)
+        ):
             # Explanation for the tolerance:
-            # Let ref_d be the scaled and discretized `reference` value, and `s` the (true)
-            # scaling factor. Then the difference `diff` between ref_d and reference * scaling
-            # is due to rounding and at most 0.5. Therefore the guessed scaling factor
-            # `scale` is ref_d / reference = (ref_d + diff) / reference
-            # When multiplying it with another original value it will deviate at most by
-            # orig * |scale - s| + 0.5, where 0.5 is from rounding and scale - s the
-            # difference between guessed and true scaling factor. |scale - s| = |diff| / |reference|
-            # and |diff| <= 0.5, therefore the total error is at most 0.5 * |orig/referece| + 0.5
-            breakpoint()
-            tol = 1.01 * 0.5 * (1 + torch.abs(torch.true_divide(new, reference)))
+            # Let 's' be the true (unknown) scaling factor. Define
+            # ref_d := round(reference * s). Then the difference `diff` between
+            # ref_d and reference * s is due to rounding and at most 0.5.
+            # Therefore the guessed scaling factor `scale` is ref_d / reference
+            # = (reference * s + diff) / reference
+            # Therefore scale = s + diff / reference, with |diff| <= 0.5
+            # When using the approximate `scale` to rescale any other original value,
+            # the deviation compared to scaling with `s` (before rounding), will be
+            # orig * scale - orig * s. We don't know `orig * s`, but only
+            # `new` := round(orig * s), which introduces another rounding error
+            # `d_round` := orig*s - new, with |d_round| <= 0.5
+            # Using the triangular inequality we find:
+            # |orig * scale - new| = |orig * (scale-s) + d_round|
+            # <= |orig| * |scale-s| + |d_round|
+            # = |orig| * |diff / reference| + |d_round|
+            # <= |0.5 * orig / reference| + 0.5 = 0.5 * (|orig / reference| + 1),
+            # In the last inequality we used that |diff| and |d_round| are both <= 0.5
+            # This gives us the maximum error that we need to accound for.
+            tol = 0.5 * (1 + torch.abs(torch.true_divide(orig, reference)))
             assert (torch.abs(scale * orig - new) <= tol).all()
-            print(scale, "scale in test")
     # Make sure that new values are in allowed range
     for new in (weight, bias):
         if new is not None:
             assert (new <= MAX_WEIGHT).all()
             assert (new >= MIN_WEIGHT).all()
     for new in (thrs, v_mem):
-        if new is not None and (not isinstance(new, torch.nn.parameter.UninitializedBuffer)):
+        if new is not None and (
+            not isinstance(new, torch.nn.parameter.UninitializedBuffer)
+        ):
             assert (new <= MAX_STATE).all()
             assert (new >= MIN_STATE).all()
 
@@ -140,12 +157,17 @@ def test_discretize_conv_spike():
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (
+        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_lyr.threshold_low == spk_copy.threshold_low
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
         assert obj.dtype == torch.int
-    for obj in (spk_discr.activation_fn.spike_threshold, spk_discr.activation_fn.spike_threshold):
+    for obj in (
+        spk_discr.activation_fn.spike_threshold,
+        spk_discr.activation_fn.spike_threshold,
+    ):
         assert isinstance(obj, (int, np.integer))
 
     # - In-place mutations
@@ -154,8 +176,11 @@ def test_discretize_conv_spike():
     # Make sure that discretization did happen in-place
     assert (conv_discr.weight == conv_copy.weight).all()
     assert (conv_discr.bias == conv_copy.bias).all()
-    assert (spk_discr.v_mem== spk_copy.v_mem).all()
-    assert spk_discr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (spk_discr.v_mem == spk_copy.v_mem).all()
+    assert (
+        spk_discr.activation_fn.spike_threshold
+        == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_discr.threshold_low == spk_copy.threshold_low
 
     # - No conversion to integers
@@ -167,8 +192,10 @@ def test_discretize_conv_spike():
     # Make sure that discretization did not happen in-place
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
-    assert (spk_lyr.v_mem== spk_copy.v_mem).all()
-    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (spk_lyr.v_mem == spk_copy.v_mem).all()
+    assert (
+        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
     # Make sure that elements are floats
@@ -191,10 +218,13 @@ def test_discr_conv():
     spk_lyr(out_conv)
 
     conv_discr = discretize.discretize_conv(
-        conv_copy, spk_copy.activation_fn.spike_threshold, spk_copy.threshold_low, spk_copy.v_mem
+        conv_copy,
+        spk_copy.activation_fn.spike_threshold,
+        spk_copy.threshold_low,
+        spk_copy.v_mem,
     )
     validate_common_scaling(
-        conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None,
+        conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None
     )
 
     # Make sure that discretization did not happen in-place
@@ -203,10 +233,13 @@ def test_discr_conv():
 
     # - In-place
     conv_discr = discretize.discretize_conv_(
-        conv_copy, spk_copy.activation_fn.spike_threshold, spk_copy.threshold_low, spk_copy.v_mem
+        conv_copy,
+        spk_copy.activation_fn.spike_threshold,
+        spk_copy.threshold_low,
+        spk_copy.v_mem,
     )
     validate_common_scaling(
-        conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None,
+        conv_copy, spk_copy, conv_discr.weight, conv_discr.bias, None, None, None
     )
 
     # Make sure that discretization did happen in-place
@@ -215,7 +248,9 @@ def test_discr_conv():
 
     # - Make sure that spike layer elements did not get mutated
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (
+        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
 
@@ -249,7 +284,9 @@ def test_discr_spk():
 
     # Make sure that discretization did not happen in-place
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (
+        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_lyr.threshold_low == spk_copy.threshold_low
 
     # - In-place
@@ -266,7 +303,10 @@ def test_discr_spk():
 
     # Make sure that discretization did happen in-place
     assert (spk_discr.v_mem == spk_copy.v_mem).all()
-    assert spk_discr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+    assert (
+        spk_discr.activation_fn.spike_threshold
+        == spk_copy.activation_fn.spike_threshold
+    )
     assert spk_discr.threshold_low == spk_copy.threshold_low
 
     # - Make sure that conv layer elements did not get mutated
