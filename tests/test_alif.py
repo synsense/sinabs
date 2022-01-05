@@ -50,8 +50,6 @@ def test_alif_spike_threshold_decay():
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1-alpha))
     spike_output = layer(input_current)
     
-    layer2 = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1-alpha))
-
     assert (layer.threshold > 1).all()
     assert spike_output.sum() == torch.prod(torch.as_tensor(input_current.size())) / time_steps, "All neurons should spike exactly once."
     # decay only starts after 1 time step

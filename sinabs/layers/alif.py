@@ -74,12 +74,15 @@ class ALIF(StatefulLayer):
             self.tau_adapt = nn.Parameter(torch.as_tensor(tau_adapt))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.adapt_scale = adapt_scale
-        self.activation_fn = ALIFActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneSubtract())
+        if activation_fn is None:
+            self.activation_fn = ALIFActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneSubtract())
+        else:
+            self.activation_fn = activation_fn
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
+        self.b0 = b0
         if shape:
             self.init_state_with_shape(shape)
-        self.b0 = b0
 
     @property
     def alpha_mem_calculated(self):
@@ -138,6 +141,11 @@ class ALIF(StatefulLayer):
 
         return spikes
 
+    def reset_states(self, randomize=False):
+        super().reset_states(randomize=randomize)
+        if self.is_state_initialised():
+            self.threshold.fill_(self.b0)
+
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
@@ -146,6 +154,7 @@ class ALIF(StatefulLayer):
             tau_adapt=-1/torch.log(self.alpha_adapt.detach_()) if self.train_alphas else self.tau_adapt,
             tau_syn=-1/torch.log(self.alpha_syn.detach_()) if self.train_alphas else self.tau_syn,
             adapt_scale=self.adapt_scale,
+            b0=self.b0,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.v_mem.shape,
