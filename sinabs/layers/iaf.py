@@ -1,5 +1,6 @@
+
 import torch
-import torch.nn as nn
+from copy import deepcopy
 from typing import Optional, Union, Callable
 from sinabs.activation import ActivationFunction
 from .stateful_layer import StatefulLayer
@@ -62,14 +63,22 @@ class IAF(StatefulLayer):
             output_spikes.append(spikes)
 
         return torch.stack(output_spikes, 1)
-    
+
+    @property
+    def shape(self):
+        if self.is_state_initialised():
+            return self.v_mem.shape
+        else:
+            return None
+
+
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
-            activation_fn=self.activation_fn,
-            shape=self.v_mem.shape,
+            activation_fn=deepcopy(self.activation_fn),
             threshold_low=self.threshold_low,
+            shape = self.shape
         )
         return param_dict
 
