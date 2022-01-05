@@ -11,7 +11,7 @@ DYNAPCNN_STATE_PRECISION_BITS = 16
 
 
 def discretize_conv_spike(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True,
+    conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True
 ) -> (nn.Conv2d, sl.IAF):
     """Discretize convolutional and spiking layers together.
 
@@ -41,7 +41,7 @@ def discretize_conv_spike(
 
 
 def discretize_conv_spike_(
-    conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True,
+    conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True
 ) -> (nn.Conv2d, sl.IAF):
     """Discretize convolutional and spiking layers together, in-place.
 
@@ -307,30 +307,38 @@ def _discretize_conv_spk_(
 
         discr_spk = True
         if spike_lyr.threshold_low is None:
-            threshold_low = -2**15
+            threshold_low = -2 ** 15
         else:
             threshold_low = spike_lyr.threshold_low
         # - Lower and upper thresholds in a tensor for easier handling
         # TODO: This is a tight assumption that the activation function will have an attribute named spike_threshold
-        thresholds = torch.tensor((threshold_low, spike_lyr.activation_fn.spike_threshold))
+        thresholds = torch.tensor(
+            (threshold_low, spike_lyr.activation_fn.spike_threshold)
+        )
 
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
     # such each they matches its precision specificaitons.
-    scaling_w = determine_discretization_scale(conv_weight, DYNAPCNN_WEIGHT_PRECISION_BITS)
-    scaling_b = determine_discretization_scale(conv_bias, DYNAPCNN_WEIGHT_PRECISION_BITS)
-    scaling_t = determine_discretization_scale(thresholds, DYNAPCNN_STATE_PRECISION_BITS)
+    scaling_w = determine_discretization_scale(
+        conv_weight, DYNAPCNN_WEIGHT_PRECISION_BITS
+    )
+    scaling_b = determine_discretization_scale(
+        conv_bias, DYNAPCNN_WEIGHT_PRECISION_BITS
+    )
+    scaling_t = determine_discretization_scale(
+        thresholds, DYNAPCNN_STATE_PRECISION_BITS
+    )
     if spike_lyr is not None and spike_lyr.is_state_initialised():
         scaling_n = determine_discretization_scale(
             spike_lyr.v_mem, DYNAPCNN_STATE_PRECISION_BITS
         )
         scaling = min(scaling_w, scaling_b, scaling_t, scaling_n)
         # Scale neuron state with common scaling factor and discretize
-        spike_lyr.v_mem.data = discretize_tensor(spike_lyr.v_mem.data, scaling, to_int=to_int)
+        spike_lyr.v_mem.data = discretize_tensor(
+            spike_lyr.v_mem.data, scaling, to_int=to_int
+        )
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
-
-    print(scaling, "scale in discretize")
 
     # Scale conv_weight, conv_bias and thresholds with common scaling factor and discretize
     if discr_conv:
@@ -342,7 +350,7 @@ def _discretize_conv_spk_(
         )
         # Logic changes with use of activation functions
         # TODO: Add check for the activation function in use
-        #if spike_lyr.membrane_subtract != spike_lyr.threshold:
+        # if spike_lyr.membrane_subtract != spike_lyr.threshold:
         #    warn(
         #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
         #    )
