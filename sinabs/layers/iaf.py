@@ -1,9 +1,9 @@
-
 import torch
 from copy import deepcopy
 from typing import Optional, Union, Callable
 from sinabs.activation import ActivationFunction
 from .stateful_layer import StatefulLayer
+from .squeeze_layer import SqueezeMixin
 
 
 class IAF(StatefulLayer):
@@ -147,9 +147,11 @@ class IAFRecurrent(IAF):
         return torch.stack(output_spikes, 1)
 
     
-class IAFSqueeze(IAF):
+class IAFSqueeze(IAF, SqueezeMixin):
     """
-    ***Deprecated class, will be removed in future release.***
+    Same as parent class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width) 
+    instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
+    layers that can only take a 4D input, such as convolutional and pooling layers. 
     """
     def __init__(self,
                  batch_size = None,
@@ -157,27 +159,11 @@ class IAFSqueeze(IAF):
                  **kwargs,
                 ):
         super().__init__(**kwargs)
-        if not batch_size and not num_timesteps:
-            raise TypeError("You need to specify either batch_size or num_timesteps.")
-        if not batch_size:
-            batch_size = -1 
-        if not num_timesteps:
-            num_timesteps = -1
-        self.batch_size = batch_size
-        self.num_timesteps = num_timesteps
+        self.squeeze_init(batch_size, num_timesteps)
     
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        inflated_input = input_data.reshape(self.batch_size, self.num_timesteps, *input_data.shape[1:])
-        
-        inflated_output = super().forward(inflated_input)
-        
-        return inflated_output.flatten(start_dim=0, end_dim=1)
+        return self.squeeze_forward(input_data, super().forward)
 
     @property
     def _param_dict(self) -> dict:
-        param_dict = super()._param_dict
-        param_dict.update(
-            batch_size=self.batch_size,
-            num_timesteps=self.num_timesteps,
-        )
-        return param_dict
+        return self.squeeze_param_dict(super()._param_dict)
