@@ -165,7 +165,8 @@ class StatefulLayer(torch.nn.Module):
         # Copy buffers (using state dict will fail if buffers have non-default shapes)
         for name, buffer in self.named_buffers():
             new_inst_buffer = getattr(copy, name)
-            new_inst_buffer.data = buffer.data.clone()  # Copy parameters
+            if not isinstance(new_inst_buffer, torch.nn.parameter.UninitializedBuffer):
+                new_inst_buffer.data = buffer.data.clone()  # Copy parameters
 
         return copy
 
