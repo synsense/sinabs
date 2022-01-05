@@ -119,7 +119,6 @@ class ALIF(StatefulLayer):
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
             self.threshold.fill_(self.b0)
-            self.b.fill_(self.b0)
         
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
@@ -252,7 +251,6 @@ class ALIFRecurrent(ALIF):
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
             self.threshold.fill_(self.b0)
-            self.b.fill_(self.b0)
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
