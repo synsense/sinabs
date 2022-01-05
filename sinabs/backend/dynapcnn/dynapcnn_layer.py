@@ -54,8 +54,7 @@ class DynapcnnLayer(nn.Module):
             conv = self._convert_linear_to_conv(conv)
             if spk.is_state_initialised():
                 # Expand dims
-                spk.v_mem_data = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)
-                spk.activations.data = spk.activations.data.unsqueeze(-1).unsqueeze(-1)
+                spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
