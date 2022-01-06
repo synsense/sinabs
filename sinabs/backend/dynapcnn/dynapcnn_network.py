@@ -264,6 +264,13 @@ class DynapcnnNetwork(nn.Module):
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         # config.factory_settings.monitor_input_enable = False
 
+        # set the config's neuron initial state values into zeros
+        for idx, lyr in enumerate(config.cnn_layers):
+            shape = torch.tensor(lyr.neurons_initial_value).shape
+            zero_state = torch.zeros(shape, dtype=torch.int)
+            zero_state = zero_state.tolist()
+            config.cnn_layers[idx].neurons_initial_value = zero_state
+
         # Apply user config modifier
         if config_modifier is not None:
             config = config_modifier(config)
