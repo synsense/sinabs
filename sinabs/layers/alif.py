@@ -55,7 +55,7 @@ class ALIF(StatefulLayer):
         adapt_scale: float
             The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         activation_fn: Callable
-            a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
+            a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
         threshold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
         shape: torch.Size
@@ -119,7 +119,6 @@ class ALIF(StatefulLayer):
         # Ensure the neuron state are initialized
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
-            self.threshold.fill_(self.b0)
         
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
@@ -251,7 +250,6 @@ class ALIFRecurrent(ALIF):
         # Ensure the neuron state are initialized
         if not self.is_state_initialised() or not self.state_has_shape((batch_size, *trailing_dim)):
             self.init_state_with_shape((batch_size, *trailing_dim))
-            self.threshold.fill_(self.b0)
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated

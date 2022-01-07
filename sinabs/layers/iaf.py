@@ -18,8 +18,12 @@ class IAF(StatefulLayer):
 
         Parameters
         ----------
-        threshold_low : float or None
-            Lower bound for membrane potential.
+        activation_fn: Callable
+            a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+        threshold_low: float or None
+            Lower bound for membrane potential v_mem, clipped at every time step.
+        shape: torch.Size
+            Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         """
         super().__init__(
             state_names = ['v_mem']

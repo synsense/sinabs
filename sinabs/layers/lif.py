@@ -36,7 +36,7 @@ class LIF(StatefulLayer):
         tau_syn: float
             Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         activation_fn: Callable
-            a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
+            a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
         threshold_low: float or None
             Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: bool
