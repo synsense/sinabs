@@ -145,6 +145,7 @@ class ALIF(StatefulLayer):
         super().reset_states(randomize=randomize)
         if self.is_state_initialised():
             self.threshold.fill_(self.b0)
+            self.b.fill_(self.b0)
 
     @property
     def _param_dict(self) -> dict:

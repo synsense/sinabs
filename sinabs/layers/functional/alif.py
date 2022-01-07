@@ -13,10 +13,11 @@ def alif_forward_single(
     threshold_low: float,
     b0: float,
 ):
-    batch_size, time_steps, *trailing_dim = input_data.shape
- 
     # generate spikes and adjust v_mem
-    spikes, state = activation_fn(state)
+    input_tensors = [state[name] for name in activation_fn.spike_fn.required_states]
+    spikes = activation_fn.spike_fn.apply(
+        *input_tensors, state["threshold"], activation_fn.surrogate_grad_fn
+    )
 
     # Decay the spike threshold and add adaptation factor to it.
     state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
@@ -30,6 +31,8 @@ def alif_forward_single(
 
     # Decay the membrane potential and add the input currents which are normalised by tau
     state['v_mem'] = alpha_mem * state['v_mem'] + (1 - alpha_mem) * input_data
+
+    state = activation_fn.reset_fn(spikes, state, state["threshold"])
 
     # Clip membrane potential that is too low
     if threshold_low:
