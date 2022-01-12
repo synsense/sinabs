@@ -38,12 +38,13 @@ class StatefulLayer(torch.nn.Module):
         """
         # Zero grad parameters
         super().zero_grad(set_to_none)
-        # Zero grad buffers
-        for b in self.buffers():
-            if b.grad_fn is not None:
-                b.detach_()
-            else:
-                b.requires_grad_(False)
+        if self.is_state_initialised():
+            # Zero grad buffers
+            for b in self.buffers():
+                if b.grad_fn is not None:
+                    b.detach_()
+                else:
+                    b.requires_grad_(False)
 
     def forward(self, *args, **kwargs):
         """

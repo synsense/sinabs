@@ -47,8 +47,11 @@ def test_alif_spike_threshold_decay():
     alpha = torch.exp(-1/tau_mem)
     threshold = 1.
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    input_current[:,0] = 1 / (1-alpha) # only inject current in the first time step and make it spike
+    input_current[:,0] = threshold / (1-alpha) # only inject current in the first time step and make it spike
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1-alpha))
+    spike_output = layer(input_current)
+    layer.reset_states()
+    layer.b.fill_(0.)
     spike_output = layer(input_current)
     
     assert (layer.threshold > threshold).all()
