@@ -29,7 +29,7 @@ class StatefulLayer(torch.nn.Module):
         super().__init__()
 
         for state_name in state_names:
-            self.register_buffer(state_name, torch.nn.parameter.UninitializedBuffer())
+            self.register_buffer(state_name, torch.zeros((0)))
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         r"""
@@ -56,11 +56,11 @@ class StatefulLayer(torch.nn.Module):
 
     def is_state_initialised(self) -> bool:
         """ 
-        Checks if buffers are of type UninitializedBuffer and returns 
+        Checks if buffers are of shape 0 and returns 
         True only if none of them are.
         """
         for buffer in self.buffers():
-            if isinstance(buffer, torch.nn.parameter.UninitializedBuffer):
+            if buffer.shape == torch.Size([0]):
                 return False
         return True
     
@@ -78,11 +78,7 @@ class StatefulLayer(torch.nn.Module):
         Initialise state/buffers with either zeros or random
         tensor of specific shape.
         """
-        if not self.is_state_initialised():
-            for buffer in self.buffers():
-                buffer.materialize(shape)
-        else: # for 2 consecutive inputs with different shapes
-            for name, buffer in self.named_buffers():
+        for name, buffer in self.named_buffers():
                 self.register_buffer(name, torch.zeros(shape, device=buffer.device))
         self.reset_states(randomize=randomize)
         
@@ -166,8 +162,7 @@ class StatefulLayer(torch.nn.Module):
         # Copy buffers (using state dict will fail if buffers have non-default shapes)
         for name, buffer in self.named_buffers():
             new_inst_buffer = getattr(copy, name)
-            if not isinstance(new_inst_buffer, torch.nn.parameter.UninitializedBuffer):
-                new_inst_buffer.data = buffer.data.clone()  # Copy parameters
+            new_inst_buffer.data = buffer.data.clone()  # Copy parameters
 
         return copy
 
