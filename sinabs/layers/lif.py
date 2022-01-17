@@ -48,8 +48,8 @@ class LIF(StatefulLayer):
             state_names = ['v_mem', 'i_syn'] if tau_syn else ['v_mem']
         )
         if train_alphas:
-            self.alpha_mem = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_mem)))
-            self.alpha_syn = nn.Parameter(torch.exp(-1/torch.as_tensor(tau_syn))) if tau_syn else None
+            self.alpha_mem = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_mem)))
+            self.alpha_syn = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_syn))) if tau_syn else None
         else:
             self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
@@ -60,7 +60,12 @@ class LIF(StatefulLayer):
 
     @property
     def alpha_mem_calculated(self):
-        return self.alpha_mem if self.train_alphas else torch.exp(-1/self.tau_mem)
+        if self.train_alphas:
+            return self.alpha_mem
+        else:
+            # we're going to always calculate this alpha parameter on CPU for 64 bit floating point precision 
+            original_device = self.tau_mem.device
+            return torch.exp(-1./self.tau_mem.to("cpu")).to(original_device)
     
     @property
     def alpha_syn_calculated(self):

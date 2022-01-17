@@ -6,8 +6,9 @@ import pytest
 
 
 def test_lif_basic():
+    torch.set_printoptions(precision=10)
     batch_size, time_steps = 10, 100
-    tau_mem = torch.tensor(30.)
+    tau_mem = torch.tensor(20.)
     alpha = torch.exp(-1/tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1-alpha)
     layer = LIF(tau_mem=tau_mem)
