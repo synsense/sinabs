@@ -110,3 +110,15 @@ class ConfigBuilder(ABC):
         Initialize and return the appropriate output buffer object
         Note that this just the buffer object. This does not actually connect the buffer object to the graph.
         """
+
+    @classmethod
+    @abstractmethod
+    def reset_states(cls, config,randomize=True):
+        """
+        Randomize or reset the neuron states
+
+        Parameters
+        ----------
+            randomize (bool):
+                If true, the states will be set to random initial values. Else they will be set to zero
+        """

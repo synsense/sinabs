@@ -1,4 +1,5 @@
 import samna
+import torch
 from samna.dynapcnn.configuration import DynapcnnConfiguration
 from typing import List
 import sinabs.layers as sl
@@ -143,3 +144,15 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_output_buffer(cls):
         return samna.BufferSinkNode_dynapcnn_event_output_event()
+
+    @classmethod
+    def reset_states(cls, config: DynapcnnConfiguration, randomize=True):
+        for idx, lyr in enumerate(config.cnn_layers):
+            shape = torch.tensor(lyr.neurons_initial_value).shape
+            # set the config's neuron initial state values into zeros
+            if randomize:
+                new_state = torch.randint(lyr.threshold_low, lyr.threshold_high, shape).tolist()
+            else:
+                new_state = torch.zeros(shape, dtype=torch.int).tolist()
+            config.cnn_layers[idx].neurons_initial_value = new_state
+        return config

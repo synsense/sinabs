@@ -263,12 +263,6 @@ class DynapcnnNetwork(nn.Module):
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         # config.factory_settings.monitor_input_enable = False
 
-        # set the config's neuron initial state values into zeros
-        for idx, lyr in enumerate(config.cnn_layers):
-            shape = torch.tensor(lyr.neurons_initial_value).shape
-            zero_state = torch.zeros(shape, dtype=torch.int)
-            zero_state = zero_state.tolist()
-            config.cnn_layers[idx].neurons_initial_value = zero_state
 
         # Apply user config modifier
         if config_modifier is not None:
@@ -281,13 +275,15 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise ValueError(f"Generated config is not valid for {device}")
 
-    def reset_states(self):
+    def reset_states(self, randomize=False):
         """
         Reset the states of the network.
         """
         if isinstance(self.device, str):
             device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
+                # Set all the vmem states in the samna config to zero
+                self.samna_config
                 self.samna_device.get_model().apply_configuration(self.samna_config)
                 return
         raise NotImplementedError
