@@ -299,8 +299,8 @@ class DynapcnnCompatibleNetwork(nn.Module):
         ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
-            reset_timestamps(self.device)
-            enable_timestamps(self.device)
+            reset_timestamps(self.device, self.samna_device)
+            enable_timestamps(self.device, self.samna_device)
             # Send input
             self.samna_device.get_model().write(x)
             received_evts = []
@@ -312,9 +312,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 if prev_length == len(received_evts):
                     break
             # Disable timestamp
-            disable_timestamps(self.device)
-            # Read events back
-            # evsOut = self.samna_output_buffer.get_events()
+            disable_timestamps(self.device, self.samna_device)
             return received_evts
         else:
             """Torch's forward pass."""

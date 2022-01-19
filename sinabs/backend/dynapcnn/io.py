@@ -26,67 +26,61 @@ device_types = {
 device_type_map = {v: k for (k, v) in device_types.items()}
 
 
-def enable_timestamps(device: str) -> None:
+def enable_timestamps(
+        device_name: str,
+        device_handle: samna.device
+) -> None:
     """
-    Enable timestamping of events
-
-    Parameters
-    ----------
-    device: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
-        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-
+    Disable timestamps of the samna node
+    Args:
+        device_name: str
+            Name of the device to initialize. Required for different existing APIs
+            for Dynapcnndevkit and Speck chips
+        device_handle: samna.device
+            Handle to the device from samna
     """
-    dev_name, _ = _parse_device_string(device)
-    if dev_name == "dynapcnndevkit":
-        device = open_device(device)
-        device.get_io_module().write_config(0x0003, 1)
+    if device_name.lower() == "dynapcnndevkit":
+        device_handle.get_io_module().write_config(0x0003, 1)
     else:
-        device = open_device(device)
-        stopWatch = device.get_stop_watch()
-        stopWatch.set_enable_value(True) # to enable
+        device_handle.get_stop_watch().set_enable_value(True)
 
 
-def disable_timestamps(device: str) -> None:
+def disable_timestamps(
+        device_name: str,
+        device_handle: samna.device
+) -> None:
     """
-    Disable timestamping of events
-
-    Parameters
-    ----------
-    device: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
-        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-
+    Disable timestamps of the samna node
+    Args:
+        device_name: str
+            Name of the device to initialize. Required for different existing APIs
+            for Dynapcnndevkit and Speck chips
+        device_handle: samna.device
+            Handle to the device from samna
     """
-    dev_name, _ = _parse_device_string(device)
-    if dev_name == "dynapcnndevkit":
-        device = open_device(device)
-        device.get_io_module().write_config(0x0003, 0)
+    if device_name.lower() == "dynapcnndevkit":
+        device_handle.get_io_module().write_config(0x0003, 1)
     else:
-        device = open_device(device)
-        stopWatch = device.get_stop_watch()
-        stopWatch.set_enable_value(False) # to enable
+        device_handle.get_stop_watch().set_enable_value(True)
 
 
-def reset_timestamps(device: str) -> None:
+def reset_timestamps(
+        device_name: str,
+        device_handle: samna.device
+) -> None:
     """
-    Reset the timeer to 0
-
-    Parameters
-    ----------
-    device: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
-        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-
+    Disable timestamps of the samna node
+    Args:
+        device_name: str
+            Name of the device to initialize. Required for different existing APIs
+            for Dynapcnndevkit and Speck chips
+        device_handle: samna.device
+            Handle to the device from samna
     """
-    dev_name, _ = _parse_device_string(device)
-    if dev_name == "dynapcnndevkit":
-        disable_timestamps(device)
+    if device_name.lower() == "dynapcnndevkit":
+        device_handle.get_io_module().write_config(0x0003, 1)
     else:
-        device = open_device(device)
-        stopWatch = device.get_stop_watch()
-        stopWatch.reset() # to reset to 0 (it doesn't disable it automatically, so it will go on coutning)
-
+        device_handle.get_stop_watch().reset()
 
 
 
@@ -150,6 +144,7 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
 
 def init_samna_node():
     # initialize the main SamnaNode
+    # NOTE: This is still necessary for GUI applications
     receiver_endpoint = "tcp://0.0.0.0:33335"
     sender_endpoint = "tcp://0.0.0.0:33336"
     node_id = 1
@@ -164,18 +159,6 @@ def init_samna_node():
     return samna_node
 
 
-def get_samna_node():
-    global samna_node
-
-    if samna_node is None:
-        # Initialize the node
-        samna_node = init_samna_node()
-        # Fetch all samna devices
-        get_all_samna_devices()
-
-    return samna_node
-
-
 def get_all_unopened_samna_devices():
     """
     Returns a list of all unopen samna devices
@@ -186,9 +169,8 @@ def get_all_unopened_samna_devices():
         A list of samna devices currently un-opened
     """
 
-    get_samna_node()
     # Find device
-    return samna.device_node.DeviceController.get_unopened_devices()
+    return samna.device.get_unopened_devices()
 
 
 def get_all_open_samna_devices():
@@ -201,9 +183,8 @@ def get_all_open_samna_devices():
         A list of samna devices currently opened
 
     """
-    get_samna_node()
     # Find device
-    return [x.device_info for x in samna.device_node.DeviceController.get_opened_devices()]
+    return [x.device_info for x in samna.device.get_opened_devices()]
 
 
 def get_all_samna_devices():
@@ -304,13 +285,14 @@ def open_device(device_id: str):
     device_map = get_device_map()
     dev_info = device_map[device_id]
     name = f"{device_name}_{device_num}"
-    if name in samna.device_node.__dict__:
-        return samna.device_node.__dict__[name]
+    if name in samna.device.__dict__: # TODO: This part has to be replaced.
+        return samna.device.__dict__[name]
     else:
         # Open Devkit
-        samna.device_node.DeviceController.open_device(dev_info, name)
+        # samna.device.open_device(dev_info, name)
+        device = samna.device.open_device(dev_info)
         # get the handle of our dev-kit
-        device = samna.device_node.__dict__[name]
+        # device = samna.device.__dict__[name]
         return device
 
 
@@ -325,7 +307,7 @@ def close_device(device_id: str):
 
     """
     device_name, device_num = _parse_device_string(device_id)
-    samna.device_node.DeviceController.close_device(f"{device_name}_{device_num}")
+    samna.device.close_device(f"{device_name}_{device_num}")
 
 
 def _parse_device_string(device_id: str) -> (str, int):
