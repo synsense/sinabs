@@ -37,3 +37,17 @@ class MultiGaussian:
             / torch.sqrt(2 * torch.tensor(math.pi))
             / self.sigma
         ) * self.grad_scale
+
+
+@dataclass
+class SingleExponential:
+    """
+    Surrogate gradient as defined in Shrestha and Orchard, 2018
+    https://papers.nips.cc/paper/2018/hash/82f2b308c3b01637c607ce05f52a2fed-Abstract.html
+    """
+
+    beat: float = 0.5
+    grad_scale: float = 1.0
+
+    def __call__(self, v_mem, threshold):
+        return self.grad_scale * torch.exp(-self.beta * torch.abs(v_mem - threshold))
