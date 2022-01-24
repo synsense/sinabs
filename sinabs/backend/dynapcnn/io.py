@@ -23,18 +23,19 @@ device_type_map = {v: k for (k, v) in device_types.items()}
 
 
 def enable_timestamps(
-        device_name: str,
-        device_handle: samna.device
+        device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
     Args:
-        device_name: str
+        device_id: str
             Name of the device to initialize. Required for different existing APIs
             for Dynapcnndevkit and Speck chips
-        device_handle: samna.device
-            Handle to the device from samna
     """
+    device_name, device_idx = _parse_device_string(device_id)
+    device_map = get_device_map()
+    device_info = device_map[device_id]
+    device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
@@ -42,18 +43,19 @@ def enable_timestamps(
 
 
 def disable_timestamps(
-        device_name: str,
-        device_handle: samna.device
+        device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
     Args:
-        device_name: str
+        device_id: str
             Name of the device to initialize. Required for different existing APIs
             for Dynapcnndevkit and Speck chips
-        device_handle: samna.device
-            Handle to the device from samna
     """
+    device_name, device_idx = _parse_device_string(device_id)
+    device_map = get_device_map()
+    device_info = device_map[device_id]
+    device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
@@ -61,18 +63,19 @@ def disable_timestamps(
 
 
 def reset_timestamps(
-        device_name: str,
-        device_handle: samna.device
+        device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
     Args:
-        device_name: str
+        device_id: str
             Name of the device to initialize. Required for different existing APIs
             for Dynapcnndevkit and Speck chips
-        device_handle: samna.device
-            Handle to the device from samna
     """
+    device_name, device_idx = _parse_device_string(device_id)
+    device_map = get_device_map()
+    device_info = device_map[device_id]
+    device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
@@ -147,7 +150,7 @@ def get_device_map() -> Dict:
         devices.sort(key=lambda x: x.usb_device_address)
         return devices
     # Get all devices available
-    devices = samna.devices.get_all_devices()
+    devices = samna.device.get_all_devices()
     # Group by device_type_name
     device_groups = groupby(devices, lambda x: x.device_type_name)
     # Switch keys from samna's device_type_name to device_type names
