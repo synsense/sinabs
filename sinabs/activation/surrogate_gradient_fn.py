@@ -53,6 +53,6 @@ class SingleExponential:
         abs_width = threshold * self.grad_width
         return (
             self.grad_scale
-            / self.abs_width
+            / abs_width
             * torch.exp(-torch.abs(v_mem - threshold) / abs_width)
         )
