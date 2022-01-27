@@ -50,8 +50,9 @@ class SingleExponential:
     grad_scale: float = 1.0
 
     def __call__(self, v_mem, threshold):
+        abs_width = threshold * self.grad_width
         return (
             self.grad_scale
-            / self.grad_width
-            * torch.exp(-torch.abs(v_mem - threshold) / self.grad_width)
+            / self.abs_width
+            * torch.exp(-torch.abs(v_mem - threshold) / abs_width)
         )
