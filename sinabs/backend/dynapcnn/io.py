@@ -20,7 +20,7 @@ device_types = {
 }
 
 device_type_map = {v: k for (k, v) in device_types.items()}
-
+device_map = {}
 
 def enable_timestamps(
         device_id: str,
@@ -33,7 +33,6 @@ def enable_timestamps(
             for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
-    device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
@@ -53,13 +52,12 @@ def disable_timestamps(
             for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
-    device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
-        device_handle.get_io_module().write_config(0x0003, 1)
+        device_handle.get_io_module().write_config(0x0003, 0)
     else:
-        device_handle.get_stop_watch().set_enable_value(True)
+        device_handle.get_stop_watch().set_enable_value(False)
 
 
 def reset_timestamps(
@@ -73,7 +71,6 @@ def reset_timestamps(
             for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
-    device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
     if device_name.lower() == "dynapcnndevkit":
@@ -139,6 +136,7 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
         xytc[i]["channel"] = event.feature
     return xytc
 
+
 def get_device_map() -> Dict:
     """
     Args:
@@ -156,7 +154,6 @@ def get_device_map() -> Dict:
     # Switch keys from samna's device_type_name to device_type names
     device_groups = {device_type_map[k]: sort_devices(list(v)) for k, v in device_groups}
     # Flat map
-    device_map = {}
     for dev_type, dev_list in device_groups.items():
         for i, dev in enumerate(dev_list):
             device_map[f"{dev_type}:{i}"] = dev
@@ -187,7 +184,6 @@ def discover_device(device_id: str):
     Returns:
         device_info: samna.device.DeviceInfo
     """
-    device_map = get_device_map()
     device_info = device_map[device_id]
     return device_info
 
@@ -202,7 +198,7 @@ def open_device(device_id: str):
         device_handle: samna.device.*
             Device handle received from samna.
     """
-    device_map = get_device_map()
+    get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
     if device_handle is not None:  # If the device was opened properly.
@@ -231,7 +227,6 @@ def get_opened_device(device_id: str):
         device_handle: samna.device.*
             Device handle received from samna.
     """
-    device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
     if device_handle is not None:
@@ -250,7 +245,6 @@ def close_device(device_id: str):
     Returns:
         None
     """
-    device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
     print(f"Closing device: {device_id}")
