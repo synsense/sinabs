@@ -33,17 +33,3 @@ else:
             lyr.external_backends[lyr_slayer.backend] = lyr_slayer
         else:
             lyr.external_backends = {lyr_slayer.backend: lyr_slayer}
-
-# Deprecated
-from .deprecated.flatten import FlattenLayer
-from .deprecated.iaf_conv1d import SpikingConv1dLayer
-from .deprecated.iaf_conv2d import SpikingConv2dLayer
-from .deprecated.iaf_convtranspose2d import SpikingConvTranspose2dLayer
-from .deprecated.sumpool2d import SumPooling2dLayer
-from .deprecated.iaf_conv3d import SpikingConv3dLayer
-from .deprecated.zeropad2d import ZeroPad2dLayer
-from .deprecated.iaf_linear import SpikingLinearLayer
-from .deprecated.iaf_tc import SpikingTemporalConv1dLayer
-from .deprecated.iaf import SpikingLayer as LegacySpikingLayer
-from .deprecated.layer import Layer
-from .deprecated.yolo import YOLOLayer
