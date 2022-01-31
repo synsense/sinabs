@@ -5,8 +5,11 @@ def test_forward():
     channels = 4
     tw = 5
 
-    lyr = Sig2SpikeLayer(channels_in=channels, tw=tw,)
+    lyr = Sig2SpikeLayer(
+        channels_in=channels,
+        tw=tw,
+    )
 
-    sig = torch.tensor([[1.0, 0.5, 0.25]]*channels)
+    sig = torch.tensor([[1.0, 0.5, 0.25]] * channels)
     spk = lyr(sig)
-    assert spk.shape == (tw*3, channels)
+    assert spk.shape == (tw * 3, channels)

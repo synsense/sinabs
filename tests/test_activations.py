@@ -45,10 +45,10 @@ def test_activation_functions(act_fn, output, v_mem):
 
     loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
     loss.backward()
-    
-    assert not (state['v_mem'].grad == 0).all()
-    assert not torch.isnan(state['v_mem'].grad).any()
-    assert not torch.isinf(state['v_mem'].grad).any()
+
+    assert not (state["v_mem"].grad == 0).all()
+    assert not torch.isnan(state["v_mem"].grad).any()
+    assert not torch.isinf(state["v_mem"].grad).any()
 
 
 @pytest.mark.parametrize(
@@ -90,6 +90,6 @@ def test_alif_activation_functions(act_fn, output, v_mem):
     loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
     loss.backward()
 
-    assert not (state['v_mem'].grad == 0).all()
-    assert not torch.isnan(state['v_mem'].grad).any()
-    assert not torch.isinf(state['v_mem'].grad).any()
+    assert not (state["v_mem"].grad == 0).all()
+    assert not torch.isnan(state["v_mem"].grad).any()
+    assert not torch.isinf(state["v_mem"].grad).any()

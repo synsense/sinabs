@@ -59,6 +59,7 @@ def compare_networks(net0, net1):
                 if key in neuron_params1:
                     assert neuron_params1[key] == val
 
+
 def test_compare_activations():
     analog, rates, layer_names = network.compare_activations(data)
     assert len(analog) == len(rates) == len(layer_names) == 2

@@ -9,16 +9,19 @@ class Model(torch.nn.Module):
         super().__init__()
 
         self.seq = torch.nn.Sequential(
-            torch.nn.Conv2d(in_channels=1, out_channels=8,
-                            kernel_size=(3, 3), bias=False),
+            torch.nn.Conv2d(
+                in_channels=1, out_channels=8, kernel_size=(3, 3), bias=False
+            ),
             NeuromorphicReLU(),
             torch.nn.AvgPool2d(kernel_size=(2, 2), stride=(2, 2)),
-            torch.nn.Conv2d(in_channels=8, out_channels=12,
-                            kernel_size=(3, 3), bias=False),
+            torch.nn.Conv2d(
+                in_channels=8, out_channels=12, kernel_size=(3, 3), bias=False
+            ),
             NeuromorphicReLU(),
             torch.nn.AvgPool2d(kernel_size=(2, 2), stride=(2, 2)),
-            torch.nn.Conv2d(in_channels=12, out_channels=12,
-                            kernel_size=(3, 3), bias=False),
+            torch.nn.Conv2d(
+                in_channels=12, out_channels=12, kernel_size=(3, 3), bias=False
+            ),
             NeuromorphicReLU(),
             torch.nn.AvgPool2d(kernel_size=(2, 2), stride=(2, 2)),
             torch.nn.Dropout2d(0.5),
@@ -37,8 +40,9 @@ class TinyModel(torch.nn.Module):
         self.linear = torch.nn.Linear(5, 2, bias=False)
         self.relu = NeuromorphicReLU(fanout=2, quantize=quantize)
 
-        self.linear.weight.data = torch.tensor([[1.2, 1., 1., 3., -2.],
-                                                [1.2, 1., 1., 2., -10.]])
+        self.linear.weight.data = torch.tensor(
+            [[1.2, 1.0, 1.0, 3.0, -2.0], [1.2, 1.0, 1.0, 2.0, -10.0]]
+        )
 
     def forward(self, x):
         return self.relu(self.linear(x))
@@ -72,7 +76,7 @@ def test_loss_quantized():
 
     loss = criterion()
 
-    assert np.allclose(loss.item(), 4.)
+    assert np.allclose(loss.item(), 4.0)
 
 
 def test_layer_synops():
