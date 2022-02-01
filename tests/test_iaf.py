@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from sinabs.layers import IAF, IAFSqueeze, IAFRecurrent
+import sinabs.activation as sa
 import pytest
 import numpy as np
 
@@ -14,6 +15,33 @@ def test_iaf_basic():
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
+
+
+def test_iaf_single_spike():
+    batch_size, time_steps = 10, 100
+    activation_fn = sa.ActivationFunction(spike_fn=sa.SingleSpike)
+    layer = IAF(activation_fn=activation_fn)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 100
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+    assert torch.max(spike_output) == 1
+
+
+def test_iaf_max_spike():
+    batch_size, time_steps = 10, 100
+    max_spikes = 3
+    activation_fn = sa.ActivationFunction(spike_fn=sa.MaxSpike(max_spikes))
+    layer = IAF(activation_fn=activation_fn)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 100
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+    assert torch.max(spike_output) == max_spikes
 
 
 def test_iaf_squeezed():
