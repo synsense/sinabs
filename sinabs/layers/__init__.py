@@ -14,22 +14,22 @@ from .exp_leak import ExpLeak, ExpLeakSqueeze
 from .squeeze_layer import SqueezeMixin
 
 try:
-    from sinabs.slayer import layers as slayer_layers
+    from sinabs.exodus import layers as exodus_layers
 except ModuleNotFoundError:
     pass
 else:
     _layers_with_backend = (IAF, IAFSqueeze, LIF, LIFSqueeze, ExpLeak, ExpLeakSqueeze)
 
     for lyr in _layers_with_backend:
-        # Find equivalent slayer layer classes by name
-        lyr_slayer = getattr(slayer_layers, lyr.__name__)
-        # Add sinabs layer class to slayer version's external backends
-        if hasattr(lyr_slayer, "external_backends"):
-            lyr_slayer.external_backends[lyr.backend] = lyr
+        # Find equivalent exodus layer classes by name
+        lyr_exodus = getattr(exodus_layers, lyr.__name__)
+        # Add sinabs layer class to exodus version's external backends
+        if hasattr(lyr_exodus, "external_backends"):
+            lyr_exodus.external_backends[lyr.backend] = lyr
         else:
-            lyr_slayer.external_backends = {lyr.backend: lyr}
-        # Add slayer version to sinabs layer class' external backends
+            lyr_exodus.external_backends = {lyr.backend: lyr}
+        # Add exodus version to sinabs layer class' external backends
         if hasattr(lyr, "external_backends"):
-            lyr.external_backends[lyr_slayer.backend] = lyr_slayer
+            lyr.external_backends[lyr_exodus.backend] = lyr_exodus
         else:
-            lyr.external_backends = {lyr_slayer.backend: lyr_slayer}
+            lyr.external_backends = {lyr_exodus.backend: lyr_exodus}

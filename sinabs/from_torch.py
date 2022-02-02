@@ -45,7 +45,7 @@ def from_model(
     operations during forward passes.
     :param add_spiking_output: If True (default: False), add a spiking layer \
     to the end of a sequential model if not present.
-    :param backend: String defining the simulation backend (currently sinabs or slayer)
+    :param backend: String defining the simulation backend (currently sinabs or exodus)
     :param kwargs_backend: Dict with additional kwargs for the simulation backend
     """
     return SpkConverter(
@@ -86,7 +86,7 @@ class SpkConverter(object):
     operations during foward passes.
     :param add_spiking_output: If True (default: False), add a spiking \
     layer to the end of a sequential model if not present.
-    :param backend: String defining the simulation backend (currently sinabs or slayer)
+    :param backend: String defining the simulation backend (currently sinabs or exodus)
     :param kwargs_backend: Dict with additional kwargs for the simulation backend
     """
 
