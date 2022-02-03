@@ -180,6 +180,24 @@ def test_network_conversion_with_num_timesteps():
     assert snn.spiking_model[2].num_timesteps == 32
 
 
+def test_network_conversion_backend():
+    """
+    Try conversion with sinabs explicitly stated as backend.
+    """
+
+    ann = nn.Sequential(
+        nn.Conv2d(1, 1, 1),
+        nn.Sequential(nn.AvgPool2d(2), nn.ReLU(), nn.Conv2d(1, 1, 1)),
+        nn.ReLU(),
+        nn.AvgPool2d(3),
+        nn.Sequential(
+            nn.Conv2d(1, 1, 2), nn.Sequential(nn.Flatten(), nn.Linear(400, 12))
+        ),
+    )
+
+    snn = from_model(ann, backend="sinabs")
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_parameter_devices():
     cnn = nn.Sequential(nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False), nn.ReLU())

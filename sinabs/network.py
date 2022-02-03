@@ -177,51 +177,6 @@ class Network(torch.nn.Module):
 
         return self.synops_counter.get_synops()
 
-    def to_backend(self, backend, verbose=True):
-        converted_module_names = list()
-        update_device = None
-        for name, module in self.named_modules():
-            # Don't call the method on `self` (empty name) to avoid unnecessary recursion
-            if name and hasattr(module, "to_backend"):
-                with warnings.catch_warnings():
-                    if not verbose:
-                        warnings.filterwarnings("ignore", category=RuntimeWarning)
-                    # Convert module backend
-                    new_module = module.to_backend(backend)
-
-                # If-statement prevents nested modules being replaced multiple times
-                if not isinstance(module, Network):
-                    # Replace module inside self
-                    parent, child_name = get_parent_module_by_name(self, name)
-
-                    # Test whether device changes
-                    old_module = getattr(parent, child_name)
-                    old_device = infer_module_device(old_module)
-                    new_device = infer_module_device(new_module)
-                    if old_device is not None and old_device != new_device:
-                        update_device = new_device
-
-                    # Replace module with version of different backend
-                    setattr(parent, child_name, new_module)
-
-                    # Add module to list of converted modules
-                    converted_module_names.append(name)
-
-        converted_modules_string = "\n".join(converted_module_names)
-        if verbose:
-            print(
-                f"Converted the following modules to backend {backend}:"
-                f"\n{converted_modules_string}"
-            )
-
-        # If any layer's device was changed, make sure all modules are on same device
-        if update_device is not None:
-            self.to(update_device)
-            if verbose:
-                print(f"Changed network device to {update_device}")
-
-        return self
-
 
 def get_parent_module_by_name(
     root: torch.nn.Module, name: str

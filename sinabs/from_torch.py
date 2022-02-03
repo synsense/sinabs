@@ -7,6 +7,14 @@ from sinabs.activation import ActivationFunction, MembraneSubtract
 from sinabs import Network
 import sinabs.layers as sl
 
+_backends = {"sinabs": sl}
+
+try:
+    import sinabs.exodus.layers as el
+except ModuleNotFoundError:
+    pass
+else:
+    _backends["exodus"] = el
 
 def from_model(
     model,
@@ -118,7 +126,15 @@ class SpkConverter(object):
 
     def relu2spiking(self):
 
-        return sl.IAFSqueeze(
+        try:
+            backend_module = _backends[self.backend]
+        except KeyError:
+            raise ValueError(
+                f"Backend '{self.backend}' is not available. Available backends: "
+                ", ".join(_backends.keys())
+            )
+
+        return backend_module.IAFSqueeze(
             activation_fn=ActivationFunction(spike_threshold=self.threshold,
                                              reset_fn=MembraneSubtract(),
                                             ),
@@ -160,7 +176,7 @@ class SpkConverter(object):
             synops=self.synops,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
-        ).to_backend(self.backend, verbose=False)
+        )
 
         return network
 

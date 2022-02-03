@@ -124,17 +124,9 @@ def test_plot_comparison():
     assert len(snn_activation) == len(spiking_layers_names)
 
 
-def test_deepcopy_and_backend():
+def test_deepcopy():
     from copy import deepcopy
 
     network_copy = deepcopy(network)
     # Make sure copying maintained all parameters and state variables
     compare_networks(network, network_copy)
-
-    # Setting backend to sinabs should have no effect (because it is the backend already)
-    network_sinabs = network_copy.to_backend("sinabs")
-    # Backend call is in-place for networks
-    assert network_sinabs is network_copy
-
-    # Make sure parameters have not changed
-    compare_networks(network, network_sinabs)
