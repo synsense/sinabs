@@ -77,7 +77,7 @@ class DynapcnnNetwork(nn.Module):
         super().__init__()
         self.chip_layers_ordering = []
         self.compatible_layers = []
-
+        self.input_shape = input_shape
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
@@ -246,7 +246,8 @@ class DynapcnnNetwork(nn.Module):
         self.chip_layers_ordering = chip_layers_ordering
         # Update config
         config = config_builder.build_config(self, chip_layers_ordering)
-
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
@@ -325,8 +326,6 @@ class DynapcnnNetwork(nn.Module):
                     break
             # Disable timestamp
             disable_timestamps(self.device)
-            # Read events back
-            # evsOut = self.samna_output_buffer.get_events()
             return received_evts
         else:
             """Torch's forward pass."""

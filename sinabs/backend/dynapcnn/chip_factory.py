@@ -31,7 +31,7 @@ class ChipFactory:
     def get_config_builder(self) -> ConfigBuilder:
         return self.supported_devices[self.device_name]()
 
-    def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3, truncate: bool = False) -> List:
+    def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3, truncate: bool = False, delay_factor: float = 0) -> List:
         """
         Convert spike raster to events for DynapcnnNetworks
 
@@ -49,6 +49,9 @@ class ChipFactory:
 
         truncate: bool
             (default = False) Limit time-bins with more than one spikes to one spike.
+
+        delay_factor: float
+            (default = 0) Start simulation from this time. (in seconds)
 
 
         Returns
@@ -80,11 +83,11 @@ class ChipFactory:
             ev.x = row[3]
             ev.y = row[2]
             ev.feature = row[1]
-            ev.timestamp = int(row[0].item() * 1e6 * dt)  # Time in uS
+            ev.timestamp = int(row[0].item() * 1e6 * dt) + int(delay_factor * 1e6)  # Time in uS
             events.append(ev)
         return events
 
-    def xytp_to_events(self, xytp: np.ndarray, layer, reset_timestamps) -> List:
+    def xytp_to_events(self, xytp: np.ndarray, layer, reset_timestamps, delay_factor: float = 0) -> List:
         """
         Convert series of spikes in a structured array (eg. from aermanager) to events for DynaapcnnDevKit
 
@@ -98,8 +101,10 @@ class ChipFactory:
             The index of the layer to route the events to
 
         reset_timestamps: Boolean
-
             If set to True, timestamps will be aligned to start from 0
+
+        delay_factor: float
+            (default = 0) Start simulation from this time. (in seconds)
 
         Returns
         -------
@@ -120,9 +125,9 @@ class ChipFactory:
             ev.y = row["y"]
             ev.feature = row["p"]
             if reset_timestamps:
-                ev.timestamp = row["t"] - tstart# Time in uS
+                ev.timestamp = row["t"] - tstart + int(delay_factor * 1e6)# Time in uS
             else:
-                ev.timestamp = row["t"]
+                ev.timestamp = row["t"] + int(delay_factor * 1e6)
             events.append(ev)
         return events
 
