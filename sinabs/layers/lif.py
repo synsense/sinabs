@@ -48,11 +48,11 @@ class LIF(StatefulLayer):
             state_names = ['v_mem', 'i_syn'] if tau_syn else ['v_mem']
         )
         if train_alphas:
-            self.alpha_mem = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_mem, dtype=float)))
-            self.alpha_syn = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_syn, dtype=float))) if tau_syn else None
+            self.alpha_mem = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_mem, dtype=torch.float32)))
+            self.alpha_syn = nn.Parameter(torch.exp(-1./torch.as_tensor(tau_syn, dtype=torch.float32))) if tau_syn else None
         else:
-            self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem, dtype=float))
-            self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn, dtype=float)) if tau_syn else None
+            self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem, dtype=torch.float32))
+            self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn, dtype=torch.float32)) if tau_syn else None
         self.activation_fn = activation_fn
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
