@@ -148,6 +148,13 @@ class ALIF(StatefulLayer):
             self.b.fill_(self.b0)
 
     @property
+    def shape(self):
+        if self.is_state_initialised():
+            return self.v_mem.shape
+        else:
+            return None
+
+    @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
@@ -158,7 +165,7 @@ class ALIF(StatefulLayer):
             b0=self.b0,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
-            shape=self.v_mem.shape,
+            shape=self.shape,
             threshold_low=self.threshold_low,
         )
         return param_dict

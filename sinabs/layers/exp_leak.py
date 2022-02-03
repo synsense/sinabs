@@ -66,6 +66,13 @@ class ExpLeak(StatefulLayer):
         return torch.stack(output_states, 1)
 
     @property
+    def shape(self):
+        if self.is_state_initialised():
+            return self.v_mem.shape
+        else:
+            return None
+
+    @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
@@ -73,7 +80,7 @@ class ExpLeak(StatefulLayer):
             if self.train_alphas
             else self.tau_leak,
             train_alphas=self.train_alphas,
-            shape=self.v_mem.shape,
+            shape=self.shape,
             threshold_low=self.threshold_low,
         )
         return param_dict

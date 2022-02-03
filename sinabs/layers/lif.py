@@ -110,6 +110,13 @@ class LIF(StatefulLayer):
         return spikes
 
     @property
+    def shape(self):
+        if self.is_state_initialised():
+            return self.v_mem.shape
+        else:
+            return None
+
+    @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
@@ -117,7 +124,7 @@ class LIF(StatefulLayer):
             tau_syn=-1/torch.log(self.alpha_syn.detach_()) if self.train_alphas else self.tau_syn,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
-            shape=self.v_mem.shape,
+            shape=self.shape,
             threshold_low=self.threshold_low,
         )
         return param_dict
