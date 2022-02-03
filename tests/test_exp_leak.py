@@ -1,7 +1,5 @@
 import torch
 from sinabs.layers import ExpLeak, ExpLeakSqueeze
-import numpy as np
-import pytest
 
 
 def test_leaky_basic():
@@ -11,6 +9,7 @@ def test_leaky_basic():
     layer = ExpLeak(tau_leak=tau_leak)
     membrane_output = layer(input_current)
 
+    assert not layer.does_spike
     assert input_current.shape == membrane_output.shape
     assert torch.isnan(membrane_output).sum() == 0
     assert membrane_output.sum() > 0
