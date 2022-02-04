@@ -17,7 +17,7 @@ __pycache__
 *.npy
 *.npz
 *.onnx
-docs/source/notebooks/data/
+docs/tutorials/data/
 
 # mac os
 .DS_Store

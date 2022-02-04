@@ -1,4 +1,8 @@
-![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) [![Documentation Status](https://img.shields.io/badge/docs-ok-green)](https://aictx.gitlab.io/sinabs) ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sinabs?logo=python) ![Black - formatter](https://img.shields.io/badge/code%20style-black-black) ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
+![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
+[![Documentation Status](https://img.shields.io/badge/docs-ok-green)](https://aictx.gitlab.io/sinabs) 
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sinabs?logo=python) 
+![Black - formatter](https://img.shields.io/badge/code%20style-black-black) 
+![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 
 
 SINABS

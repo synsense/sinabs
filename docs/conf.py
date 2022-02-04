@@ -30,16 +30,17 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
-#import os
-#import sys
-#sys.path.append(os.path.join(os.path.dirname(__name__), ".."))
+import os
+import sys
+# import sinabs
+# sys.path.append(os.path.join(os.path.dirname(__name__), ".."))
 
 
 # -- Project information -----------------------------------------------------
 
-project = "sinabs"
-copyright = "2019-2020, SynSense"
-author = "Sadique Sheik, Martino Sorbaro, Qian Liu, SynSense"
+project = "Sinabs"
+copyright = "2019-2022, SynSense"
+author = "Employees of SynSense"
 
 # The short X.Y version
 # version = "0.1"
@@ -57,14 +58,21 @@ author = "Sadique Sheik, Martino Sorbaro, Qian Liu, SynSense"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    "pbr.sphinxext",
-    "nbsphinx",
+    # "pbr.sphinxext",
+    # "nbsphinx",
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "m2r2"
+    "myst_nb"
 ]
 
+# Napoleon settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+
+# MyST settings
+jupyter_execute_notebooks = "off"
+suppress_warnings = ["myst.header"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -72,10 +80,10 @@ templates_path = ["_templates"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = {".rst": 'restructuredtext',
-                 ".txt": 'markdown',
-                 ".md": 'markdown',
-                 }
+# source_suffix = {".rst": 'restructuredtext',
+#                  ".txt": 'markdown',
+#                  ".md": 'markdown',
+#                  }
 
 # The master toctree document.
 master_doc = "index"
@@ -85,7 +93,7 @@ master_doc = "index"
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+# language = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -93,7 +101,7 @@ language = None
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+# pygments_style = None
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -101,8 +109,10 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
-#html_theme_path = ["."]
+html_theme = "sphinx_book_theme"
+html_logo = "_static/sinabs-logo-lowercase.png"
+html_show_sourcelink = True
+html_sourcelink_suffix = ""
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -113,7 +123,17 @@ html_theme = "sphinx_rtd_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ["_static"]
+html_static_path = ["_static"]
+
+html_theme_options = {
+    "logo_only": True,
+    "repository_url": "https://sinabs.ai",
+    "use_repository_button": True,
+    "use_issues_button": False,
+    "use_edit_page_button": False,
+    "use_fullscreen_button": False,
+}
+
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -123,9 +143,9 @@ html_theme = "sphinx_rtd_theme"
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-html_sidebars = {
-    "**": ["globaltoc.html", "searchbox.html", "relations.html", "sourcelink.html"]
-}
+# html_sidebars = {
+#     "**": ["globaltoc.html", "searchbox.html", "relations.html", "sourcelink.html"]
+# }
 
 # ------------------- LOGO ---------------------------
 #html_logo = "SynSense.png"
@@ -133,96 +153,96 @@ html_sidebars = {
 
 # -- Options for HTMLHelp output ---------------------------------------------
 
-# Output file base name for HTML help builder.
-htmlhelp_basename = "SINABSdoc"
+# # Output file base name for HTML help builder.
+# htmlhelp_basename = "SINABSdoc"
 
 
-# -- Options for LaTeX output ------------------------------------------------
+# # -- Options for LaTeX output ------------------------------------------------
 
-latex_elements = {
-    # The paper size ('letterpaper' or 'a4paper').
-    #
-    # 'papersize': 'letterpaper',
-    # The font size ('10pt', '11pt' or '12pt').
-    #
-    # 'pointsize': '10pt',
-    # Additional stuff for the LaTeX preamble.
-    #
-    # 'preamble': '',
-    # Latex figure (float) alignment
-    #
-    # 'figure_align': 'htbp',
-}
+# latex_elements = {
+#     # The paper size ('letterpaper' or 'a4paper').
+#     #
+#     # 'papersize': 'letterpaper',
+#     # The font size ('10pt', '11pt' or '12pt').
+#     #
+#     # 'pointsize': '10pt',
+#     # Additional stuff for the LaTeX preamble.
+#     #
+#     # 'preamble': '',
+#     # Latex figure (float) alignment
+#     #
+#     # 'figure_align': 'htbp',
+# }
 
-# Grouping the document tree into LaTeX files. List of tuples
-# (source start file, target name, title,
-#  author, documentclass [howto, manual, or own class]).
-latex_documents = [
-    (
-        master_doc,
-        "SINABS.tex",
-        "SINABS Documentation",
-        author,
-        "manual",
-    )
-]
-
-
-# -- Options for manual page output ------------------------------------------
-
-# One entry per manual page. List of tuples
-# (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "sinabs", "SINABS Documentation", [author], 1)]
-
-# -- Options for Texinfo output ----------------------------------------------
-
-# Grouping the document tree into Texinfo files. List of tuples
-# (source start file, target name, title, author,
-#  dir menu entry, description, category)
-texinfo_documents = [
-    (
-        master_doc,
-        "SINABS",
-        "SINABS Documentation",
-        author,
-        "SINABS",
-        "One line description of project.",
-        "Miscellaneous",
-    )
-]
+# # Grouping the document tree into LaTeX files. List of tuples
+# # (source start file, target name, title,
+# #  author, documentclass [howto, manual, or own class]).
+# latex_documents = [
+#     (
+#         master_doc,
+#         "SINABS.tex",
+#         "SINABS Documentation",
+#         author,
+#         "manual",
+#     )
+# ]
 
 
-# -- Options for Epub output -------------------------------------------------
+# # -- Options for manual page output ------------------------------------------
 
-# Bibliographic Dublin Core info.
-epub_title = project
+# # One entry per manual page. List of tuples
+# # (source start file, name, description, authors, manual section).
+# man_pages = [(master_doc, "sinabs", "SINABS Documentation", [author], 1)]
 
-# The unique identifier of the text. This can be a ISBN number
-# or the project homepage.
-#
-# epub_identifier = ''
+# # -- Options for Texinfo output ----------------------------------------------
 
-# A unique identification for the text.
-#
-# epub_uid = ''
-
-# A list of files that should not be packed into the epub file.
-epub_exclude_files = ["search.html"]
-
-
-# -- Extension configuration -------------------------------------------------
-
-
-# ---------------------------------------
-autoclass_content = "both"
-add_module_names = False
+# # Grouping the document tree into Texinfo files. List of tuples
+# # (source start file, target name, title, author,
+# #  dir menu entry, description, category)
+# texinfo_documents = [
+#     (
+#         master_doc,
+#         "SINABS",
+#         "SINABS Documentation",
+#         author,
+#         "SINABS",
+#         "One line description of project.",
+#         "Miscellaneous",
+#     )
+# ]
 
 
-def autodoc_skip_member(app, what, name, obj, skip, options):
-    exclusions = ("forward",)
-    exclude = name in exclusions
-    return skip or exclude
+# # -- Options for Epub output -------------------------------------------------
+
+# # Bibliographic Dublin Core info.
+# epub_title = project
+
+# # The unique identifier of the text. This can be a ISBN number
+# # or the project homepage.
+# #
+# # epub_identifier = ''
+
+# # A unique identification for the text.
+# #
+# # epub_uid = ''
+
+# # A list of files that should not be packed into the epub file.
+# epub_exclude_files = ["search.html"]
 
 
-def setup(app):
-    app.connect("autodoc-skip-member", autodoc_skip_member)
+# # -- Extension configuration -------------------------------------------------
+
+
+# # ---------------------------------------
+# autoclass_content = "both"
+# add_module_names = False
+
+
+# def autodoc_skip_member(app, what, name, obj, skip, options):
+#     exclusions = ("forward",)
+#     exclude = name in exclusions
+#     return skip or exclude
+
+
+# def setup(app):
+#     app.connect("autodoc-skip-member", autodoc_skip_member)
