@@ -2,6 +2,8 @@
 =============
 
 .. toctree::
+   :maxdepth: 1
+
    bptt
    weight_transfer_mnist
    iaf_neuron_model

@@ -1,11 +1,9 @@
 LIF
-===
-A Leaky Integrate Fire (LIF) layer.
+---
+A Leaky Integrate Fire (LIF) layer and variations thereof.
 
 .. automodule:: sinabs.layers
 
-LIF
----
 .. autoclass:: LIF
     :members:
 

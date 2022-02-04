@@ -6,6 +6,14 @@ from .squeeze_layer import SqueezeMixin
 
 
 class ExpLeak(StatefulLayer):
+    """
+    Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
+
+    Parameters
+    ----------
+    tau: float
+        Rate of leak of the state
+    """
     def __init__(
         self,
         tau_leak: Union[float, torch.Tensor],
@@ -13,14 +21,6 @@ class ExpLeak(StatefulLayer):
         train_alphas: bool = False,
         threshold_low: Optional[float] = None,
     ):
-        """
-        Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
-
-        Parameters
-        ----------
-        tau: float
-            Rate of leak of the state
-        """
         super().__init__(state_names=["v_mem"])
         tau_leak = torch.as_tensor(tau_leak, dtype=float)
         if train_alphas:
@@ -92,7 +92,6 @@ class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers. 
     """
-
     def __init__(self, batch_size=None, num_timesteps=None, **kwargs):
         super().__init__(**kwargs)
         self.squeeze_init(batch_size, num_timesteps)

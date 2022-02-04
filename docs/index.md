@@ -7,7 +7,7 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 
 ### **Sinabs Is Not A Brain Simulator**
-It's a deep learning library based on PyTorch for spiking neural networks, with a focus on simplicity, fast training and extendability.
+It's a deep learning library based on PyTorch for spiking neural networks, with a focus on simplicity, fast training and extendability. Sinabs works well for Vision models because of its support for weight transfer. If you're looking to work with audio data or different backends, be sure to check out [Rockpool](https://rockpool.ai/) as well.
 
 ### Getting started
 * **{doc}`Install Sinabs<getting_started/install>`** and potentially some plugins.

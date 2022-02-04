@@ -1,13 +1,14 @@
-Spike generation
+spike generation
 ----------------
 
 .. automodule:: sinabs.activation
-.. currentmodule:: sinabs.activation
-    
+
 SingleSpike
 ^^^^^^^^^^^
 .. autoclass:: SingleSpike
+    :members:
 
 MultiSpike
 ^^^^^^^^^^^
 .. autoclass:: MultiSpike
+    :members:

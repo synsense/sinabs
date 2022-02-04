@@ -1,11 +1,6 @@
 layers
 ======
 
-.. toctree::
-    lif
-    alif
-
-
 .. automodule:: sinabs.layers
 .. currentmodule:: sinabs.layers
 
@@ -14,12 +9,15 @@ All the layers implemented in this package can be used similar to `torch.nn` lay
 
 Main spiking layers
 -------------------
+.. toctree::
+    iaf
+    lif
+    alif
 
-Integrate And Fire (IAF) layer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: IAF
-    :members:
-
+Non-spiking layers
+------------------
+.. toctree::
+    exp_leak
 
 Auxiliary layers
 ----------------
@@ -38,10 +36,6 @@ InputLayer
 .. autoclass:: InputLayer
     :members:
 
-ExpLeak
-~~~~~~~
-.. autoclass:: ExpLeak
-    :members:
 
 StatefulLayer
 ~~~~~~~~~~~~~

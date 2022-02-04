@@ -1,11 +1,9 @@
 ALIF
-====
-An Adaptive Leaky Integrate Fire (ALIF) layer.
+----
+An Adaptive Leaky Integrate Fire (ALIF) layer and variations thereof.
 
 .. automodule:: sinabs.layers
 
-ALIF
-----
 .. autoclass:: ALIF
     :members:
 

@@ -1,14 +1,16 @@
 activation
 ==========
 
-.. toctree::
-   spike_generation
-
-
 .. automodule:: sinabs.activation
-.. currentmodule:: sinabs.activation
 
-The main object to pass to a SpikingLayer is an ActivationFunction, which combines spike generation, reset mechanism and surrogate gradient function.
+The main object to pass to a spiking layer is an ActivationFunction, which combines spike generation, reset mechanism and surrogate gradient function.
+
+.. toctree::
+   :maxdepth: 1
+
+   spike_generation
+   reset_mechanism
+   surrogate_gradient
 
 ActivationFunction
 ------------------
