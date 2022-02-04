@@ -1,9 +1,9 @@
-sinabs.layers
-=============
+layers
+======
 
 .. toctree::
-    :maxdepth: 3
-    :caption: sinabs.layers
+    lif
+    alif
 
 
 .. automodule:: sinabs.layers
@@ -15,20 +15,11 @@ All the layers implemented in this package can be used similar to `torch.nn` lay
 Main spiking layers
 -------------------
 
-SpikingLayer
-~~~~~~~~~~~~
-.. autoclass:: SpikingLayer
+Integrate And Fire (IAF) layer
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. autoclass:: IAF
     :members:
 
-Leaky Integrate Fire (LIF) layer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: LIF
-    :members:
-
-Adaptive Leaky Integrate Fire (ALIF) layer
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. autoclass:: ALIF
-    :members:
 
 Auxiliary layers
 ----------------
@@ -91,17 +82,3 @@ SumPool2d
     :members:
 
 
-sinabs.layers.functional
-========================
-Quantization tools
-------------------
-.. automodule:: sinabs.layers.functional.quantize
-   :members:
-   :undoc-members:
-
-Thresholding tools
-------------------
-.. automodule:: sinabs.layers.functional.threshold
-   :members:
-   :undoc-members:
-   

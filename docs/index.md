@@ -1,11 +1,12 @@
-![sinabs](_static/sinabs-logo-lowercase.png){ width=50% }
+<img src="_static/sinabs-logo-lowercase.png" alt="logo" width="500"/>
+
 ![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
 [![Documentation Status](https://img.shields.io/badge/docs-ok-green)](https://aictx.gitlab.io/sinabs) 
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sinabs?logo=python) 
 ![Black - formatter](https://img.shields.io/badge/code%20style-black-black) 
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 
-## Sinabs Is Not A Brain Simulator
+### **Sinabs Is Not A Brain Simulator**
 It's a deep learning library based on PyTorch for spiking neural networks, with a focus on simplicity, fast training and extendability.
 
 ### Getting started
@@ -21,7 +22,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 
-* **{doc}`Supported neuron models<api/layers>`**.
+* **{doc}`Supported neuron models<api/layers/layers>`**.
 * **{doc}`Weight transfer API<api/from_torch>`**. 
 
 ### About
@@ -31,19 +32,10 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 
 
 ```{toctree}
+:hidden:
 getting_started/getting_started
-```
-
-```{toctree}
 tutorials/tutorials
-```
-
-```{toctree}
-:hidden:
+plugins/plugins
 api/api
-```
-
-```{toctree}
-:hidden:
 about/about
 ```
