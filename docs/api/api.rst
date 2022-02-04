@@ -1,5 +1,5 @@
-API
----
+**API REFERENCE**
+-----------------
 
 .. toctree::
    sinabs
