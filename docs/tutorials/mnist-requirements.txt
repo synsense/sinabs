@@ -1,5 +1,0 @@
-ipywidgets
-torchvision
-tqdm
-sinabs
-matplotlib

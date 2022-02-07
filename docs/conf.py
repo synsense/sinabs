@@ -40,7 +40,7 @@ import sys
 
 project = "Sinabs"
 copyright = "2019-2022, SynSense"
-author = "Employees of SynSense"
+author = "employees of SynSense"
 
 # The short X.Y version
 # version = "0.1"
@@ -111,7 +111,7 @@ exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 #
 html_theme = "sphinx_book_theme"
 html_logo = "_static/sinabs-logo-lowercase.png"
-html_show_sourcelink = True
+html_show_sourcelink = False
 html_sourcelink_suffix = ""
 
 # Theme options are theme-specific and customize the look and feel of a theme

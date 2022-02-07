@@ -5,5 +5,7 @@
    :maxdepth: 1
 
    install
-   python_pyenv_pipenv
+   iaf_neuron_model
    quickstart
+   python_pyenv_pipenv
+   

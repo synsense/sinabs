@@ -17,8 +17,8 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 * **{doc}`Run a first example using BPTT<tutorials/bptt>`** with this neuromorphic version of the MNIST dataset.
 
 ### Plugins
-* **Training feed-forward models 10x faster: EXODUS plugin**.
-* **Deploying Sinabs/EXODUS models to neuromorphic hardware: Sinabs-DynapCNN**.
+* Training feed-forward models 10x faster: **[EXODUS](https://www.youtube.com/watch?v=u95JTXzyHyA)**.
+* Deploying models to neuromorphic hardware: **Sinabs-DynapCNN**.
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 
@@ -29,7 +29,6 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 * **{doc}`About Sinabs<about/about>`**. How the project came about.
 * **{doc}`Contribution guidelines<about/contributing>`**. Please read this before opening a pull request.
 * **{doc}`Release notes<about/release_notes>`**. Version changes.
-
 
 ```{toctree}
 :hidden:

@@ -1,7 +1,6 @@
 layers
 ======
 
-.. automodule:: sinabs.layers
 .. currentmodule:: sinabs.layers
 
 
@@ -9,6 +8,8 @@ All the layers implemented in this package can be used similar to `torch.nn` lay
 
 Main spiking layers
 -------------------
+Those layers make use of the sinabs.activation module. 
+
 .. toctree::
     iaf
     lif
@@ -36,12 +37,6 @@ InputLayer
 .. autoclass:: InputLayer
     :members:
 
-
-StatefulLayer
-~~~~~~~~~~~~~
-.. autoclass:: StatefulLayer
-    :members:
-
 Hybrid layers
 -------------
 The hybrid layers have inputs and outputs of different formats (eg. take analog values as inputs and produce spikes as outputs.)
@@ -55,6 +50,16 @@ Sig2SpikeLayer
 ~~~~~~~~~~~~~~
 .. autoclass:: Sig2SpikeLayer
     :members:
+
+Parent layers
+-------------
+Other Sinabs layers might inherit from those.
+
+StatefulLayer
+~~~~~~~~~~~~~
+.. autoclass:: StatefulLayer
+    :members:
+
 
 ANN layers
 ----------
@@ -74,5 +79,3 @@ SumPool2d
 ~~~~~~~~~
 .. autoclass:: SumPool2d
     :members:
-
-

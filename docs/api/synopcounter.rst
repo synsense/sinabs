@@ -1,19 +1,17 @@
-sinabs.SynOpCounter
-===================
+SynOpCounter
+============
 
-.. automodule:: sinabs.synopcounter
-.. py:currentmodule:: sinabs.synopcounter
+.. currentmodule:: sinabs.synopcounter
 
-
-`SNNSynOpCounter`
-~~~~~~~~~~~~~~~~~
+SNNSynOpCounter
+~~~~~~~~~~~~~~~
 
 .. autoclass:: SNNSynOpCounter
     :members:
 
 
-`SynOpCounter`
-~~~~~~~~~~~~~~
+SynOpCounter
+~~~~~~~~~~~~
 
 .. autoclass:: SynOpCounter
     :members:
