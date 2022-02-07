@@ -1,7 +1,10 @@
 activation
 ==========
 
-.. automodule:: sinabs.activation
+.. currentmodule:: sinabs.activation
+
+spiking activation
+------------------
 
 The main object to pass to a spiking layer is an ActivationFunction, which combines spike generation, reset mechanism and surrogate gradient function.
 
@@ -13,23 +16,17 @@ The main object to pass to a spiking layer is an ActivationFunction, which combi
    surrogate_gradient
 
 ActivationFunction
-------------------
+^^^^^^^^^^^^^^^^^^
 .. autoclass:: ActivationFunction
 
 ALIFActivationFunction
-----------------------
+^^^^^^^^^^^^^^^^^^^^^^
 .. autoclass:: ALIFActivationFunction
 
 
+quantization activation
+-----------------------
 
-
-
-sinabs.layers.functional
-========================
-Quantization tools
-------------------
 .. automodule:: sinabs.activation.quantize
    :members:
    :undoc-members:
-
-   
