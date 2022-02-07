@@ -60,6 +60,17 @@ StatefulLayer
 .. autoclass:: StatefulLayer
     :members:
 
+Reshaping layers
+----------------
+
+FlattenTime
+~~~~~~~~~~~~~~~~
+.. autoclass:: FlattenTime
+
+UnflattenTime
+~~~~~~~~~~~~~
+.. autoclass:: UnflattenTime
+
 
 ANN layers
 ----------
