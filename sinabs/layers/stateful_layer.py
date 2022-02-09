@@ -55,15 +55,15 @@ class StatefulLayer(torch.nn.Module):
         )
 
     def is_state_initialised(self) -> bool:
-        """ 
-        Checks if buffers are of shape 0 and returns 
+        """
+        Checks if buffers are of shape 0 and returns
         True only if none of them are.
         """
         for buffer in self.buffers():
             if buffer.shape == torch.Size([0]):
                 return False
         return True
-    
+
     def state_has_shape(self, shape) -> bool:
         """
         Checks if all state have a given shape.
@@ -81,7 +81,7 @@ class StatefulLayer(torch.nn.Module):
         for name, buffer in self.named_buffers():
             self.register_buffer(name, torch.zeros(shape, device=buffer.device))
         self.reset_states(randomize=randomize)
-        
+
     def reset_states(self, randomize=False):
         """
         Reset the state/buffers in a layer.

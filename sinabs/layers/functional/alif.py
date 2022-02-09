@@ -20,23 +20,25 @@ def alif_forward_single(
     )
 
     # Decay the spike threshold and add adaptation factor to it.
-    state['b'] = alpha_adapt * state['b'] + (1 - alpha_adapt) * spikes
-    state['threshold'] = b0 + adapt_scale*state['b']
-   
+    state["b"] = alpha_adapt * state["b"] + (1 - alpha_adapt) * spikes
+    state["threshold"] = b0 + adapt_scale * state["b"]
+
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
-        state['i_syn'] = alpha_syn * (state['i_syn'] + input_data)
+        state["i_syn"] = alpha_syn * (state["i_syn"] + input_data)
     else:
-        state['i_syn'] = input_data
+        state["i_syn"] = input_data
 
     # Decay the membrane potential and add the input currents which are normalised by tau
-    state['v_mem'] = alpha_mem * state['v_mem'] + (1 - alpha_mem) * input_data
+    state["v_mem"] = alpha_mem * state["v_mem"] + (1 - alpha_mem) * input_data
 
     state = activation_fn.reset_fn(spikes, state, state["threshold"])
 
     # Clip membrane potential that is too low
     if threshold_low:
-        state['v_mem'] = torch.nn.functional.relu(state['v_mem'] - threshold_low) + threshold_low
+        state["v_mem"] = (
+            torch.nn.functional.relu(state["v_mem"] - threshold_low) + threshold_low
+        )
 
     return spikes, state
 
@@ -53,7 +55,7 @@ def alif_forward(
     b0: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
-    
+
     output_spikes = []
     for step in range(time_steps):
         spikes, state = alif_forward_single(
@@ -103,7 +105,7 @@ def alif_recurrent(
             b0=b0,
         )
         output_spikes.append(spikes)
-        
+
         # compute recurrent output that will be added to the input at the next time step
         rec_out = rec_connect(spikes).reshape((batch_size, *trailing_dim))
 

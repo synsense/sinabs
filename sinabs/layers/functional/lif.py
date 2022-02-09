@@ -58,7 +58,7 @@ def lif_recurrent(
     state: dict,
     activation_fn,
     norm_input: bool,
-    rec_connect: torch.nn.Module
+    rec_connect: torch.nn.Module,
 ):
     batch_size, n_time_steps, *trailing_dim = input_data.shape
 
@@ -81,4 +81,3 @@ def lif_recurrent(
         rec_out = rec_connect(spikes).reshape((batch_size, *trailing_dim))
 
     return torch.stack(output_spikes, 1), state
-
