@@ -7,6 +7,7 @@ def lif_forward_single(
     alpha_syn: float,
     state: dict,
     activation_fn,
+    norm_input: bool,
 ):
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
@@ -14,8 +15,11 @@ def lif_forward_single(
     else:
         state["i_syn"] = input_data
 
+    if norm_input:
+        state["i_syn"] = (1 - alpha_mem) * state["i_syn"]
+
     # Decay the membrane potential and add the input currents which are normalised by tau
-    state["v_mem"] = alpha_mem * state["v_mem"] + (1 - alpha_mem) * state["i_syn"]
+    state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
 
     # generate spikes and adjust v_mem
     spikes, state = activation_fn(state)
@@ -28,8 +32,9 @@ def lif_forward(
     alpha_syn: float,
     state: dict,
     activation_fn,
+    norm_input: bool,
 ):
-    batch_size, n_time_steps, *trailing_dim = input_data.shape
+    n_time_steps = input_data.shape[1]
 
     output_spikes = []
     for step in range(n_time_steps):
@@ -39,6 +44,7 @@ def lif_forward(
             alpha_syn,
             state,
             activation_fn,
+            norm_input,
         )
         output_spikes.append(spikes)
 
@@ -51,6 +57,7 @@ def lif_recurrent(
     alpha_syn: float,
     state: dict,
     activation_fn,
+    norm_input: bool,
     rec_connect: torch.nn.Module
 ):
     batch_size, n_time_steps, *trailing_dim = input_data.shape
@@ -66,6 +73,7 @@ def lif_recurrent(
             alpha_syn,
             state,
             activation_fn,
+            norm_input,
         )
         output_spikes.append(spikes)
 

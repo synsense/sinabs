@@ -75,9 +75,19 @@ def test_iaf_recurrent():
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
+def test_iaf_firing_rate():
+    batch_size, time_steps, n_neurons = 5, 10, 5
+    input_current = torch.zeros((batch_size, time_steps, n_neurons))
+    input_current[:, 0] = 1
+
+    layer = IAF()
+    spikes = layer(input_current)
+
+    assert layer.firing_rate == spikes.sum() / (batch_size * time_steps * n_neurons)
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
-def test_alif_on_gpu():
+def test_iaf_on_gpu():
     batch_size, time_steps = 10, 100
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
     layer = IAF()
@@ -87,7 +97,7 @@ def test_alif_on_gpu():
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
-def test_alif_recurrent_on_gpu():
+def test_iaf_recurrent_on_gpu():
     batch_size, time_steps = 10, 100
     input_dimensions = (batch_size, time_steps, 2, 10)
     n_neurons = np.product(input_dimensions[2:])

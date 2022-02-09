@@ -34,6 +34,8 @@ class LIF(StatefulLayer):
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+    norm_input: bool
+        When True, normalise input current by tau. This helps when training time constants.
     """
 
     def __init__(
@@ -44,6 +46,7 @@ class LIF(StatefulLayer):
         threshold_low: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
+        norm_input: bool = True,
     ):
         super().__init__(state_names=["v_mem", "i_syn"] if tau_syn else ["v_mem"])
         if train_alphas:
@@ -67,6 +70,7 @@ class LIF(StatefulLayer):
         self.activation_fn = activation_fn
         self.threshold_low = threshold_low
         self.train_alphas = train_alphas
+        self.norm_input = norm_input
         if shape:
             self.init_state_with_shape(shape)
 
@@ -117,10 +121,12 @@ class LIF(StatefulLayer):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            norm_input=self.norm_input,
         )
         self.v_mem = state["v_mem"]
         self.i_syn = state["i_syn"] if alpha_syn else None
 
+        self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
 
     @property
@@ -177,6 +183,8 @@ class LIFRecurrent(LIF):
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+    norm_input: bool
+        When True, normalise input current by tau. This helps when training time constants.
     """
 
     def __init__(
@@ -188,6 +196,7 @@ class LIFRecurrent(LIF):
         threshold_low: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
+        norm_input: bool = True,
     ):
         super().__init__(
             tau_mem=tau_mem,
@@ -195,6 +204,7 @@ class LIFRecurrent(LIF):
             activation_fn=activation_fn,
             shape=shape,
             train_alphas=train_alphas,
+            norm_input=norm_input,
         )
         self.rec_connect = rec_connect
 
@@ -227,6 +237,7 @@ class LIFRecurrent(LIF):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            norm_input=self.norm_input,
             rec_connect=self.rec_connect,
         )
         self.v_mem = state["v_mem"]

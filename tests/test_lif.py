@@ -184,6 +184,17 @@ def test_lif_with_multiple_taus():
     assert torch.allclose(layer.v_mem[0], alpha * v_mem)
     assert (layer.v_mem[0] == layer.v_mem[1]).all()
 
+def test_lif_firing_rate():
+    batch_size, time_steps, n_neurons = 5, 10, 5
+    tau_mem = 20.
+    input_current = torch.zeros((batch_size, time_steps, n_neurons))
+    input_current[:, 0] = 1
+
+    layer = LIF(tau_mem=tau_mem, norm_input=False)
+    spikes = layer(input_current)
+
+    assert layer.firing_rate > 0
+    assert layer.firing_rate == spikes.sum() / (batch_size * time_steps * n_neurons)
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_lif_on_gpu():

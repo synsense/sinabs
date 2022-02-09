@@ -150,6 +150,7 @@ class ALIF(StatefulLayer):
         self.b = state["b"]
         self.v_mem = state["v_mem"]
 
+        self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
 
     def reset_states(self, randomize=False):
@@ -299,6 +300,7 @@ class ALIFRecurrent(ALIF):
         self.b = state["b"]
         self.v_mem = state["v_mem"]
 
+        self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
 
 
