@@ -11,14 +11,15 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 
 ### Getting started
 * **{doc}`Install Sinabs<getting_started/install>`** and potentially some plugins.
-* **{doc}`Dive right into it<getting_started/quickstart>`** by running a tutorial notebook.
+* **{doc}`Dive right into the syntax<getting_started/quickstart>`** if you know your way around SNN simulators.
 
 ### Tutorials
+* **{doc}`Convert an existin ANN<tutorials/weight_transfer_mnist>`** if you want to get started quickly.
 * **{doc}`Run a first example using BPTT<tutorials/bptt>`** with this neuromorphic version of the MNIST dataset.
 
 ### Plugins
-* Training feed-forward models 10x faster: **[EXODUS](https://www.youtube.com/watch?v=u95JTXzyHyA)**.
-* Deploying models to neuromorphic hardware: **Sinabs-DynapCNN**.
+* Training feed-forward models 10x faster: **Coming soon**.
+* Deploying models to neuromorphic hardware: **Coming soon**.
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 

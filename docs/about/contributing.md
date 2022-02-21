@@ -7,29 +7,21 @@ Please email sinabs@synsense.ai for a contributors license agreement.
 
 ## How do you go about it?
 
-Short answer: fork, make changes, merge request to sinabs.
+Short answer: fork the repository using your own account, make changes and commit them in a new branch and finally open a pull request on Github.
 
-**Develop from**: `master` branch of sinabs.
-
-
-The most straight-forward workflow to contribute would be to fork the repository and make your changes.
-Once you finalize your changes, please create a merge request.
-
-Please see gitlab's explanation on [Forking Workflow](https://docs.gitlab.com/ee/workflow/forking_workflow.html) 
-for a detailed explanation.
+A more detailed explanation can be found [here](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests).
 
 ## Coding style
 
-Please adhere to the coding style of the library when you develop your contributions.
-We use pep8 + black code style and formatting. 
+Please format your code before opening a pull request. We use [black](https://black.readthedocs.io/en/stable/index.html) code style. 
 
 ## Testing
 
-We use `pytest` for testing the library. 
+Please add tests for any new features you're contributing. We use `pytest` for testing the library. 
 Install the necessary packages by running the following command.
 
 ```
-$ pip install -r test-requirements.txt
+$ pip install -r tests/requirements.txt
 ```
 
 All tests are located in the `tests/` folder and can be run using `pytest`.
