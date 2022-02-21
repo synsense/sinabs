@@ -45,7 +45,8 @@ jobs:
       - name: Publish distribution package to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
-          password: ${{ secrets.PYPI_DEPLOYMENT }}
+          user: ${{ secrets.TWINE_USER }}
+          password: ${{ secrets.TWINE_PASSWORD }}
 
   documentation:
     needs: multitest
