@@ -1,4 +1,3 @@
---extra-index-url=https://gitlab.com/api/v4/projects/27423070/packages/pypi/simple
 pbr
 sinabs
 samna >= 0.8.17
