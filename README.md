@@ -4,23 +4,14 @@
 ![Black - formatter](https://img.shields.io/badge/code%20style-black-black) 
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 
-
-SINABS
-======
+![sinabs](docs/_static/sinabs-logo-lowercase.png)
 
 Getting started
 ---------------
-
-**Sinabs Is Not A Brain Simulator**
-
-`sinabs` is a python library for development and implementation of Spiking Convolutional Neural Networks (SCNNs).
+`sinabs` (Sinabs Is Not A Brain Simulator) is a python library for development and implementation of Spiking Convolutional Neural Networks (SCNNs).
 The library implements several layers that are `spiking` equivalents of CNN layers.
 In addition it provides support to import CNN models implemented in torch conveniently to test their `spiking` equivalent implementation.
 This project is managed by SynSense (former aiCTX AG).
-
-**NOTE**: The conversion of CNNs to SCNNs is still a subject of research and we strive to keep the library updated to the state-of-the art in addition to providing options to compare various approaches both at a high level abstraction to low level implementation details.
-
-**NOTE**: This library is in Beta release stage and is subject to API changes.
 
 Installation
 ------------
