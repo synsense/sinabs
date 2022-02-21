@@ -20,34 +20,21 @@ Non-spiking layers
 .. toctree::
     exp_leak
 
-Auxiliary layers
-----------------
-Cropping2dLayer
-~~~~~~~~~~~~~~~
-.. autoclass:: Cropping2dLayer
-    :members:
-
 Pooling
-~~~~~~~
+-------
 .. autoclass:: SpikingMaxPooling2dLayer
     :members:
 
-SumPool2d
-~~~~~~~~~
 .. autoclass:: SumPool2d
     :members:
 
-Hybrid layers
--------------
+Conversion from images / analog signals
+---------------------------------------
 The hybrid layers have inputs and outputs of different formats (eg. take analog values as inputs and produce spikes as outputs.)
 
-Img2SpikeLayer
-~~~~~~~~~~~~~~
 .. autoclass:: Img2SpikeLayer
     :members:
 
-Sig2SpikeLayer
-~~~~~~~~~~~~~~
 .. autoclass:: Sig2SpikeLayer
     :members:
 
@@ -55,33 +42,26 @@ Parent layers
 -------------
 Other Sinabs layers might inherit from those.
 
-StatefulLayer
-~~~~~~~~~~~~~
 .. autoclass:: StatefulLayer
     :members:
 
-Reshaping layers
+Auxiliary layers
 ----------------
+.. autoclass:: Cropping2dLayer
+    :members:
 
-FlattenTime
-~~~~~~~~~~~~~~~~
 .. autoclass:: FlattenTime
+    :members:
 
-UnflattenTime
-~~~~~~~~~~~~~
 .. autoclass:: UnflattenTime
-
+    :members:
 
 ANN layers
 ----------
 These are utility layers used in the training of ANNs, in order to provide specific features suitable for SNN conversion.
 
-NeuromorphicReLU
-~~~~~~~~~~~~~~~~
 .. autoclass:: NeuromorphicReLU
     :members:
 
-QuantizeLayer
-~~~~~~~~~~~~~
 .. autoclass:: QuantizeLayer
     :members:
