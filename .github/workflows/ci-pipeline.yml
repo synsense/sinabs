@@ -22,7 +22,7 @@ jobs:
           pip install -r tests/requirements.txt
       - name: Test with pytest
         run: |
-          pytest test
+          pytest tests
         env:
             CI: true
 
@@ -41,7 +41,7 @@ jobs:
         run: |
           pip install -r test/requirements.txt
           pip install .
-          coverage run -m pytest test
+          coverage run -m pytest tests
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
