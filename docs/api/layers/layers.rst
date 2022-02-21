@@ -27,14 +27,14 @@ Cropping2dLayer
 .. autoclass:: Cropping2dLayer
     :members:
 
-SpikingMaxPooling2dLayer
-~~~~~~~~~~~~~~~~~~~~~~~~
+Pooling
+~~~~~~~
 .. autoclass:: SpikingMaxPooling2dLayer
     :members:
 
-InputLayer
-~~~~~~~~~~
-.. autoclass:: InputLayer
+SumPool2d
+~~~~~~~~~
+.. autoclass:: SumPool2d
     :members:
 
 Hybrid layers
@@ -84,9 +84,4 @@ NeuromorphicReLU
 QuantizeLayer
 ~~~~~~~~~~~~~
 .. autoclass:: QuantizeLayer
-    :members:
-
-SumPool2d
-~~~~~~~~~
-.. autoclass:: SumPool2d
     :members:
