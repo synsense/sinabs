@@ -18,8 +18,8 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 * **{doc}`Run a first example using BPTT<tutorials/bptt>`** with this neuromorphic version of the MNIST dataset.
 
 ### Plugins
+* Deploying models to neuromorphic hardware: [Sinabs-DynapCNN](https://synsense.gitlab.io/sinabs-dynapcnn/).
 * Training feed-forward models 10x faster: **Coming soon**.
-* Deploying models to neuromorphic hardware: **Coming soon**.
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 
