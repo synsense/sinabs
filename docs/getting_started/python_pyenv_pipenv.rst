@@ -12,7 +12,7 @@ There are two ways to deal with such a problem (other than deciding to never upg
 
     2. Work with pyenv (and a virtual environment which does not interfere with your system python or the various paths)
 
-If you are an Anaconda user, then this short tutorial is not for you. All the best!
+If you are an Anaconda user, then this short tutorial is not for you. However, you can simply install `sinabs` using `conda install sinabs -c conda-forge`. All the best!
 
 Here I will describe to you my preferred approach to dealing with python versions and dependencies: **pyenv + pipenv**
 

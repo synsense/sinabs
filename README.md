@@ -1,8 +1,9 @@
 ![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
-[![Documentation Status](https://img.shields.io/badge/docs-ok-green)](https://aictx.gitlab.io/sinabs) 
+[![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=latest)](https://sinabs.readthedocs.io/en/latest/?badge=latest)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/sinabs?logo=python) 
 ![Black - formatter](https://img.shields.io/badge/code%20style-black-black) 
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
+[![](http://github-actions.40ants.com/synsense/sinabs/matrix.svg?only=ci.multitest.ubuntu-latest)](https://github.com/synsense/sinabs)
 
 ![sinabs](docs/_static/sinabs-logo-lowercase.png)
 
@@ -27,7 +28,7 @@ If you want to develop or have access to source code of `sinabs`, download the p
 
 ```
 $ cd <to/your/software/folder>
-$ git clone https://gitlab.com/aiCTX/sinabs.git>
+$ git clone git@github.com:synsense/sinabs.git
 $ cd sinabs
 $ pip install -e . --user
 ```
@@ -43,20 +44,18 @@ Documentation and Examples
 
 If you would like to generate documentation locally, you can do that using `sphinx`.
 
-**REQUIREMENT** You will require `pandoc` installed on your system.
-
-You can generate a sphinx documentation for this package by running the the following command.
+You can generate a sphinx documentation for this package by running the following command.
 
 ```
-$ cd /path/to/sinabs/
-$ pip install -r sphinx-requirements.txt
-$ python setup.py build_sphinx
+$ cd /path/to/sinabs/docs
+$ pip install -r requirements.txt
+$ make html
 ```
 
-This will build and auto generate html documentation at `docs/build/html/index.html`
+This will build and auto generate html documentation at `docs/_build/html/index.html`
 You can access the generated documentation in your browser.
 ```
-$ firefox docs/build/html/index.html
+$ firefox docs/_build/html/index.html
 ```
 
 License
