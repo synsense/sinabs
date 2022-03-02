@@ -8,9 +8,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.7", "3.9",]
-        torch-version: ["1.8.0", "1.10.0",]
+        os: [ubuntu-latest,] # windows-latest]
+        python-version: ["3.7",] # "3.9",]
+        torch-version: ["1.8.0", ] #"1.10.0",]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -37,12 +37,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.8
-      - name: Install wheel
-        run: |
-          pip install wheel
+      - name: Install build packages
+        run: pip install wheel pbr setuptools
       - name: Build a binary wheel and a source tarball
-        run: |
-          python setup.py sdist bdist_wheel
+        run: python setup.py sdist bdist_wheel
       - name: Publish distribution package to PyPI
         uses: pypa/gh-action-pypi-publish@master
         with:
