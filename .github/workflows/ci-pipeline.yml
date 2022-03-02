@@ -6,11 +6,11 @@ jobs:
   multitest:
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
         os: [ubuntu-latest,]
         python-version: ["3.7", "3.9",]
-        torch-version: ["1.8.2", "1.10",]
+        torch-version: ["1.8", "1.10",]
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -19,7 +19,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
-          pip install torch==${{ matrix.torch-version }}
+          pip install torch~=${{ matrix.torch-version }}
           pip install .
           pip install -r tests/requirements.txt
       - name: Test with pytest
