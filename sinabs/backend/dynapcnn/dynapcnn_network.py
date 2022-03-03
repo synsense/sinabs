@@ -279,12 +279,14 @@ class DynapcnnNetwork(nn.Module):
         """
         Reset the states of the network.
         """
-        if isinstance(self.device, str):
+        if hasattr(self, "device") and isinstance(self.device, str):
             device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
                 self.samna_device.get_model().apply_configuration(self.samna_config)
                 return
-        raise NotImplementedError
+        for layer in self.compatible_layers:
+            if isinstance(layer, DynapcnnLayer):
+                layer.spk_layer.reset_states()
 
     def find_chip_layer(self, layer_idx):
         """
