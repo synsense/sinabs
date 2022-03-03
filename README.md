@@ -5,7 +5,7 @@
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 [![](http://github-actions.40ants.com/synsense/sinabs/matrix.svg?only=ci.multitest.ubuntu-latest)](https://github.com/synsense/sinabs)
 
-![sinabs](docs/_static/sinabs-logo-lowercase.png)
+![sinabs](docs/_static/sinabs-logo-lowercase-whitebg.png)
 
 Getting started
 ---------------

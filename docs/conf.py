@@ -28,7 +28,7 @@ exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 
 html_title = sinabs.__version__
 html_theme = "sphinx_book_theme"
-html_logo = "_static/sinabs-logo-lowercase.png"
+html_logo = "_static/sinabs-logo-lowercase-whitebg.png"
 html_show_sourcelink = True
 html_sourcelink_suffix = ""
 
