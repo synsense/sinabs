@@ -6,7 +6,7 @@ before_script:
   - pip install --upgrade pip
   - pip install -r requirements.txt
   - pip install . --no-cache-dir
-  - pip install -r sphinx-requirements.txt
+  - pip install -r docs/requirements.txt
 
 dist_build:
   tags:
