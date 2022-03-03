@@ -81,7 +81,7 @@ class DynapcnnNetwork(nn.Module):
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
-        if dvs_input or isinstance(layers[0], sl.InputLayer):
+        if dvs_input:
             self.dvs_input = True
         else:
             self.dvs_input = False

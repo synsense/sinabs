@@ -15,7 +15,7 @@ def infer_input_shape(
         layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
 ) -> Tuple[int, int, int]:
     """
-    Checks if the first layer is InputLayer or input_shape is specified.
+    Checks if the input_shape is specified.
     If either of them are specified, then it checks if the information is consistent and returns the input shape.
 
     Parameters
@@ -34,7 +34,7 @@ def infer_input_shape(
         raise InputConfigurationError(f"input_shape expected to have length 3 or None but input_shape={input_shape} given.")
 
     input_shape_from_layer = None
-    if isinstance(layers[0], (sl.InputLayer, DVSLayer)):
+    if isinstance(layers[0], DVSLayer):
         input_shape_from_layer = layers[0].input_shape
         if len(input_shape_from_layer) != 3:
             raise InputConfigurationError(
@@ -118,9 +118,6 @@ def construct_dvs_layer(
     if len(layers) and isinstance(layers[0], DVSLayer):
         return deepcopy(layers[0]), 1, 1
 
-    if len(layers) and isinstance(layers[0], sl.InputLayer):
-        # Ignore this layer and move on
-        layer_idx_next += 1
     # Construct pooling layer
     pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(
         layers, layer_idx_next
