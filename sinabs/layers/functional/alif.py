@@ -35,7 +35,7 @@ def alif_forward_single(
     state = activation_fn.reset_fn(spikes, state, state["threshold"])
 
     # Clip membrane potential that is too low
-    if threshold_low:
+    if threshold_low is not None:
         state["v_mem"] = (
             torch.nn.functional.relu(state["v_mem"] - threshold_low) + threshold_low
         )

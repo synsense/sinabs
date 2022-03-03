@@ -121,6 +121,7 @@ class LIF(StatefulLayer):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
             norm_input=self.norm_input,
         )
         self.v_mem = state["v_mem"]
@@ -237,6 +238,7 @@ class LIFRecurrent(LIF):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
             norm_input=self.norm_input,
             rec_connect=self.rec_connect,
         )

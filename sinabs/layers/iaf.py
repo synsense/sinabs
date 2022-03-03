@@ -60,6 +60,7 @@ class IAF(StatefulLayer):
             alpha_syn=None,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
             norm_input=False,
         )
         self.v_mem = state["v_mem"]
