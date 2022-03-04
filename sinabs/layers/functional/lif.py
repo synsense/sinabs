@@ -65,6 +65,7 @@ def lif_recurrent(
     alpha_syn: float,
     state: dict,
     activation_fn,
+    threshold_low: Optional[float],
     norm_input: bool,
     rec_connect: torch.nn.Module,
 ):
@@ -81,6 +82,7 @@ def lif_recurrent(
             alpha_syn=alpha_syn,
             state=state,
             activation_fn=activation_fn,
+            threshold_low=threshold_low,
             norm_input=norm_input,
         )
         output_spikes.append(spikes)

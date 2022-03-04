@@ -135,6 +135,7 @@ class IAFRecurrent(IAF):
             alpha_syn=None,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            threshold_low=self.threshold_low,
             norm_input=False,
             rec_connect=self.rec_connect,
         )
