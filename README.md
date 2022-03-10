@@ -1,7 +1,7 @@
 ![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
 [![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=latest)](https://sinabs.readthedocs.io/en/latest/?badge=latest)
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
-![Discord](https://img.shields.io/discord/852094154188259338)
+[![Discord](https://img.shields.io/discord/852094154188259338)](https://discord.gg/V6FHBZURkg)
 
 ![sinabs](docs/_static/sinabs-logo-lowercase-whitebg.png)
 
@@ -12,11 +12,15 @@ This project is managed by SynSense (former aiCTX AG).
 
 Installation
 ------------
-
 For the stable release on the main branch:
 ```
 pip install sinabs
 ```
+or (thanks to [@Tobias-Fischer](https://github.com/Tobias-Fischer))
+```
+conda install -c conda-forge tonic
+```
+
 For the latest pre-release on the develop branch that passed the tests:
 ```
 pip install sinabs --pre
@@ -26,21 +30,17 @@ pip install sinabs --pre
 
 Documentation and Examples
 --------------------------
-
 [https://sinabs.readthedocs.io/](https://sinabs.readthedocs.io/)
 
-Questions?
-----------
-Join us on Discord: ![Discord](https://img.shields.io/discord/852094154188259338)
-
+Questions? Feedback?
+--------------------
+Please join us on the [#sinabs Discord channel](https://discord.gg/V6FHBZURkg)!
 
 License
 -------
-
 Sinabs is published under AGPL v3.0. See the LICENSE file for details.
 
 
 Contributing to Sinabs
 ------------------------
-
 Checkout [CONTRIBUTING.md](https://sinabs.ai/contributing.html)
