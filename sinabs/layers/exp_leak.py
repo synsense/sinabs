@@ -1,18 +1,32 @@
 from typing import Union, Optional
 import torch
-import torch.nn as nn
-from .stateful_layer import StatefulLayer
-from .squeeze_layer import SqueezeMixin
+from .lif import LIF
+from .reshape import SqueezeMixin
 
 
-class ExpLeak(StatefulLayer):
+class ExpLeak(LIF):
     """
-    Pytorch implementation of a exponential leaky layer, that is equivalent to an exponential synapse or a low-pass filter.
+    A Leaky Integrator layer.
+
+    Neuron dynamics in discrete time:
+
+    .. math ::
+        V_{mem}(t+1) = \\alpha V_{mem}(t) + (1-\\alpha)\\sum z(t)
+
+    where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
     Parameters
     ----------
-    tau: float
-        Rate of leak of the state
+    tau_leak: float
+        Membrane potential time constant.
+    threshold_low: float or None
+        Lower bound for membrane potential v_mem, clipped at every time step.
+    train_alphas: bool
+        When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
+    shape: torch.Size
+        Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+    norm_input: bool
+        When True, normalise input current by tau. This helps when training time constants.
     """
 
     def __init__(
@@ -21,71 +35,24 @@ class ExpLeak(StatefulLayer):
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         threshold_low: Optional[float] = None,
+        norm_input: bool = False,
     ):
-        super().__init__(state_names=["v_mem"])
-        tau_leak = torch.as_tensor(tau_leak, dtype=float)
-        if train_alphas:
-            self.alpha_leak = nn.Parameter(torch.exp(-1 / tau_leak))
-        else:
-            self.tau_leak = nn.Parameter(tau_leak)
-        self.threshold_low = threshold_low
-        self.train_alphas = train_alphas
-        if shape:
-            self.init_state_with_shape(shape)
-
-    @property
-    def alpha_leak_calculated(self):
-        return self.alpha_leak if self.train_alphas else torch.exp(-1 / self.tau_leak)
-
-    def forward(self, input_data: torch.Tensor):
-        batch_size, time_steps, *trailing_dim = input_data.shape
-
-        # Ensure the neuron state are initialized
-        if not self.is_state_initialised() or not self.state_has_shape(
-            (batch_size, *trailing_dim)
-        ):
-            self.init_state_with_shape((batch_size, *trailing_dim))
-
-        alpha_leak = self.alpha_leak_calculated
-
-        output_states = []
-        for step in range(time_steps):
-            # Decay membrane potential and add synaptic inputs
-            self.v_mem = (
-                alpha_leak * self.v_mem + (1 - alpha_leak) * input_data[:, step]
-            )
-
-            # Clip membrane potential that is too low
-            if self.threshold_low:
-                self.v_mem = (
-                    torch.nn.functional.relu(self.v_mem - self.threshold_low)
-                    + self.threshold_low
-                )
-
-            output_states.append(self.v_mem)
-
-        return torch.stack(output_states, 1)
-
-    @property
-    def shape(self):
-        if self.is_state_initialised():
-            return self.v_mem.shape
-        else:
-            return None
+        super().__init__(
+            tau_mem=tau_leak,
+            tau_syn=None,
+            train_alphas=train_alphas,
+            threshold_low=threshold_low,
+            shape=shape,
+            activation_fn=None,
+            norm_input=norm_input,
+        )
 
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.update(
-            tau_leak=-1 / torch.log(self.alpha_leak.detach_())
-            if self.train_alphas
-            else self.tau_leak,
-            train_alphas=self.train_alphas,
-            shape=self.shape,
-            threshold_low=self.threshold_low,
-        )
+        param_dict.update(tau_leak=self.tau_mem)
+        param_dict.pop('tau_mem')
         return param_dict
-
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
     """

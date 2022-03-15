@@ -23,7 +23,10 @@ def lif_forward_single(
     state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
 
     # generate spikes and adjust v_mem
-    spikes, state = activation_fn(state)
+    if activation_fn:
+        spikes, state = activation_fn(state)
+    else:
+        spikes = state["v_mem"]
 
     if threshold_low is not None:
         state["v_mem"] = (

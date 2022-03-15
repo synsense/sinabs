@@ -4,7 +4,7 @@ from typing import Optional, Union, Callable
 from sinabs.activation import ActivationFunction
 from . import functional
 from .stateful_layer import StatefulLayer
-from .squeeze_layer import SqueezeMixin
+from .reshape import SqueezeMixin
 
 
 class LIF(StatefulLayer):
