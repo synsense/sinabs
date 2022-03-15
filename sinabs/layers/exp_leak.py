@@ -17,7 +17,7 @@ class ExpLeak(LIF):
 
     Parameters
     ----------
-    tau_leak: float
+    tau_mem: float
         Membrane potential time constant.
     threshold_low: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
@@ -31,14 +31,14 @@ class ExpLeak(LIF):
 
     def __init__(
         self,
-        tau_leak: Union[float, torch.Tensor],
+        tau_mem: Union[float, torch.Tensor],
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         threshold_low: Optional[float] = None,
         norm_input: bool = False,
     ):
         super().__init__(
-            tau_mem=tau_leak,
+            tau_mem=tau_mem,
             tau_syn=None,
             train_alphas=train_alphas,
             threshold_low=threshold_low,
@@ -50,8 +50,8 @@ class ExpLeak(LIF):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.update(tau_leak=self.tau_mem)
-        param_dict.pop('tau_mem')
+        param_dict.pop('tau_syn')
+        param_dict.pop('activation_fn')
         return param_dict
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
