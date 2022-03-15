@@ -256,7 +256,7 @@ class LIFRecurrent(LIF):
 
 class LIFSqueeze(LIF, SqueezeMixin):
     """
-    Same as parent class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
+    Same as parent LIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
     """

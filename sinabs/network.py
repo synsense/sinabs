@@ -26,8 +26,8 @@ class Network(torch.nn.Module):
 
     def __init__(
         self,
-        analog_model: Optional = None,
-        spiking_model: Optional = None,
+        analog_model = None,
+        spiking_model = None,
         input_shape: Optional[ArrayLike] = None,
         synops: bool = False,
         batch_size: int = 1,
@@ -86,7 +86,7 @@ class Network(torch.nn.Module):
         name_list: Optional[ArrayLike] = None,
         compute_rate: bool = False,
         verbose: bool = False,
-    ) -> ([np.ndarray], [np.ndarray], [str]):
+    ) -> Tuple[np.ndarray, np.ndarray, str]:
         """
         Compare activations of the analog model and the SNN for a given data sample
 
@@ -180,7 +180,7 @@ class Network(torch.nn.Module):
 
 def get_parent_module_by_name(
     root: torch.nn.Module, name: str
-) -> (torch.nn.Module, str):
+) -> Tuple[torch.nn.Module, str]:
     """
     Find a nested Module of a given name inside a Module, and return its parent
     Module.

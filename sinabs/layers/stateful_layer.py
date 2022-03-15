@@ -89,9 +89,9 @@ class StatefulLayer(torch.nn.Module):
         if self.is_state_initialised():
             for buffer in self.buffers():
                 if randomize:
-                    torch.nn.init.uniform_(buffer)
+                    torch.nn.init.uniform_(buffer).detach_()
                 else:
-                    buffer.zero_()
+                    buffer.zero_().detach_()
 
     def __repr__(self):
         return f"{self.__class__.__name__}-module, backend: {self.backend}"

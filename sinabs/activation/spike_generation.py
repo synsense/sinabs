@@ -101,9 +101,7 @@ class MaxSpike:
 
 class SingleSpike(BackwardClass, torch.autograd.Function):
     """
-    PyTorch-compatible function that returns the number of spikes emitted,
-    given a membrane potential value and in a "threshold subtracting" regime.
-    In other words, the integer division of the input by the threshold is returned.
+    PyTorch-compatible function that returns a single spike per time step.
     In the backward pass, the gradient is zero if the membrane is at least
     `threshold - window`, and is passed through otherwise.
     """

@@ -19,6 +19,7 @@ napoleon_numpy_docstring = True
 # MyST settings
 suppress_warnings = ["myst.header"]
 # jupyter_execute_notebooks = "off"
+execution_timeout = 300
 
 templates_path = ["_templates"]
 
