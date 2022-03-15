@@ -1,9 +1,9 @@
 import torch
 from typing import Dict, Tuple, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from .reset_mechanism import MembraneSubtract
 from .spike_generation import MultiSpike
-from .surrogate_gradient_fn import Heaviside
+from .surrogate_gradient_fn import SingleExponential
 
 
 @dataclass
@@ -33,7 +33,7 @@ class ActivationFunction:
     spike_threshold: float = 1.0
     spike_fn: Callable = MultiSpike
     reset_fn: Callable = MembraneSubtract()
-    surrogate_grad_fn: Callable = Heaviside()
+    surrogate_grad_fn: Callable = SingleExponential()
 
     def __call__(
         self, state: Dict[str, torch.Tensor]
@@ -67,7 +67,7 @@ class ALIFActivationFunction:
 
     spike_fn: Callable = MultiSpike
     reset_fn: Callable = MembraneSubtract()
-    surrogate_grad_fn: Callable = Heaviside()
+    surrogate_grad_fn: Callable = SingleExponential()
 
     def __call__(
         self, state: Dict[str, torch.Tensor]
