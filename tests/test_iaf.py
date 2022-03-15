@@ -12,7 +12,6 @@ def test_iaf_basic():
     layer = IAF()
     spike_output = layer(input_current)
 
-    assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0

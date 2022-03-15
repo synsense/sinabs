@@ -94,7 +94,7 @@ class StatefulLayer(torch.nn.Module):
                     buffer.zero_().detach_()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}-module, backend: {self.backend}"
+        return f"{self.__class__.__name__}"
 
     def __deepcopy__(self, memo=None):
         copy = self.__class__(**self._param_dict)
@@ -117,10 +117,3 @@ class StatefulLayer(torch.nn.Module):
         parameters as `self`
         """
         return dict()
-
-    @property
-    def does_spike(self) -> bool:
-        """
-        Return True if the layer has an activation funciton
-        """
-        return hasattr(self, "activation_fn")
