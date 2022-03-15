@@ -1,9 +1,9 @@
 import torch
 from copy import deepcopy
-from typing import Optional, Union, Callable
+from typing import Optional, Callable
 from sinabs.activation import ActivationFunction
 from .stateful_layer import StatefulLayer
-from .squeeze_layer import SqueezeMixin
+from .reshape import SqueezeMixin
 from . import functional
 
 
