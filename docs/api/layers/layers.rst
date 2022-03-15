@@ -45,6 +45,9 @@ Other Sinabs layers might inherit from those.
 .. autoclass:: StatefulLayer
     :members:
 
+.. autoclass:: SqueezeMixin
+    :members:
+
 Auxiliary layers
 ----------------
 .. autoclass:: Cropping2dLayer
