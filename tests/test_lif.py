@@ -225,7 +225,7 @@ def test_lif_recurrent_on_gpu():
     layer(input_current.to("cuda"))
 
 
-def test_threshold_low():
+def test_min_v_mem():
     batch_size, time_steps = 10, 1
     tau_mem = torch.tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
@@ -234,6 +234,6 @@ def test_threshold_low():
     layer(input_data)
     assert (layer.v_mem < -0.5).any()
 
-    layer = LIF(tau_mem=tau_mem, threshold_low=-0.5)
+    layer = LIF(tau_mem=tau_mem, min_v_mem=-0.5)
     layer(input_data)
     assert not (layer.v_mem < -0.5).any()

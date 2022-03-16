@@ -18,7 +18,7 @@ class StatefulLayer(torch.nn.Module):
         ----------
         threshold: float
             Spiking threshold of the neuron.
-        threshold_low: float or None
+        min_v_mem: float or None
             Lower bound for membrane potential.
         membrane_subtract: float or None
             The amount to subtract from the membrane potential upon spiking.

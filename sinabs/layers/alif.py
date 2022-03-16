@@ -44,7 +44,7 @@ class ALIF(StatefulLayer):
         The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
@@ -60,7 +60,7 @@ class ALIF(StatefulLayer):
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         b0: float = 1.0,
         activation_fn: Callable = None,
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
     ):
@@ -88,7 +88,7 @@ class ALIF(StatefulLayer):
             )
         else:
             self.activation_fn = activation_fn
-        self.threshold_low = threshold_low
+        self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.b0 = b0
         if shape:
@@ -143,7 +143,7 @@ class ALIF(StatefulLayer):
             adapt_scale=self.adapt_scale,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             b0=self.b0,
         )
         self.threshold = state["threshold"]
@@ -184,7 +184,7 @@ class ALIF(StatefulLayer):
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
         )
         return param_dict
 
@@ -226,7 +226,7 @@ class ALIFRecurrent(ALIF):
         The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
     activation_fn: Callable
         a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
@@ -243,7 +243,7 @@ class ALIFRecurrent(ALIF):
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         b0: float = 1.0,
         activation_fn: Callable = None,
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
     ):
@@ -253,7 +253,7 @@ class ALIFRecurrent(ALIF):
             tau_syn=tau_syn,
             adapt_scale=adapt_scale,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             shape=shape,
             train_alphas=train_alphas,
             b0=b0,
@@ -292,7 +292,7 @@ class ALIFRecurrent(ALIF):
             adapt_scale=self.adapt_scale,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             rec_connect=self.rec_connect,
             b0=self.b0,
         )

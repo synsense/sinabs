@@ -6,7 +6,7 @@ def test_deepcopy_iaf():
     from sinabs.layers import IAF, IAFSqueeze
 
     input_current = torch.rand(10, 10, 10)
-    kwargs = dict(threshold_low=-0.4)
+    kwargs = dict(min_v_mem=-0.4)
 
     layer = IAF(**kwargs)
     layer_squeeze_nts = IAFSqueeze(**kwargs, num_timesteps=10)
@@ -28,7 +28,7 @@ def test_deepcopy_iaf():
             layer_copy.activation_fn.spike_threshold
             == layer_orig.activation_fn.spike_threshold
         )
-        assert layer_copy.threshold_low == layer_orig.threshold_low
+        assert layer_copy.min_v_mem == layer_orig.min_v_mem
         if hasattr(layer_orig, "batch_size"):
             assert layer_orig.batch_size == layer_copy.batch_size
         if hasattr(layer_orig, "num_timesteps"):
@@ -38,7 +38,7 @@ def test_deepcopy_iaf():
 def test_deepcopy_iaf_uninitialized():
     from sinabs.layers import IAF, IAFSqueeze
 
-    kwargs = dict(threshold_low=-0.4)
+    kwargs = dict(min_v_mem=-0.4)
 
     layer = IAF(**kwargs)
     layer_squeeze_nts = IAFSqueeze(**kwargs, num_timesteps=10)
@@ -58,7 +58,7 @@ def test_deepcopy_iaf_uninitialized():
             layer_copy.activation_fn.spike_threshold
             == layer_orig.activation_fn.spike_threshold
         )
-        assert layer_copy.threshold_low == layer_orig.threshold_low
+        assert layer_copy.min_v_mem == layer_orig.min_v_mem
         if hasattr(layer_orig, "batch_size"):
             assert layer_orig.batch_size == layer_copy.batch_size
         if hasattr(layer_orig, "num_timesteps"):
@@ -97,7 +97,7 @@ def test_deepcopy_lif():
             else:
                 assert layer_copy.tau_mem == layer_orig.tau_mem
             assert layer_copy.activation_fn == layer_orig.activation_fn
-            assert layer_copy.threshold_low == layer_orig.threshold_low
+            assert layer_copy.min_v_mem == layer_orig.min_v_mem
             assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size
@@ -139,7 +139,7 @@ def test_deepcopy_lif_uninitialized():
             else:
                 assert layer_copy.tau_mem == layer_orig.tau_mem
             assert layer_copy.activation_fn == layer_orig.activation_fn
-            assert layer_copy.threshold_low == layer_orig.threshold_low
+            assert layer_copy.min_v_mem == layer_orig.min_v_mem
             assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
                 assert layer_orig.batch_size == layer_copy.batch_size
@@ -159,7 +159,7 @@ def test_deepcopy_alif():
         tau_mem=20.0,
         tau_adapt=10.0,
         adapt_scale=1.3,
-        threshold_low=-0.4,
+        min_v_mem=-0.4,
     )
 
     layer_orig = ALIF(**kwargs)
@@ -177,7 +177,7 @@ def test_deepcopy_alif():
         assert (b0 == b1).all()
         assert b0 is not b1
 
-    assert layer_copy.threshold_low == layer_orig.threshold_low
+    assert layer_copy.min_v_mem == layer_orig.min_v_mem
     assert layer_copy.activation_fn == layer_orig.activation_fn
     assert layer_copy.tau_mem == layer_orig.tau_mem
     assert layer_copy.tau_adapt == layer_orig.tau_adapt

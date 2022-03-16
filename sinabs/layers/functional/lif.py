@@ -7,7 +7,7 @@ def lif_forward_single(
     alpha_syn: float,
     state: dict,
     activation_fn,
-    threshold_low: Optional[float],
+    min_v_mem: Optional[float],
     norm_input: bool,
 ):
     # if t_syn was provided, we're going to use synaptic current dynamics
@@ -28,9 +28,9 @@ def lif_forward_single(
     else:
         spikes = state["v_mem"]
 
-    if threshold_low is not None:
+    if min_v_mem is not None:
         state["v_mem"] = (
-                torch.nn.functional.relu(state["v_mem"] - threshold_low) + threshold_low
+                torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
         )
     return spikes, state
 
@@ -41,7 +41,7 @@ def lif_forward(
     alpha_syn: float,
     state: dict,
     activation_fn,
-    threshold_low: float,
+    min_v_mem: float,
     norm_input: bool,
 ):
     n_time_steps = input_data.shape[1]
@@ -54,7 +54,7 @@ def lif_forward(
             alpha_syn=alpha_syn,
             state=state,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             norm_input=norm_input,
         )
         output_spikes.append(spikes)
@@ -68,7 +68,7 @@ def lif_recurrent(
     alpha_syn: float,
     state: dict,
     activation_fn,
-    threshold_low: Optional[float],
+    min_v_mem: Optional[float],
     norm_input: bool,
     rec_connect: torch.nn.Module,
 ):
@@ -85,7 +85,7 @@ def lif_recurrent(
             alpha_syn=alpha_syn,
             state=state,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             norm_input=norm_input,
         )
         output_spikes.append(spikes)

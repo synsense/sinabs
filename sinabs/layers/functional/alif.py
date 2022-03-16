@@ -10,7 +10,7 @@ def alif_forward_single(
     adapt_scale: float,
     state: dict,
     activation_fn: Callable,
-    threshold_low: float,
+    min_v_mem: float,
     b0: float,
 ):
     # generate spikes and adjust v_mem
@@ -35,9 +35,9 @@ def alif_forward_single(
     state = activation_fn.reset_fn(spikes, state, state["threshold"])
 
     # Clip membrane potential that is too low
-    if threshold_low is not None:
+    if min_v_mem is not None:
         state["v_mem"] = (
-            torch.nn.functional.relu(state["v_mem"] - threshold_low) + threshold_low
+            torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
         )
 
     return spikes, state
@@ -51,7 +51,7 @@ def alif_forward(
     adapt_scale: float,
     state: dict,
     activation_fn: Callable,
-    threshold_low: float,
+    min_v_mem: float,
     b0: float,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
@@ -66,7 +66,7 @@ def alif_forward(
             adapt_scale=adapt_scale,
             state=state,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             b0=b0,
         )
         output_spikes.append(spikes)
@@ -82,7 +82,7 @@ def alif_recurrent(
     adapt_scale: float,
     state: dict,
     activation_fn: Callable,
-    threshold_low: float,
+    min_v_mem: float,
     rec_connect: torch.nn.Module,
     b0: float,
 ):
@@ -101,7 +101,7 @@ def alif_recurrent(
             adapt_scale=adapt_scale,
             state=state,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             b0=b0,
         )
         output_spikes.append(spikes)

@@ -19,7 +19,7 @@ class ExpLeak(LIF):
     ----------
     tau_mem: float
         Membrane potential time constant.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     train_alphas: bool
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
@@ -34,14 +34,14 @@ class ExpLeak(LIF):
         tau_mem: Union[float, torch.Tensor],
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         norm_input: bool = False,
     ):
         super().__init__(
             tau_mem=tau_mem,
             tau_syn=None,
             train_alphas=train_alphas,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             shape=shape,
             activation_fn=None,
             norm_input=norm_input,

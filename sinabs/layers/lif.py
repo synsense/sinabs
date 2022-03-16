@@ -28,7 +28,7 @@ class LIF(StatefulLayer):
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     train_alphas: bool
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
@@ -43,7 +43,7 @@ class LIF(StatefulLayer):
         tau_mem: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
@@ -68,7 +68,7 @@ class LIF(StatefulLayer):
                 else None
             )
         self.activation_fn = activation_fn
-        self.threshold_low = threshold_low
+        self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
         if shape:
@@ -121,7 +121,7 @@ class LIF(StatefulLayer):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
         )
         self.v_mem = state["v_mem"]
@@ -150,7 +150,7 @@ class LIF(StatefulLayer):
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
         )
         return param_dict
@@ -179,7 +179,7 @@ class LIFRecurrent(LIF):
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     activation_fn: Callable
         a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     train_alphas: bool
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
@@ -195,7 +195,7 @@ class LIFRecurrent(LIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         activation_fn: Callable = ActivationFunction(),
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
@@ -239,7 +239,7 @@ class LIFRecurrent(LIF):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
             rec_connect=self.rec_connect,
         )

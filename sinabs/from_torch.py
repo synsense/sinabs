@@ -20,7 +20,7 @@ def from_model(
     model,
     input_shape=None,
     threshold=1.0,
-    threshold_low=-1.0,
+    min_v_mem=-1.0,
     membrane_subtract=None,
     bias_rescaling=1.0,
     num_timesteps=None,
@@ -40,7 +40,7 @@ def from_model(
     Otherwise they will be computed at the first forward pass.
     :param threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
-    :param threshold_low: The lower bound of the potential in \
+    :param min_v_mem: The lower bound of the potential in \
     convolutional and linear layers (same for all layers).
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
@@ -59,7 +59,7 @@ def from_model(
     return SpkConverter(
         input_shape=input_shape,
         threshold=threshold,
-        threshold_low=threshold_low,
+        min_v_mem=min_v_mem,
         membrane_subtract=membrane_subtract,
         bias_rescaling=bias_rescaling,
         batch_size=batch_size,
@@ -81,7 +81,7 @@ class SpkConverter(object):
     Otherwise they will computed at the first forward pass.
     :param threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
-    :param threshold_low: The lower bound of the potential in \
+    :param min_v_mem: The lower bound of the potential in \
     convolutional and linear layers (same for all layers).
     :param membrane_subtract: Value subtracted from the potential upon \
     spiking for convolutional and linear layers (same for all layers).
@@ -102,7 +102,7 @@ class SpkConverter(object):
         self,
         input_shape=None,
         threshold=1.0,
-        threshold_low=-1.0,
+        min_v_mem=-1.0,
         membrane_subtract=None,
         bias_rescaling=1.0,
         num_timesteps=None,
@@ -112,7 +112,7 @@ class SpkConverter(object):
         backend="bptt",
         kwargs_backend=None,
     ):
-        self.threshold_low = threshold_low
+        self.min_v_mem = min_v_mem
         self.threshold = threshold
         self.membrane_subtract = membrane_subtract
         self.bias_rescaling = bias_rescaling
@@ -138,7 +138,7 @@ class SpkConverter(object):
             activation_fn=ActivationFunction(spike_threshold=self.threshold,
                                              reset_fn=MembraneSubtract(),
                                             ),
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
             **self.kwargs_backend,

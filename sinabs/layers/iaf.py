@@ -17,7 +17,7 @@ class IAF(LIF):
     ----------
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
-    threshold_low: float or None
+    min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
@@ -26,7 +26,7 @@ class IAF(LIF):
     def __init__(
         self,
         activation_fn: Callable = ActivationFunction(),
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         use_synaptic_state: bool = False,
     ):
@@ -35,7 +35,7 @@ class IAF(LIF):
             tau_mem=np.inf,
             tau_syn=np.inf if use_synaptic_state else None,
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
         )
@@ -57,7 +57,7 @@ class IAFRecurrent(IAF):
 
     Parameters
     ----------
-    threshold_low : float or None
+    min_v_mem : float or None
         Lower bound for membrane potential.
     """
 
@@ -65,11 +65,11 @@ class IAFRecurrent(IAF):
         self,
         rec_connect: torch.nn.Module,
         activation_fn: Callable = ActivationFunction(),
-        threshold_low: Optional[float] = None,
+        min_v_mem: Optional[float] = None,
     ):
         super().__init__(
             activation_fn=activation_fn,
-            threshold_low=threshold_low,
+            min_v_mem=min_v_mem,
         )
         self.rec_connect = rec_connect
 
@@ -100,7 +100,7 @@ class IAFRecurrent(IAF):
             alpha_syn=None,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+            min_v_mem=self.min_v_mem,
             norm_input=False,
             rec_connect=self.rec_connect,
         )
