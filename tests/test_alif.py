@@ -13,6 +13,7 @@ def test_alif_basic():
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1.8)
     spike_output = layer(input_current)
 
+    assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0

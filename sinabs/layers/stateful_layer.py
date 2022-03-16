@@ -117,3 +117,10 @@ class StatefulLayer(torch.nn.Module):
         parameters as `self`
         """
         return dict()
+
+    @property
+    def does_spike(self) -> bool:
+        """
+        Return True if the layer has an activation function
+        """
+        return hasattr(self, "activation_fn") and self.activation_fn is not None
