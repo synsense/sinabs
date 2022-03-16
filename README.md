@@ -18,7 +18,7 @@ pip install sinabs
 ```
 or (thanks to [@Tobias-Fischer](https://github.com/Tobias-Fischer))
 ```
-conda install -c conda-forge tonic
+conda install -c conda-forge sinabs
 ```
 
 For the latest pre-release on the develop branch that passed the tests:
@@ -43,4 +43,4 @@ Sinabs is published under AGPL v3.0. See the LICENSE file for details.
 
 Contributing to Sinabs
 ------------------------
-Checkout [CONTRIBUTING.md](https://sinabs.ai/contributing.html)
+Checkout the [contributing](https://sinabs.readthedocs.io/en/latest/about/contributing.html) page for more info.
