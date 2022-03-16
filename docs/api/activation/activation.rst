@@ -1,6 +1,5 @@
 activation
 ==========
-
 .. currentmodule:: sinabs.activation
 
 spiking activation
@@ -19,14 +18,8 @@ ActivationFunction
 ^^^^^^^^^^^^^^^^^^
 .. autoclass:: ActivationFunction
 
-ALIFActivationFunction
-^^^^^^^^^^^^^^^^^^^^^^
-.. autoclass:: ALIFActivationFunction
-
-
 quantization activation
 -----------------------
-
 .. automodule:: sinabs.activation.quantize
    :members:
    :undoc-members:

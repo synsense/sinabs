@@ -6,6 +6,7 @@ def lif_forward_single(
     alpha_mem: float,
     alpha_syn: float,
     state: dict,
+    spike_threshold: float,
     activation_fn,
     min_v_mem: Optional[float],
     norm_input: bool,
@@ -24,7 +25,7 @@ def lif_forward_single(
 
     # generate spikes and adjust v_mem
     if activation_fn:
-        spikes, state = activation_fn(state)
+        spikes, state = activation_fn(state, spike_threshold)
     else:
         spikes = state["v_mem"]
 
@@ -40,6 +41,7 @@ def lif_forward(
     alpha_mem: float,
     alpha_syn: float,
     state: dict,
+    spike_threshold: float,
     activation_fn,
     min_v_mem: float,
     norm_input: bool,
@@ -53,6 +55,7 @@ def lif_forward(
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
             state=state,
+            spike_threshold=spike_threshold,
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             norm_input=norm_input,
@@ -67,6 +70,7 @@ def lif_recurrent(
     alpha_mem: float,
     alpha_syn: float,
     state: dict,
+    spike_threshold: float,
     activation_fn,
     min_v_mem: Optional[float],
     norm_input: bool,
@@ -84,6 +88,7 @@ def lif_recurrent(
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
             state=state,
+            spike_threshold=spike_threshold,
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             norm_input=norm_input,

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ALIFActivationFunction, MembraneSubtract, SingleSpike
+from sinabs.activation import ActivationFunction, MembraneSubtract, SingleSpike
 from . import functional
 from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
@@ -42,6 +42,8 @@ class ALIF(StatefulLayer):
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     adapt_scale: float
         The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
+    spike_threshold: float
+        Set initial spike threshold. By default set to 1.0.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
     min_v_mem: float or None
@@ -50,6 +52,8 @@ class ALIF(StatefulLayer):
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     train_alphas: bool
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
+    norm_input: bool
+        When True, normalise input current by tau. This helps when training time constants.
     """
 
     def __init__(
@@ -58,16 +62,19 @@ class ALIF(StatefulLayer):
         tau_adapt: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        b0: float = 1.0,
-        activation_fn: Callable = None,
+        spike_threshold: float = 1.0,
+        activation_fn: Callable = ActivationFunction(
+                spike_fn=SingleSpike, reset_fn=MembraneSubtract()
+            ),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
+        norm_input: bool = True,
     ):
         super().__init__(
-            state_names=["v_mem", "i_syn", "b", "threshold"]
+            state_names=["v_mem", "i_syn", "b"]
             if tau_syn
-            else ["v_mem", "b", "threshold"]
+            else ["v_mem", "b"]
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_mem)))
@@ -82,15 +89,11 @@ class ALIF(StatefulLayer):
             self.tau_adapt = nn.Parameter(torch.as_tensor(tau_adapt))
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.adapt_scale = adapt_scale
-        if activation_fn is None:
-            self.activation_fn = ALIFActivationFunction(
-                spike_fn=SingleSpike, reset_fn=MembraneSubtract()
-            )
-        else:
-            self.activation_fn = activation_fn
+        self.b0 = spike_threshold
+        self.activation_fn = activation_fn
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
-        self.b0 = b0
+        self.norm_input = norm_input
         if shape:
             self.init_state_with_shape(shape)
 
@@ -110,6 +113,10 @@ class ALIF(StatefulLayer):
             return torch.exp(-1 / self.tau_syn)
         else:
             return None
+
+    @property
+    def spike_threshold(self):
+        return self.b0 + self.adapt_scale * self.b
 
     def forward(self, input_data: torch.Tensor):
         """
@@ -145,19 +152,13 @@ class ALIF(StatefulLayer):
             activation_fn=self.activation_fn,
             min_v_mem=self.min_v_mem,
             b0=self.b0,
+            norm_input=self.norm_input,
         )
-        self.threshold = state["threshold"]
         self.b = state["b"]
         self.v_mem = state["v_mem"]
 
         self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
-
-    def reset_states(self, randomize=False):
-        super().reset_states(randomize=randomize)
-        if self.is_state_initialised():
-            self.threshold.fill_(self.b0)
-            self.b.fill_(self.b0)
 
     @property
     def shape(self):
@@ -180,7 +181,7 @@ class ALIF(StatefulLayer):
             if self.train_alphas
             else self.tau_syn,
             adapt_scale=self.adapt_scale,
-            b0=self.b0,
+            spike_threshold=self.b0,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
@@ -232,6 +233,8 @@ class ALIFRecurrent(ALIF):
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     train_alphas: bool
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
+    norm_input: bool
+        When True, normalise input current by tau. This helps when training time constants.
     """
 
     def __init__(
@@ -241,22 +244,26 @@ class ALIFRecurrent(ALIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
-        b0: float = 1.0,
-        activation_fn: Callable = None,
+        spike_threshold: float = 1.0,
+        activation_fn: Callable = ActivationFunction(
+                spike_fn=SingleSpike, reset_fn=MembraneSubtract()
+            ),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
+        norm_input: bool = True,
     ):
         super().__init__(
             tau_mem=tau_mem,
             tau_adapt=tau_adapt,
             tau_syn=tau_syn,
             adapt_scale=adapt_scale,
+            spike_threshold=spike_threshold,
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             train_alphas=train_alphas,
-            b0=b0,
+            norm_input=norm_input,
         )
         self.rec_connect = rec_connect
 
@@ -295,8 +302,8 @@ class ALIFRecurrent(ALIF):
             min_v_mem=self.min_v_mem,
             rec_connect=self.rec_connect,
             b0=self.b0,
+            norm_input=self.norm_input,
         )
-        self.threshold = state["threshold"]
         self.b = state["b"]
         self.v_mem = state["v_mem"]
 

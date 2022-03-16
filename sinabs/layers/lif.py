@@ -26,6 +26,8 @@ class LIF(StatefulLayer):
         Membrane potential time constant.
     tau_syn: float
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+    spike_threshold: float
+        Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
     min_v_mem: float or None
@@ -42,6 +44,7 @@ class LIF(StatefulLayer):
         self,
         tau_mem: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
+        spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(),
         min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
@@ -67,6 +70,7 @@ class LIF(StatefulLayer):
                 if tau_syn
                 else None
             )
+        self.spike_threshold = spike_threshold
         self.activation_fn = activation_fn
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
@@ -120,6 +124,7 @@ class LIF(StatefulLayer):
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
+            spike_threshold=self.spike_threshold,
             activation_fn=self.activation_fn,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
@@ -147,6 +152,7 @@ class LIF(StatefulLayer):
             tau_syn=-1 / torch.log(self.alpha_syn.detach_())
             if self.train_alphas
             else self.tau_syn,
+            spike_threshold=self.spike_threshold,
             activation_fn=self.activation_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
@@ -177,6 +183,8 @@ class LIFRecurrent(LIF):
         An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
     tau_syn: float
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+    spike_threshold: float
+        Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
     activation_fn: Callable
         a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
     min_v_mem: float or None
@@ -194,6 +202,7 @@ class LIFRecurrent(LIF):
         tau_mem: Union[float, torch.Tensor],
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
+        spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(),
         min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
@@ -203,7 +212,9 @@ class LIFRecurrent(LIF):
         super().__init__(
             tau_mem=tau_mem,
             tau_syn=tau_syn,
+            spike_threshold=spike_threshold,
             activation_fn=activation_fn,
+            min_v_mem=min_v_mem,
             shape=shape,
             train_alphas=train_alphas,
             norm_input=norm_input,
@@ -239,6 +250,7 @@ class LIFRecurrent(LIF):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             activation_fn=self.activation_fn,
+            spike_threshold=self.spike_threshold,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
             rec_connect=self.rec_connect,

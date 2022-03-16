@@ -25,8 +25,8 @@ def test_deepcopy_iaf():
             assert b0 is not b1
 
         assert (
-            layer_copy.activation_fn.spike_threshold
-            == layer_orig.activation_fn.spike_threshold
+            layer_copy.spike_threshold
+            == layer_orig.spike_threshold
         )
         assert layer_copy.min_v_mem == layer_orig.min_v_mem
         if hasattr(layer_orig, "batch_size"):
@@ -55,8 +55,8 @@ def test_deepcopy_iaf_uninitialized():
             assert b0 is not b1
 
         assert (
-            layer_copy.activation_fn.spike_threshold
-            == layer_orig.activation_fn.spike_threshold
+            layer_copy.spike_threshold
+            == layer_orig.spike_threshold
         )
         assert layer_copy.min_v_mem == layer_orig.min_v_mem
         if hasattr(layer_orig, "batch_size"):
@@ -92,6 +92,10 @@ def test_deepcopy_lif():
                 assert (b0 == b1).all()
                 assert b0 is not b1
 
+            assert (
+                layer_copy.spike_threshold
+                == layer_orig.spike_threshold
+            )
             if train_alphas:
                 assert layer_copy.alpha_mem == layer_orig.alpha_mem
             else:
@@ -134,6 +138,10 @@ def test_deepcopy_lif_uninitialized():
                 assert (b0 == b1).all()
                 assert b0 is not b1
 
+            assert (
+                layer_copy.spike_threshold
+                == layer_orig.spike_threshold
+            )
             if train_alphas:
                 assert layer_copy.alpha_mem == layer_orig.alpha_mem
             else:

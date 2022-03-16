@@ -12,16 +12,18 @@ def alif_forward_single(
     activation_fn: Callable,
     min_v_mem: float,
     b0: float,
+    norm_input: bool,
 ):
     # generate spikes and adjust v_mem
     input_tensors = [state[name] for name in activation_fn.spike_fn.required_states]
+    spike_threshold = b0 + adapt_scale * state["b"]
     spikes = activation_fn.spike_fn.apply(
-        *input_tensors, state["threshold"], activation_fn.surrogate_grad_fn
+        *input_tensors, spike_threshold, activation_fn.surrogate_grad_fn
     )
 
     # Decay the spike threshold and add adaptation factor to it.
     state["b"] = alpha_adapt * state["b"] + (1 - alpha_adapt) * spikes
-    state["threshold"] = b0 + adapt_scale * state["b"]
+    spike_threshold = b0 + adapt_scale * state["b"]
 
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
@@ -29,10 +31,13 @@ def alif_forward_single(
     else:
         state["i_syn"] = input_data
 
-    # Decay the membrane potential and add the input currents which are normalised by tau
-    state["v_mem"] = alpha_mem * state["v_mem"] + (1 - alpha_mem) * input_data
+    if norm_input:
+        state["i_syn"] = (1 - alpha_mem) * state["i_syn"]
 
-    state = activation_fn.reset_fn(spikes, state, state["threshold"])
+    # Decay the membrane potential and add the input currents which are normalised by tau
+    state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
+
+    state = activation_fn.reset_fn(spikes, state, spike_threshold)
 
     # Clip membrane potential that is too low
     if min_v_mem is not None:
@@ -53,6 +58,7 @@ def alif_forward(
     activation_fn: Callable,
     min_v_mem: float,
     b0: float,
+    norm_input: bool,
 ):
     batch_size, time_steps, *trailing_dim = input_data.shape
 
@@ -68,6 +74,7 @@ def alif_forward(
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             b0=b0,
+            norm_input=norm_input,
         )
         output_spikes.append(spikes)
 
@@ -85,6 +92,7 @@ def alif_recurrent(
     min_v_mem: float,
     rec_connect: torch.nn.Module,
     b0: float,
+    norm_input: bool,
 ):
     batch_size, n_time_steps, *trailing_dim = input_data.shape
 
@@ -103,6 +111,7 @@ def alif_recurrent(
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             b0=b0,
+            norm_input=norm_input,
         )
         output_spikes.append(spikes)
 

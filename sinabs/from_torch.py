@@ -135,8 +135,8 @@ class SpkConverter(object):
             )
 
         return backend_module.IAFSqueeze(
-            activation_fn=ActivationFunction(spike_threshold=self.threshold,
-                                             reset_fn=MembraneSubtract(),
+            spike_threshold=self.threshold,
+            activation_fn=ActivationFunction(reset_fn=MembraneSubtract(),
                                             ),
             min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,

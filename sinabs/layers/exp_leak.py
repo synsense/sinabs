@@ -40,6 +40,7 @@ class ExpLeak(LIF):
         super().__init__(
             tau_mem=tau_mem,
             tau_syn=None,
+            spike_threshold=None,
             train_alphas=train_alphas,
             min_v_mem=min_v_mem,
             shape=shape,
@@ -52,6 +53,7 @@ class ExpLeak(LIF):
         param_dict = super()._param_dict
         param_dict.pop('tau_syn')
         param_dict.pop('activation_fn')
+        param_dict.pop('spike_threshold')
         return param_dict
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):

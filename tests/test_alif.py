@@ -44,11 +44,11 @@ def test_alif_minimum_spike_threshold():
     spike_output = layer(input_current)
 
     assert (
-        layer.b0 + layer.b >= 1.0
+        layer.spike_threshold + layer.b >= 1.0
     ).all(), "Spike thresholds should not drop below initital threshold."
     assert spike_output.sum() > 0
     assert (
-        layer.b0 + layer.b > 1.0
+        layer.spike_threshold + layer.b > 1.0
     ).all(), "Spike thresholds should be above default threshold if any spikes occured."
 
 
@@ -56,9 +56,9 @@ def test_alif_spike_threshold_decay():
     batch_size, time_steps = 10, 100
     tau_mem = torch.as_tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
-    threshold = 1.0
+    spike_threshold = 1.0
     input_current = torch.zeros(batch_size, time_steps, 2, 7, 7)
-    input_current[:, 0] = threshold / (
+    input_current[:, 0] = spike_threshold / (
         1 - alpha
     )  # only inject current in the first time step and make it spike
     layer = ALIF(tau_mem=tau_mem, tau_adapt=tau_mem, adapt_scale=1 / (1 - alpha))
@@ -67,7 +67,7 @@ def test_alif_spike_threshold_decay():
     layer.b.fill_(0.0)
     spike_output = layer(input_current)
 
-    assert (layer.threshold > threshold).all()
+    assert (layer.spike_threshold > spike_threshold).all()
     assert (
         spike_output.sum()
         == torch.prod(torch.as_tensor(input_current.size())) / time_steps
@@ -76,7 +76,7 @@ def test_alif_spike_threshold_decay():
     threshold_decay = alpha ** (time_steps - 2)
     # account for rounding errors with .isclose()
     assert torch.isclose(
-        layer.threshold - threshold, threshold_decay, atol=1e-08
+        layer.spike_threshold - spike_threshold, threshold_decay, atol=1e-08
     ).all(), "Neuron spike thresholds do not seems to decay correctly."
 
 
