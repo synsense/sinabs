@@ -151,6 +151,7 @@ class LIF(StatefulLayer):
             train_alphas=self.train_alphas,
             shape=self.shape,
             threshold_low=self.threshold_low,
+            norm_input=self.norm_input,
         )
         return param_dict
 

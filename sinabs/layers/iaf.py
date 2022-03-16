@@ -1,13 +1,15 @@
 import torch
 from copy import deepcopy
 from typing import Optional, Callable
-from sinabs.activation import ActivationFunction
+from sinabs.activation import ActivationFunction, activation
 from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
+from .lif import LIF
 from . import functional
+import numpy as np
 
 
-class IAF(StatefulLayer):
+class IAF(LIF):
     """
     Pytorch implementation of a Integrate and Fire neuron with learning enabled.
 
@@ -26,63 +28,26 @@ class IAF(StatefulLayer):
         activation_fn: Callable = ActivationFunction(),
         threshold_low: Optional[float] = None,
         shape: Optional[torch.Size] = None,
+        use_synaptic_state: bool = False,
     ):
-        super().__init__(state_names=["v_mem"])
-        self.activation_fn = activation_fn
-        self.threshold_low = threshold_low
-        if shape:
-            self.init_state_with_shape(shape)
-
-    def forward(self, input_data: torch.Tensor):
-        """
-        Forward pass with given data.
-
-        Parameters:
-            input_current : torch.Tensor
-                Data to be processed. Expected shape: (batch, time, ...)
-
-        Returns:
-            torch.Tensor
-                Output data. Same shape as `input_data`.
-        """
-
-        batch_size, time_steps, *trailing_dim = input_data.shape
-
-        # Ensure the neuron state are initialized
-        if not self.is_state_initialised() or not self.state_has_shape(
-            (batch_size, *trailing_dim)
-        ):
-            self.init_state_with_shape((batch_size, *trailing_dim))
-
-        spikes, state = functional.lif_forward(
-            input_data=input_data,
-            alpha_mem=1.0,
-            alpha_syn=None,
-            state=dict(self.named_buffers()),
-            activation_fn=self.activation_fn,
-            threshold_low=self.threshold_low,
+        self.use_synaptic_state = use_synaptic_state
+        super().__init__(
+            tau_mem=np.inf,
+            tau_syn=np.inf if use_synaptic_state else None,
+            activation_fn=activation_fn,
+            threshold_low=threshold_low,
+            shape=shape,
             norm_input=False,
         )
-        self.v_mem = state["v_mem"]
-
-        self.firing_rate = spikes.sum() / spikes.numel()
-        return spikes
-
-    @property
-    def shape(self):
-        if self.is_state_initialised():
-            return self.v_mem.shape
-        else:
-            return None
 
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.update(
-            activation_fn=deepcopy(self.activation_fn),
-            threshold_low=self.threshold_low,
-            shape=self.shape,
-        )
+        param_dict.pop('tau_mem')
+        param_dict.pop('tau_syn')
+        param_dict.pop('train_alphas')
+        param_dict.pop('norm_input')
+        param_dict['use_synaptic_state'] = self.use_synaptic_state
         return param_dict
 
 
