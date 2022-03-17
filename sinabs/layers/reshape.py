@@ -31,6 +31,7 @@ class SqueezeMixin:
     The wrapped __init__ will provide two additional parameters batch_size and num_timesteps
     and the wrapped forward will unpack and repack the first dimension into batch and time.
     """
+
     def squeeze_init(self, batch_size: Optional[int], num_timesteps: Optional[int]):
         if not batch_size and not num_timesteps:
             raise TypeError("You need to specify either batch_size or num_timesteps.")

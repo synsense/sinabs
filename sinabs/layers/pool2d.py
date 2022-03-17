@@ -96,5 +96,6 @@ class SumPool2d(torch.nn.LPPool2d):
     :param stride: the stride of the window. Default value is kernel_size
     :param ceil_mode: when True, will use ceil instead of floor to compute the output shape
     """
+
     def __init__(self, kernel_size, stride=None, ceil_mode=False):
         super().__init__(1, kernel_size, stride, ceil_mode)

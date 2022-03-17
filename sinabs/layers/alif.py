@@ -64,17 +64,15 @@ class ALIF(StatefulLayer):
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(
-                spike_fn=SingleSpike, reset_fn=MembraneSubtract()
-            ),
+            spike_fn=SingleSpike, reset_fn=MembraneSubtract()
+        ),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         norm_input: bool = True,
     ):
         super().__init__(
-            state_names=["v_mem", "i_syn", "b"]
-            if tau_syn
-            else ["v_mem", "b"]
+            state_names=["v_mem", "i_syn", "b"] if tau_syn else ["v_mem", "b"]
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_mem)))
@@ -246,8 +244,8 @@ class ALIFRecurrent(ALIF):
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(
-                spike_fn=SingleSpike, reset_fn=MembraneSubtract()
-            ),
+            spike_fn=SingleSpike, reset_fn=MembraneSubtract()
+        ),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,

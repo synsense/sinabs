@@ -88,7 +88,13 @@ def get_network_activations(
     return spike_counts
 
 
-def normalize_weights(ann: nn.Module, sample_data: torch.Tensor, output_layers: List[str], param_layers: List[str], percentile: float=99):
+def normalize_weights(
+    ann: nn.Module,
+    sample_data: torch.Tensor,
+    output_layers: List[str],
+    param_layers: List[str],
+    percentile: float = 99,
+):
     """
     Rescale the weights of the network, such that the activity of each specified layer is normalized.
 

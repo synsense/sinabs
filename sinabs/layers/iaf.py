@@ -23,7 +23,7 @@ class IAF(LIF):
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     use_synaptic_state: bool
-        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay. 
+        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay.
     """
 
     def __init__(
@@ -48,11 +48,11 @@ class IAF(LIF):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.pop('tau_mem')
-        param_dict.pop('tau_syn')
-        param_dict.pop('train_alphas')
-        param_dict.pop('norm_input')
-        param_dict['use_synaptic_state'] = self.use_synaptic_state
+        param_dict.pop("tau_mem")
+        param_dict.pop("tau_syn")
+        param_dict.pop("train_alphas")
+        param_dict.pop("norm_input")
+        param_dict["use_synaptic_state"] = self.use_synaptic_state
         return param_dict
 
 
@@ -73,7 +73,7 @@ class IAFRecurrent(LIFRecurrent):
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     use_synaptic_state: bool
-        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay. 
+        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay.
     """
 
     def __init__(
@@ -100,11 +100,11 @@ class IAFRecurrent(LIFRecurrent):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.pop('tau_mem')
-        param_dict.pop('tau_syn')
-        param_dict.pop('train_alphas')
-        param_dict.pop('norm_input')
-        param_dict['use_synaptic_state'] = self.use_synaptic_state
+        param_dict.pop("tau_mem")
+        param_dict.pop("tau_syn")
+        param_dict.pop("train_alphas")
+        param_dict.pop("norm_input")
+        param_dict["use_synaptic_state"] = self.use_synaptic_state
         return param_dict
 
 

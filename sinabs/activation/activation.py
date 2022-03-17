@@ -33,7 +33,9 @@ class ActivationFunction:
     surrogate_grad_fn: Callable = SingleExponential()
 
     def __call__(
-        self, state: Dict[str, torch.Tensor], spike_threshold: Union[float, torch.Tensor]
+        self,
+        state: Dict[str, torch.Tensor],
+        spike_threshold: Union[float, torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Takes in neuron states and returns a tuple of (spikes, new states)."""
         input_tensors = [state[name] for name in self.spike_fn.required_states]

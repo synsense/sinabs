@@ -15,7 +15,7 @@ class Img2SpikeLayer(nn.Module):
         max_rate: float = 1000,
         norm: float = 255.0,
         squeeze: bool = False,
-        negative_spikes: bool = False
+        negative_spikes: bool = False,
     ):
         """
         Layer converts images to spikes
@@ -39,7 +39,9 @@ class Img2SpikeLayer(nn.Module):
     def forward(self, img_input):
         if self.squeeze:
             img_input = img_input.squeeze()
-        random_tensor = torch.rand(self.tw, *tuple(img_input.shape)).to(img_input.device)
+        random_tensor = torch.rand(self.tw, *tuple(img_input.shape)).to(
+            img_input.device
+        )
         if not self.negative_spikes:
             firing_probs = (img_input / self.norm) * (self.max_rate / 1000)
             spk_img = (random_tensor < firing_probs).float()

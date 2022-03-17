@@ -14,6 +14,7 @@ def synops_hook(layer, inp, out):
     layer.synops = layer.tot_in * layer.fanout
     layer.tw = inp.shape[0]
 
+
 class SNNSynOpCounter:
     """
     Counter for the synaptic operations emitted by all SpikingLayers in a
@@ -33,6 +34,7 @@ class SNNSynOpCounter:
         dt: the number of milliseconds corresponding to a time step in the \
         simulation (default 1.0).
     """
+
     def __init__(self, model, dt=1.0):
         self.model = model
         self.handles = []
@@ -43,9 +45,9 @@ class SNNSynOpCounter:
 
     def _register_synops_hook(self, layer):
         if isinstance(layer, torch.nn.Conv2d):
-            layer.fanout = (layer.out_channels *
-                            product(layer.kernel_size) /
-                            product(layer.stride))
+            layer.fanout = (
+                layer.out_channels * product(layer.kernel_size) / product(layer.stride)
+            )
         elif isinstance(layer, torch.nn.Linear):
             layer.fanout = layer.out_features
 
@@ -76,13 +78,15 @@ class SNNSynOpCounter:
         for i, lyr in enumerate(self.model.modules()):
             if isinstance(lyr, torch.nn.AvgPool2d):
                 if lyr.kernel_size != lyr.stride:
-                    warnings.warn(f"In order for the Synops counter to work accurately the pooling "
-                                  f"layers kernel size should match their strides. At the moment at layer {i}, "
-                                  f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}.")
+                    warnings.warn(
+                        f"In order for the Synops counter to work accurately the pooling "
+                        f"layers kernel size should match their strides. At the moment at layer {i}, "
+                        f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
+                    )
                 ks = lyr.kernel_size
-                scale_factor = ks**2 if isinstance(ks, int) else ks[0]*ks[1]
+                scale_factor = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
                 scale_facts.append(scale_factor)
-            if hasattr(lyr, 'synops'):
+            if hasattr(lyr, "synops"):
                 scale_factor = 1
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
@@ -115,7 +119,7 @@ class SNNSynOpCounter:
         """
         synops = 0.0
         for i, lyr in enumerate(self.model.modules()):
-            if hasattr(lyr, 'synops'):
+            if hasattr(lyr, "synops"):
                 if per_second:
                     layer_synops = lyr.synops / lyr.tw / self.dt * 1000
                 else:

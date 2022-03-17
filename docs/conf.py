@@ -9,7 +9,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "myst_nb"
+    "myst_nb",
 ]
 
 # Napoleon settings

@@ -29,7 +29,7 @@ def compute_same_padding_size(kernel_length: int) -> (int, int):
 
     :param kernel_length: int Kernel size
     :returns: Tuple -- (padStart, padStop) , padding on left/right or top/bottom
-    
+
     Note : Only works for stride 1
     """
     start = kernel_length // 2

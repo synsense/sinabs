@@ -1,6 +1,7 @@
 import torch
 from typing import Optional
 
+
 def lif_forward_single(
     input_data: torch.Tensor,
     alpha_mem: float,
@@ -31,7 +32,7 @@ def lif_forward_single(
 
     if min_v_mem is not None:
         state["v_mem"] = (
-                torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
+            torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
         )
     return spikes, state
 

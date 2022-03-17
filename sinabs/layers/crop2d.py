@@ -29,8 +29,8 @@ class Cropping2dLayer(nn.Module):
         crop_out = binary_input[
             :,
             :,
-            self.top_crop: h - self.bottom_crop,
-            self.left_crop: w - self.right_crop,
+            self.top_crop : h - self.bottom_crop,
+            self.left_crop : w - self.right_crop,
         ]
         self.out_shape = crop_out.shape[1:]
         self.spikes_number = crop_out.abs().sum()

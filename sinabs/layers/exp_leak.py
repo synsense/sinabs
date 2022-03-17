@@ -51,10 +51,11 @@ class ExpLeak(LIF):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
-        param_dict.pop('tau_syn')
-        param_dict.pop('activation_fn')
-        param_dict.pop('spike_threshold')
+        param_dict.pop("tau_syn")
+        param_dict.pop("activation_fn")
+        param_dict.pop("spike_threshold")
         return param_dict
+
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
     """

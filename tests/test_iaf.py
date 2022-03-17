@@ -75,6 +75,7 @@ def test_iaf_recurrent():
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
 
+
 def test_iaf_firing_rate():
     batch_size, time_steps, n_neurons = 5, 10, 5
     input_current = torch.zeros((batch_size, time_steps, n_neurons))

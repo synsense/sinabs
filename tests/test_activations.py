@@ -48,4 +48,3 @@ def test_activation_functions(act_fn, output, v_mem):
     assert not (state["v_mem"].grad == 0).all()
     assert not torch.isnan(state["v_mem"].grad).any()
     assert not torch.isinf(state["v_mem"].grad).any()
-

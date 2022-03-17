@@ -16,6 +16,7 @@ except ModuleNotFoundError:
 else:
     _backends["exodus"] = el
 
+
 def from_model(
     model,
     input_shape=None,
@@ -136,8 +137,9 @@ class SpkConverter(object):
 
         return backend_module.IAFSqueeze(
             spike_threshold=self.threshold,
-            activation_fn=ActivationFunction(reset_fn=MembraneSubtract(),
-                                            ),
+            activation_fn=ActivationFunction(
+                reset_fn=MembraneSubtract(),
+            ),
             min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,

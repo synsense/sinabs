@@ -26,8 +26,8 @@ class Network(torch.nn.Module):
 
     def __init__(
         self,
-        analog_model = None,
-        spiking_model = None,
+        analog_model=None,
+        spiking_model=None,
         input_shape: Optional[ArrayLike] = None,
         synops: bool = False,
         batch_size: int = 1,
