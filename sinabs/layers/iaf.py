@@ -1,10 +1,9 @@
 import torch
 from copy import deepcopy
 from typing import Optional, Callable
-from sinabs.activation import ActivationFunction, activation
+from sinabs.activation import ActivationFunction
 from .reshape import SqueezeMixin
 from .lif import LIF, LIFRecurrent
-from . import functional
 import numpy as np
 
 
@@ -18,41 +17,40 @@ class IAF(LIF):
         Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    tau_syn: float
+        Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-    use_synaptic_state: bool
-        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay.
     """
 
     def __init__(
         self,
         spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(),
+        tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
-        use_synaptic_state: bool = False,
     ):
-        self.use_synaptic_state = use_synaptic_state
         super().__init__(
             tau_mem=np.inf,
-            tau_syn=np.inf if use_synaptic_state else None,
+            tau_syn=tau_syn,
             spike_threshold=spike_threshold,
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
         )
+        # deactivate tau_mem being learned
+        self.tau_mem.requires_grad = False
 
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.pop("tau_mem")
-        param_dict.pop("tau_syn")
         param_dict.pop("train_alphas")
         param_dict.pop("norm_input")
-        param_dict["use_synaptic_state"] = self.use_synaptic_state
         return param_dict
 
 
@@ -68,12 +66,12 @@ class IAFRecurrent(LIFRecurrent):
         Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
     activation_fn: Callable
         a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    tau_syn: float
+        Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-    use_synaptic_state: bool
-        Enable / disable synaptic currents. False by default. Note that synaptic currents in this model do not decay.
     """
 
     def __init__(
@@ -81,30 +79,29 @@ class IAFRecurrent(LIFRecurrent):
         rec_connect: torch.nn.Module,
         spike_threshold: float = 1.0,
         activation_fn: Callable = ActivationFunction(),
+        tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
-        use_synaptic_state: bool = False,
     ):
-        self.use_synaptic_state = use_synaptic_state
         super().__init__(
             rec_connect=rec_connect,
             tau_mem=np.inf,
-            tau_syn=np.inf if use_synaptic_state else None,
+            tau_syn=tau_syn,
             spike_threshold=spike_threshold,
             activation_fn=activation_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
         )
+        # deactivate tau_mem being learned
+        self.tau_mem.requires_grad = False
 
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.pop("tau_mem")
-        param_dict.pop("tau_syn")
         param_dict.pop("train_alphas")
         param_dict.pop("norm_input")
-        param_dict["use_synaptic_state"] = self.use_synaptic_state
         return param_dict
 
 
