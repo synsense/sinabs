@@ -3,7 +3,7 @@ IAF
 
 Integrate And Fire layer and variations thereof.
 
-.. automodule:: sinabs.layers
+.. currentmodule:: sinabs.layers
 
 .. autoclass:: IAF
     :members:

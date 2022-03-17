@@ -1,7 +1,6 @@
 reset mechanisms
 ----------------
-
-.. automodule:: sinabs.activation
+.. currentmodule:: sinabs.activation
     
 MembraneReset
 ^^^^^^^^^^^^^

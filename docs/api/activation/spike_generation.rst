@@ -1,7 +1,6 @@
 spike generation
 ----------------
-
-.. automodule:: sinabs.activation
+.. currentmodule:: sinabs.activation
 
 SingleSpike
 ^^^^^^^^^^^

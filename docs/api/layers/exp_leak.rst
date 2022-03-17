@@ -2,7 +2,7 @@ ExpLeak
 -------
 Exponential Leaky layer which acts as a lowpass filter.
 
-.. automodule:: sinabs.layers
+.. currentmodule:: sinabs.layers
 
 .. autoclass:: ExpLeak
     :members:

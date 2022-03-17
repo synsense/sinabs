@@ -1,7 +1,6 @@
 surrogate gradients
 -------------------
-
-.. automodule:: sinabs.activation
+.. currentmodule:: sinabs.activation
     
 Heaviside
 ^^^^^^^^^

@@ -2,7 +2,7 @@ LIF
 ---
 A Leaky Integrate Fire (LIF) layer and variations thereof.
 
-.. automodule:: sinabs.layers
+.. currentmodule:: sinabs.layers
 
 .. autoclass:: LIF
     :members:
