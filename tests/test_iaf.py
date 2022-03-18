@@ -20,8 +20,7 @@ def test_iaf_basic():
 
 def test_iaf_single_spike():
     batch_size, time_steps = 10, 100
-    activation_fn = sa.ActivationFunction(spike_fn=sa.SingleSpike)
-    layer = IAF(activation_fn=activation_fn)
+    layer = IAF(spike_fn=sa.SingleSpike)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 100
     spike_output = layer(input_current)
 
@@ -34,8 +33,7 @@ def test_iaf_single_spike():
 def test_iaf_max_spike():
     batch_size, time_steps = 10, 100
     max_spikes = 3
-    activation_fn = sa.ActivationFunction(spike_fn=sa.MaxSpike(max_spikes))
-    layer = IAF(activation_fn=activation_fn)
+    layer = IAF(spike_fn=sa.MaxSpike(max_spikes))
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 100
     spike_output = layer(input_current)
 

@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ActivationFunction
+from sinabs.activation import MultiSpike, MembraneSubtract, SingleExponential
 from . import functional
 from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
@@ -28,8 +28,16 @@ class LIF(StatefulLayer):
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     spike_threshold: float
         Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
-    activation_fn: Callable
-        a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    spike_fn: torch.autograd.Function
+        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+        a spike threshold and a surrogate gradient function and returns spikes. Be aware
+        that the class itself is passed here (because torch.autograd methods are static)
+        rather than an object instance.
+    reset_fn: Callable
+        A function that defines how the membrane potential is reset after a spike.
+    surrogate_grad_fn: Callable
+        Choose how to define gradients for the spiking non-linearity during the
+        backward pass. This is a function of membrane potential.
     min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     train_alphas: bool
@@ -45,7 +53,9 @@ class LIF(StatefulLayer):
         tau_mem: Union[float, torch.Tensor],
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(),
+        spike_fn: Callable = MultiSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
@@ -71,7 +81,9 @@ class LIF(StatefulLayer):
                 else None
             )
         self.spike_threshold = spike_threshold
-        self.activation_fn = activation_fn
+        self.spike_fn = spike_fn
+        self.reset_fn = reset_fn
+        self.surrogate_grad_fn = surrogate_grad_fn
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
@@ -125,7 +137,9 @@ class LIF(StatefulLayer):
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
             spike_threshold=self.spike_threshold,
-            activation_fn=self.activation_fn,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
         )
@@ -153,7 +167,9 @@ class LIF(StatefulLayer):
             if self.train_alphas
             else self.tau_syn,
             spike_threshold=self.spike_threshold,
-            activation_fn=self.activation_fn,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
             min_v_mem=self.min_v_mem,
@@ -203,7 +219,9 @@ class LIFRecurrent(LIF):
         rec_connect: torch.nn.Module,
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(),
+        spike_fn: Callable = MultiSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: Optional[float] = None,
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
@@ -213,7 +231,9 @@ class LIFRecurrent(LIF):
             tau_mem=tau_mem,
             tau_syn=tau_syn,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             train_alphas=train_alphas,
@@ -249,8 +269,10 @@ class LIFRecurrent(LIF):
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
             state=dict(self.named_buffers()),
-            activation_fn=self.activation_fn,
             spike_threshold=self.spike_threshold,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
             rec_connect=self.rec_connect,

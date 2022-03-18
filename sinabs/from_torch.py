@@ -2,7 +2,7 @@ import copy
 from warnings import warn
 import torch
 from torch import nn
-from sinabs.activation import ActivationFunction, MembraneSubtract
+from sinabs.activation import MembraneSubtract
 
 from sinabs import Network
 import sinabs.layers as sl
@@ -137,9 +137,7 @@ class SpkConverter(object):
 
         return backend_module.IAFSqueeze(
             spike_threshold=self.threshold,
-            activation_fn=ActivationFunction(
-                reset_fn=MembraneSubtract(),
-            ),
+            reset_fn=MembraneSubtract(),
             min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,

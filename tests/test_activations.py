@@ -1,43 +1,51 @@
 import pytest
 import torch
 from sinabs.activation import (
-    ActivationFunction,
     MembraneSubtract,
     MembraneReset,
     MultiSpike,
     SingleSpike,
+    SingleExponential,
 )
 
 
 @pytest.mark.parametrize(
-    "act_fn, output, v_mem",
+    "spike_fn, reset_fn, output, v_mem",
     [
         (
-            ActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneSubtract()),
+            SingleSpike,
+            MembraneSubtract(),
             torch.tensor([1.0, 0.0]),
             torch.tensor([1.5, 0.3]),
         ),
         (
-            ActivationFunction(spike_fn=SingleSpike, reset_fn=MembraneReset()),
+            SingleSpike,
+            MembraneReset(),
             torch.tensor([1.0, 0.0]),
             torch.tensor([0.0, 0.3]),
         ),
         (
-            ActivationFunction(spike_fn=MultiSpike, reset_fn=MembraneSubtract()),
+            MultiSpike,
+            MembraneSubtract(),
             torch.tensor([2.0, 0.0]),
             torch.tensor([0.5, 0.3]),
         ),
         (
-            ActivationFunction(spike_fn=MultiSpike, reset_fn=MembraneReset()),
+            MultiSpike,
+            MembraneReset(),
             torch.tensor([2.0, 0.0]),
             torch.tensor([0.0, 0.3]),
         ),
     ],
 )
-def test_activation_functions(act_fn, output, v_mem):
+def test_activation_functions(spike_fn, reset_fn, output, v_mem):
     state = {"v_mem": torch.tensor([2.5, 0.3], requires_grad=True)}
 
-    spikes, new_state = act_fn(state, spike_threshold=1.0)
+    spike_threshold = 1.0
+
+    input_tensors = [state[name] for name in spike_fn.required_states]
+    spikes = spike_fn.apply(*input_tensors, spike_threshold, SingleExponential())
+    new_state = reset_fn(spikes, state, spike_threshold)
 
     assert torch.allclose(spikes, output)
     assert torch.allclose(new_state["v_mem"], v_mem)

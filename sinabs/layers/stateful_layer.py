@@ -123,4 +123,4 @@ class StatefulLayer(torch.nn.Module):
         """
         Return True if the layer has an activation function
         """
-        return hasattr(self, "activation_fn") and self.activation_fn is not None
+        return hasattr(self, "spike_fn") and self.spike_fn is not None

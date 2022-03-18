@@ -9,17 +9,17 @@ def alif_forward_single(
     alpha_syn: torch.Tensor,
     adapt_scale: float,
     state: dict,
-    activation_fn: Callable,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: float,
     b0: float,
     norm_input: bool,
 ):
     # generate spikes and adjust v_mem
-    input_tensors = [state[name] for name in activation_fn.spike_fn.required_states]
+    input_tensors = [state[name] for name in spike_fn.required_states]
     spike_threshold = b0 + adapt_scale * state["b"]
-    spikes = activation_fn.spike_fn.apply(
-        *input_tensors, spike_threshold, activation_fn.surrogate_grad_fn
-    )
+    spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
 
     # Decay the spike threshold and add adaptation factor to it.
     state["b"] = alpha_adapt * state["b"] + (1 - alpha_adapt) * spikes
@@ -37,7 +37,7 @@ def alif_forward_single(
     # Decay the membrane potential and add the input currents which are normalised by tau
     state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
 
-    state = activation_fn.reset_fn(spikes, state, spike_threshold)
+    state = reset_fn(spikes, state, spike_threshold)
 
     # Clip membrane potential that is too low
     if min_v_mem is not None:
@@ -55,7 +55,9 @@ def alif_forward(
     alpha_syn: torch.Tensor,
     adapt_scale: float,
     state: dict,
-    activation_fn: Callable,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: float,
     b0: float,
     norm_input: bool,
@@ -71,7 +73,9 @@ def alif_forward(
             alpha_syn=alpha_syn,
             adapt_scale=adapt_scale,
             state=state,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             b0=b0,
             norm_input=norm_input,
@@ -88,7 +92,9 @@ def alif_recurrent(
     alpha_syn: torch.Tensor,
     adapt_scale: float,
     state: dict,
-    activation_fn: Callable,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: float,
     rec_connect: torch.nn.Module,
     b0: float,
@@ -108,7 +114,9 @@ def alif_recurrent(
             alpha_syn=alpha_syn,
             adapt_scale=adapt_scale,
             state=state,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             b0=b0,
             norm_input=norm_input,

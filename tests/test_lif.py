@@ -25,9 +25,8 @@ def test_lif_single_spike():
     torch.set_printoptions(precision=10)
     batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(20.0)
-    activation_fn = sa.ActivationFunction(spike_fn=sa.SingleSpike)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 20
-    layer = LIF(tau_mem=tau_mem, activation_fn=activation_fn)
+    layer = LIF(tau_mem=tau_mem, spike_fn=sa.SingleSpike)
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape
@@ -41,9 +40,8 @@ def test_lif_max_spike():
     batch_size, time_steps = 10, 100
     tau_mem = torch.tensor(20.0)
     max_spikes = 3
-    activation_fn = sa.ActivationFunction(spike_fn=sa.MaxSpike(max_spikes))
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) * 100
-    layer = LIF(tau_mem=tau_mem, activation_fn=activation_fn)
+    layer = LIF(tau_mem=tau_mem, spike_fn=sa.MaxSpike(max_spikes))
     spike_output = layer(input_current)
 
     assert input_current.shape == spike_output.shape

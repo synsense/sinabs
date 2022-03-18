@@ -1,7 +1,7 @@
 import torch
 from copy import deepcopy
 from typing import Optional, Callable
-from sinabs.activation import ActivationFunction
+from sinabs.activation import MultiSpike, MembraneSubtract, SingleExponential
 from .reshape import SqueezeMixin
 from .lif import LIF, LIFRecurrent
 import numpy as np
@@ -15,8 +15,16 @@ class IAF(LIF):
     ----------
     spike_threshold: float
         Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
-    activation_fn: Callable
-        a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    spike_fn: torch.autograd.Function
+        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+        a spike threshold and a surrogate gradient function and returns spikes. Be aware
+        that the class itself is passed here (because torch.autograd methods are static)
+        rather than an object instance.
+    reset_fn: Callable
+        A function that defines how the membrane potential is reset after a spike.
+    surrogate_grad_fn: Callable
+        Choose how to define gradients for the spiking non-linearity during the
+        backward pass. This is a function of membrane potential.
     tau_syn: float
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     min_v_mem: float or None
@@ -28,7 +36,9 @@ class IAF(LIF):
     def __init__(
         self,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(),
+        spike_fn: Callable = MultiSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
@@ -37,7 +47,9 @@ class IAF(LIF):
             tau_mem=np.inf,
             tau_syn=tau_syn,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
@@ -64,8 +76,16 @@ class IAFRecurrent(LIFRecurrent):
         An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
     spike_threshold: float
         Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
-    activation_fn: Callable
-        a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    spike_fn: torch.autograd.Function
+        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+        a spike threshold and a surrogate gradient function and returns spikes. Be aware
+        that the class itself is passed here (because torch.autograd methods are static)
+        rather than an object instance.
+    reset_fn: Callable
+        A function that defines how the membrane potential is reset after a spike.
+    surrogate_grad_fn: Callable
+        Choose how to define gradients for the spiking non-linearity during the
+        backward pass. This is a function of membrane potential.
     tau_syn: float
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     min_v_mem: float or None
@@ -78,7 +98,9 @@ class IAFRecurrent(LIFRecurrent):
         self,
         rec_connect: torch.nn.Module,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(),
+        spike_fn: Callable = MultiSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
@@ -88,7 +110,9 @@ class IAFRecurrent(LIFRecurrent):
             tau_mem=np.inf,
             tau_syn=tau_syn,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,

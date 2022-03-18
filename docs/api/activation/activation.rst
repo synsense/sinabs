@@ -5,7 +5,7 @@ activation
 spiking activation
 ------------------
 
-The main object to pass to a spiking layer is an ActivationFunction, which combines spike generation, reset mechanism and surrogate gradient function.
+Spiking layers can choose any combination of spike generation, reset mechanism and surrogate gradient function.
 
 .. toctree::
    :maxdepth: 1
@@ -13,13 +13,3 @@ The main object to pass to a spiking layer is an ActivationFunction, which combi
    spike_generation
    reset_mechanism
    surrogate_gradient
-
-ActivationFunction
-^^^^^^^^^^^^^^^^^^
-.. autoclass:: ActivationFunction
-
-quantization activation
------------------------
-.. automodule:: sinabs.activation.quantize
-   :members:
-   :undoc-members:

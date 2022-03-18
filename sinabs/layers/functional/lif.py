@@ -1,5 +1,5 @@
 import torch
-from typing import Optional
+from typing import Optional, Callable
 
 
 def lif_forward_single(
@@ -8,7 +8,9 @@ def lif_forward_single(
     alpha_syn: float,
     state: dict,
     spike_threshold: float,
-    activation_fn,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: Optional[float],
     norm_input: bool,
 ):
@@ -25,8 +27,10 @@ def lif_forward_single(
     state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
 
     # generate spikes and adjust v_mem
-    if activation_fn:
-        spikes, state = activation_fn(state, spike_threshold)
+    if spike_fn:
+        input_tensors = [state[name] for name in spike_fn.required_states]
+        spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
+        state = reset_fn(spikes, state, spike_threshold)
     else:
         spikes = state["v_mem"]
 
@@ -43,7 +47,9 @@ def lif_forward(
     alpha_syn: float,
     state: dict,
     spike_threshold: float,
-    activation_fn,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: float,
     norm_input: bool,
 ):
@@ -57,7 +63,9 @@ def lif_forward(
             alpha_syn=alpha_syn,
             state=state,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             norm_input=norm_input,
         )
@@ -72,7 +80,9 @@ def lif_recurrent(
     alpha_syn: float,
     state: dict,
     spike_threshold: float,
-    activation_fn,
+    spike_fn: Callable,
+    reset_fn: Callable,
+    surrogate_grad_fn: Callable,
     min_v_mem: Optional[float],
     norm_input: bool,
     rec_connect: torch.nn.Module,
@@ -90,7 +100,9 @@ def lif_recurrent(
             alpha_syn=alpha_syn,
             state=state,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             norm_input=norm_input,
         )

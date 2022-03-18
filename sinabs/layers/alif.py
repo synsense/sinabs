@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from typing import Optional, Union, Callable
-from sinabs.activation import ActivationFunction, MembraneSubtract, SingleSpike
+from sinabs.activation import SingleSpike, MembraneSubtract, SingleExponential
 from . import functional
 from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
@@ -44,8 +44,16 @@ class ALIF(StatefulLayer):
         The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
     spike_threshold: float
         Set initial spike threshold. By default set to 1.0.
-    activation_fn: Callable
-        a sinabs.activation.ActivationFunction to provide spiking and reset mechanism. Also defines a surrogate gradient.
+    spike_fn: torch.autograd.Function
+        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+        a spike threshold and a surrogate gradient function and returns spikes. Be aware
+        that the class itself is passed here (because torch.autograd methods are static)
+        rather than an object instance.
+    reset_fn: Callable
+        A function that defines how the membrane potential is reset after a spike.
+    surrogate_grad_fn: Callable
+        Choose how to define gradients for the spiking non-linearity during the
+        backward pass. This is a function of membrane potential.
     min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
@@ -63,9 +71,9 @@ class ALIF(StatefulLayer):
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(
-            spike_fn=SingleSpike, reset_fn=MembraneSubtract()
-        ),
+        spike_fn: Callable = SingleSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
@@ -88,7 +96,9 @@ class ALIF(StatefulLayer):
             self.tau_syn = nn.Parameter(torch.as_tensor(tau_syn)) if tau_syn else None
         self.adapt_scale = adapt_scale
         self.b0 = spike_threshold
-        self.activation_fn = activation_fn
+        self.spike_fn = spike_fn
+        self.reset_fn = reset_fn
+        self.surrogate_grad_fn = surrogate_grad_fn
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
@@ -147,7 +157,9 @@ class ALIF(StatefulLayer):
             alpha_syn=alpha_syn,
             adapt_scale=self.adapt_scale,
             state=dict(self.named_buffers()),
-            activation_fn=self.activation_fn,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             b0=self.b0,
             norm_input=self.norm_input,
@@ -180,7 +192,9 @@ class ALIF(StatefulLayer):
             else self.tau_syn,
             adapt_scale=self.adapt_scale,
             spike_threshold=self.b0,
-            activation_fn=self.activation_fn,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             train_alphas=self.train_alphas,
             shape=self.shape,
             min_v_mem=self.min_v_mem,
@@ -223,8 +237,16 @@ class ALIFRecurrent(ALIF):
         Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
     adapt_scale: float
         The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
-    activation_fn: Callable
-        a torch.autograd.Function to provide forward and backward calls. Takes care of all the spiking behaviour.
+    spike_fn: torch.autograd.Function
+        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+        a spike threshold and a surrogate gradient function and returns spikes. Be aware
+        that the class itself is passed here (because torch.autograd methods are static)
+        rather than an object instance.
+    reset_fn: Callable
+        A function that defines how the membrane potential is reset after a spike.
+    surrogate_grad_fn: Callable
+        Choose how to define gradients for the spiking non-linearity during the
+        backward pass. This is a function of membrane potential.
     min_v_mem: float or None
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
@@ -243,9 +265,9 @@ class ALIFRecurrent(ALIF):
         tau_syn: Optional[Union[float, torch.Tensor]] = None,
         adapt_scale: Union[float, torch.Tensor] = 1.8,
         spike_threshold: float = 1.0,
-        activation_fn: Callable = ActivationFunction(
-            spike_fn=SingleSpike, reset_fn=MembraneSubtract()
-        ),
+        spike_fn: Callable = SingleSpike,
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
@@ -257,7 +279,9 @@ class ALIFRecurrent(ALIF):
             tau_syn=tau_syn,
             adapt_scale=adapt_scale,
             spike_threshold=spike_threshold,
-            activation_fn=activation_fn,
+            spike_fn=spike_fn,
+            reset_fn=reset_fn,
+            surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
             shape=shape,
             train_alphas=train_alphas,
@@ -296,7 +320,9 @@ class ALIFRecurrent(ALIF):
             alpha_syn=alpha_syn,
             adapt_scale=self.adapt_scale,
             state=dict(self.named_buffers()),
-            activation_fn=self.activation_fn,
+            spike_fn=self.spike_fn,
+            reset_fn=self.reset_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             rec_connect=self.rec_connect,
             b0=self.b0,

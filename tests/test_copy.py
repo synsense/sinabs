@@ -91,7 +91,7 @@ def test_deepcopy_lif():
                 assert layer_copy.alpha_mem == layer_orig.alpha_mem
             else:
                 assert layer_copy.tau_mem == layer_orig.tau_mem
-            assert layer_copy.activation_fn == layer_orig.activation_fn
+            assert layer_copy.spike_fn == layer_orig.spike_fn
             assert layer_copy.min_v_mem == layer_orig.min_v_mem
             assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
@@ -134,7 +134,7 @@ def test_deepcopy_lif_uninitialized():
                 assert layer_copy.alpha_mem == layer_orig.alpha_mem
             else:
                 assert layer_copy.tau_mem == layer_orig.tau_mem
-            assert layer_copy.activation_fn == layer_orig.activation_fn
+            assert layer_copy.spike_fn == layer_orig.spike_fn
             assert layer_copy.min_v_mem == layer_orig.min_v_mem
             assert layer_copy.train_alphas == layer_orig.train_alphas
             if hasattr(layer_orig, "batch_size"):
@@ -174,7 +174,7 @@ def test_deepcopy_alif():
         assert b0 is not b1
 
     assert layer_copy.min_v_mem == layer_orig.min_v_mem
-    assert layer_copy.activation_fn == layer_orig.activation_fn
+    assert layer_copy.spike_fn == layer_orig.spike_fn
     assert layer_copy.tau_mem == layer_orig.tau_mem
     assert layer_copy.tau_adapt == layer_orig.tau_adapt
     assert layer_copy.adapt_scale == layer_orig.adapt_scale

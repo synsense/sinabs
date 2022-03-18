@@ -44,7 +44,9 @@ class ExpLeak(LIF):
             train_alphas=train_alphas,
             min_v_mem=min_v_mem,
             shape=shape,
-            activation_fn=None,
+            spike_fn=None,
+            reset_fn=None,
+            surrogate_grad_fn=None,
             norm_input=norm_input,
         )
 
@@ -52,7 +54,9 @@ class ExpLeak(LIF):
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.pop("tau_syn")
-        param_dict.pop("activation_fn")
+        param_dict.pop("spike_fn")
+        param_dict.pop("reset_fn")
+        param_dict.pop("surrogate_grad_fn")
         param_dict.pop("spike_threshold")
         return param_dict
 
