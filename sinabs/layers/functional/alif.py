@@ -16,15 +16,6 @@ def alif_forward_single(
     b0: float,
     norm_input: bool,
 ):
-    # generate spikes and adjust v_mem
-    input_tensors = [state[name] for name in spike_fn.required_states]
-    spike_threshold = b0 + adapt_scale * state["b"]
-    spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
-
-    # Decay the spike threshold and add adaptation factor to it.
-    state["b"] = alpha_adapt * state["b"] + (1 - alpha_adapt) * spikes
-    spike_threshold = b0 + adapt_scale * state["b"]
-
     # if t_syn was provided, we're going to use synaptic current dynamics
     if alpha_syn:
         state["i_syn"] = alpha_syn * (state["i_syn"] + input_data)
@@ -37,7 +28,16 @@ def alif_forward_single(
     # Decay the membrane potential and add the input currents which are normalised by tau
     state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
 
+    # generate spikes and adjust v_mem
+    input_tensors = [state[name] for name in spike_fn.required_states]
+    spike_threshold = b0 + adapt_scale * state["b"]
+    spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
+
     state = reset_fn(spikes, state, spike_threshold)
+
+    # Decay the spike threshold and add adaptation factor to it.
+    state["b"] = alpha_adapt * state["b"] + (1 - alpha_adapt) * spikes
+    spike_threshold = b0 + adapt_scale * state["b"]
 
     # Clip membrane potential that is too low
     if min_v_mem is not None:

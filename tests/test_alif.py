@@ -72,8 +72,8 @@ def test_alif_spike_threshold_decay():
         spike_output.sum()
         == torch.prod(torch.as_tensor(input_current.size())) / time_steps
     ), "All neurons should spike exactly once."
-    # decay only starts after 2 time steps
-    threshold_decay = alpha ** (time_steps - 2)
+    # decay only starts after first time step
+    threshold_decay = alpha ** (time_steps - 1)
     # account for rounding errors with .isclose()
     assert torch.isclose(
         layer.spike_threshold - spike_threshold, threshold_decay, atol=1e-08
