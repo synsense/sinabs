@@ -8,4 +8,5 @@
    weight_transfer_mnist
    LeNet_5_EngChinese
    neuron_models
+   activations
    
