@@ -27,6 +27,8 @@ class ExpLeak(LIF):
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     norm_input: bool
         When True, normalise input current by tau. This helps when training time constants.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -36,6 +38,7 @@ class ExpLeak(LIF):
         train_alphas: bool = False,
         min_v_mem: Optional[float] = None,
         norm_input: bool = False,
+        record_states: bool = False,
     ):
         super().__init__(
             tau_mem=tau_mem,
@@ -48,6 +51,7 @@ class ExpLeak(LIF):
             reset_fn=None,
             surrogate_grad_fn=None,
             norm_input=norm_input,
+            record_states=record_states,
         )
 
     @property

@@ -62,6 +62,8 @@ class ALIF(StatefulLayer):
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
     norm_input: bool
         When True, normalise input current by tau. This helps when training time constants.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -78,9 +80,12 @@ class ALIF(StatefulLayer):
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         norm_input: bool = True,
+        record_states: bool = False,
     ):
         super().__init__(
-            state_names=["v_mem", "i_syn", "b"] if tau_syn else ["v_mem", "b"]
+            state_names=["v_mem", "i_syn", "b", "spike_threshold"]
+            if tau_syn
+            else ["v_mem", "b", "spike_threshold"]
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_mem)))
@@ -102,6 +107,7 @@ class ALIF(StatefulLayer):
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
+        self.record_states = record_states
         if shape:
             self.init_state_with_shape(shape)
 
@@ -121,10 +127,6 @@ class ALIF(StatefulLayer):
             return torch.exp(-1 / self.tau_syn)
         else:
             return None
-
-    @property
-    def spike_threshold(self):
-        return self.b0 + self.adapt_scale * self.b
 
     def forward(self, input_data: torch.Tensor):
         """
@@ -150,7 +152,7 @@ class ALIF(StatefulLayer):
         alpha_syn = self.alpha_syn_calculated
         alpha_adapt = self.alpha_adapt_calculated
 
-        spikes, state = functional.alif_forward(
+        spikes, state, recordings = functional.alif_forward(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_adapt=alpha_adapt,
@@ -163,9 +165,12 @@ class ALIF(StatefulLayer):
             min_v_mem=self.min_v_mem,
             b0=self.b0,
             norm_input=self.norm_input,
+            record_states=self.record_states,
         )
         self.b = state["b"]
         self.v_mem = state["v_mem"]
+        self.spike_threshold = state["spike_threshold"]
+        self.recordings = recordings
 
         self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
@@ -198,6 +203,7 @@ class ALIF(StatefulLayer):
             train_alphas=self.train_alphas,
             shape=self.shape,
             min_v_mem=self.min_v_mem,
+            record_states=self.record_states,
         )
         return param_dict
 
@@ -255,6 +261,8 @@ class ALIFRecurrent(ALIF):
         When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
     norm_input: bool
         When True, normalise input current by tau. This helps when training time constants.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -272,6 +280,7 @@ class ALIFRecurrent(ALIF):
         shape: Optional[torch.Size] = None,
         train_alphas: bool = False,
         norm_input: bool = True,
+        record_states: bool = False,
     ):
         super().__init__(
             tau_mem=tau_mem,
@@ -286,6 +295,7 @@ class ALIFRecurrent(ALIF):
             shape=shape,
             train_alphas=train_alphas,
             norm_input=norm_input,
+            record_states=record_states,
         )
         self.rec_connect = rec_connect
 
@@ -313,7 +323,7 @@ class ALIFRecurrent(ALIF):
         alpha_syn = self.alpha_syn_calculated
         alpha_adapt = self.alpha_adapt_calculated
 
-        spikes, state = functional.alif_recurrent(
+        spikes, state, recordings = functional.alif_recurrent(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_adapt=alpha_adapt,
@@ -327,9 +337,12 @@ class ALIFRecurrent(ALIF):
             rec_connect=self.rec_connect,
             b0=self.b0,
             norm_input=self.norm_input,
+            record_states=self.record_states,
         )
         self.b = state["b"]
         self.v_mem = state["v_mem"]
+        self.spike_threshold = state["spike_threshold"]
+        self.recordings = recordings
 
         self.firing_rate = spikes.sum() / spikes.numel()
         return spikes

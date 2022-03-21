@@ -31,6 +31,8 @@ class IAF(LIF):
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -42,6 +44,7 @@ class IAF(LIF):
         tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
+        record_states: bool = False,
     ):
         super().__init__(
             tau_mem=np.inf,
@@ -53,6 +56,7 @@ class IAF(LIF):
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
+            record_states=record_states,
         )
         # deactivate tau_mem being learned
         self.tau_mem.requires_grad = False
@@ -92,6 +96,8 @@ class IAFRecurrent(LIFRecurrent):
         Lower bound for membrane potential v_mem, clipped at every time step.
     shape: torch.Size
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -104,6 +110,7 @@ class IAFRecurrent(LIFRecurrent):
         tau_syn: Optional[float] = None,
         min_v_mem: Optional[float] = None,
         shape: Optional[torch.Size] = None,
+        record_states: bool = False,
     ):
         super().__init__(
             rec_connect=rec_connect,
@@ -116,6 +123,7 @@ class IAFRecurrent(LIFRecurrent):
             min_v_mem=min_v_mem,
             shape=shape,
             norm_input=False,
+            record_states=record_states,
         )
         # deactivate tau_mem being learned
         self.tau_mem.requires_grad = False

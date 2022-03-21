@@ -46,6 +46,8 @@ class LIF(StatefulLayer):
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     norm_input: bool
         When True, normalise input current by tau. This helps when training time constants.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -60,6 +62,7 @@ class LIF(StatefulLayer):
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
+        record_states: bool = False,
     ):
         super().__init__(state_names=["v_mem", "i_syn"] if tau_syn else ["v_mem"])
         if train_alphas:
@@ -87,6 +90,7 @@ class LIF(StatefulLayer):
         self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
+        self.record_states = record_states
         if shape:
             self.init_state_with_shape(shape)
 
@@ -131,7 +135,7 @@ class LIF(StatefulLayer):
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
 
-        spikes, state = functional.lif_forward(
+        spikes, state, recordings = functional.lif_forward(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
@@ -142,9 +146,11 @@ class LIF(StatefulLayer):
             surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
+            record_states=self.record_states,
         )
         self.v_mem = state["v_mem"]
         self.i_syn = state["i_syn"] if alpha_syn else None
+        self.recordings = recordings
 
         self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
@@ -174,6 +180,7 @@ class LIF(StatefulLayer):
             shape=self.shape,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
+            record_states=self.record_states,
         )
         return param_dict
 
@@ -211,6 +218,8 @@ class LIFRecurrent(LIF):
         Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
     norm_input: bool
         When True, normalise input current by tau. This helps when training time constants.
+    record_states: bool
+        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -226,6 +235,7 @@ class LIFRecurrent(LIF):
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
+        record_states: bool = False,
     ):
         super().__init__(
             tau_mem=tau_mem,
@@ -238,6 +248,7 @@ class LIFRecurrent(LIF):
             shape=shape,
             train_alphas=train_alphas,
             norm_input=norm_input,
+            record_states=record_states,
         )
         self.rec_connect = rec_connect
 
@@ -264,7 +275,7 @@ class LIFRecurrent(LIF):
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
 
-        spikes, state = functional.lif_recurrent(
+        spikes, state, recordings = functional.lif_recurrent(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
@@ -276,10 +287,13 @@ class LIFRecurrent(LIF):
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
             rec_connect=self.rec_connect,
+            record_states=self.record_states,
         )
         self.v_mem = state["v_mem"]
         self.i_syn = state["i_syn"] if alpha_syn else None
+        self.recordings = recordings
 
+        self.firing_rate = spikes.sum() / spikes.numel()
         return spikes
 
     @property

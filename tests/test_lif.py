@@ -21,6 +21,66 @@ def test_lif_basic():
     assert spike_output.sum() > 0
 
 
+def test_lif_v_mem_recordings():
+    batch_size, time_steps = 10, 100
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
+    layer = LIF(tau_mem=20.0, norm_input=False, record_states=True)
+    spike_output = layer(input_current)
+
+    assert layer.recordings["v_mem"].shape == spike_output.shape
+    assert not layer.recordings["v_mem"].requires_grad
+    assert "i_syn" not in layer.recordings.keys()
+
+
+def test_lif_i_syn_recordings():
+    batch_size, time_steps = 10, 100
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
+    layer = LIF(tau_mem=20.0, tau_syn=10.0, norm_input=False, record_states=True)
+    spike_output = layer(input_current)
+
+    assert layer.recordings["v_mem"].shape == spike_output.shape
+    assert layer.recordings["i_syn"].shape == spike_output.shape
+    assert not layer.recordings["v_mem"].requires_grad
+    assert not layer.recordings["i_syn"].requires_grad
+
+
+def test_lif_recurrent_v_mem_recordings():
+    batch_size, time_steps, n_neurons = 10, 100, 20
+    input_current = torch.rand(batch_size, time_steps, n_neurons)
+    rec_connect = nn.Sequential(
+        nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False)
+    )
+    layer = LIFRecurrent(
+        tau_mem=20.0, rec_connect=rec_connect, norm_input=False, record_states=True
+    )
+    spike_output = layer(input_current)
+
+    assert layer.recordings["v_mem"].shape == spike_output.shape
+    assert not layer.recordings["v_mem"].requires_grad
+    assert "i_syn" not in layer.recordings.keys()
+
+
+def test_lif_recurrent_i_syn_recordings():
+    batch_size, time_steps, n_neurons = 10, 100, 20
+    input_current = torch.rand(batch_size, time_steps, n_neurons)
+    rec_connect = nn.Sequential(
+        nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False)
+    )
+    layer = LIFRecurrent(
+        tau_mem=20.0,
+        tau_syn=10.0,
+        rec_connect=rec_connect,
+        norm_input=False,
+        record_states=True,
+    )
+    spike_output = layer(input_current)
+
+    assert layer.recordings["v_mem"].shape == spike_output.shape
+    assert layer.recordings["i_syn"].shape == spike_output.shape
+    assert not layer.recordings["v_mem"].requires_grad
+    assert not layer.recordings["i_syn"].requires_grad
+
+
 def test_lif_single_spike():
     torch.set_printoptions(precision=10)
     batch_size, time_steps = 10, 100

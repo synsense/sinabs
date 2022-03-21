@@ -52,10 +52,13 @@ def lif_forward(
     surrogate_grad_fn: Callable,
     min_v_mem: float,
     norm_input: bool,
+    record_states: bool = False,
 ):
     n_time_steps = input_data.shape[1]
+    state_names = list(state.keys())
 
     output_spikes = []
+    recordings = []
     for step in range(n_time_steps):
         spikes, state = lif_forward_single(
             input_data=input_data[:, step],
@@ -70,8 +73,16 @@ def lif_forward(
             norm_input=norm_input,
         )
         output_spikes.append(spikes)
+        if record_states:
+            recordings.append(state)
 
-    return torch.stack(output_spikes, 1), state
+    record_dict = {}
+    if record_states:
+        for state_name in state_names:
+            record_dict[state_name] = torch.stack(
+                [item[state_name].detach() for item in recordings], 1
+            )
+    return torch.stack(output_spikes, 1), state, record_dict
 
 
 def lif_recurrent(
@@ -86,10 +97,13 @@ def lif_recurrent(
     min_v_mem: Optional[float],
     norm_input: bool,
     rec_connect: torch.nn.Module,
+    record_states: bool = False,
 ):
     batch_size, n_time_steps, *trailing_dim = input_data.shape
+    state_names = list(state.keys())
 
     output_spikes = []
+    recordings = []
     rec_out = torch.zeros((batch_size, *trailing_dim), device=input_data.device)
     for step in range(n_time_steps):
         total_input = input_data[:, step] + rec_out
@@ -107,8 +121,16 @@ def lif_recurrent(
             norm_input=norm_input,
         )
         output_spikes.append(spikes)
+        if record_states:
+            recordings.append(state)
 
         # compute recurrent output that will be added to the input at the next time step
         rec_out = rec_connect(spikes).reshape((batch_size, *trailing_dim))
 
-    return torch.stack(output_spikes, 1), state
+    record_dict = {}
+    if record_states:
+        for state_name in state_names:
+            record_dict[state_name] = torch.stack(
+                [item[state_name].detach() for item in recordings], 1
+            )
+    return torch.stack(output_spikes, 1), state, record_dict

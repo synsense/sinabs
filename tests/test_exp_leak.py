@@ -51,3 +51,14 @@ def test_leaky_membrane_decay():
     assert torch.isclose(
         layer.v_mem, membrane_decay, atol=1e-08
     ).all(), "Neuron membrane potentials do not seems to decay correctly."
+
+
+def test_leaky_v_mem_recordings():
+    batch_size, time_steps = 10, 100
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
+    layer = ExpLeak(tau_mem=30.0, record_states=True)
+    membrane_output = layer(input_current)
+
+    assert layer.recordings["v_mem"].shape == membrane_output.shape
+    assert not layer.recordings["v_mem"].requires_grad
+    assert "i_syn" not in layer.recordings.keys()
