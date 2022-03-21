@@ -143,7 +143,7 @@ class ChipFactory:
         dt: float
             Length of each time step for rasterization
         shape: Optional[Tuple]
-            Shape of the raster to be produced. (Time, Channel, Height, Width)
+            Shape of the raster to be produced, excluding the time dimension. (Channel, Height, Width)
             If this is not specified, the shape is inferred based on the max values found in the events.
         Returns
         -------
@@ -159,6 +159,7 @@ class ChipFactory:
 
         # Initialize an empty raster
         if shape:
+            shape = (int(max(timestamps)*dt)+1, *shape)
             raster = torch.zeros(shape)
         else:
             raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
