@@ -145,6 +145,7 @@ class ChipFactory:
         shape: Optional[Tuple]
             Shape of the raster to be produced, excluding the time dimension. (Channel, Height, Width)
             If this is not specified, the shape is inferred based on the max values found in the events.
+
         Returns
         -------
         raster: torch.Tensor
@@ -165,6 +166,6 @@ class ChipFactory:
             raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
 
         for event in events:
-            raster[int((event.timestamp - start_timestamp)*dt), event.feature, event.x, event.y] = 1
+            raster[int((event.timestamp - start_timestamp)*dt), event.feature, event.x, event.y] += 1
         return raster
 
