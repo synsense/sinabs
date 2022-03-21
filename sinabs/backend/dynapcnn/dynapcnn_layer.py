@@ -128,9 +128,9 @@ class DynapcnnLayer(nn.Module):
             )
 
         # - Resetting vs returning to 0
-        if isinstance(self.spk_layer.activation_fn.reset_fn, sinabs.activation.MembraneReset):
+        if isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneReset):
             return_to_zero = True
-        elif isinstance(self.spk_layer.activation_fn.reset_fn, sinabs.activation.MembraneSubtract):
+        elif isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneSubtract):
             return_to_zero = False
         else:
             raise Exception("Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood.")
@@ -139,14 +139,14 @@ class DynapcnnLayer(nn.Module):
         #    warn(
         #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
         #    )
-        if self.spk_layer.threshold_low is None:
-            threshold_low = -2**15
+        if self.spk_layer.min_v_mem is None:
+            min_v_mem = -2**15
         else:
-            threshold_low = int(self.spk_layer.threshold_low)
+            min_v_mem = int(self.spk_layer.min_v_mem)
         config_dict.update({
             "return_to_zero": return_to_zero,
-            "threshold_high": int(self.spk_layer.activation_fn.spike_threshold),
-            "threshold_low": threshold_low,
+            "threshold_high": int(self.spk_layer.spike_threshold),
+            "threshold_low": min_v_mem,
             "monitor_enable": False,
             "neurons_initial_value": neurons_state.int().tolist(),
             "neurons_value_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),

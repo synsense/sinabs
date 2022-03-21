@@ -306,14 +306,13 @@ def _discretize_conv_spk_(
             raise TypeError("`spike_lyr` must be of type `IAF`")
 
         discr_spk = True
-        if spike_lyr.threshold_low is None:
-            threshold_low = -2 ** 15
+        if spike_lyr.min_v_mem is None:
+            min_v_mem = -2 ** 15
         else:
-            threshold_low = spike_lyr.threshold_low
+            min_v_mem = spike_lyr.min_v_mem
         # - Lower and upper thresholds in a tensor for easier handling
-        # TODO: This is a tight assumption that the activation function will have an attribute named spike_threshold
         thresholds = torch.tensor(
-            (threshold_low, spike_lyr.activation_fn.spike_threshold)
+            (min_v_mem, spike_lyr.spike_threshold)
         )
 
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
@@ -345,7 +344,7 @@ def _discretize_conv_spk_(
         conv_weight.data = discretize_tensor(conv_weight, scaling, to_int=to_int)
         conv_bias.data = discretize_tensor(conv_bias, scaling, to_int=to_int)
     if discr_spk:
-        spike_lyr.threshold_low, spike_lyr.activation_fn.spike_threshold = (
+        spike_lyr.min_v_mem, spike_lyr.spike_threshold = (
             discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
         )
         # Logic changes with use of activation functions

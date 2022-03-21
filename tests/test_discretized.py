@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from sinabs.backend.dynapcnn import discretize
 from sinabs.layers import IAF
-from sinabs.activation import ActivationFunction, MembraneSubtract
+from sinabs.activation import MembraneSubtract
 
 # - Test tensor to be discretized
 float_tensor = torch.tensor(
@@ -39,10 +39,11 @@ conv_lyr.weight = torch.nn.Parameter(weight)
 # - Spiking layer
 np.random.seed(4)
 thr = np.random.random() * 10
-thr_low = -np.random.random() * 10
+min_v_mem = -np.random.random() * 10
 spk_lyr = IAF(
-    threshold_low=thr_low,
-    activation_fn=ActivationFunction(spike_threshold=thr, reset_fn=MembraneSubtract()),
+    min_v_mem=min_v_mem,
+    spike_threshold=thr,
+    reset_fn=MembraneSubtract(),
 )
 
 
@@ -54,12 +55,12 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem
 
     if thr is not None:
         # Guess scaling based on threshold
-        scale = thr / spk_lyr.activation_fn.spike_threshold
-        reference = spk_lyr.activation_fn.spike_threshold
+        scale = thr / spk_lyr.spike_threshold
+        reference = spk_lyr.spike_threshold
 
         thrs = torch.tensor((thr, thr_low))
         thrs_old = torch.tensor(
-            (spk_lyr.activation_fn.spike_threshold, spk_lyr.threshold_low)
+            (spk_lyr.spike_threshold, spk_lyr.min_v_mem)
         )
     else:
         with torch.no_grad():
@@ -124,8 +125,8 @@ def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
         spk_lyr,
         conv_discr.weight,
         conv_discr.bias,
-        spk_discr.activation_fn.spike_threshold,
-        spk_discr.threshold_low,
+        spk_discr.spike_threshold,
+        spk_discr.min_v_mem,
         spk_discr.v_mem,
     )
     return conv_discr, spk_discr
@@ -158,15 +159,15 @@ def test_discretize_conv_spike():
     assert (conv_lyr.bias == conv_copy.bias).all()
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+        spk_lyr.spike_threshold == spk_copy.spike_threshold
     )
-    assert spk_lyr.threshold_low == spk_copy.threshold_low
+    assert spk_lyr.min_v_mem == spk_copy.min_v_mem
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
         assert obj.dtype == torch.int
     for obj in (
-        spk_discr.activation_fn.spike_threshold,
-        spk_discr.activation_fn.spike_threshold,
+        spk_discr.spike_threshold,
+        spk_discr.spike_threshold,
     ):
         assert isinstance(obj, (int, np.integer))
 
@@ -178,10 +179,10 @@ def test_discretize_conv_spike():
     assert (conv_discr.bias == conv_copy.bias).all()
     assert (spk_discr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_discr.activation_fn.spike_threshold
-        == spk_copy.activation_fn.spike_threshold
+        spk_discr.spike_threshold
+        == spk_copy.spike_threshold
     )
-    assert spk_discr.threshold_low == spk_copy.threshold_low
+    assert spk_discr.min_v_mem == spk_copy.min_v_mem
 
     # - No conversion to integers
     conv_copy = deepcopy(conv_lyr)
@@ -194,9 +195,9 @@ def test_discretize_conv_spike():
     assert (conv_lyr.bias == conv_copy.bias).all()
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+        spk_lyr.spike_threshold == spk_copy.spike_threshold
     )
-    assert spk_lyr.threshold_low == spk_copy.threshold_low
+    assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
     # Make sure that elements are floats
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
@@ -219,8 +220,8 @@ def test_discr_conv():
 
     conv_discr = discretize.discretize_conv(
         conv_copy,
-        spk_copy.activation_fn.spike_threshold,
-        spk_copy.threshold_low,
+        spk_copy.spike_threshold,
+        spk_copy.min_v_mem,
         spk_copy.v_mem,
     )
     validate_common_scaling(
@@ -234,8 +235,8 @@ def test_discr_conv():
     # - In-place
     conv_discr = discretize.discretize_conv_(
         conv_copy,
-        spk_copy.activation_fn.spike_threshold,
-        spk_copy.threshold_low,
+        spk_copy.spike_threshold,
+        spk_copy.min_v_mem,
         spk_copy.v_mem,
     )
     validate_common_scaling(
@@ -249,9 +250,9 @@ def test_discr_conv():
     # - Make sure that spike layer elements did not get mutated
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+        spk_lyr.spike_threshold == spk_copy.spike_threshold
     )
-    assert spk_lyr.threshold_low == spk_copy.threshold_low
+    assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
 
 def test_discr_spk():
@@ -277,17 +278,17 @@ def test_discr_spk():
         spk_copy,
         None,
         None,
-        spk_discr.activation_fn.spike_threshold,
-        spk_discr.threshold_low,
+        spk_discr.spike_threshold,
+        spk_discr.min_v_mem,
         spk_discr.v_mem,
     )
 
     # Make sure that discretization did not happen in-place
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_lyr.activation_fn.spike_threshold == spk_copy.activation_fn.spike_threshold
+        spk_lyr.spike_threshold == spk_copy.spike_threshold
     )
-    assert spk_lyr.threshold_low == spk_copy.threshold_low
+    assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
     # - In-place
     spk_discr = discretize.discretize_spk_(spk_copy, conv_copy.weight, conv_copy.bias)
@@ -296,18 +297,18 @@ def test_discr_spk():
         spk_copy,
         None,
         None,
-        spk_discr.activation_fn.spike_threshold,
-        spk_discr.threshold_low,
+        spk_discr.spike_threshold,
+        spk_discr.min_v_mem,
         spk_discr.v_mem,
     )
 
     # Make sure that discretization did happen in-place
     assert (spk_discr.v_mem == spk_copy.v_mem).all()
     assert (
-        spk_discr.activation_fn.spike_threshold
-        == spk_copy.activation_fn.spike_threshold
+        spk_discr.spike_threshold
+        == spk_copy.spike_threshold
     )
-    assert spk_discr.threshold_low == spk_copy.threshold_low
+    assert spk_discr.min_v_mem == spk_copy.min_v_mem
 
     # - Make sure that conv layer elements did not get mutated
     assert (conv_lyr.weight == conv_copy.weight).all()
