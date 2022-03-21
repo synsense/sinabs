@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from typing import List
+from typing import List, Tuple, Optional
 from .io import _parse_device_string
 from .config_builder import ConfigBuilder
 from .chips import *
@@ -131,7 +131,7 @@ class ChipFactory:
             events.append(ev)
         return events
 
-    def events_to_raster(self, events: List, dt=1e-3) -> torch.Tensor:
+    def events_to_raster(self, events: List, dt: float =1e-3, shape: Optional[Tuple]=None) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
 
@@ -140,7 +140,11 @@ class ChipFactory:
 
         events: List[Spike]
             A list of events that will be streamed to the device
-
+        dt: float
+            Length of each time step for rasterization
+        shape: Optional[Tuple]
+            Shape of the raster to be produced. (Time, Channel, Height, Width)
+            If this is not specified, the shape is inferred based on the max values found in the events.
         Returns
         -------
         raster: torch.Tensor
@@ -153,7 +157,12 @@ class ChipFactory:
         ys = [event.y for event in events]
         features = [event.feature for event in events]
 
-        raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
+        # Initialize an empty raster
+        if shape:
+            raster = torch.zeros(shape)
+        else:
+            raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
+
         for event in events:
             raster[int((event.timestamp - start_timestamp)*dt), event.feature, event.x, event.y] = 1
         return raster
