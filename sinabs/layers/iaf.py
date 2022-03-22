@@ -9,7 +9,16 @@ import numpy as np
 
 class IAF(LIF):
     """
-    Pytorch implementation of a Integrate and Fire neuron with learning enabled.
+    An Integrate and Fire neuron layer.
+
+    Neuron dynamics in discrete time:
+
+    .. math ::
+        V_{mem}(t+1) = V_{mem}(t) + \\sum z(t)
+
+        \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
+
+    where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
     Parameters
     ----------
@@ -72,7 +81,16 @@ class IAF(LIF):
 
 class IAFRecurrent(LIFRecurrent):
     """
-    Pytorch implementation of a Integrate and Fire neuron with learning enabled.
+    An Integrate and Fire neuron layer with recurrent connections.
+
+    Neuron dynamics in discrete time:
+
+    .. math ::
+        V_{mem}(t+1) = V_{mem}(t) + \\sum z(t)
+
+        \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
+
+    where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
     Parameters
     ----------

@@ -9,7 +9,7 @@ from .reshape import SqueezeMixin
 
 class LIF(StatefulLayer):
     """
-    Pytorch implementation of a Leaky Integrate and Fire neuron layer.
+    A Leaky Integrate and Fire neuron layer.
 
     Neuron dynamics in discrete time:
 
@@ -187,7 +187,7 @@ class LIF(StatefulLayer):
 
 class LIFRecurrent(LIF):
     """
-    Pytorch implementation of a Leaky Integrate and Fire neuron layer.
+    A Leaky Integrate and Fire neuron layer with recurrent connections.
 
     Neuron dynamics in discrete time:
 
