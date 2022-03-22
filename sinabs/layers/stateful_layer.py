@@ -94,7 +94,23 @@ class StatefulLayer(torch.nn.Module):
                     buffer.zero_().detach_()
 
     def __repr__(self):
-        return f"{self.__class__.__name__}"
+        param_strings = [
+            f"{key}={value}"
+            for key, value in self._param_dict.items()
+            if key
+            in [
+                "tau_mem",
+                "tau_syn",
+                "tau_adapt",
+                "adapt_scale",
+                "spike_threshold",
+                "min_v_mem",
+                "norm_input",
+            ]
+            and value is not None
+        ]
+        param_strings = ", ".join(param_strings)
+        return f"{self.__class__.__name__}({param_strings})"
 
     def __deepcopy__(self, memo=None):
         copy = self.__class__(**self._param_dict)
