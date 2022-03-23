@@ -1,4 +1,4 @@
 pbr
 numpy
 pandas
-torch
+torch>=1.8
