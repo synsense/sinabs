@@ -4,14 +4,14 @@ Advanced
 Under the hood
 --------------
 
-The DynapcnnCompatibleNetwork converts a given model into a sequence of DVSLayer (at most 1) and DynapcnnLayers.
+The DynapcnnNetwork converts a given model into a sequence of DVSLayer (at most 1) and DynapcnnLayers.
 
 .. graphviz::
 
     digraph {
         subgraph cluster {
             node [shape=polygon, sides=4]
-            label = "DynapcnnCompatibleNetwork";
+            label = "DynapcnnNetwork";
             DVSLayer -> "DynapcnnLayer[0]" -> "DynapcnnLayer[1]" -> "...";
         }
     }
@@ -29,7 +29,7 @@ A `ConfigBuilder` then converts this model to a config object when `make_config`
         rankdir=LR
         subgraph cluster {
             label = "ConfigBuilder"
-            DynapcnnCompatibleNetwork -> "Samna Config"
+            DynapcnnNetwork -> "Samna Config"
         }
     }
 
@@ -69,7 +69,7 @@ Attributes of interest
 ----------------------
 
 Knowing the mapping of the various layers of the model to the layers of the chip is crucial.
-`DynapcnnCompatibleNetwork.chip_layers_ordering` is a list of chip layer indices where a model was mapped.
+`DynapcnnNetwork.chip_layers_ordering` is a list of chip layer indices where a model was mapped.
 This is useful when generating or interpreting events from `samna`, where the `layer` attribute refers to the layer on the chip.
 
 

@@ -13,7 +13,7 @@ import torch
 import torch.nn as nn
 from typing import List
 from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
@@ -37,8 +37,8 @@ ann.load_state_dict(torch.load("model_params.pt"), map_location="cpu")
 # Convert your model to SNN
 sinabs_model = from_model(ann, add_spiking_output=True)  # Your sinabs SNN model
 
-# Convert your SNN to `DynapcnnCompatibleNetwork`
-hw_model = DynapcnnCompatibleNetwork(
+# Convert your SNN to `DynapcnnNetwork`
+hw_model = DynapcnnNetwork(
     sinabs_model.spiking_model,
     discretize=True,
     input_shape=(1, 28, 28)
@@ -73,7 +73,7 @@ Accordingly, the `DynapcnnLayer` class is a `sequential` model with three layers
     3. pool_layer
 
 In order to deploy a model onto these chips, the network structure needs to be converted into a sequence of *DynapcnnLayer*s.
-The `DynapcnnCompatibleNetwork` class automates this model conversion from a sequential `sinabs` spiking neural network into a sequence of *DynapcnnLayer*s. 
+The `DynapcnnNetwork` class automates this model conversion from a sequential `sinabs` spiking neural network into a sequence of *DynapcnnLayer*s. 
 In addition, it also descretizes/quantizes the parameters to 8 bits (according to the chip specifications).
 
 
@@ -84,7 +84,7 @@ Often, the network architectures comprise of layers such as `AvgPool2d`, `Flatte
 The chips do not support these layers in their original form and require some transformation.
 For instance, while `AvgPool2d` works in simulations, spikes cannot really be averaged. Instead `SumPool2d` is a better fit for spiking networks.
 Similarly, a `Linear` layer can be replaced with `Conv2d` with a kernel size 1x1 such that it is compatible with `DynapcnnLayer`.
-Instantiating `DynapcnnCompatibleNetwork` takes care of all such conversions.
+Instantiating `DynapcnnNetwork` takes care of all such conversions.
 
 Parameter quantization
 ----------------------
@@ -147,7 +147,7 @@ ChipFactory.supported_devices
 Placement of layers on device cores
 -----------------------------------
 
-A sequence of *DynapcnnLayer*s (i.e. a model that has been converted to `DynapcnnCompatibleNetwork`) is ready to be mapped onto the chip cores/layers.
+A sequence of *DynapcnnLayer*s (i.e. a model that has been converted to `DynapcnnNetwork`) is ready to be mapped onto the chip cores/layers.
 This is done by placing each layer of the model onto a layer on the chip. The exact placement is specified by the parameter `chip_layers_ordering`.
 
 This is an important parameter because each layer of the model has a certain memory requirement for kernel parameters and neurons.
@@ -159,7 +159,7 @@ If the algorithm is unable to place the model onto the chip, it will throw an er
 
 Some methods helpful for debugging if you run into problems are `ConfigBuilder.get_valid_mapping()` and the object `ConfigBuilder.get_constraints()`.
 
-After successfully mapping a model, the `chip_layers_ordering` can be inspected by executing `DynapcnnCompatibleNetwork.chip_layers_ordering`.
+After successfully mapping a model, the `chip_layers_ordering` can be inspected by executing `DynapcnnNetwork.chip_layers_ordering`.
 
 
 Porting model to device

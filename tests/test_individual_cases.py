@@ -1,10 +1,10 @@
 import samna
 
-from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 import torch
 from torch import nn
 from sinabs.from_torch import from_model
-from sinabs.layers.iaf_bptt import SpikingLayer
+from sinabs.layers.iaf import IAFSqueeze
 from sinabs.layers import SumPool2d
 import pytest
 
@@ -17,7 +17,7 @@ input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
 # --- UTILITIES --- #
 def reset_states(seq):
     for s in seq:
-        if isinstance(s, SpikingLayer):
+        if isinstance(s, IAFSqueeze):
             s.reset_states()
     return seq
 
@@ -27,7 +27,7 @@ def networks_equal_output(input_data, snn):
     snn_out = snn(input_data).squeeze()  # forward pass
     reset_states(snn)
 
-    spn = DynapcnnCompatibleNetwork(
+    spn = DynapcnnNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False,
         dvs_input = True,
     )
@@ -63,7 +63,7 @@ def test_with_class():
     snn_out = snn(input_data).squeeze()  # forward pass
 
     snn.reset_states()
-    spn = DynapcnnCompatibleNetwork(
+    spn = DynapcnnNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False
     )
     spn_out = spn(input_data).squeeze()
@@ -75,7 +75,7 @@ def test_with_sinabs_batch():
     seq = nn.Sequential(
         nn.AvgPool2d(kernel_size=(2, 1), stride=(2, 1)),
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(batch_size=1),
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -87,7 +87,7 @@ def test_initial_pooling():
     seq = nn.Sequential(
         nn.AvgPool2d(kernel_size=(2, 1), stride=(2, 1)),
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -97,7 +97,7 @@ def test_initial_sumpooling():
     seq = nn.Sequential(
         SumPool2d(kernel_size=(2, 1), stride=(2, 1)),
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -108,11 +108,11 @@ def test_pooling_consolidation():
 
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1)
     )
 
     networks_equal_output(input_data, seq)
@@ -121,11 +121,11 @@ def test_pooling_consolidation():
 def test_sumpooling_consolidation():
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
         SumPool2d(kernel_size=2, stride=2),
         SumPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1)
     )
 
     networks_equal_output(input_data, seq)
@@ -139,10 +139,10 @@ def test_different_xy_input():
 
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -156,10 +156,10 @@ def test_bias_nobias():
 
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2, bias=True),
-        SpikingLayer(),
+        IAFSqueeze(batch_size=1),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1, bias=False),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1),
     )
 
     config = networks_equal_output(input_data, seq)
@@ -172,7 +172,7 @@ def test_batchnorm_after_conv():
     seq = nn.Sequential(
         nn.Conv2d(2, 2, kernel_size=1, stride=1),
         nn.BatchNorm2d(2),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1),
     )
 
     # setting batchnorm parameters, otherwise it's just identity
@@ -190,7 +190,7 @@ def test_flatten_linear():
     seq = nn.Sequential(
         nn.Flatten(),
         nn.Linear(512, 2),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -204,7 +204,7 @@ def test_no_spk_ending():
 
     from sinabs.backend.dynapcnn.exceptions import MissingLayer
     with pytest.raises(MissingLayer):
-        DynapcnnCompatibleNetwork(
+        DynapcnnNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
 
@@ -214,10 +214,10 @@ def test_no_spk_middle():
         nn.Flatten(),
         nn.Linear(512, 10),
         nn.Linear(10, 2),
-        SpikingLayer()
+        IAFSqueeze(batch_size=1)
     )
 
     with pytest.raises(TypeError):
-        DynapcnnCompatibleNetwork(
+        DynapcnnNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )

@@ -1,7 +1,7 @@
 import torch.nn as nn
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 
 def build_model():
     ann = nn.Sequential(
@@ -33,7 +33,7 @@ def build_model():
     )
     input_shape = (2, 128, 128)
     sinabs_net = from_model(ann, input_shape=input_shape)
-    dynapcnn_net = DynapcnnCompatibleNetwork(sinabs_net.spiking_model, input_shape=input_shape, dvs_input=True)
+    dynapcnn_net = DynapcnnNetwork(sinabs_net.spiking_model, input_shape=input_shape, dvs_input=True)
     return dynapcnn_net
 
 

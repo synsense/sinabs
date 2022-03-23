@@ -10,7 +10,7 @@ from torch import nn
 import torch
 from sinabs.layers import NeuromorphicReLU
 from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn.todynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 
 class SmartDoorClassifier(nn.Module):
@@ -57,7 +57,7 @@ snn.eval()
 snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
-dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=False)
+dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False)
 dynapcnn_out = dynapcnn_net(input_data)
 
 
@@ -68,7 +68,7 @@ def test_same_result():
 
 def test_auto_config():
     # - Should give an error with the normal layer ordering
-    dynapcnn_net = DynapcnnCompatibleNetwork(snn, input_shape=input_shape, discretize=True)
+    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=True)
     dynapcnn_net.make_config(chip_layers_ordering=[0, 1, 2, 3, 4])
 
 

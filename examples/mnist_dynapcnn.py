@@ -6,7 +6,7 @@ import torch.nn as nn
 from torchvision import datasets
 from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import io
-from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 
@@ -35,7 +35,7 @@ sinabs_model = from_model(ann, add_spiking_output=True)
 
 input_shape = (1, 28, 28)
 
-hardware_compatible_model = DynapcnnCompatibleNetwork(
+hardware_compatible_model = DynapcnnNetwork(
     sinabs_model.spiking_model.cpu(),
     discretize=True,
     input_shape=input_shape,

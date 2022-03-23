@@ -24,12 +24,12 @@ from .io import (
     disable_timestamps,
     reset_timestamps,
 )
-from .dynapcnnlayer import DynapcnnLayer
-from .dvslayer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
+from .dvs_layer import DVSLayer
 from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
 
 
-class DynapcnnCompatibleNetwork(nn.Module):
+class DynapcnnNetwork(nn.Module):
     """
     Given a sinabs spiking network, prepare a dynapcnn-compatible network.
     This can be used to test the network will be equivalent once on DYNAPCNN.
@@ -57,13 +57,13 @@ class DynapcnnCompatibleNetwork(nn.Module):
         discretize: bool = True,
     ):
         """
-        DynapcnnCompatibleNetwork: a class turning sinabs networks into dynapcnn
+        DynapcnnNetwork: a class turning sinabs networks into dynapcnn
         compatible networks, and making dynapcnn configurations.
 
         Parameters
         ----------
             snn: sinabs.Network
-                SNN that determines the structure of the `DynapcnnCompatibleNetwork`
+                SNN that determines the structure of the `DynapcnnNetwork`
             input_shape: None or tuple of ints
                 Shape of the input, convention: (features, height, width)
                 If None, `snn` needs an InputLayer
@@ -81,7 +81,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
-        if dvs_input or isinstance(layers[0], sl.InputLayer):
+        if dvs_input:
             self.dvs_input = True
         else:
             self.dvs_input = False
@@ -152,7 +152,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, _ = _parse_device_string(device)
-            # TODO: This should probably check with the device type from the factor
             if device_name in ChipFactory.supported_devices:
                 # Generate config
                 config = self.make_config(
@@ -175,7 +174,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
                 self.samna_device.get_model().get_source_node().add_destination(
                     self.samna_output_buffer.get_input_channel()
                 )
-
+                self.samna_config = config
                 return self
             else:
                 return super().to(device)
@@ -200,7 +199,7 @@ class DynapcnnCompatibleNetwork(nn.Module):
             an automated procedure will be used to find a valid ordering.
 
         device: String
-            dynapcnndevkit:0 or speck2devkit:0
+            dynapcnndevkit, speck2b or speck2devkit
 
         monitor_layers: None/List/Str
             A list of all chip-layers that you want to monitor.
@@ -238,6 +237,9 @@ class DynapcnnCompatibleNetwork(nn.Module):
             chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
+            if self.dvs_input and chip_layers_ordering[0] != "dvs":
+                raise AssertionError("self.dvs_input is True. Please add \"dvs\" into the chip_layers_ordering list.")
+
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
@@ -272,6 +274,19 @@ class DynapcnnCompatibleNetwork(nn.Module):
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
+
+    def reset_states(self):
+        """
+        Reset the states of the network.
+        """
+        if hasattr(self, "device") and isinstance(self.device, str):
+            device_name, _ = _parse_device_string(self.device)
+            if device_name in ChipFactory.supported_devices:
+                self.samna_device.get_model().apply_configuration(self.samna_config)
+                return
+        for layer in self.compatible_layers:
+            if isinstance(layer, DynapcnnLayer):
+                layer.spk_layer.reset_states()
 
     def find_chip_layer(self, layer_idx):
         """
@@ -313,8 +328,6 @@ class DynapcnnCompatibleNetwork(nn.Module):
                     break
             # Disable timestamp
             disable_timestamps(self.device)
-            # Read events back
-            # evsOut = self.samna_output_buffer.get_events()
             return received_evts
         else:
             """Torch's forward pass."""
@@ -340,3 +353,19 @@ class DynapcnnCompatibleNetwork(nn.Module):
             for k, v in lyr_summary.items():
                 summary[k].append(v)
         return summary
+
+
+class DynapcnnCompatibleNetwork(DynapcnnNetwork):
+    """ Deprecated class, use DynapcnnNetwork instead."""
+
+    def __init__(
+        self,
+        snn: Union[nn.Sequential, sinabs.Network],
+        input_shape: Optional[Tuple[int, int, int]] = None,
+        dvs_input: bool = False,
+        discretize: bool = True,
+    ):
+        from warnings import warn
+        warn("DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork " +
+             "and will be removed in a future release.")
+        super().__init__(snn, input_shape, dvs_input, discretize)

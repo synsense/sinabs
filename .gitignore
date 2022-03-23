@@ -1,3 +1,4 @@
+docs/source/notebooks/data/
 *.pyc
 __pycache__
 *.egg-info
@@ -7,3 +8,4 @@ build
 venv
 .eggs
 htmlcov
+samna.log

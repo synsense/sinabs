@@ -5,8 +5,8 @@ import sinabs.layers as sl
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.mapping import LayerConstraints, get_valid_mapping
 
-from sinabs.backend.dynapcnn.dvslayer import DVSLayer
-from sinabs.backend.dynapcnn.dynapcnnlayer import DynapcnnLayer
+from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 
 class DynapcnnConfigBuilder(ConfigBuilder):
@@ -53,7 +53,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: "DynapcnnCompatibleNetwork", chip_layers: List[int]):
+    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
         layers = model.sequence
         config = cls.get_default_config()
 
