@@ -66,3 +66,4 @@ jobs:
         uses: pypa/gh-action-pypi-publish@master
         with:
           password: ${{ secrets.PYPI_DEPLOYMENT }}
+          skip_existing: true
