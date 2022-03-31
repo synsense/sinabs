@@ -20,7 +20,7 @@ else:
 def from_model(
     model,
     input_shape=None,
-    threshold=1.0,
+    spike_threshold=1.0,
     min_v_mem=-1.0,
     membrane_subtract=None,
     bias_rescaling=1.0,
@@ -39,7 +39,7 @@ def from_model(
     :param model: a Torch model
     :param input_shape: If provided, the layer dimensions are computed. \
     Otherwise they will be computed at the first forward pass.
-    :param threshold: The membrane potential threshold for spiking in \
+    :param spike_threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
     :param min_v_mem: The lower bound of the potential in \
     convolutional and linear layers (same for all layers).
@@ -59,7 +59,7 @@ def from_model(
     """
     return SpkConverter(
         input_shape=input_shape,
-        threshold=threshold,
+        spike_threshold=spike_threshold,
         min_v_mem=min_v_mem,
         membrane_subtract=membrane_subtract,
         bias_rescaling=bias_rescaling,
@@ -80,7 +80,7 @@ class SpkConverter(object):
 
     :param input_shape: If provided, the layer dimensions are computed. \
     Otherwise they will computed at the first forward pass.
-    :param threshold: The membrane potential threshold for spiking in \
+    :param spike_threshold: The membrane potential threshold for spiking in \
     convolutional and linear layers (same for all layers).
     :param min_v_mem: The lower bound of the potential in \
     convolutional and linear layers (same for all layers).
@@ -102,7 +102,7 @@ class SpkConverter(object):
     def __init__(
         self,
         input_shape=None,
-        threshold=1.0,
+        spike_threshold=1.0,
         min_v_mem=-1.0,
         membrane_subtract=None,
         bias_rescaling=1.0,
@@ -114,7 +114,7 @@ class SpkConverter(object):
         kwargs_backend=None,
     ):
         self.min_v_mem = min_v_mem
-        self.threshold = threshold
+        self.spike_threshold = spike_threshold
         self.membrane_subtract = membrane_subtract
         self.bias_rescaling = bias_rescaling
         self.batch_size = batch_size
@@ -136,7 +136,7 @@ class SpkConverter(object):
             )
 
         return backend_module.IAFSqueeze(
-            spike_threshold=self.threshold,
+            spike_threshold=self.spike_threshold,
             reset_fn=MembraneSubtract(),
             min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,

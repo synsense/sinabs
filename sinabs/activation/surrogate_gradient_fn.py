@@ -16,8 +16,8 @@ class Heaviside:
 
     window: float = 1.0
 
-    def __call__(self, v_mem, threshold):
-        return ((v_mem >= (threshold - self.window)).float()) / threshold
+    def __call__(self, v_mem, spike_threshold):
+        return ((v_mem >= (spike_threshold - self.window)).float()) / spike_threshold
 
 
 @dataclass
@@ -31,9 +31,9 @@ class MultiGaussian:
     sigma: float = 0.5
     grad_scale: float = 1.0
 
-    def __call__(self, v_mem, threshold):
+    def __call__(self, v_mem, spike_threshold):
         return (
-            torch.exp(-(((v_mem - threshold) - self.mu) ** 2) / (2 * self.sigma**2))
+            torch.exp(-(((v_mem - spike_threshold) - self.mu) ** 2) / (2 * self.sigma**2))
             / torch.sqrt(2 * torch.tensor(math.pi))
             / self.sigma
         ) * self.grad_scale
@@ -49,10 +49,10 @@ class SingleExponential:
     grad_width: float = 0.5
     grad_scale: float = 1.0
 
-    def __call__(self, v_mem, threshold):
-        abs_width = threshold * self.grad_width
+    def __call__(self, v_mem, spike_threshold):
+        abs_width = spike_threshold * self.grad_width
         return (
             self.grad_scale
             / abs_width
-            * torch.exp(-torch.abs(v_mem - threshold) / abs_width)
+            * torch.exp(-torch.abs(v_mem - spike_threshold) / abs_width)
         )

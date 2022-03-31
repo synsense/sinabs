@@ -16,15 +16,8 @@ class StatefulLayer(torch.nn.Module):
 
         Parameters
         ----------
-        threshold: float
-            Spiking threshold of the neuron.
-        min_v_mem: float or None
-            Lower bound for membrane potential.
-        membrane_subtract: float or None
-            The amount to subtract from the membrane potential upon spiking.
-            Default is equal to threshold. Ignored if membrane_reset is set.
-        membrane_reset: bool
-            If True, reset the membrane to 0 on spiking.
+        state_names: List of str
+            Names of states to be registered as buffers.
         """
         super().__init__()
 

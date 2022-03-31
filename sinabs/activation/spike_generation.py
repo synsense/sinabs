@@ -8,7 +8,7 @@ class BackwardClass:
     def backward(ctx, grad_output: torch.tensor):
         """"""
         (v_mem,) = ctx.saved_tensors
-        grad = ctx.surrogate_grad_fn(v_mem, ctx.threshold)
+        grad = ctx.surrogate_grad_fn(v_mem, ctx.spike_threshold)
         grad_input = grad_output * grad
         return grad_input, None, None
 
@@ -28,15 +28,15 @@ class MultiSpike(BackwardClass, torch.autograd.Function):
     def forward(
         ctx,
         v_mem: torch.Tensor,
-        threshold: Union[float, torch.Tensor],
+        spike_threshold: Union[float, torch.Tensor],
         surrogate_grad_fn: Callable,
     ):
         """"""
         ctx.save_for_backward(v_mem.clone())
-        ctx.threshold = threshold
+        ctx.spike_threshold = spike_threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
         spikes = (v_mem > 0) * torch.div(
-            v_mem, threshold, rounding_mode="trunc"
+            v_mem, spike_threshold, rounding_mode="trunc"
         ).float()
         return spikes
 
@@ -60,15 +60,15 @@ class MaxSpikeInner(BackwardClass, torch.autograd.Function):
         ctx,
         v_mem: torch.Tensor,
         max_num_spikes_per_bin: Optional[int],
-        threshold: Union[float, torch.Tensor],
+        spike_threshold: Union[float, torch.Tensor],
         surrogate_grad_fn: Callable,
     ):
         """"""
         ctx.save_for_backward(v_mem.clone())
-        ctx.threshold = threshold
+        ctx.spike_threshold = spike_threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
         spikes = (v_mem > 0) * torch.div(
-            v_mem, threshold, rounding_mode="trunc"
+            v_mem, spike_threshold, rounding_mode="trunc"
         ).float()
         if max_num_spikes_per_bin is not None:
             spikes = torch.clamp(spikes, max=max_num_spikes_per_bin)
@@ -87,11 +87,11 @@ class MaxSpike:
     def apply(
         self,
         v_mem: torch.Tensor,
-        threshold: Union[float, torch.Tensor],
+        spike_threshold: Union[float, torch.Tensor],
         surrogate_grad_fn: Callable,
     ):
         return MaxSpikeInner.apply(
-            v_mem, self.max_num_spikes_per_bin, threshold, surrogate_grad_fn
+            v_mem, self.max_num_spikes_per_bin, spike_threshold, surrogate_grad_fn
         )
 
     @property
@@ -103,7 +103,7 @@ class SingleSpike(BackwardClass, torch.autograd.Function):
     """
     PyTorch-compatible function that returns a single spike per time step.
     In the backward pass, the gradient is zero if the membrane is at least
-    `threshold - window`, and is passed through otherwise.
+    `spike_threshold - window`, and is passed through otherwise.
     """
 
     required_states: List[str] = ["v_mem"]
@@ -112,12 +112,12 @@ class SingleSpike(BackwardClass, torch.autograd.Function):
     def forward(
         ctx,
         v_mem: torch.Tensor,
-        threshold: Union[float, torch.Tensor],
+        spike_threshold: Union[float, torch.Tensor],
         surrogate_grad_fn: Callable,
     ):
         """"""
         ctx.save_for_backward(v_mem.clone())
-        ctx.threshold = threshold
+        ctx.spike_threshold = spike_threshold
         ctx.surrogate_grad_fn = surrogate_grad_fn
-        spikes = (v_mem - threshold >= 0).float()
+        spikes = (v_mem - spike_threshold >= 0).float()
         return spikes
