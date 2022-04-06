@@ -11,6 +11,7 @@ class ChipFactory:
     supported_devices = {
         "dynapcnndevkit": DynapcnnConfigBuilder,
         "speck2b": Speck2BConfigBuilder,
+        "speck2btiny": Speck2BConfigBuilder, # It is the same chip, so doesn't require a separate builder
     }
 
     device_name: str

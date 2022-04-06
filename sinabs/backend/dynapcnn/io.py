@@ -8,15 +8,16 @@ import numpy as np
 device_types = {
     "speck": "speck",
     "speck2b": "Speck2bTestboard",
-    "dynapse2": "DYNAP-SE2 DevBoard",
-    "dynapse2_stack": "DYNAP-SE2 Stack",
     "speck2devkit": "Speck2DevKit",
+    "speck2btiny": "Speck2bDevKitTiny",
     "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
     "pollendevkit": "PollenDevKit",
     "dynapcnndevkit": "DynapcnnDevKit",
+    "dynapse2": "DYNAP-SE2 DevBoard",
+    "dynapse2_stack": "DYNAP-SE2 Stack",
 }
 
 device_type_map = {v: k for (k, v) in device_types.items()}
