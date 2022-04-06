@@ -1,32 +1,30 @@
-from copy import deepcopy
-from warnings import warn
 import time
-
+from subprocess import CalledProcessError
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 from .exceptions import InputConfigurationError
 
 try:
     import samna
-except (ImportError, ModuleNotFoundError):
+except (ImportError, ModuleNotFoundError, CalledProcessError):
     SAMNA_AVAILABLE = False
 else:
+    # IO module only works if samna is available
+    from .io import (
+        open_device,
+        enable_timestamps,
+        disable_timestamps,
+        reset_timestamps,
+    )
+
     SAMNA_AVAILABLE = True
 
 import torch
 import torch.nn as nn
 import sinabs
-import sinabs.layers as sl
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import (
-    open_device,
-    _parse_device_string,
-    enable_timestamps,
-    disable_timestamps,
-    reset_timestamps,
-)
 from .dynapcnn_layer import DynapcnnLayer
 from .dvs_layer import DVSLayer
-from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
+from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape, _parse_device_string
 
 
 class DynapcnnNetwork(nn.Module):

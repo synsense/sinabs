@@ -1,9 +1,15 @@
-import samna
-from samna.dynapcnn.configuration import DynapcnnConfiguration
+from subprocess import CalledProcessError
+try:
+    import samna
+    from samna.dynapcnn.configuration import DynapcnnConfiguration
+except (ImportError, ModuleNotFoundError, CalledProcessError):
+    SAMNA_AVAILABLE = False
+else:
+    SAMNA_AVAILABLE = True
+
 from typing import List
-import sinabs.layers as sl
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
-from sinabs.backend.dynapcnn.mapping import LayerConstraints, get_valid_mapping
+from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -16,7 +22,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return samna.dynapcnn
 
     @classmethod
-    def get_default_config(cls) -> DynapcnnConfiguration:
+    def get_default_config(cls) -> "DynapcnnConfiguration":
         return DynapcnnConfiguration()
 
 
@@ -116,7 +122,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return constraints
 
     @classmethod
-    def monitor_layers(cls, config: DynapcnnConfiguration, layers: List):
+    def monitor_layers(cls, config: "DynapcnnConfiguration", layers: List):
         """
         Updates the config object in place.
 

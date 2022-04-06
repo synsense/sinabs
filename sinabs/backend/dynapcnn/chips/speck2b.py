@@ -1,5 +1,11 @@
-import samna
-from samna.speck2b.configuration import SpeckConfiguration
+from subprocess import CalledProcessError
+try:
+    import samna
+    from samna.speck2b.configuration import SpeckConfiguration
+except (ImportError, ModuleNotFoundError, CalledProcessError):
+    SAMNA_AVAILABLE = False
+else:
+    SAMNA_AVAILABLE = True
 from .dynapcnn import DynapcnnConfigBuilder
 
 
@@ -12,7 +18,7 @@ class Speck2BConfigBuilder(DynapcnnConfigBuilder):
         return samna.speck2b
 
     @classmethod
-    def get_default_config(cls) -> SpeckConfiguration:
+    def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
 
     @classmethod

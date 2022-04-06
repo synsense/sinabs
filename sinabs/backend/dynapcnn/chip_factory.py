@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from typing import List, Tuple, Optional
-from .io import _parse_device_string
+from .utils import _parse_device_string
 from .config_builder import ConfigBuilder
 from .chips import *
 

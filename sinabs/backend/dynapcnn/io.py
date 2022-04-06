@@ -3,6 +3,7 @@ import torch
 from itertools import groupby
 from typing import List, Dict
 import numpy as np
+from .utils import _parse_device_string
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
@@ -252,19 +253,3 @@ def close_device(device_id: str):
     samna.device.close_device(device_handle)
 
 
-def _parse_device_string(device_id: str) -> (str, int):
-    """
-    Parse the device identifier
-    Args:
-        device_id: str
-            device_name:device_id pair given as a string
-    Returns:
-        Tuple(str, int) = (device_name, device_id)
-    """
-    device_splits = device_id.split(":")
-    device_name = device_splits[0]
-    if len(device_splits) > 1:
-        device_num = int(device_splits[1])
-    else:
-        device_num = 0
-    return device_name, device_num
