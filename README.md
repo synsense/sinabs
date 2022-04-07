@@ -1,5 +1,5 @@
 ![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
-[![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=latest)](https://sinabs.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=main)](https://sinabs.readthedocs.io/en/latest/?badge=main)
 ![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
 [![Discord](https://img.shields.io/discord/852094154188259338)](https://discord.gg/V6FHBZURkg)
 
@@ -25,6 +25,7 @@ For the latest pre-release on the develop branch that passed the tests:
 ```
 pip install sinabs --pre
 ```
+The package has been tested on the following configurations
 [![](http://github-actions.40ants.com/synsense/sinabs/matrix.svg?only=ci.multitest)](https://github.com/synsense/sinabs)
 
 
