@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from typing import List, Tuple, Optional
-from .io import _parse_device_string
+from .utils import _parse_device_string
 from .config_builder import ConfigBuilder
 from .chips import *
 
@@ -11,6 +11,7 @@ class ChipFactory:
     supported_devices = {
         "dynapcnndevkit": DynapcnnConfigBuilder,
         "speck2b": Speck2BConfigBuilder,
+        "speck2btiny": Speck2BConfigBuilder, # It is the same chip, so doesn't require a separate builder
     }
 
     device_name: str
