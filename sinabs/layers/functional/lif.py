@@ -32,7 +32,8 @@ def lif_forward_single(
         spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
         state = reset_fn(spikes, state, spike_threshold)
     else:
-        spikes = state["v_mem"]
+        spikes = state["v_mem"].clone()
+        state = state.copy()
 
     if min_v_mem is not None:
         state["v_mem"] = (
