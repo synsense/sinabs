@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import numpy as np
 import pandas as pd
-from typing import Optional, Union, List, Tuple
+from typing import Optional, Union, List, Tuple, Dict
 from .utils import get_network_activations, get_activations
 from .layers import StatefulLayer
 from .synopcounter import SNNSynOpCounter
@@ -160,13 +160,35 @@ class Network(torch.nn.Module):
         pylab.legend()
         return analog_activations, spike_rates
 
-    def reset_states(self):
+    def reset_states(self, randomize: bool = False, value_ranges: Optional[List[Dict[str, Tuple[float, float]]]] = None):
         """
         Reset all neuron states in the submodules.
+
+        Parameters
+        ----------
+        randomize: Bool
+            If true, reset the states between a range provided. Else, the states are reset to zero.
+        value_ranges: Optional[List[Dict[str, Tuple[float, float]]]]
+            A list of value_range dictionaries with the same length as the total stateful layers in the module.
+            Each dictionary is a key value pair: buffer_name -> (min, max) for each state that needs to be reset.
+            The states are reset with a uniform distribution between the min and max values specified.
+            Any state with an undefined key in this dictionary will be reset between 0 and 1
+            This parameter is only used if randomize is set to true.
         """
+
+        if value_ranges:
+            num_stateful_layers = len([None for mod in self.modules() if isinstance(mod, StatefulLayer)])
+            if len(value_ranges) != num_stateful_layers:
+                raise TypeError("The number of entries in value_ranges does not match the number of stateful sub modules")
+        i = 0
         for lyr in self.modules():
             if isinstance(lyr, StatefulLayer):
-                lyr.reset_states()
+                if value_ranges is None:
+                    vr = None
+                else:
+                    vr = value_ranges[i]
+                    i += 1
+                lyr.reset_states(randomize=randomize, value_ranges=vr)
 
     def get_synops(self, num_evs_in=None) -> pd.DataFrame:
         """

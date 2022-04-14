@@ -48,3 +48,24 @@ def test_changing_batch_size():
     layer(torch.rand((5, 3, 4)))
     assert layer.is_state_initialised()
     assert layer.v_mem.shape == (5, 4)
+
+
+def test_reset_states():
+    layer = StatefulLayer(state_names=["v_mem", "i_syn"])
+    layer.init_state_with_shape((1, 2, 3))
+    assert (1, 2, 3) == layer.v_mem.shape
+    assert (1, 2, 3) == layer.i_syn.shape
+    # Reset states
+    layer.reset_states(randomize=False)
+    assert layer.v_mem.any() == False
+    # Reset states
+    layer.reset_states(randomize=True)
+    assert layer.v_mem.any() == True
+
+    # Reset states
+    layer.reset_states(randomize=True, value_ranges={"v_mem": (-5, -3)})
+    assert layer.v_mem.max() <= -3
+    assert layer.v_mem.min() >= -5
+
+    assert layer.i_syn.max() <= 1.
+    assert layer.i_syn.min() >= 0.

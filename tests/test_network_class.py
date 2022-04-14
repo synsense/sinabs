@@ -6,7 +6,7 @@ import numpy as np
 
 class NestedANN(nn.Module):
     def __init__(self):
-        super(NestedANN, self).__init__()
+        super().__init__()
         seq = [
             nn.Conv2d(
                 2, 8, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False
@@ -130,3 +130,32 @@ def test_deepcopy():
     network_copy = deepcopy(network)
     # Make sure copying maintained all parameters and state variables
     compare_networks(network, network_copy)
+
+
+def test_reset_states():
+    from copy import deepcopy
+    from sinabs.layers import StatefulLayer
+    mynet = deepcopy(nested_network)
+    # Perform a forward pass to initialize states
+    nested_input_tensor = torch.rand([1, 2, 128, 128])
+    with torch.no_grad():
+        mynet.spiking_model(nested_input_tensor)
+    # Reset network to zeros
+    mynet.reset_states(randomize=False)
+    for mod in mynet.modules():
+        if isinstance(mod, StatefulLayer):
+            assert mod.v_mem.any() == False
+
+    # Perform a forward pass to initialize states
+    nested_input_tensor = torch.rand([1, 2, 128, 128])
+    with torch.no_grad():
+        mynet.spiking_model(nested_input_tensor)
+    # Reset network to a given range
+    value_ranges = [{"v_mem": (-4, -2)} for mod in mynet.modules() if isinstance(mod, StatefulLayer)]
+    mynet.reset_states(randomize=True, value_ranges=value_ranges)
+    for layer in mynet.modules():
+        if isinstance(layer, StatefulLayer):
+            print(layer, layer.v_mem.shape)
+
+            assert layer.v_mem.max() <= -2
+            assert layer.v_mem.min() >= -4
