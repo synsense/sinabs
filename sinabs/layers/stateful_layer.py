@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Dict, Optional
 from warnings import warn
 import torch
 
@@ -75,32 +75,57 @@ class StatefulLayer(torch.nn.Module):
             self.register_buffer(name, torch.zeros(shape, device=buffer.device))
         self.reset_states(randomize=randomize)
 
-    def reset_states(self, randomize=False):
+    def reset_states(self, randomize: bool = False, value_ranges: Optional[Dict[str, Tuple[float, float]]] = None):
         """
         Reset the state/buffers in a layer.
+
+        Parameters
+        ----------
+        randomize: Bool
+            If true, reset the states between a range provided. Else, the states are reset to zero.
+        value_ranges: Optional[Dict[str, Tuple[float, float]]]
+            A dictionary of key value pairs: buffer_name -> (min, max) for each state that needs to be reset.
+            The states are reset with a uniform distribution between the min and max values specified.
+            Any state with an undefined key in this dictionary will be reset between 0 and 1
+            This parameter is only used if randomize is set to true.
+
+
+        NOTE: If you would like to reset the state with a custom distribution,
+        you can do this individually for each parameter as follows.
+
+        layer.<state_name>.data = <your desired data>;
+        layer.<state_name>.detach_()
         """
         if self.is_state_initialised():
-            for buffer in self.buffers():
+            for name, buffer in self.named_buffers():
                 if randomize:
-                    torch.nn.init.uniform_(buffer).detach_()
+                    if value_ranges and name in value_ranges:
+                        min_value, max_value = value_ranges[name]
+                    else:
+                        min_value, max_value = (0., 1.)
+                    # Initialize with uniform distribution
+                    torch.nn.init.uniform_(buffer)
+                    # Rescale the value
+                    buffer.data = buffer * (max_value - min_value) + min_value
                 else:
-                    buffer.zero_().detach_()
+                    buffer.zero_()
+                buffer.detach_()
 
     def __repr__(self):
         param_strings = [
             f"{key}={value}"
             for key, value in self._param_dict.items()
             if key
-            in [
-                "tau_mem",
-                "tau_syn",
-                "tau_adapt",
-                "adapt_scale",
-                "spike_threshold",
-                "min_v_mem",
-                "norm_input",
-            ]
-            and value is not None
+               in [
+                   "tau_mem",
+                   "tau_syn",
+                   "tau_adapt",
+                   "adapt_scale",
+                   "spike_threshold",
+                   "min_v_mem",
+                   "norm_input",
+               ]
+               and value is not None
         ]
         param_strings = ", ".join(param_strings)
         return f"{self.__class__.__name__}({param_strings})"
