@@ -1,7 +1,8 @@
-from sinabs import SynOpCounter
-from sinabs.layers import NeuromorphicReLU
+from sinabs import SynOpCounter, SNNSynOpCounter
+from sinabs.layers import NeuromorphicReLU, IAF
 import torch
 import numpy as np
+from torch import nn
 
 
 class Model(torch.nn.Module):
@@ -89,3 +90,15 @@ def test_layer_synops():
     loss = criterion()
 
     assert len(loss) == 3
+
+
+def test_snn_synops_counter():
+    model = nn.Sequential(nn.Conv2d(1, 5, kernel_size=2), IAF())
+
+    inp = torch.tensor([[[[0, 0, 0], [0, 3, 0], [0, 0, 0]]]]).float()
+
+    counter = SNNSynOpCounter(model)
+    model(inp)
+    # 3 spikes, 2x2 kernel, 5 channels
+    assert counter.get_synops()["SynOps"].sum() == 60
+    assert counter.get_total_synops() == 60

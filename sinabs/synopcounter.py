@@ -148,7 +148,7 @@ class SNNSynOpCounter:
             handle.remove()
 
 
-class SynOpCounter(object):
+class SynOpCounter:
     """
     Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an
     analog CNN model.
