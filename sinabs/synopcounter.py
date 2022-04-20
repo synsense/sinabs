@@ -9,8 +9,8 @@ import pandas as pd
 def synops_hook(layer, inp, out):
     assert len(inp) == 1, "Multiple inputs not supported for synops hook"
     inp = inp[0]
-    layer.tot_in = inp.sum().item()
-    layer.tot_out = out.sum().item()
+    layer.tot_in = inp.sum()
+    layer.tot_out = out.sum()
     layer.synops = layer.tot_in * layer.fanout
     layer.tw = inp.shape[0]
 
@@ -125,7 +125,7 @@ class SNNSynOpCounter:
                 else:
                     layer_synops = lyr.synops
 
-                synops += layer_synops
+                synops = synops + layer_synops
         return synops
 
     def get_total_power_use(self, j_per_synop=1e-11):
