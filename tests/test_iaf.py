@@ -28,17 +28,17 @@ def test_iaf_v_mem_recordings():
     assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
-
-def test_iaf_i_syn_recordings():
-    batch_size, time_steps = 10, 100
-    input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
-    layer = IAF(tau_syn=10.0, record_states=True)
-    spike_output = layer(input_current)
-
-    assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
+# # This test doesn't make sense anymore
+# def test_iaf_i_syn_recordings():
+#     batch_size, time_steps = 10, 100
+#     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
+#     layer = IAF(tau_syn=10.0, record_states=True)
+#     spike_output = layer(input_current)
+#
+#     assert layer.recordings["v_mem"].shape == spike_output.shape
+#     assert layer.recordings["i_syn"].shape == spike_output.shape
+#     assert not layer.recordings["v_mem"].requires_grad
+#     assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_iaf_recurrent_v_mem_recordings():
@@ -61,13 +61,11 @@ def test_iaf_recurrent_i_syn_recordings():
     rec_connect = nn.Sequential(
         nn.Flatten(), nn.Linear(n_neurons, n_neurons, bias=False)
     )
-    layer = IAFRecurrent(tau_syn=10.0, rec_connect=rec_connect, record_states=True)
+    layer = IAFRecurrent(rec_connect=rec_connect, record_states=True)
     spike_output = layer(input_current)
 
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert layer.recordings["i_syn"].shape == spike_output.shape
     assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_iaf_single_spike():
@@ -161,3 +159,9 @@ def test_iaf_recurrent_on_gpu():
 
     layer = layer.to("cuda")
     layer(input_current.to("cuda"))
+
+
+def test_parameters_in_layer():
+    layer = IAF()
+    # IAF must not have any trainable parameters by default
+    assert (len(list(layer.named_parameters())) == 0)
