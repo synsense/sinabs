@@ -56,3 +56,29 @@ class SingleExponential:
             / abs_width
             * torch.exp(-torch.abs(v_mem - spike_threshold) / abs_width)
         )
+
+@dataclass
+class PeriodicExponential:
+    """
+    Surrogate gradient as defined in Weidel and Sheik, 2021
+    https://arxiv.org/abs/2111.01456
+    """
+
+    grad_width=0.5
+    grad_scale=1.0
+
+    def __call__(self, v_mem, spike_threshold):
+
+        vmem_shifted = v_mem - spike_threshold / 2
+        vmem_periodic = vmem_shifted - torch.div(
+            vmem_shifted, spike_threshold, rounding_mode="floor"
+        )
+        vmem_below = vmem_shifted * (v_mem < spike_threshold)
+        vmem_above = vmem_periodic * (v_mem >= spike_threshold)
+        vmem_new = vmem_above + vmem_below
+        spikePdf = (
+            torch.exp(-torch.abs(vmem_new - spike_threshold / 2) / self.grad_width)
+            / spike_threshold
+        )
+
+        return self.grad_scale*spikePdf
