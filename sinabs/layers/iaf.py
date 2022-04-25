@@ -5,6 +5,7 @@ from sinabs.activation import MultiSpike, MembraneSubtract, SingleExponential
 from .reshape import SqueezeMixin
 from .lif import LIF, LIFRecurrent
 import numpy as np
+from functools import cached_property
 
 
 class IAF(LIF):
@@ -67,8 +68,12 @@ class IAF(LIF):
             norm_input=False,
             record_states=record_states,
         )
-        # deactivate tau_mem being learned
-        self.tau_mem.requires_grad = False
+        # IAF does not have time constants
+        self.tau_mem = None
+
+    @cached_property
+    def alpha_mem_calculated(self):
+        return torch.tensor(1.)
 
     @property
     def _param_dict(self) -> dict:
