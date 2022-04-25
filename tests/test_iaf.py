@@ -165,3 +165,38 @@ def test_parameters_in_layer():
     layer = IAF()
     # IAF must not have any trainable parameters by default
     assert (len(list(layer.named_parameters())) == 0)
+
+
+def test_speed_iaf_vs_lif():
+    from sinabs.layers import IAF, LIF
+    layer_iaf = nn.Sequential(nn.Linear(100, 100, bias=False), IAF())
+    layer_lif = nn.Sequential(nn.Linear(100, 100, bias=False), LIF(tau_mem=np.inf, norm_input=False))
+    # Copy weights to be identical
+    layer_lif[0].weight.data.copy_(layer_iaf[0].weight.data)
+    layer_lif[1].tau_mem.requires_grad = False
+
+    input_data = torch.rand((1, 1000, 100))
+
+    import time
+
+    # LIF
+    t_start = time.time()
+    for i in range(10):
+        layer_lif.zero_grad()
+        layer_lif[1].reset_states()
+        out_lif = layer_lif(input_data)
+        out_lif.sum().backward()
+    t_stop = time.time()
+    time_lif = t_stop - t_start
+
+    # IAF
+    t_start = time.time()
+    for i in range(10):
+        layer_iaf.zero_grad()
+        layer_iaf[1].reset_states()
+        out_iaf = layer_iaf(input_data)
+        out_iaf.sum().backward()
+    t_stop = time.time()
+    time_iaf = t_stop - t_start
+
+    print(time_iaf, time_lif)
