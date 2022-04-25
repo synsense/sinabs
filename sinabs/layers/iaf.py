@@ -67,8 +67,12 @@ class IAF(LIF):
             norm_input=False,
             record_states=record_states,
         )
-        # deactivate tau_mem being learned
-        self.tau_mem.requires_grad = False
+        # IAF does not have time constants
+        self.tau_mem = None
+
+    @property
+    def alpha_mem_calculated(self):
+        return torch.tensor(1.)
 
     @property
     def _param_dict(self) -> dict:

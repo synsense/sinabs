@@ -16,6 +16,7 @@ def test_iaf_basic():
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
     assert spike_output.sum() > 0
+    assert 'tau_mem' not in dict(layer.named_parameters()).keys()
 
 
 def test_iaf_v_mem_recordings():
