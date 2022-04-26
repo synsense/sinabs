@@ -64,11 +64,10 @@ class PeriodicExponential:
     https://arxiv.org/abs/2111.01456
     """
 
-    grad_width=0.5
-    grad_scale=1.0
+    grad_width: float = 0.5
+    grad_scale: float = 1.0
 
     def __call__(self, v_mem, spike_threshold):
-
         vmem_shifted = v_mem - spike_threshold / 2
         vmem_periodic = vmem_shifted - torch.div(
             vmem_shifted, spike_threshold, rounding_mode="floor"
