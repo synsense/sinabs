@@ -1,32 +1,30 @@
-from copy import deepcopy
-from warnings import warn
 import time
-
+from subprocess import CalledProcessError
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 from .exceptions import InputConfigurationError
 
 try:
     import samna
-except (ImportError, ModuleNotFoundError):
+except (ImportError, ModuleNotFoundError, CalledProcessError):
     SAMNA_AVAILABLE = False
 else:
+    # IO module only works if samna is available
+    from .io import (
+        open_device,
+        enable_timestamps,
+        disable_timestamps,
+        reset_timestamps,
+    )
+
     SAMNA_AVAILABLE = True
 
 import torch
 import torch.nn as nn
 import sinabs
-import sinabs.layers as sl
 from typing import Tuple, Union, Optional, Sequence, List
-from .io import (
-    open_device,
-    _parse_device_string,
-    enable_timestamps,
-    disable_timestamps,
-    reset_timestamps,
-)
 from .dynapcnn_layer import DynapcnnLayer
 from .dvs_layer import DVSLayer
-from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape
+from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape, _parse_device_string
 
 
 class DynapcnnNetwork(nn.Module):
@@ -77,11 +75,11 @@ class DynapcnnNetwork(nn.Module):
         super().__init__()
         self.chip_layers_ordering = []
         self.compatible_layers = []
-
+        self.input_shape = input_shape
         # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
-        if dvs_input or isinstance(layers[0], sl.InputLayer):
+        if dvs_input:
             self.dvs_input = True
         else:
             self.dvs_input = False
@@ -246,7 +244,8 @@ class DynapcnnNetwork(nn.Module):
         self.chip_layers_ordering = chip_layers_ordering
         # Update config
         config = config_builder.build_config(self, chip_layers_ordering)
-
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
@@ -279,14 +278,16 @@ class DynapcnnNetwork(nn.Module):
         """
         Reset the states of the network.
         """
-        if isinstance(self.device, str):
+        if hasattr(self, "device") and isinstance(self.device, str):
             device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
                 # Set all the vmem states in the samna config to zero
                 self.samna_config
                 self.samna_device.get_model().apply_configuration(self.samna_config)
                 return
-        raise NotImplementedError
+        for layer in self.compatible_layers:
+            if isinstance(layer, DynapcnnLayer):
+                layer.spk_layer.reset_states()
 
     def find_chip_layer(self, layer_idx):
         """
@@ -328,8 +329,6 @@ class DynapcnnNetwork(nn.Module):
                     break
             # Disable timestamp
             disable_timestamps(self.device)
-            # Read events back
-            # evsOut = self.samna_output_buffer.get_events()
             return received_evts
         else:
             """Torch's forward pass."""

@@ -78,7 +78,9 @@ Conversion between raster and spike streams
 
 You can use the convenience methods `raster_to_events()` or `xytp_to_events()` of the `ChipFactory` to generate `Spike` sequences of the appropriate type.
 
-Testing model performance (device-independent)
-----------------------------------------------
 
+The interface library to the chip
+---------------------------------
+SynSense develops Samna, a library that handles the communication to and from as well as the configuration of the chip. 
+Documentation available `here <https://synsense-sys-int.gitlab.io/samna/index.html>`_.
 

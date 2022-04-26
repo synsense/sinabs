@@ -8,3 +8,5 @@ build
 venv
 .eggs
 htmlcov
+samna.log
+data
