@@ -152,7 +152,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return samna.BufferSinkNode_dynapcnn_event_output_event()
 
     @classmethod
-    def reset_states(cls, config: DynapcnnConfiguration, randomize=True):
+    def reset_states(cls, config: DynapcnnConfiguration, randomize=False):
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros
