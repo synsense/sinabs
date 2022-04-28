@@ -1,7 +1,8 @@
 sphinx
 pandoc
 nbsphinx
-sphinx_rtd_theme
+sphinx_book_theme
 m2r2
 tqdm
 torchvision
+myst_nb
