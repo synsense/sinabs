@@ -72,6 +72,11 @@ Knowing the mapping of the various layers of the model to the layers of the chip
 `DynapcnnNetwork.chip_layers_ordering` is a list of chip layer indices where a model was mapped.
 This is useful when generating or interpreting events from `samna`, where the `layer` attribute refers to the layer on the chip.
 
+It is important to note here that the `chip_layers_ordering` is only pertinent to `DynapcnnLayer` and does not include the `DVSLayer`.
+This is because there is no ambiguity as to where the `DVSLayer` is located on the chip.
+The `DynapcnnLayer` layers on the other hand have multiple potential core locations.
+`chip_layers_ordering` helps specify where each of these layers is concretely placed.
+
 
 Conversion between raster and spike streams
 -------------------------------------------
@@ -79,8 +84,9 @@ Conversion between raster and spike streams
 You can use the convenience methods `raster_to_events()` or `xytp_to_events()` of the `ChipFactory` to generate `Spike` sequences of the appropriate type.
 
 
-The interface library to the chip
----------------------------------
-SynSense develops Samna, a library that handles the communication to and from as well as the configuration of the chip. 
+Samna: The interface library to the chip
+----------------------------------------
+SynSense develops Samna, a library that handles the communication and configuration of the chip.
+You will find further examples and API reference of Samna on its documentation page.
 Documentation available `here <https://synsense-sys-int.gitlab.io/samna/index.html>`_.
 

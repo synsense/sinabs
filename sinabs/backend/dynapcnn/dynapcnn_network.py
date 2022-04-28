@@ -127,8 +127,11 @@ class DynapcnnNetwork(nn.Module):
         device: String
             cpu:0, cuda:0, dynapcnndevkit, speck2devkit
 
-        chip_layers_ordering: List/"auto"
-            A list of layers on the device where you want each of the model layers to be placed.
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         monitor_layers: None/List
             A list of all chip-layers that you want to monitor.
@@ -198,6 +201,8 @@ class DynapcnnNetwork(nn.Module):
         chip_layers_ordering: sequence of integers or `auto`
             The order in which the dynapcnn layers will be used. If `auto`,
             an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         device: String
             dynapcnndevkit, speck2b or speck2devkit
