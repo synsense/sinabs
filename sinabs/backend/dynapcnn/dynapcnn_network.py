@@ -292,6 +292,12 @@ class DynapcnnNetwork(nn.Module):
                 # Set all the vmem states in the samna config to zero
                 config_builder.reset_states(self.samna_config, randomize=randomize)
                 self.samna_device.get_model().apply_configuration(self.samna_config)
+                # Note: The below shouldn't be necessary ideally
+                # Erase all vmem memory
+                if not randomize:
+                    for lyr_idx in self.chip_layers_ordering:
+                        config_builder.set_all_v_mem_to_zeros(self.samna_device, lyr_idx)
+                        time.sleep(0.1)
                 return
         for layer in self.compatible_layers:
             if isinstance(layer, DynapcnnLayer):

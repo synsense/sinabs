@@ -126,3 +126,21 @@ class ConfigBuilder(ABC):
             randomize (bool):
                 If true, the states will be set to random initial values. Else they will be set to zero
         """
+
+    @classmethod
+    def set_all_v_mem_to_zeros(cls, samna_device, layer_id: int) -> None:
+        """
+        Reset all memory states to zeros.
+
+        Parameters
+        ----------
+        samna_device:
+            samna device object to erase vmem memory.
+        layer_id:
+            layer index
+        """
+        mod = cls.get_samna_module()
+        layer_constraint: LayerConstraints = cls.get_constraints()[layer_id]
+        events = [mod.WriteNeuronValueEvent(layer_id, i) for i in range(layer_constraint.neuron_memory)]
+        samna_device.get_model().write(events)
+        return
