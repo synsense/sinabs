@@ -8,7 +8,6 @@ from sinabs.layers.iaf import IAFSqueeze
 from sinabs.layers import SumPool2d
 import pytest
 
-
 torch.manual_seed(0)
 input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
@@ -29,7 +28,7 @@ def networks_equal_output(input_data, snn):
 
     spn = DynapcnnNetwork(
         snn, input_shape=input_data.shape[1:], discretize=False,
-        dvs_input = True,
+        dvs_input=True,
     )
     print(spn)
     spn_out = spn(input_data).squeeze()

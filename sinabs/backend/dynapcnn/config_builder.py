@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 from .mapping import LayerConstraints, get_valid_mapping
-
+from .dvs_layer import DVSLayer
 
 class ConfigBuilder(ABC):
 
@@ -78,9 +78,13 @@ class ConfigBuilder(ABC):
         mapping = get_valid_mapping(model, cls.get_constraints())
         # turn the mapping into a dict
         mapping = {m[0]: m[1] for m in mapping}
+        # Check if there is a dvs layer in the model
+        num_dynapcnn_cores = len(model.compatible_layers)
+        if isinstance(model.compatible_layers[0], DVSLayer):
+            num_dynapcnn_cores -= 1
         # apply the mapping
         chip_layers_ordering = [
-            mapping[i] for i in range(len(model.compatible_layers))
+            mapping[i] for i in range(num_dynapcnn_cores)
         ]
         return chip_layers_ordering
 
@@ -113,7 +117,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def reset_states(cls, config,randomize=True):
+    def reset_states(cls, config,randomize=False):
         """
         Randomize or reset the neuron states
 
