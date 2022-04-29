@@ -13,12 +13,12 @@
 # import os
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
-
+import sinabs.backend.dynapcnn
 
 # -- Project information -----------------------------------------------------
 
 project = 'sinabs-dynapcnn'
-copyright = '2020, Synsense AG'
+copyright = '2020-2022, Synsense AG'
 author = 'Sadique Sheik, Martino Sorbaro, Felix Bauer'
 
 # The full version, including alpha/beta/rc tags
@@ -31,21 +31,31 @@ author = 'Sadique Sheik, Martino Sorbaro, Felix Bauer'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    'pbr.sphinxext',
-    'nbsphinx',
+    #'nbsphinx',
+    "pbr.sphinxext",
     'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
     'sphinx.ext.graphviz',
-    'm2r2',
+    'sphinx.ext.mathjax',
+    "myst_nb",
+    #'m2r2',
 ]
+
+# Napoleon settings
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+
+# MyST settings
+suppress_warnings = ["myst.header"]
+jupyter_execute_notebooks = "off"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
-source_suffix = {".rst": 'restructuredtext',
-                 ".txt": 'markdown',
-                 ".md": 'markdown',
-                 }
+#source_suffix = {".rst": 'restructuredtext',
+#                 ".txt": 'markdown',
+#                 ".md": 'markdown',
+#                 }
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -57,12 +67,28 @@ exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_title = sinabs.backend.dynapcnn.__version__
+html_theme = "sphinx_book_theme"
+html_logo = "_static/sinabs-logo-lowercase-whitebg.png"
+html_show_sourcelink = True
+html_sourcelink_suffix = ""
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
+
+html_theme_options = {
+    "repository_url": "https://gitlab.com/synsense/sinabs-dynapcnn",
+    "use_repository_button": True,
+    "use_issues_button": True,
+    "use_edit_page_button": True,
+    "repository_branch": "main",
+    "path_to_docs": "docs",
+    "use_fullscreen_button": True,
+}
+
+
 
 # Include __init__ docstring in method documentation
 autoclass_content = 'both'

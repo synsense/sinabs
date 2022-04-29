@@ -29,10 +29,12 @@ def enable_timestamps(
 ) -> None:
     """
     Disable timestamps of the samna node
-    Args:
-        device_id: str
-            Name of the device to initialize. Required for different existing APIs
-            for Dynapcnndevkit and Speck chips
+
+    Args
+    ----
+    device_id: str
+        Name of the device to initialize. Required for different existing APIs
+        for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
@@ -48,10 +50,13 @@ def disable_timestamps(
 ) -> None:
     """
     Disable timestamps of the samna node
-    Args:
-        device_id: str
-            Name of the device to initialize. Required for different existing APIs
-            for Dynapcnndevkit and Speck chips
+
+    Args
+    ----
+
+    device_id: str
+        Name of the device to initialize. Required for different existing APIs
+        for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
@@ -67,10 +72,12 @@ def reset_timestamps(
 ) -> None:
     """
     Disable timestamps of the samna node
-    Args:
-        device_id: str
-            Name of the device to initialize. Required for different existing APIs
-            for Dynapcnndevkit and Speck chips
+
+    Args
+    ----
+    device_id: str
+        Name of the device to initialize. Required for different existing APIs
+        for Dynapcnndevkit and Speck chips
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
@@ -141,8 +148,9 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
 
 def get_device_map() -> Dict:
     """
-    Args:
-    Returns:
+    Returns
+    -------
+
         dict(str: samna.device.DeviceInfo)
         Returns a dict of device name and device identifier.
     """
@@ -165,12 +173,17 @@ def get_device_map() -> Dict:
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
     """
     Check if a DeviceInfo object is of a given device type `dev_type`
-    Args:
-        dev_info: samna.device.DeviceInfo
-            Device info object
-        dev_type: str
-            Device type as a string
+
+    Args
+    ----
+
+    dev_info: samna.device.DeviceInfo
+        Device info object
+    dev_type: str
+        Device type as a string
+
     Returns:
+    --------
         bool
     """
     return dev_info.device_type_name == device_types[dev_type]
@@ -179,12 +192,18 @@ def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
 def discover_device(device_id: str):
     """
     Discover a samna device by device_name:device_id pair
-    Args:
-        device_id: str
-            Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
-            The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-    Returns:
-        device_info: samna.device.DeviceInfo
+
+    Args
+    ----
+
+    device_id: str
+        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
+
+    Returns
+    -------
+
+    device_info: samna.device.DeviceInfo
     """
     device_info = device_map[device_id]
     return device_info
@@ -193,12 +212,18 @@ def discover_device(device_id: str):
 def open_device(device_id: str):
     """
     Open device function.
-    Args:
-        device_id: str
-            device_name:device_id pair given as a string
-    Returns:
-        device_handle: samna.device.*
-            Device handle received from samna.
+
+    Args
+    ----
+
+    device_id: str
+        device_name:device_id pair given as a string
+
+    Returns
+    -------
+
+    device_handle: samna.device.*
+        Device handle received from samna.
     """
     get_device_map()
     device_info = device_map[device_id]
@@ -222,12 +247,18 @@ def open_device(device_id: str):
 def get_opened_device(device_id: str):
     """
     Get the handle to an already opened device.
-    Args:
-        device_id: str
-            device_name:device_id pair given as a string
-    Returns:
-        device_handle: samna.device.*
-            Device handle received from samna.
+
+    Args
+    ----
+
+    device_id: str
+        device_name:device_id pair given as a string
+
+    Returns
+    -------
+
+    device_handle: samna.device.*
+        Device handle received from samna.
     """
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
@@ -240,12 +271,13 @@ def get_opened_device(device_id: str):
 def close_device(device_id: str):
     """
     Close a device by device identifier
-    Args:
-        device_id: str
-            device_name:device_id pair given as a string.
-            dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
-    Returns:
-        None
+
+    Args
+    ----
+
+    device_id: str
+        device_name:device_id pair given as a string.
+        dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
     """
     device_info = device_map[device_id]
     device_handle = samna.device.get_open_device_by_info(device_info)
