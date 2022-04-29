@@ -24,7 +24,7 @@ sinabs_model = from_model(ann, add_spiking_output=True)
 input_shape = (1, 28, 28)
 
 
-# @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
+@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_multi_device_movement():
     hardware_compatible_model = DynapcnnNetwork(
         sinabs_model.spiking_model.cpu(),
