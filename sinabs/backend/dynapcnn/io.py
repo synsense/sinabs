@@ -233,7 +233,7 @@ def open_device(device_id: str):
 
     # Check if device is already open
     if device_info in opened_devices:
-        device_handle = samna.device.get_open_device_by_info(device_info)
+        device_handle = get_opened_device(device_id)
     else:
         device_handle = samna.device.open_device(device_info)
     
