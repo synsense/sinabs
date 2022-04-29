@@ -303,7 +303,7 @@ class DynapcnnNetwork(nn.Module):
                 return
         for layer in self.compatible_layers:
             if isinstance(layer, DynapcnnLayer):
-                layer.spk_layer.reset_states()
+                layer.spk_layer.reset_states(randomize=randomize)
 
     def find_chip_layer(self, layer_idx):
         """
