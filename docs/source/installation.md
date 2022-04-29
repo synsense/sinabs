@@ -7,7 +7,7 @@ You will first need to install the latest version of `samna` to be able to insta
 You can do this by running the following command.
 
 ```shell
-pip install samna --index-url=https://gitlab.com/api/v4/projects/27423070/packages/pypi/simple
+pip install samna
 ```
 
 Or if you are installing this package from source repository, you can run:
