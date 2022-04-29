@@ -227,16 +227,17 @@ def open_device(device_id: str):
     device_handle: samna.device.*
         Device handle received from samna.
     """
-    get_device_map()
+    device_map = get_device_map()
     device_info = device_map[device_id]
     opened_devices = samna.device.get_opened_devices()
-    if device_info in opened_devices:  # If the device was already opened before.
-        #warnings.warn(f"Device: {device_id} is already open. Re-opening device!")
+
+    # Check if device is already open
+    if device_info in opened_devices:
         device_handle = samna.device.get_open_device_by_info(device_info)
-        #samna.device.close_device(device_handle)
-        #device_handle = samna.device.open_device(device_info)
-    # If the device was opened whether it was closed or open before.
-    if device_handle:
+    else:
+        device_handle = samna.device.open_device(device_info)
+    
+    if device_handle is not None:
         return device_handle
     else:
         raise IOError("The connection to the device cannot be established.")

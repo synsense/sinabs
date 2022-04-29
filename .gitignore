@@ -10,3 +10,4 @@ venv
 htmlcov
 samna.log
 data
+.vscode
