@@ -141,6 +141,12 @@ class ConfigBuilder(ABC):
         """
         mod = cls.get_samna_module()
         layer_constraint: LayerConstraints = cls.get_constraints()[layer_id]
-        events = [mod.event.WriteNeuronValue(layer_id, i) for i in range(layer_constraint.neuron_memory)]
+        events = []
+        for i in range(layer_constraint):
+            event = mod.event.WriteNeuronValue()
+            event.address = i
+            event.layer = layer_id
+            event.neuron_state = 0
+            events.append(event)
         samna_device.get_model().write(events)
         return
