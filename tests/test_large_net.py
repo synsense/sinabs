@@ -113,13 +113,13 @@ def test_to_device():
     dynapcnn_out = dynapcnn_net(input_data)
 
 
-    dynapcnn_net.to(device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
+    dynapcnn_net.to(device="speck2b:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
 
     # Close device for safe exit
     from sinabs.backend.dynapcnn import io
-    io.close_device("dynapcnndevkit:0")
+    io.close_device("speck2b:0")
 
-    #dynapcnn_net.to(device="dynapcnndevkit:1")
+    dynapcnn_net.to(device="speck2b:0")
 
 def test_memory_summary():
     dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
