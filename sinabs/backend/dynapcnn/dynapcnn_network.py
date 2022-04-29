@@ -292,6 +292,8 @@ class DynapcnnNetwork(nn.Module):
                 # Set all the vmem states in the samna config to zero
                 config_builder.reset_states(self.samna_config, randomize=randomize)
                 self.samna_device.get_model().apply_configuration(self.samna_config)
+                # wait for the config to be written
+                time.sleep(1)
                 # Note: The below shouldn't be necessary ideally
                 # Erase all vmem memory
                 if not randomize:
