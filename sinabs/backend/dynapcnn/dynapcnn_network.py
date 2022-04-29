@@ -73,7 +73,10 @@ class DynapcnnNetwork(nn.Module):
                 testing purposes.
         """
         super().__init__()
+
+        # This attribute stores the location/core-id of each of the DynapcnnLayers upon placement on chip
         self.chip_layers_ordering = []
+
         self.compatible_layers = []
         self.input_shape = input_shape
         # Convert models  to sequential
@@ -124,8 +127,11 @@ class DynapcnnNetwork(nn.Module):
         device: String
             cpu:0, cuda:0, dynapcnndevkit, speck2devkit
 
-        chip_layers_ordering: List/"auto"
-            A list of layers on the device where you want each of the model layers to be placed.
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         monitor_layers: None/List
             A list of all chip-layers that you want to monitor.
@@ -195,6 +201,8 @@ class DynapcnnNetwork(nn.Module):
         chip_layers_ordering: sequence of integers or `auto`
             The order in which the dynapcnn layers will be used. If `auto`,
             an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         device: String
             dynapcnndevkit, speck2b or speck2devkit
@@ -235,9 +243,8 @@ class DynapcnnNetwork(nn.Module):
             chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
-            if self.dvs_input and chip_layers_ordering[0] != "dvs":
-                raise AssertionError("self.dvs_input is True. Please add \"dvs\" into the chip_layers_ordering list.")
-
+            if self.dvs_input:
+                chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)-1]
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
@@ -262,6 +269,7 @@ class DynapcnnNetwork(nn.Module):
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         # config.factory_settings.monitor_input_enable = False
 
+
         # Apply user config modifier
         if config_modifier is not None:
             config = config_modifier(config)
@@ -273,22 +281,37 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise ValueError(f"Generated config is not valid for {device}")
 
-    def reset_states(self):
+    def reset_states(self, randomize=False):
         """
         Reset the states of the network.
         """
         if hasattr(self, "device") and isinstance(self.device, str):
             device_name, _ = _parse_device_string(self.device)
             if device_name in ChipFactory.supported_devices:
+                config_builder = ChipFactory(self.device).get_config_builder()
+                # Set all the vmem states in the samna config to zero
+                config_builder.reset_states(self.samna_config, randomize=randomize)
                 self.samna_device.get_model().apply_configuration(self.samna_config)
+                # wait for the config to be written
+                time.sleep(1)
+                # Note: The below shouldn't be necessary ideally
+                # Erase all vmem memory
+                if not randomize:
+                    for lyr_idx in self.chip_layers_ordering:
+                        config_builder.set_all_v_mem_to_zeros(self.samna_device, lyr_idx)
+                        time.sleep(0.1)
                 return
         for layer in self.compatible_layers:
             if isinstance(layer, DynapcnnLayer):
-                layer.spk_layer.reset_states()
+                layer.spk_layer.reset_states(randomize=randomize)
 
     def find_chip_layer(self, layer_idx):
         """
-        Given an index of a layer in the model, find the corresponding chip layer where it is placed
+        Given an index of a layer in the model, find the corresponding cnn core id where it is placed
+
+        > Note that the layer index does not include the DVSLayer.
+        > For instance your model comprises two layers [DVSLayer, DynapcnnLayer],
+        > then the index of DynapcnnLayer is 0 and not 1.
 
         Parameters
         ----------
@@ -300,8 +323,12 @@ class DynapcnnNetwork(nn.Module):
         chip_lyr_idx: int
             Index of the layer on the chip where the model layer is placed.
         """
-        if len(self.chip_layers_ordering) != len(self.compatible_layers):
-            raise Exception("Looks like the model has not been mapped onto a device.")
+        # Compute the expected number of cores
+        num_cores_required = len(self.compatible_layers)
+        if isinstance(self.compatible_layers[0], DVSLayer):
+            num_cores_required -= 1
+        if len(self.chip_layers_ordering) != num_cores_required:
+            raise Exception(f"Number of layers specified in chip_layers_ordering {self.chip_layers_ordering} does not correspond to the number of cores required for this model {num_cores_required}")
 
         return self.chip_layers_ordering[layer_idx]
 

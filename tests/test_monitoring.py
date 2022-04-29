@@ -79,7 +79,7 @@ def test_model_level_monitoring_enable():
         assert config.cnn_layers[layer].monitor_enable == False
 
     # Specify layers to monitor
-    config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers=[0, 5, -1])
+    config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers=["dvs", 5, -1])
     clo = dynapcnn_net.chip_layers_ordering
     assert len(clo) > 0
 

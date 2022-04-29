@@ -7,6 +7,7 @@ except (ImportError, ModuleNotFoundError, CalledProcessError):
 else:
     SAMNA_AVAILABLE = True
 
+import torch
 from typing import List
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
@@ -63,14 +64,15 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layers = model.sequence
         config = cls.get_default_config()
 
-        i_layer_chip = 0
+        i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
         for i, chip_equivalent_layer in enumerate(layers):
             if isinstance(chip_equivalent_layer, DVSLayer):
                 chip_layer = config.dvs_layer
                 cls.write_dvs_layer_config(chip_equivalent_layer, chip_layer)
             elif isinstance(chip_equivalent_layer, DynapcnnLayer):
-                chip_layer = config.cnn_layers[chip_layers[i_layer_chip]]
+                chip_layer = config.cnn_layers[chip_layers[i_cnn_layer]]
                 cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
+                i_cnn_layer += 1
             else:
                 # in our generated network there is a spurious layer...
                 # should never happen
@@ -80,9 +82,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 # last layer
                 chip_layer.destinations[0].enable = False
             else:
-                i_layer_chip += 1
                 # Set destination layer
-                chip_layer.destinations[0].layer = chip_layers[i_layer_chip]
+                chip_layer.destinations[0].layer = chip_layers[i_cnn_layer]
                 chip_layer.destinations[0].enable = True
 
         return config
@@ -149,3 +150,15 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_output_buffer(cls):
         return samna.BufferSinkNode_dynapcnn_event_output_event()
+
+    @classmethod
+    def reset_states(cls, config: DynapcnnConfiguration, randomize=False):
+        for idx, lyr in enumerate(config.cnn_layers):
+            shape = torch.tensor(lyr.neurons_initial_value).shape
+            # set the config's neuron initial state values into zeros
+            if randomize:
+                new_state = torch.randint(lyr.threshold_low, lyr.threshold_high, shape).tolist()
+            else:
+                new_state = torch.zeros(shape, dtype=torch.int).tolist()
+            config.cnn_layers[idx].neurons_initial_value = new_state
+        return config

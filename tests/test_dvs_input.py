@@ -100,17 +100,17 @@ def test_dvs_no_pooling():
         assert np.array_equal(snn_out.detach(), spn_out)
 
         # - Verify DYNAP-CNN config
-        target_layers = dvs_input * ["dvs"] + [5]
+        target_layers = [5]
         config = spn.make_config(chip_layers_ordering=target_layers)
         verify_dvs_config(
             config,
             input_shape=INPUT_SHAPE,
-            destination=target_layers[1] if dvs_input else None,
+            destination=target_layers[0] if dvs_input else None,
             dvs_input=dvs_input,
         )
 
     # - ANN and SNN generation, network with input layer
-    target_layers = ["dvs", 5]
+    target_layers = [5]
     ann = Net()
     snn = from_model(ann)
     snn.eval()
@@ -131,7 +131,7 @@ def test_dvs_no_pooling():
     # - Verify DYNAP-CNN config
     config = spn.make_config(chip_layers_ordering=target_layers)
     verify_dvs_config(
-        config, input_shape=INPUT_SHAPE, destination=target_layers[1], dvs_input=True
+        config, input_shape=INPUT_SHAPE, destination=target_layers[0], dvs_input=True
     )
 
 
@@ -152,7 +152,7 @@ def test_dvs_pooling_2d():
             return self.seq(x)
 
     pooling = (2, 4)
-    target_layers = ["dvs", 5]
+    target_layers = [5]
 
     # - ANN and SNN generation, no input layer
     ann = Net()
@@ -182,7 +182,7 @@ def test_dvs_pooling_2d():
         verify_dvs_config(
             config,
             input_shape=INPUT_SHAPE,
-            destination=target_layers[1],
+            destination=target_layers[0],
             dvs_input=dvs_input,
             pooling=pooling,
         )
@@ -210,7 +210,7 @@ def test_dvs_pooling_2d():
     verify_dvs_config(
         config,
         input_shape=INPUT_SHAPE,
-        destination=target_layers[1],
+        destination=target_layers[0],
         dvs_input=True,
         pooling=pooling,
     )
@@ -249,7 +249,7 @@ class DvsNet(nn.Module):
 def test_dvs_mirroring():
 
     # - DYNAP-CNN layer arrangement
-    target_layers = ["dvs", 5]
+    target_layers = [5]
 
     keys = ["flip_x", "flip_y", "swap_xy"]
     for flag_combination in (
@@ -284,7 +284,7 @@ def test_dvs_mirroring():
             verify_dvs_config(
                 config,
                 input_shape=INPUT_SHAPE,
-                destination=target_layers[1],
+                destination=target_layers[0],
                 dvs_input=dvs_input,
                 flip=kwargs_flip,
             )
@@ -293,7 +293,7 @@ def test_dvs_mirroring():
 def test_dvs_crop():
 
     # - DYNAP-CNN layer arrangement
-    target_layers = ["dvs", 5, 2]
+    target_layers = [5]
     crop = ((20, 62), (12, 32))
     pool = (1, 2)
 
@@ -323,7 +323,7 @@ def test_dvs_crop():
                 pooling=pool,
                 origin=(20, 12),
                 cut=(62, 32),
-                destination=target_layers[1],
+                destination=target_layers[0],
                 dvs_input=dvs_input,
                 merge_polarities=merge_polarities,
             )

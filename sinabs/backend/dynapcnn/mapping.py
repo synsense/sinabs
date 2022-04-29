@@ -68,14 +68,7 @@ def get_valid_mapping(model: "DynapcnnNetwork", constraints: List[LayerConstrain
     new_graph = edmonds(graph, 0, len(graph) - 1)
 
     netmap = recover_mapping(new_graph, layer_mapping)
-    # return [x[1] for x in netmap]
-    for layer in model.compatible_layers:
-        if isinstance(layer, DVSLayer):
-            # increment indices of netmask
-            netmap = [(0, "dvs")] + [(i + 1, j) for (i, j) in netmap]
     return netmap
-
-
 
 
 @dataclass
