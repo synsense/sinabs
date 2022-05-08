@@ -22,7 +22,7 @@ def from_model(
         model,
         input_shape=None,
         spike_threshold=1.0,
-        spike_fn: Callable = MultiSpike(),
+        spike_fn: Callable = MultiSpike,
         reset_fn: Callable = MembraneSubtract(),
         surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem=-1.0,
