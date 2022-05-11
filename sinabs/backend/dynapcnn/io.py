@@ -40,7 +40,7 @@ def enable_timestamps(
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
-    device_handle = samna.device.get_open_device_by_info(device_info)
+    device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
@@ -62,7 +62,7 @@ def disable_timestamps(
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
-    device_handle = samna.device.get_open_device_by_info(device_info)
+    device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 0)
     else:
@@ -83,7 +83,7 @@ def reset_timestamps(
     """
     device_name, device_idx = _parse_device_string(device_id)
     device_info = device_map[device_id]
-    device_handle = samna.device.get_open_device_by_info(device_info)
+    device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
@@ -229,38 +229,8 @@ def open_device(device_id: str):
     """
     device_map = get_device_map()
     device_info = device_map[device_id]
-    opened_devices = samna.device.get_opened_devices()
-
-    # Check if device is already open
-    if device_info in opened_devices:
-        device_handle = get_opened_device(device_id)
-    else:
-        device_handle = samna.device.open_device(device_info)
+    device_handle = samna.device.open_device(device_info)
     
-    if device_handle is not None:
-        return device_handle
-    else:
-        raise IOError("The connection to the device cannot be established.")
-
-
-def get_opened_device(device_id: str):
-    """
-    Get the handle to an already opened device.
-
-    Args
-    ----
-
-    device_id: str
-        device_name:device_id pair given as a string
-
-    Returns
-    -------
-
-    device_handle: samna.device.*
-        Device handle received from samna.
-    """
-    device_info = device_map[device_id]
-    device_handle = samna.device.get_open_device_by_info(device_info)
     if device_handle is not None:
         return device_handle
     else:
@@ -279,7 +249,7 @@ def close_device(device_id: str):
         dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
     """
     device_info = device_map[device_id]
-    device_handle = samna.device.get_open_device_by_info(device_info)
+    device_handle = samna.device.open_device(device_info)
     print(f"Closing device: {device_id}")
     samna.device.close_device(device_handle)
 
