@@ -14,7 +14,7 @@ class FlattenTime(nn.Flatten):
         super().__init__(start_dim=0, end_dim=1)
 
 
-class UnflattenTime(nn.Unflatten):
+class UnflattenTime(nn.Module):
     """
     Utility layer which always unflattens (expands) the first dimension into two separate ones.
     Meant to convert a tensor of dimensions (Batch*Time, Channels, Height, Width)
@@ -22,7 +22,12 @@ class UnflattenTime(nn.Unflatten):
     """
 
     def __init__(self, batch_size: int):
-        super().__init__(dim=0, unflattened_size=(batch_size, -1))
+        super().__init__()
+        self.batch_size = batch_size
+
+    def forward(self, x):
+        num_time_steps = x.shape[0] // self.batch_size
+        return x.unflatten(0, (self.batch_size, num_time_steps))
 
 
 class SqueezeMixin:
