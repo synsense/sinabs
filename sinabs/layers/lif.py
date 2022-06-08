@@ -187,9 +187,12 @@ class LIF(StatefulLayer):
         tau_syn = self.tau_syn_calculated
         if tau_syn is not None:
             tau_syn = tau_syn.detach()
+        tau_mem = self.tau_mem_calculated
+        if tau_mem is not None:
+            tau_mem = tau_mem.detach()
 
         param_dict.update(
-            tau_mem=self.tau_mem_calculated.detach(),
+            tau_mem=tau_mem,
             tau_syn=tau_syn,
             spike_threshold=self.spike_threshold,
             spike_fn=self.spike_fn,
