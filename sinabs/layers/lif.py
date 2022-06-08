@@ -99,18 +99,37 @@ class LIF(StatefulLayer):
         if self.train_alphas:
             return self.alpha_mem
         else:
-            # we're going to always calculate this alpha parameter on CPU for 64 bit floating point precision
-            original_device = self.tau_mem.device
-            return torch.exp(-1.0 / self.tau_mem.to("cpu")).to(original_device)
+            return torch.exp(-1.0 / self.tau_mem)
 
     @property
     def alpha_syn_calculated(self):
         if self.train_alphas:
             return self.alpha_syn
-        if not self.train_alphas and self.tau_syn:
-            return torch.exp(-1 / self.tau_syn)
+        elif self.tau_syn:
+            # Calculate alpha with 64 bit floating point precision
+            return torch.exp(-1.0 / self.tau_syn)
         else:
             return None
+
+    @property
+    def tau_mem_calculated(self):
+        if self.train_alphas:
+            if self.alpha_mem is None:
+                return None
+            else:
+                return - 1.0 / torch.log(self.alpha_mem)
+        else:
+            return self.tau_mem
+
+    @property
+    def tau_syn_calculated(self):
+        if self.train_alphas:
+            if self.alpha_syn is None:
+                return None
+            else:
+                return - 1.0 / torch.log(self.alpha_syn)
+        else:
+            return self.tau_syn
 
     def forward(self, input_data: torch.Tensor):
         """
@@ -165,13 +184,13 @@ class LIF(StatefulLayer):
     @property
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
+        tau_syn = self.tau_syn_calculated
+        if tau_syn is not None:
+            tau_syn = tau_syn.detach()
+
         param_dict.update(
-            tau_mem=-1 / torch.log(self.alpha_mem.detach_())
-            if self.train_alphas
-            else self.tau_mem,
-            tau_syn=-1 / torch.log(self.alpha_syn.detach_())
-            if self.train_alphas
-            else self.tau_syn,
+            tau_mem=self.tau_mem_calculated.detach(),
+            tau_syn=tau_syn,
             spike_threshold=self.spike_threshold,
             spike_fn=self.spike_fn,
             reset_fn=self.reset_fn,

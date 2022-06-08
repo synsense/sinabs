@@ -1,3 +1,4 @@
+from itertools import product
 import torch
 import torch.nn as nn
 from sinabs.layers import LIF, LIFRecurrent
@@ -14,6 +15,9 @@ def test_lif_basic():
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1 - alpha)
     layer = LIF(tau_mem=tau_mem)
     spike_output = layer(input_current)
+
+    # Make sure __repr__ works
+    repr(layer)
 
     assert layer.does_spike
     assert input_current.shape == spike_output.shape
@@ -298,3 +302,22 @@ def test_min_v_mem():
     layer = LIF(tau_mem=tau_mem, min_v_mem=-0.5)
     layer(input_data)
     assert not (layer.v_mem < -0.5).any()
+
+
+params = product((20., None), (True, False))
+@pytest.mark.parametrize("tau_syn,train_alphas", params)
+def test_alpha_tau_conversion(tau_syn, train_alphas):
+    tau_mem = torch.rand((3, 4)) * 20 + 30
+    alpha_mem = torch.exp(-1.0 / tau_mem)
+
+    layer = LIF(tau_mem=tau_mem, tau_syn=tau_syn, train_alphas=train_alphas)
+    assert torch.isclose(layer.tau_mem_calculated, tau_mem).all()
+    assert torch.isclose(layer.alpha_mem_calculated, alpha_mem).all()
+    if tau_syn is None:
+        assert layer.tau_syn_calculated is None
+        assert layer.alpha_syn_calculated is None
+    else:
+        tau_syn = torch.as_tensor(tau_syn)
+        alpha_syn = torch.exp(-1.0 / tau_syn)
+        assert torch.isclose(layer.tau_syn_calculated, tau_syn).all()
+        assert torch.isclose(layer.alpha_syn_calculated, alpha_syn).all()
