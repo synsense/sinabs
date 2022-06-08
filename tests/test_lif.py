@@ -16,6 +16,9 @@ def test_lif_basic():
     layer = LIF(tau_mem=tau_mem)
     spike_output = layer(input_current)
 
+    # Make sure __repr__ works
+    repr(layer)
+
     assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0
