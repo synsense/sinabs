@@ -127,7 +127,7 @@ class LIF(StatefulLayer):
             if self.alpha_syn is None:
                 return None
             else:
-                return - 1.0 / torch.log(self.alpha_mem)
+                return - 1.0 / torch.log(self.alpha_syn)
         else:
             return self.tau_syn
 
