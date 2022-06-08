@@ -99,18 +99,37 @@ class LIF(StatefulLayer):
         if self.train_alphas:
             return self.alpha_mem
         else:
-            # we're going to always calculate this alpha parameter on CPU for 64 bit floating point precision
-            original_device = self.tau_mem.device
-            return torch.exp(-1.0 / self.tau_mem.to("cpu")).to(original_device)
+            return torch.exp(-1.0 / self.tau_mem)
 
     @property
     def alpha_syn_calculated(self):
         if self.train_alphas:
             return self.alpha_syn
-        if not self.train_alphas and self.tau_syn:
-            return torch.exp(-1 / self.tau_syn)
+        elif self.tau_syn:
+            # Calculate alpha with 64 bit floating point precision
+            return torch.exp(-1.0 / self.tau_syn)
         else:
             return None
+
+    @property
+    def tau_mem_calculated(self):
+        if self.train_alphas:
+            if self.alpha_mem is None:
+                return None
+            else:
+                return - 1.0 / torch.log(self.alpha_mem)
+        else:
+            return self.tau_mem
+
+    @property
+    def tau_syn_calculated(self):
+        if self.train_alphas:
+            if self.alpha_syn is None:
+                return None
+            else:
+                return - 1.0 / torch.log(self.alpha_mem)
+        else:
+            return self.tau_syn
 
     def forward(self, input_data: torch.Tensor):
         """
