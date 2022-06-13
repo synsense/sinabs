@@ -18,6 +18,10 @@ class Speck2DMiniConfigBuilder(Speck2CMiniConfigBuilder):
         return samna.speck2dMini
 
     @classmethod
+    def get_default_config(cls) -> "SpeckConfiguration":
+        return SpeckConfiguration()
+
+    @classmethod
     def get_output_buffer(cls):
         return samna.BasicSinkNode_speck2d_mini_event_output_event()
 
