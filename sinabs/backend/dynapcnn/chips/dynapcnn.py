@@ -237,7 +237,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
     @classmethod
     def get_output_buffer(cls):
-        return samna.BufferSinkNode_dynapcnn_event_output_event()
+        return samna.BasicSinkNode_dynapcnn_event_output_event()
 
     @classmethod
     def reset_states(cls, config: DynapcnnConfiguration, randomize=False):
