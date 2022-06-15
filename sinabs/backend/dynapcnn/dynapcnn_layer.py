@@ -7,7 +7,6 @@ import sinabs.layers as sl
 from warnings import warn
 from .discretize import discretize_conv_spike_
 from copy import deepcopy
-
 from .dvs_layer import expand_to_pair
 
 
@@ -75,89 +74,6 @@ class DynapcnnLayer(nn.Module):
             self.pool_layer = deepcopy(pool)
         else:
             self.pool_layer = None
-
-    def get_config_dict(self):
-        config_dict = {}
-        config_dict["destinations"] = [{}, {}]
-
-        # Update the dimensions
-        channel_count, input_size_y, input_size_x = self.input_shape
-        dimensions = {"input_shape": {}, "output_shape": {}}
-        dimensions["input_shape"]["size"] = {"x": input_size_x, "y": input_size_y}
-        dimensions["input_shape"]["feature_count"] = channel_count
-
-        # dimensions["output_feature_count"] already done in conv2d_to_dict
-        (f, h, w) = self.get_neuron_shape()
-        dimensions["output_shape"]["size"] = {}
-        dimensions["output_shape"]["feature_count"] = f
-        dimensions["output_shape"]["size"]["x"] = w
-        dimensions["output_shape"]["size"]["y"] = h
-        dimensions["padding"] = {"x": self.conv_layer.padding[1], "y": self.conv_layer.padding[0]}
-        dimensions["stride"] = {"x": self.conv_layer.stride[1], "y": self.conv_layer.stride[0]}
-        dimensions["kernel_size"] = self.conv_layer.kernel_size[0]
-
-        if dimensions["kernel_size"] != self.conv_layer.kernel_size[1]:
-            raise ValueError("Conv2d: Kernel must have same height and width.")
-        config_dict["dimensions"] = dimensions
-        # Update parameters from convolution
-        if self.conv_layer.bias is not None:
-            (weights, biases) = self.conv_layer.parameters()
-        else:
-            (weights,) = self.conv_layer.parameters()
-            biases = torch.zeros(self.conv_layer.out_channels)
-        weights = weights.transpose(2, 3)  # Need this to match samna convention
-        config_dict["weights"] = weights.int().tolist()
-        config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        config_dict["biases"] = biases.int().tolist()
-        config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
-        config_dict["leak_enable"] = biases.bool().any()
-
-        # Update parameters from the spiking layer
-
-        # - Neuron states
-        if not self.spk_layer.is_state_initialised():
-            # then we assign no initial neuron state to DYNAP-CNN.
-            f, h, w = self.get_neuron_shape()
-            neurons_state = torch.zeros(f, w, h)
-        elif self.spk_layer.v_mem.dim() == 4:
-            # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = self.spk_layer.v_mem.transpose(2, 3)[0]
-        else:
-            raise ValueError(
-                f"Current v_mem (shape: {self.spk_layer.v_mem.shape}) of spiking layer not understood."
-            )
-
-        # - Resetting vs returning to 0
-        if isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneReset):
-            return_to_zero = True
-        elif isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneSubtract):
-            return_to_zero = False
-        else:
-            raise Exception("Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood.")
-
-        #if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
-        #    warn(
-        #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
-        #    )
-        if self.spk_layer.min_v_mem is None:
-            min_v_mem = -2**15
-        else:
-            min_v_mem = int(self.spk_layer.min_v_mem)
-        config_dict.update({
-            "return_to_zero": return_to_zero,
-            "threshold_high": int(self.spk_layer.spike_threshold),
-            "threshold_low": min_v_mem,
-            "monitor_enable": False,
-            "neurons_initial_value": neurons_state.int().tolist(),
-            "neurons_value_kill_bit": torch.zeros_like(neurons_state).bool().tolist(),
-        })
-        # Update parameters from pooling
-        if self.pool_layer is not None:
-            config_dict["destinations"][0]["pooling"] = expand_to_pair(self.pool_layer.kernel_size)[0]
-            config_dict["destinations"][0]["enable"] = True
-        else:
-            pass
-        return config_dict
 
     def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
         """

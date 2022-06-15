@@ -1,22 +1,21 @@
 from subprocess import CalledProcessError
 try:
     import samna
-    from samna.speck2.configuration import SpeckConfiguration
+    from samna.speck2dMini.configuration import SpeckConfiguration
 except (ImportError, ModuleNotFoundError, CalledProcessError):
     SAMNA_AVAILABLE = False
 else:
     SAMNA_AVAILABLE = True
-
-from .dynapcnn import DynapcnnConfigBuilder
+from .speck2cmini import Speck2CMiniConfigBuilder
 
 
 # Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
-class Speck2ConfigBuilder(DynapcnnConfigBuilder):
+class Speck2DMiniConfigBuilder(Speck2CMiniConfigBuilder):
 
     @classmethod
     def get_samna_module(cls):
-        return samna.speck2
+        return samna.speck2dMini
 
     @classmethod
     def get_default_config(cls) -> "SpeckConfiguration":
@@ -24,4 +23,6 @@ class Speck2ConfigBuilder(DynapcnnConfigBuilder):
 
     @classmethod
     def get_output_buffer(cls):
-        return samna.BasicSinkNode_speck2_event_output_event()
+        return samna.BasicSinkNode_speck2d_mini_event_output_event()
+
+
