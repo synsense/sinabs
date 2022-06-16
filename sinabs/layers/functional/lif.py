@@ -21,10 +21,12 @@ def lif_forward_single(
         state["i_syn"] = input_data
 
     if norm_input:
-        state["i_syn"] = (1 - alpha_mem) * state["i_syn"]
+        synaptic_input = (1 - alpha_mem) * state["i_syn"]
+    else:
+        synaptic_input = state["i_syn"]
 
     # Decay the membrane potential and add the input currents which are normalised by tau
-    state["v_mem"] = alpha_mem * state["v_mem"] + state["i_syn"]
+    state["v_mem"] = alpha_mem * state["v_mem"] + synaptic_input
 
     # generate spikes and adjust v_mem
     if spike_fn:
