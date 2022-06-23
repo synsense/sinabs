@@ -44,8 +44,8 @@ class SqueezeMixin:
             batch_size = -1
         if not num_timesteps:
             num_timesteps = -1
-        self.batch_size = batch_size
-        self.num_timesteps = num_timesteps
+        self.batch_size = int(batch_size)
+        self.num_timesteps = int(num_timesteps)
 
     def squeeze_forward(self, input_data: torch.Tensor, forward_method: Callable):
         inflated_input = input_data.reshape(
