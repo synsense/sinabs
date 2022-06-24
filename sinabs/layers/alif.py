@@ -84,7 +84,7 @@ class ALIF(StatefulLayer):
     ):
         super().__init__(
             state_names=["v_mem", "i_syn", "b", "spike_threshold"]
-            if tau_syn
+            if tau_syn is not None
             else ["v_mem", "b", "spike_threshold"]
         )
         if train_alphas:
@@ -92,7 +92,7 @@ class ALIF(StatefulLayer):
             self.alpha_adapt = nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_adapt)))
             self.alpha_syn = (
                 nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_syn)))
-                if tau_syn
+                if tau_syn is not None
                 else None
             )
         else:
@@ -123,7 +123,7 @@ class ALIF(StatefulLayer):
     def alpha_syn_calculated(self):
         if self.train_alphas:
             return self.alpha_syn
-        elif not self.train_alphas and self.tau_syn:
+        elif not self.train_alphas and self.tau_syn is not None:
             return torch.exp(-1 / self.tau_syn)
         else:
             return None

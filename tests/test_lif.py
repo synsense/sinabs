@@ -25,6 +25,22 @@ def test_lif_basic():
     assert spike_output.sum() > 0
 
 
+def test_lif_array_tau():
+    torch.set_printoptions(precision=10)
+    batch_size, time_steps = 10, 100
+    # Shape for tau mem such that 2nd dimension needs to be expanded
+    tau_mem = torch.randn(2, 1, 7) + 20.0
+    tau_syn = torch.randn(2, 1, 7) + 20.0
+    alpha = torch.exp(-1 / tau_mem)
+    input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1 - alpha)
+    layer = LIF(tau_mem=tau_mem, tau_syn=tau_syn)
+    spike_output = layer(input_current)
+
+    assert input_current.shape == spike_output.shape
+    assert torch.isnan(spike_output).sum() == 0
+    assert spike_output.sum() > 0
+
+
 def test_lif_v_mem_recordings():
     batch_size, time_steps = 10, 100
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)

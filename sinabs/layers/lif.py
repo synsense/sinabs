@@ -64,7 +64,7 @@ class LIF(StatefulLayer):
         norm_input: bool = True,
         record_states: bool = False,
     ):
-        super().__init__(state_names=["v_mem", "i_syn"] if tau_syn else ["v_mem"])
+        super().__init__(state_names=["v_mem", "i_syn"] if tau_syn is not None else ["v_mem"])
         if train_alphas:
             self.alpha_mem = nn.Parameter(
                 torch.exp(-1.0 / torch.as_tensor(tau_mem, dtype=torch.float32))
@@ -73,14 +73,14 @@ class LIF(StatefulLayer):
                 nn.Parameter(
                     torch.exp(-1.0 / torch.as_tensor(tau_syn, dtype=torch.float32))
                 )
-                if tau_syn
+                if tau_syn is not None
                 else None
             )
         else:
             self.tau_mem = nn.Parameter(torch.as_tensor(tau_mem, dtype=torch.float32))
             self.tau_syn = (
                 nn.Parameter(torch.as_tensor(tau_syn, dtype=torch.float32))
-                if tau_syn
+                if tau_syn is not None
                 else None
             )
         self.spike_threshold = spike_threshold
@@ -105,7 +105,7 @@ class LIF(StatefulLayer):
     def alpha_syn_calculated(self):
         if self.train_alphas:
             return self.alpha_syn
-        elif self.tau_syn:
+        elif self.tau_syn is not None:
             # Calculate alpha with 64 bit floating point precision
             return torch.exp(-1.0 / self.tau_syn)
         else:
@@ -168,7 +168,7 @@ class LIF(StatefulLayer):
             record_states=self.record_states,
         )
         self.v_mem = state["v_mem"]
-        self.i_syn = state["i_syn"] if alpha_syn else None
+        self.i_syn = state["i_syn"] if alpha_syn is not None else None
         self.recordings = recordings
 
         self.firing_rate = spikes.sum() / spikes.numel()
@@ -312,7 +312,7 @@ class LIFRecurrent(LIF):
             record_states=self.record_states,
         )
         self.v_mem = state["v_mem"]
-        self.i_syn = state["i_syn"] if alpha_syn else None
+        self.i_syn = state["i_syn"] if alpha_syn is not None else None
         self.recordings = recordings
 
         self.firing_rate = spikes.sum() / spikes.numel()

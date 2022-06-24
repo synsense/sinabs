@@ -15,7 +15,7 @@ def lif_forward_single(
     norm_input: bool,
 ):
     # if t_syn was provided, we're going to use synaptic current dynamics
-    if alpha_syn:
+    if alpha_syn is not None:
         state["i_syn"] = alpha_syn * (state["i_syn"] + input_data)
     else:
         state["i_syn"] = input_data
