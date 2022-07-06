@@ -1,8 +1,7 @@
-![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg) 
-[![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=main)](https://sinabs.readthedocs.io/en/latest/?badge=main)
-![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)
+[![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg)](https://pypi.org/project/sinabs/)
+[![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=main)](https://sinabs.readthedocs.io)
+[![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)](https://pypi.org/project/sinabs/)
 [![Discord](https://img.shields.io/discord/852094154188259338)](https://discord.gg/V6FHBZURkg)
-
 ![sinabs](docs/_static/sinabs-logo-lowercase-whitebg.png)
 
 Sinabs (Sinabs Is Not A Brain Simulator) is a python library for the development and implementation of Spiking Convolutional Neural Networks (SCNNs).
