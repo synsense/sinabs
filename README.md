@@ -1,6 +1,6 @@
 [![PyPI - Package](https://img.shields.io/pypi/v/sinabs.svg)](https://pypi.org/project/sinabs/)
 [![Documentation Status](https://readthedocs.org/projects/sinabs/badge/?version=main)](https://sinabs.readthedocs.io)
-[![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)](https://pypi.org/project/sinabs/)
+[![PyPI - Downloads](https://img.shields.io/pypi/dd/sinabs)](https://pepy.tech/project/sinabs)
 [![Discord](https://img.shields.io/discord/852094154188259338)](https://discord.gg/V6FHBZURkg)
 ![sinabs](docs/_static/sinabs-logo-lowercase-whitebg.png)
 
