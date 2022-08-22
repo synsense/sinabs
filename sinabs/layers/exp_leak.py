@@ -6,7 +6,7 @@ from .reshape import SqueezeMixin
 
 class ExpLeak(LIF):
     """
-    A Leaky Integrator layer.
+    Leaky Integrator layer.
 
     Neuron dynamics in discrete time:
 
@@ -67,6 +67,8 @@ class ExpLeak(LIF):
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
     """
+    ExpLeak layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+
     Same as parent ExpLeak class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.

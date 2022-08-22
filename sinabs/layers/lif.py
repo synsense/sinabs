@@ -9,7 +9,7 @@ from .reshape import SqueezeMixin
 
 class LIF(StatefulLayer):
     """
-    A Leaky Integrate and Fire neuron layer.
+    Leaky Integrate and Fire neuron layer.
 
     Neuron dynamics in discrete time:
 
@@ -64,7 +64,9 @@ class LIF(StatefulLayer):
         norm_input: bool = True,
         record_states: bool = False,
     ):
-        super().__init__(state_names=["v_mem", "i_syn"] if tau_syn is not None else ["v_mem"])
+        super().__init__(
+            state_names=["v_mem", "i_syn"] if tau_syn is not None else ["v_mem"]
+        )
         if train_alphas:
             self.alpha_mem = nn.Parameter(
                 torch.exp(-1.0 / torch.as_tensor(tau_mem, dtype=torch.float32))
@@ -117,7 +119,7 @@ class LIF(StatefulLayer):
             if self.alpha_mem is None:
                 return None
             else:
-                return - 1.0 / torch.log(self.alpha_mem)
+                return -1.0 / torch.log(self.alpha_mem)
         else:
             return self.tau_mem
 
@@ -127,7 +129,7 @@ class LIF(StatefulLayer):
             if self.alpha_syn is None:
                 return None
             else:
-                return - 1.0 / torch.log(self.alpha_syn)
+                return -1.0 / torch.log(self.alpha_syn)
         else:
             return self.tau_syn
 
@@ -209,7 +211,7 @@ class LIF(StatefulLayer):
 
 class LIFRecurrent(LIF):
     """
-    A Leaky Integrate and Fire neuron layer with recurrent connections.
+    Leaky Integrate and Fire neuron layer with recurrent connections.
 
     Neuron dynamics in discrete time:
 
@@ -327,6 +329,8 @@ class LIFRecurrent(LIF):
 
 class LIFSqueeze(LIF, SqueezeMixin):
     """
+    LIF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+
     Same as parent LIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.

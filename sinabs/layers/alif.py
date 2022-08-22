@@ -9,6 +9,8 @@ from .reshape import SqueezeMixin
 
 class ALIF(StatefulLayer):
     """
+    Adaptive Leaky Integrate and Fire neuron layer.
+
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
 
@@ -210,6 +212,8 @@ class ALIF(StatefulLayer):
 
 class ALIFRecurrent(ALIF):
     """
+    Adaptive Leaky Integrate and Fire neuron layer with recurrent connections.
+
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
 
@@ -350,6 +354,8 @@ class ALIFRecurrent(ALIF):
 
 class ALIFSqueeze(ALIF, SqueezeMixin):
     """
+    ALIF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+
     Same as parent ALIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.

@@ -3,7 +3,7 @@
 
 .. toctree::
    network
-   layers/layers
-   activation/activation
+   layers
+   activation
    from_torch
    synopcounter

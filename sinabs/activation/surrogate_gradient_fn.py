@@ -6,7 +6,7 @@ import torch
 @dataclass
 class Heaviside:
     """
-    Heaviside surrogat gradient with optional shift.
+    Heaviside surrogate gradient with optional shift.
 
     Parameters:
         window:
@@ -24,6 +24,7 @@ class Heaviside:
 class MultiGaussian:
     """
     Surrogate gradient as defined in Yin et al., 2021.
+
     https://www.biorxiv.org/content/10.1101/2021.03.22.436372v2
     """
 
@@ -33,7 +34,9 @@ class MultiGaussian:
 
     def __call__(self, v_mem, spike_threshold):
         return (
-            torch.exp(-(((v_mem - spike_threshold) - self.mu) ** 2) / (2 * self.sigma**2))
+            torch.exp(
+                -(((v_mem - spike_threshold) - self.mu) ** 2) / (2 * self.sigma**2)
+            )
             / torch.sqrt(2 * torch.tensor(math.pi))
             / self.sigma
         ) * self.grad_scale
@@ -42,7 +45,8 @@ class MultiGaussian:
 @dataclass
 class SingleExponential:
     """
-    Surrogate gradient as defined in Shrestha and Orchard, 2018
+    Surrogate gradient as defined in Shrestha and Orchard, 2018.
+
     https://papers.nips.cc/paper/2018/hash/82f2b308c3b01637c607ce05f52a2fed-Abstract.html
     """
 
@@ -57,10 +61,12 @@ class SingleExponential:
             * torch.exp(-torch.abs(v_mem - spike_threshold) / abs_width)
         )
 
+
 @dataclass
 class PeriodicExponential:
     """
-    Surrogate gradient as defined in Weidel and Sheik, 2021
+    Surrogate gradient as defined in Weidel and Sheik, 2021.
+
     https://arxiv.org/abs/2111.01456
     """
 
@@ -80,4 +86,4 @@ class PeriodicExponential:
             / spike_threshold
         )
 
-        return self.grad_scale*spikePdf
+        return self.grad_scale * spikePdf

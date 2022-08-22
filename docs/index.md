@@ -23,7 +23,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 
-* **{doc}`Supported neuron models<api/layers/layers>`**.
+* **{doc}`Supported neuron models<api/layers>`**.
 * **{doc}`Weight transfer API<api/from_torch>`**. 
 
 ### About

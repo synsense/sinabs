@@ -9,7 +9,7 @@ import numpy as np
 
 class IAF(LIF):
     """
-    An Integrate and Fire neuron layer.
+    Integrate and Fire neuron layer.
 
     Neuron dynamics in discrete time:
 
@@ -72,7 +72,7 @@ class IAF(LIF):
 
     @property
     def alpha_mem_calculated(self):
-        return torch.tensor(1.)
+        return torch.tensor(1.0)
 
     @property
     def _param_dict(self) -> dict:
@@ -85,7 +85,7 @@ class IAF(LIF):
 
 class IAFRecurrent(LIFRecurrent):
     """
-    An Integrate and Fire neuron layer with recurrent connections.
+    Integrate and Fire neuron layer with recurrent connections.
 
     Neuron dynamics in discrete time:
 
@@ -161,6 +161,8 @@ class IAFRecurrent(LIFRecurrent):
 
 class IAFSqueeze(IAF, SqueezeMixin):
     """
+    IAF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+
     Same as parent IAF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
