@@ -3,7 +3,7 @@
 
 EXODUS
 ------
-Train fast. Why wait?
+Train feedforward architectures much faster. `Github repository <https://github.com/synsense/sinabs-exodus>`_ 
 
 Sinabs-DynapCNN
 ---------------

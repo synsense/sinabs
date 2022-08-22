@@ -1,16 +1,30 @@
 import sinabs
 
 project = "Sinabs"
-copyright = "2019-2022, SynSense"
+copyright = "2019-present, SynSense"
 author = "employees of SynSense"
 
+master_doc = "index"
+
 extensions = [
+    "myst_nb",
     "pbr.sphinxext",
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "myst_nb",
+    "sphinx.ext.autosummary",
+    "sphinx_gallery.gen_gallery",
 ]
+
+sphinx_gallery_conf = {
+    "examples_dirs": "gallery/",  # path to your example scripts
+    "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
+    # "backreferences_dir": "gen_modules/backreferences",
+    # "matplotlib_animations": True,
+    "doc_module": ("sinabs",),
+    "download_all_examples": False,
+    "ignore_pattern": r"utils\.py",
+}
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -18,12 +32,10 @@ napoleon_numpy_docstring = True
 
 # MyST settings
 suppress_warnings = ["myst.header"]
-# jupyter_execute_notebooks = "off"
-execution_timeout = 300
+nb_execution_timeout = 300
+nb_execution_mode = "off"
 
 templates_path = ["_templates"]
-
-master_doc = "index"
 
 exclude_patterns = ["_build", "**.ipynb_checkpoints"]
 

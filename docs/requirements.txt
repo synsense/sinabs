@@ -3,3 +3,4 @@ sphinx-book-theme
 myst_nb
 tqdm
 torchvision
+ipywidgets

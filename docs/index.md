@@ -19,7 +19,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 
 ### Plugins
 * Deploying models to neuromorphic hardware: [Sinabs-DynapCNN](https://synsense.gitlab.io/sinabs-dynapcnn/).
-* Training feed-forward models 10x faster: **Coming soon**.
+* Training feed-forward models 10x faster: [EXODUS](https://github.com/synsense/sinabs-exodus).
 
 ### API reference
 * **{doc}`Complete reference overview<api/api>`**. 
@@ -34,6 +34,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 ```{toctree}
 :hidden:
 getting_started/getting_started
+auto_examples/index
 tutorials/tutorials
 plugins/plugins
 api/api
