@@ -19,20 +19,20 @@ else:
 
 
 def from_model(
-        model,
-        input_shape=None,
-        spike_threshold=1.0,
-        spike_fn: Callable = MultiSpike,
-        reset_fn: Callable = MembraneSubtract(),
-        surrogate_grad_fn: Callable = SingleExponential(),
-        min_v_mem=-1.0,
-        bias_rescaling=1.0,
-        num_timesteps=None,
-        batch_size=1,
-        synops=False,
-        add_spiking_output=False,
-        backend="sinabs",
-        kwargs_backend=None,
+    model,
+    input_shape=None,
+    spike_threshold=1.0,
+    spike_fn: Callable = MultiSpike,
+    reset_fn: Callable = MembraneSubtract(),
+    surrogate_grad_fn: Callable = SingleExponential(),
+    min_v_mem=-1.0,
+    bias_rescaling=1.0,
+    num_timesteps=None,
+    batch_size=1,
+    synops=False,
+    add_spiking_output=False,
+    backend="sinabs",
+    kwargs_backend=None,
 ):
     """
     Converts a Torch model and returns a Sinabs network object.
@@ -78,9 +78,9 @@ def from_model(
     return SpkConverter(
         input_shape=input_shape,
         spike_threshold=spike_threshold,
-        spike_fn = spike_fn,
-        reset_fn = reset_fn,
-        surrogate_grad_fn = surrogate_grad_fn,
+        spike_fn=spike_fn,
+        reset_fn=reset_fn,
+        surrogate_grad_fn=surrogate_grad_fn,
         min_v_mem=min_v_mem,
         bias_rescaling=bias_rescaling,
         batch_size=batch_size,
@@ -136,20 +136,20 @@ class SpkConverter(object):
     """
 
     def __init__(
-            self,
-            input_shape: Optional[Tuple] = None,
-            spike_threshold=1.0,
-            spike_fn: Callable = MultiSpike(),
-            reset_fn: Callable = MembraneSubtract(),
-            surrogate_grad_fn: Callable = SingleExponential(),
-            min_v_mem: float = -1.0,
-            bias_rescaling: float = 1.0,
-            num_timesteps: Optional[int] = None,
-            batch_size: int = 1,
-            synops: bool = False,
-            add_spiking_output: bool = False,
-            backend: str = "bptt",
-            kwargs_backend: dict = None,
+        self,
+        input_shape: Optional[Tuple] = None,
+        spike_threshold=1.0,
+        spike_fn: Callable = MultiSpike(),
+        reset_fn: Callable = MembraneSubtract(),
+        surrogate_grad_fn: Callable = SingleExponential(),
+        min_v_mem: float = -1.0,
+        bias_rescaling: float = 1.0,
+        num_timesteps: Optional[int] = None,
+        batch_size: int = 1,
+        synops: bool = False,
+        add_spiking_output: bool = False,
+        backend: str = "bptt",
+        kwargs_backend: dict = None,
     ):
         self.min_v_mem = min_v_mem
         self.spike_threshold = spike_threshold
@@ -176,9 +176,9 @@ class SpkConverter(object):
 
         return backend_module.IAFSqueeze(
             spike_threshold=self.spike_threshold,
-            spike_fn = self.spike_fn,
+            spike_fn=self.spike_fn,
             reset_fn=self.reset_fn,
-            surrogate_grad_fn = self.surrogate_grad_fn,
+            surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             batch_size=self.batch_size,
             num_timesteps=self.num_timesteps,
@@ -208,7 +208,7 @@ class SpkConverter(object):
         if self.add_spiking_output:
             # Add spiking output to sequential model
             if isinstance(spk_model, nn.Sequential) and not isinstance(
-                    spk_model[-1], (nn.ReLU, sl.NeuromorphicReLU)
+                spk_model[-1], (nn.ReLU, sl.NeuromorphicReLU)
             ):
                 spk_model.add_module("Spiking output", nn.ReLU())
             else:
@@ -238,11 +238,11 @@ class SpkConverter(object):
                 setattr(module, name, self.relu2spiking())
 
             elif self.bias_rescaling != 1.0 and isinstance(
-                    subm, (nn.Linear, nn.Conv2d)
+                subm, (nn.Linear, nn.Conv2d)
             ):
                 if subm.bias is not None:
                     subm.bias.data = (
-                            subm.bias.data.clone().detach() / self.bias_rescaling
+                        subm.bias.data.clone().detach() / self.bias_rescaling
                     )
 
             # if in turn it has children, go iteratively inside

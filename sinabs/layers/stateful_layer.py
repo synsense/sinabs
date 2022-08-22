@@ -75,7 +75,11 @@ class StatefulLayer(torch.nn.Module):
             self.register_buffer(name, torch.zeros(shape, device=buffer.device))
         self.reset_states(randomize=randomize)
 
-    def reset_states(self, randomize: bool = False, value_ranges: Optional[Dict[str, Tuple[float, float]]] = None):
+    def reset_states(
+        self,
+        randomize: bool = False,
+        value_ranges: Optional[Dict[str, Tuple[float, float]]] = None,
+    ):
         """
         Reset the state/buffers in a layer.
 
@@ -102,7 +106,7 @@ class StatefulLayer(torch.nn.Module):
                     if value_ranges and name in value_ranges:
                         min_value, max_value = value_ranges[name]
                     else:
-                        min_value, max_value = (0., 1.)
+                        min_value, max_value = (0.0, 1.0)
                     # Initialize with uniform distribution
                     torch.nn.init.uniform_(buffer)
                     # Rescale the value
@@ -116,16 +120,16 @@ class StatefulLayer(torch.nn.Module):
             f"{key}={value}"
             for key, value in self._param_dict.items()
             if key
-               in [
-                   "tau_mem",
-                   "tau_syn",
-                   "tau_adapt",
-                   "adapt_scale",
-                   "spike_threshold",
-                   "min_v_mem",
-                   "norm_input",
-               ]
-               and value is not None
+            in [
+                "tau_mem",
+                "tau_syn",
+                "tau_adapt",
+                "adapt_scale",
+                "spike_threshold",
+                "min_v_mem",
+                "norm_input",
+            ]
+            and value is not None
         ]
         param_strings = ", ".join(param_strings)
         return f"{self.__class__.__name__}({param_strings})"

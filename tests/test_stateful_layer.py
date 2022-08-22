@@ -67,5 +67,5 @@ def test_reset_states():
     assert layer.v_mem.max() <= -3
     assert layer.v_mem.min() >= -5
 
-    assert layer.i_syn.max() <= 1.
-    assert layer.i_syn.min() >= 0.
+    assert layer.i_syn.max() <= 1.0
+    assert layer.i_syn.min() >= 0.0

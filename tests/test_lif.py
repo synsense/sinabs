@@ -323,7 +323,9 @@ def test_min_v_mem():
     assert not (layer.v_mem < -0.5).any()
 
 
-params = product((20., None), (True, False))
+params = product((20.0, None), (True, False))
+
+
 @pytest.mark.parametrize("tau_syn,train_alphas", params)
 def test_alpha_tau_conversion(tau_syn, train_alphas):
     tau_mem = torch.rand((3, 4)) * 20 + 30

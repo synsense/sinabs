@@ -214,15 +214,23 @@ def test_parameter_devices():
 
 def test_activation_change():
     from sinabs.layers import SumPool2d
+
     ann = nn.Sequential(
-        nn.Conv2d(1, 4, (3,3), padding=1),
+        nn.Conv2d(1, 4, (3, 3), padding=1),
         nn.ReLU(),
-        SumPool2d(2,2),
+        SumPool2d(2, 2),
         nn.Conv2d(1, 4, (3, 3), padding=1),
         nn.ReLU(),
     )
     from sinabs.activation import SingleSpike, MembraneReset, Heaviside
-    network = from_model(ann, spike_threshold=3., spike_fn=SingleSpike(), reset_fn=MembraneReset(), min_v_mem=-3.0)
+
+    network = from_model(
+        ann,
+        spike_threshold=3.0,
+        spike_fn=SingleSpike(),
+        reset_fn=MembraneReset(),
+        min_v_mem=-3.0,
+    )
 
     spk_layer: IAFSqueeze = network.spiking_model[1]
 
@@ -230,14 +238,14 @@ def test_activation_change():
     input_data = torch.zeros(10, 4, 32, 32)
     input_data[:, 0, 0, 0] = 1.0
     out = spk_layer(input_data)
-    assert(out.sum() == 10//3)
+    assert out.sum() == 10 // 3
 
     # Test  input much larger than threshold
     spk_layer.reset_states()
     input_data = torch.zeros(10, 4, 32, 32)
     input_data[0, 0, 0, 0] = 7
     out = spk_layer(input_data)
-    assert(out.sum() == 1)
+    assert out.sum() == 1
 
     # Test same for the second layer
     spk_layer: IAFSqueeze = network.spiking_model[4]
@@ -246,11 +254,11 @@ def test_activation_change():
     input_data = torch.zeros(10, 4, 32, 32)
     input_data[:, 0, 0, 0] = 1.0
     out = spk_layer(input_data)
-    assert(out.sum() == 10//3)
+    assert out.sum() == 10 // 3
 
     # Test  input much larger than threshold
     spk_layer.reset_states()
     input_data = torch.zeros(10, 4, 32, 32)
     input_data[0, 0, 0, 0] = 7
     out = spk_layer(input_data)
-    assert(out.sum() == 1)
+    assert out.sum() == 1

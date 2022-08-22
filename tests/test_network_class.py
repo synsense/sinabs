@@ -135,6 +135,7 @@ def test_deepcopy():
 def test_reset_states():
     from copy import deepcopy
     from sinabs.layers import StatefulLayer
+
     mynet = deepcopy(nested_network)
     # Perform a forward pass to initialize states
     nested_input_tensor = torch.rand([1, 2, 128, 128])
@@ -151,7 +152,9 @@ def test_reset_states():
     with torch.no_grad():
         mynet.spiking_model(nested_input_tensor)
     # Reset network to a given range
-    value_ranges = [{"v_mem": (-4, -2)} for mod in mynet.modules() if isinstance(mod, StatefulLayer)]
+    value_ranges = [
+        {"v_mem": (-4, -2)} for mod in mynet.modules() if isinstance(mod, StatefulLayer)
+    ]
     mynet.reset_states(randomize=True, value_ranges=value_ranges)
     for layer in mynet.modules():
         if isinstance(layer, StatefulLayer):

@@ -160,7 +160,11 @@ class Network(torch.nn.Module):
         pylab.legend()
         return analog_activations, spike_rates
 
-    def reset_states(self, randomize: bool = False, value_ranges: Optional[List[Dict[str, Tuple[float, float]]]] = None):
+    def reset_states(
+        self,
+        randomize: bool = False,
+        value_ranges: Optional[List[Dict[str, Tuple[float, float]]]] = None,
+    ):
         """
         Reset all neuron states in the submodules.
 
@@ -177,9 +181,13 @@ class Network(torch.nn.Module):
         """
 
         if value_ranges:
-            num_stateful_layers = len([None for mod in self.modules() if isinstance(mod, StatefulLayer)])
+            num_stateful_layers = len(
+                [None for mod in self.modules() if isinstance(mod, StatefulLayer)]
+            )
             if len(value_ranges) != num_stateful_layers:
-                raise TypeError("The number of entries in value_ranges does not match the number of stateful sub modules")
+                raise TypeError(
+                    "The number of entries in value_ranges does not match the number of stateful sub modules"
+                )
         i = 0
         for lyr in self.modules():
             if isinstance(lyr, StatefulLayer):
