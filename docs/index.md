@@ -36,6 +36,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 getting_started/getting_started
 auto_examples/index
 tutorials/tutorials
+how_tos/how_tos
 plugins/plugins
 api/api
 about/about

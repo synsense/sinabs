@@ -13,6 +13,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
+    "sphinx.ext.viewcode",
     "sphinx_gallery.gen_gallery",
 ]
 
@@ -20,7 +21,6 @@ sphinx_gallery_conf = {
     "examples_dirs": "gallery/",  # path to your example scripts
     "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
     # "backreferences_dir": "gen_modules/backreferences",
-    # "matplotlib_animations": True,
     "doc_module": ("sinabs",),
     "download_all_examples": False,
     "ignore_pattern": r"utils\.py",

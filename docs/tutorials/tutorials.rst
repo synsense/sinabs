@@ -7,6 +7,4 @@
    bptt
    weight_transfer_mnist
    LeNet_5_EngChinese
-   synops_loss
-   activations
    

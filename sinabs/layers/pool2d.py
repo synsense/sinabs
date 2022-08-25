@@ -9,6 +9,10 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 
 class SpikingMaxPooling2dLayer(nn.Module):
+    """
+    Torch implementation of SpikingMaxPooling.
+    """
+
     def __init__(
         self,
         pool_size: ArrayLike,
@@ -16,9 +20,6 @@ class SpikingMaxPooling2dLayer(nn.Module):
         padding: ArrayLike = (0, 0, 0, 0),
         # state_number: int = 16,
     ):
-        """
-        Torch implementation of SpikingMaxPooling
-        """
         super().__init__()
         self.padding = padding
         self.pool_size = pool_size
