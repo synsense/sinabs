@@ -33,7 +33,12 @@ napoleon_numpy_docstring = True
 # MyST settings
 suppress_warnings = ["myst.header"]
 nb_execution_timeout = 300
-nb_execution_mode = "off"
+nb_execution_excludepatterns = [
+    "LeNet_5_EngChinese.ipynb",
+    "bptt.ipynb",
+    "weight_transfer_mnist.ipynb",
+]
+# nb_execution_mode = "off"
 
 templates_path = ["_templates"]
 

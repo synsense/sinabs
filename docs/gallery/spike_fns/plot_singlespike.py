@@ -9,9 +9,7 @@ import torch
 import sinabs.activation as sina
 import matplotlib.pyplot as plt
 
-fig = plt.figure(figsize=(10, 10))
-
-v_mem = torch.linspace(0.0, 5.5, 500)
+v_mem = torch.linspace(0, 5.5, 500)
 
 spike_threshold = 1.0
 activations = sina.SingleSpike.apply(v_mem, spike_threshold, sina.MultiGaussian())
