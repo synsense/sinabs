@@ -1,5 +1,8 @@
 # Release notes
 
+## v1.0.1 (26/08/2022)
+Mostly making v0.3.x stable, with a revamped documentation that includes a gallery and how-tos!
+
 ## v0.3.0
 This is a major overhaul which rewrites a large part of the package. 
 
