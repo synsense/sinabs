@@ -14,8 +14,6 @@ Spiking
     LIF
     LIFSqueeze
     LIFRecurrent
-    ExpLeak
-    ExpLeakSqueeze
     ALIF
     ALIFRecurrent
 

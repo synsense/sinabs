@@ -2,7 +2,7 @@
 ===========
 MaxSpike
 ===========
-:class:`~sinabs.activation.MaxSpike` surrogate gradient.
+:class:`~sinabs.activation.MaxSpike` activation function.
 """
 
 import torch
@@ -18,4 +18,5 @@ activations = sina.MaxSpike(max_num_spikes_per_bin=2).apply(
 plt.plot(v_mem, activations)
 plt.xlabel("Neuron membrane potential")
 plt.ylabel("Spike activation")
+plt.ylim(top=5.2)
 plt.tight_layout()

@@ -12,10 +12,7 @@ class MembraneReset:
         reset_value: fixed value that a neuron should be reset to. Defaults to zero.
 
     Example:
-        >>> activation_fn = sinabs.activation.ActivationFunction(
-        >>>                     reset_fn=MembraneReset(reset_value=0.)
-        >>>                     )
-        >>> layer = sinabs.layers.LIF(activation_fn=activation_fn, ...)
+        >>> layer = sinabs.layers.LIF(reset_fn=MembraneReset(reset_value=0.), ...)
     """
 
     reset_value: float = 0.0
@@ -39,10 +36,7 @@ class MembraneSubtract:
                         v_mem if it spiked. Defaults to spiking threshold if None.
 
     Example:
-        >>> activation_fn = sinabs.activation.ActivationFunction(
-        >>>                     reset_fn=MembraneSubtract(subtract_value=None)
-        >>>                     )
-        >>> layer = sinabs.layers.LIF(activation_fn=activation_fn, ...)
+        >>> layer = sinabs.layers.LIF(reset_fn=MembraneSubtract(subtract_value=None), ...)
     """
 
     subtract_value: Optional[float] = None
