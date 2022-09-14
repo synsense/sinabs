@@ -2,7 +2,7 @@
 ===========
 SingleSpike
 ===========
-:class:`~sinabs.activation.SingleSpike` surrogate gradient.
+:class:`~sinabs.activation.SingleSpike` activation function.
 """
 
 import torch
