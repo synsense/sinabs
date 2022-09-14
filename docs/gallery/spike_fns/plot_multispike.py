@@ -2,7 +2,7 @@
 ===========
 MultiSpike
 ===========
-:class:`~sinabs.activation.MultiSpike` surrogate gradient.
+:class:`~sinabs.activation.MultiSpike` activation function.
 """
 
 import torch

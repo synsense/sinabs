@@ -16,3 +16,5 @@ activations = sina.SingleSpike.apply(v_mem, spike_threshold, sina.MultiGaussian(
 plt.plot(v_mem, activations)
 plt.xlabel("Neuron membrane potential")
 plt.ylabel("Spike activation")
+plt.ylim(top=5.2)
+plt.tight_layout()

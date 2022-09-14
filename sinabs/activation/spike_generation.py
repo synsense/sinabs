@@ -15,11 +15,12 @@ class BackwardClass:
 
 class MultiSpike(BackwardClass, torch.autograd.Function):
     """
-    PyTorch-compatible function that returns the number of spikes emitted,
-    given a membrane potential value and in a "threshold subtracting" regime.
-    In other words, the integer division of the input by the threshold is returned.
-    In the backward pass, the gradient is zero if the membrane is at least
-    `threshold - window`, and is passed through otherwise.
+    Autograd function that returns membrane potential integer-divided by spike threshold.
+    Do not instantiate this class when passing as spike_fn (see example).
+    Can be combined with different surrogate gradient functions.
+
+    Example:
+        >>> layer = sinabs.layers.LIF(spike_fn=MultiSpike, ...)
     """
 
     required_states: List[str] = ["v_mem"]
@@ -43,14 +44,9 @@ class MultiSpike(BackwardClass, torch.autograd.Function):
 
 class MaxSpikeInner(BackwardClass, torch.autograd.Function):
     """
-    PyTorch-compatible function that returns the number of spikes emitted,
-    given a membrane potential value and in a "threshold subtracting" regime.
-    In other words, the integer division of the input by the threshold is returned.
-    Other than MultiSpike, the number of spikes emitted in one time step is limited.
-    Equivalent to SingleSpike for max_num_spikes_per_bin=1 and to MultiSpike for
-    max_num_spikes_per_bin=None.
-    In the backward pass, the gradient is zero if the membrane is at least
-    `threshold - window`, and is passed through otherwise.
+    Autograd function that returns membrane potential divided by
+    spike threshold for a maximum number of spikes per time step.
+    Can be combined with different surrogate gradient functions.
     """
 
     required_states: List[str] = ["v_mem", "max_num_spikes_per_bin"]
@@ -78,8 +74,12 @@ class MaxSpikeInner(BackwardClass, torch.autograd.Function):
 @dataclass
 class MaxSpike:
     """
-    Wrapper for MaxSpikeInner that does not require passing max_num_spikes_per_bin
-    when calling apply but only at instantiation.
+    Wrapper for MaxSpikeInner autograd function. This class needs to
+    be instantiated when used as spike_fn. Notice the difference in example
+    to Single/MultiSpike.
+
+    Example:
+        >>> layer = sinabs.layers.LIF(spike_fn=MaxSpike(max_num_spikes_per_bin=10), ...)
     """
 
     max_num_spikes_per_bin: Optional[int] = None
@@ -101,9 +101,13 @@ class MaxSpike:
 
 class SingleSpike(BackwardClass, torch.autograd.Function):
     """
-    PyTorch-compatible function that returns a single spike per time step.
-    In the backward pass, the gradient is zero if the membrane is at least
-    `spike_threshold - window`, and is passed through otherwise.
+    Autograd function that returns membrane potential divided by
+    spike threshold for a maximum of one spike per time step.
+    Do not instantiate this class when passing as spike_fn (see example).
+    Can be combined with different surrogate gradient functions.
+
+    Example:
+        >>> layer = sinabs.layers.LIF(spike_fn=SingleSpike, ...)
     """
 
     required_states: List[str] = ["v_mem"]

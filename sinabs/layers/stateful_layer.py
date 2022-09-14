@@ -5,20 +5,13 @@ import torch
 
 class StatefulLayer(torch.nn.Module):
     """
-    Pytorch implementation of a stateful layer, to be used as base class.
+    A base class that instantiates buffers/states which update at every time step.
+
+    Parameters:
+        state_names (list of str): the PyTorch buffers to initialise. These are not parameters.
     """
 
-    backend = "sinabs"
-
     def __init__(self, state_names: List[str]):
-        """
-        Pytorch implementation of a stateful layer, to be used as base class.
-
-        Parameters
-        ----------
-        state_names: List of str
-            Names of states to be registered as buffers.
-        """
         super().__init__()
 
         for state_name in state_names:
