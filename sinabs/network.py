@@ -3,7 +3,6 @@ import warnings
 import torch
 import torch.nn as nn
 import numpy as np
-import pandas as pd
 from typing import Optional, Union, List, Tuple, Dict
 from .utils import get_network_activations, get_activations
 from .layers import StatefulLayer
@@ -198,7 +197,7 @@ class Network(torch.nn.Module):
                     i += 1
                 lyr.reset_states(randomize=randomize, value_ranges=vr)
 
-    def get_synops(self, num_evs_in=None) -> pd.DataFrame:
+    def get_synops(self, num_evs_in=None) -> dict:
         """
         Please see docs for `sinabs.SNNSynOpCounter.get_synops()`.
         """
