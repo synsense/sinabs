@@ -3,7 +3,6 @@ import warnings
 import torch
 from sinabs.layers import NeuromorphicReLU
 from numpy import product
-import pandas as pd
 
 
 def synops_hook(layer, inp, out):
@@ -57,14 +56,21 @@ class SNNSynOpCounter:
         handle = layer.register_forward_hook(synops_hook)
         self.handles.append(handle)
 
-    def get_synops(self) -> pd.DataFrame:
+    def get_synops(self) -> dict:
         """
         Method to compute a table of synaptic operations for the latest forward pass.
+
+        The returned dictionary can be parsed into a table using pandas like so,
+        ```
+            synops_map = counter.get_synops()
+            SynOps_dataframe = pandas.DataFrame.from_dict(synops_map, "index")
+            SynOps_dataframe.set_index("Layer", inplace=True)
+        ```
 
         NOTE: this may not be accurate in presence of average pooling.
 
         Returns:
-            SynOps_dataframe: A Pandas DataFrame containing layer IDs and \
+            SynOps_map: A dictionary containing layer IDs and \
             respectively, for the latest forward pass performed, their:
                 number of input spikes,
                 fanout,
@@ -73,7 +79,7 @@ class SNNSynOpCounter:
                 total duration of simulation,
                 number of synaptic operations per second.
         """
-        d = {}
+        SynOps_map = {}
         scale_facts = []
         for i, lyr in enumerate(self.model.modules()):
             if isinstance(lyr, torch.nn.AvgPool2d):
@@ -90,7 +96,7 @@ class SNNSynOpCounter:
                 scale_factor = 1
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
-                d[i] = {
+                SynOps_map[i] = {
                     "Layer": i,
                     "In": lyr.tot_in * scale_factor,
                     "Fanout_Prev": lyr.fanout,
@@ -100,9 +106,7 @@ class SNNSynOpCounter:
                     "SynOps/s": (lyr.synops * scale_factor) / lyr.tw / self.dt * 1000,
                 }
 
-        SynOps_dataframe = pd.DataFrame.from_dict(d, "index")
-        SynOps_dataframe.set_index("Layer", inplace=True)
-        return SynOps_dataframe
+        return SynOps_map
 
     def get_total_synops(self, per_second=False) -> float:
         """

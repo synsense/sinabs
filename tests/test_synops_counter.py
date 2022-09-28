@@ -100,5 +100,5 @@ def test_snn_synops_counter():
     counter = SNNSynOpCounter(model)
     model(inp)
     # 3 spikes, 2x2 kernel, 5 channels
-    assert counter.get_synops()["SynOps"].sum() == 60
+    assert sum(x["SynOps"] for x in counter.get_synops().values()) == 60
     assert counter.get_total_synops() == 60
