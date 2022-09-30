@@ -3,6 +3,28 @@ import torch.nn as nn
 from typing import Callable, Optional
 
 
+class Repeat(nn.Module):
+    """
+    Utility layer which wraps any nn.Module. It flattens time and batch
+    dimensions of the input before feeding it to the child module and
+    unflattens those dimensions to the original shape before passing it
+    to the next layer.
+    """
+
+    def __init__(self, module: nn.Module):
+        super().__init__()
+        self.module = module
+
+    def forward(self, x):
+        orig_shape = x.shape[:2]
+        x = x.flatten(0, 1)
+        x = self.module(x)
+        return x.unflatten(0, orig_shape)
+
+    def __repr__(self):
+        return "Repeated " + self.module.__repr__()
+
+
 class FlattenTime(nn.Flatten):
     """
     Utility layer which always flattens first two dimensions. Meant

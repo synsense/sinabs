@@ -61,6 +61,7 @@ Auxiliary
     :template: class_layer.rst
 
     Cropping2dLayer
+    Repeat
     FlattenTime
     UnflattenTime
 

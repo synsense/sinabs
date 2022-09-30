@@ -10,4 +10,4 @@ from .iaf import IAF, IAFRecurrent, IAFSqueeze
 from .lif import LIF, LIFRecurrent, LIFSqueeze
 from .alif import ALIF, ALIFRecurrent
 from .exp_leak import ExpLeak, ExpLeakSqueeze
-from .reshape import FlattenTime, UnflattenTime, SqueezeMixin
+from .reshape import FlattenTime, UnflattenTime, SqueezeMixin, Repeat
