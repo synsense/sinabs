@@ -32,7 +32,16 @@ class IAF(LIF):
         tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-        record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+        record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute
+                       `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(
@@ -102,6 +111,14 @@ class IAFRecurrent(LIFRecurrent):
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(
@@ -153,6 +170,14 @@ class IAFSqueeze(IAF, SqueezeMixin):
     Same as parent IAF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
+
+    Shape:
+        - Input: :math:`(Batch * Time, Channel, Height, Width)` or :math:`(Batch * Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(

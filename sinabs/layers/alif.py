@@ -53,6 +53,16 @@ class ALIF(StatefulLayer):
         train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
         norm_input: When True, normalise input current by tau. This helps when training time constants.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
+        b: The deviation from the original spike threshold.
+        spike_threshold: The current spike threshold that gets updated with every output spike.
     """
 
     def __init__(
@@ -242,6 +252,16 @@ class ALIFRecurrent(ALIF):
         train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
         norm_input: When True, normalise input current by tau. This helps when training time constants.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
+        b: The deviation from the original spike threshold.
+        spike_threshold: The current spike threshold that gets updated with every output spike.
     """
 
     def __init__(
@@ -330,6 +350,16 @@ class ALIFSqueeze(ALIF, SqueezeMixin):
     Same as parent ALIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
+
+    Shape:
+        - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
+        b: The deviation from the original spike threshold.
+        spike_threshold: The current spike threshold that gets updated with every output spike.
     """
 
     def __init__(

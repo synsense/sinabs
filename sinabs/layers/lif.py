@@ -37,6 +37,14 @@ class LIF(StatefulLayer):
         norm_input: When True, normalise input current by tau. This helps when training time constants.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary
             attribute `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(
@@ -224,6 +232,14 @@ class LIFRecurrent(LIF):
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         norm_input: When True, normalise input current by tau. This helps when training time constants.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+
+    Shape:
+        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(
@@ -310,6 +326,14 @@ class LIFSqueeze(LIF, SqueezeMixin):
     Same as parent LIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
+
+    Shape:
+        - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(
