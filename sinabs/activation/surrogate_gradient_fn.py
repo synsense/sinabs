@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import math
+from random import gauss
 import torch
 
 
@@ -20,6 +21,29 @@ class Heaviside:
         return ((v_mem >= (spike_threshold - self.window)).float()) / spike_threshold
 
 
+def gaussian(x: torch.Tensor, mu: float, sigma: float):
+    return torch.exp(-((x - mu) ** 2) / (2 * sigma**2)) / (
+        sigma * torch.sqrt(2 * torch.tensor(math.pi))
+    )
+
+
+@dataclass
+class Gaussian:
+    """
+    Gaussian surrogate gradient function.
+    """
+
+    mu: float = 0.0
+    sigma: float = 0.5
+    grad_scale: float = 1.0
+
+    def __call__(self, v_mem, spike_threshold):
+        return (
+            gaussian(x=v_mem - spike_threshold, mu=self.mu, sigma=self.sigma)
+            * self.grad_scale
+        )
+
+
 @dataclass
 class MultiGaussian:
     """
@@ -30,15 +54,22 @@ class MultiGaussian:
 
     mu: float = 0.0
     sigma: float = 0.5
+    h: float = 0.15
+    s: float = 6
     grad_scale: float = 1.0
 
     def __call__(self, v_mem, spike_threshold):
         return (
-            torch.exp(
-                -(((v_mem - spike_threshold) - self.mu) ** 2) / (2 * self.sigma**2)
+            (1 + self.h)
+            * gaussian(x=v_mem - spike_threshold, mu=self.mu, sigma=self.sigma)
+            - self.h
+            * gaussian(
+                x=v_mem - spike_threshold, mu=self.sigma, sigma=self.s * self.sigma
             )
-            / torch.sqrt(2 * torch.tensor(math.pi))
-            / self.sigma
+            - self.h
+            * gaussian(
+                x=v_mem - spike_threshold, mu=-self.sigma, sigma=self.s * self.sigma
+            )
         ) * self.grad_scale
 
 

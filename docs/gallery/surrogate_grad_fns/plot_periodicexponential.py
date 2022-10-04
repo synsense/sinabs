@@ -9,7 +9,7 @@ import torch
 import sinabs.activation as sina
 import matplotlib.pyplot as plt
 
-x = torch.linspace(-0.5, 3.5, 500)
+x = torch.linspace(-2, 4, 500)
 plt.plot(
     x,
     sina.PeriodicExponential()(v_mem=x, spike_threshold=1.0),

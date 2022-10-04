@@ -32,4 +32,5 @@ Surrogate Gradient Functions
     SingleExponential
     PeriodicExponential
     Heaviside
+    Gaussian
     MultiGaussian
