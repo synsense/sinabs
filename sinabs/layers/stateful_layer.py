@@ -8,7 +8,7 @@ class StatefulLayer(torch.nn.Module):
     A base class that instantiates buffers/states which update at every time step.
 
     Parameters:
-        state_names (list of str): the PyTorch buffers to initialise. These are not parameters.
+        state_names: the PyTorch buffers to initialise. These are not parameters.
     """
 
     def __init__(self, state_names: List[str]):
@@ -76,22 +76,19 @@ class StatefulLayer(torch.nn.Module):
         """
         Reset the state/buffers in a layer.
 
-        Parameters
-        ----------
-        randomize: Bool
-            If true, reset the states between a range provided. Else, the states are reset to zero.
-        value_ranges: Optional[Dict[str, Tuple[float, float]]]
-            A dictionary of key value pairs: buffer_name -> (min, max) for each state that needs to be reset.
-            The states are reset with a uniform distribution between the min and max values specified.
-            Any state with an undefined key in this dictionary will be reset between 0 and 1
-            This parameter is only used if randomize is set to true.
+        Parameters:
+            randomize: If true, reset the states between a range provided. Else, the states are reset to zero.
+            value_ranges: A dictionary of key value pairs: buffer_name -> (min, max) for each state that needs to be reset.
+                          The states are reset with a uniform distribution between the min and max values specified.
+                          Any state with an undefined key in this dictionary will be reset between 0 and 1
+                          This parameter is only used if randomize is set to true.
 
+        .. note:: If you would like to reset the state with a custom distribution, you can do this individually for each parameter as follows::
 
-        NOTE: If you would like to reset the state with a custom distribution,
-        you can do this individually for each parameter as follows.
+            layer.<state_name>.data = <your desired data>
 
-        layer.<state_name>.data = <your desired data>;
-        layer.<state_name>.detach_()
+            layer.<state_name>.detach_()
+
         """
         if self.is_state_initialised():
             for name, buffer in self.named_buffers():
@@ -145,13 +142,13 @@ class StatefulLayer(torch.nn.Module):
     def _param_dict(self) -> dict:
         """
         Dict of all parameters relevant for creating a new instance with same
-        parameters as `self`
+        parameters as `self`.
         """
         return dict()
 
     @property
     def does_spike(self) -> bool:
         """
-        Return True if the layer has an activation function
+        Return True if the layer has an activation function.
         """
         return hasattr(self, "spike_fn") and self.spike_fn is not None

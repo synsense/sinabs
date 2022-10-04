@@ -8,5 +8,3 @@
 
 .. autoclass:: {{ name }}
     :members:
-        forward,
-    :special-members:

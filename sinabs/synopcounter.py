@@ -21,17 +21,15 @@ class SNNSynOpCounter:
     Note that this is automatically instantiated by `from_torch` and by
     `Network` if they are passed `synops=True`.
 
-    Usage:
-        counter = SNNSynOpCounter(my_spiking_model)
-
-        output = my_spiking_model(input)  # forward pass
-
-        synops_table = counter.get_synops()
-
     Arguments:
         model: Spiking model.
         dt: the number of milliseconds corresponding to a time step in the \
         simulation (default 1.0).
+
+    Example:
+        >>> counter = SNNSynOpCounter(my_spiking_model)
+        >>> output = my_spiking_model(input)  # forward pass
+        >>> synops_table = counter.get_synops()
     """
 
     def __init__(self, model, dt=1.0):
@@ -57,27 +55,21 @@ class SNNSynOpCounter:
         self.handles.append(handle)
 
     def get_synops(self) -> dict:
-        """
-        Method to compute a table of synaptic operations for the latest forward pass.
+        """Method to compute a table of synaptic operations for the latest forward pass.
 
-        The returned dictionary can be parsed into a table using pandas like so,
-        ```
-            synops_map = counter.get_synops()
-            SynOps_dataframe = pandas.DataFrame.from_dict(synops_map, "index")
-            SynOps_dataframe.set_index("Layer", inplace=True)
-        ```
-
-        NOTE: this may not be accurate in presence of average pooling.
+        .. note:: this may not be accurate in presence of average pooling.
 
         Returns:
-            SynOps_map: A dictionary containing layer IDs and \
-            respectively, for the latest forward pass performed, their:
-                number of input spikes,
-                fanout,
-                synaptic operations,
-                number of timesteps,
-                total duration of simulation,
-                number of synaptic operations per second.
+            A dictionary containing layer IDs and respectively, for
+            the latest forward pass performed, their number of input spikes,
+            fanout, synaptic operations, number of timesteps, total duration
+            of simulation, number of synaptic operations per second.
+
+        Example:
+            >>> synops_map = counter.get_synops()
+            >>> SynOps_dataframe = pandas.DataFrame.from_dict(synops_map, "index")
+            >>> SynOps_dataframe.set_index("Layer", inplace=True)
+
         """
         SynOps_map = {}
         scale_facts = []
@@ -110,13 +102,13 @@ class SNNSynOpCounter:
 
     def get_total_synops(self, per_second=False) -> float:
         """
-        Faster method for computing total synaptic operations without using Pandas.
+        Sums up total number of synaptic operations across the network.
 
-        NOTE: this may not be accurate in presence of average pooling.
+        .. note:: this may not be accurate in presence of average pooling.
 
         Arguments:
-            per_second (bool, default False): if True, gives synops per second \
-        instead of total synops in the last forward pass.
+            per_second (bool, default False): if True, gives synops per second
+                            instead of total synops in the last forward pass.
 
         Returns:
             synops: the total synops in the network, based on the last forward pass.
@@ -141,7 +133,8 @@ class SNNSynOpCounter:
             j_per_synop: Energy use per synaptic operation, in joules.\
             Default 1e-11 J.
 
-        Returns: estimated power in mW.
+        Returns: 
+            estimated power in mW.
         """
         tot_synops_per_s = self.get_total_synops(per_second=True)
         power_in_mW = tot_synops_per_s * j_per_synop * 1000
@@ -157,15 +150,14 @@ class SynOpCounter:
     Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an
     analog CNN model.
 
-    Usage:
-        counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)
+    Parameters:
+        modules: list of modules, e.g. MyTorchModel.modules()
+        sum_activations: If True (default), returns a single number of synops, otherwise a list of layer synops.
 
-        output = MyTorchModule(input)  # forward pass
-
-        synop_count = counter()
-
-    :param modules: list of modules, e.g. MyTorchModel.modules()
-    :param sum_activations: If True (default), returns a single number of synops, otherwise a list of layer synops.
+    Example:
+        >>> counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)
+        >>> output = MyTorchModule(input)  # forward pass
+        >>> synop_count = counter()
     """
 
     def __init__(self, modules, sum_activations=True):

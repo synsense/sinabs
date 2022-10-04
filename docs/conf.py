@@ -17,6 +17,8 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
+autodoc_typehints = "both"
+
 sphinx_gallery_conf = {
     "examples_dirs": "gallery/",  # path to your example scripts
     "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
@@ -38,7 +40,7 @@ nb_execution_excludepatterns = [
     "bptt.ipynb",
     "weight_transfer_mnist.ipynb",
 ]
-# nb_execution_mode = "off"
+nb_execution_mode = "off"
 
 templates_path = ["_templates"]
 

@@ -15,20 +15,13 @@ class ExpLeak(LIF):
 
     where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters
-    ----------
-    tau_mem: float
-        Membrane potential time constant.
-    min_v_mem: float or None
-        Lower bound for membrane potential v_mem, clipped at every time step.
-    train_alphas: bool
-        When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
-    shape: torch.Size
-        Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-    norm_input: bool
-        When True, normalise input current by tau. This helps when training time constants.
-    record_states: bool
-        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+    Parameters:
+        tau_mem: Membrane potential time constant.
+        min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
+        train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
+        shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+        norm_input: When True, normalise input current by tau. This helps when training time constants.
+        record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -79,6 +72,10 @@ class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
+        """
+        Forward call wrapper that will flatten the input to and
+        unflatten the output from the super class forward call.
+        """
         return self.squeeze_forward(input_data, super().forward)
 
     @property

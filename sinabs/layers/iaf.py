@@ -20,28 +20,19 @@ class IAF(LIF):
 
     where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters
-    ----------
-    spike_threshold: float
-        Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
-    spike_fn: torch.autograd.Function
-        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
-        a spike threshold and a surrogate gradient function and returns spikes. Be aware
-        that the class itself is passed here (because torch.autograd methods are static)
-        rather than an object instance.
-    reset_fn: Callable
-        A function that defines how the membrane potential is reset after a spike.
-    surrogate_grad_fn: Callable
-        Choose how to define gradients for the spiking non-linearity during the
-        backward pass. This is a function of membrane potential.
-    tau_syn: float
-        Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
-    min_v_mem: float or None
-        Lower bound for membrane potential v_mem, clipped at every time step.
-    shape: torch.Size
-        Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-    record_states: bool
-        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+    Parameters:
+        spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
+        spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+                  a spike threshold and a surrogate gradient function and returns spikes. Be aware
+                  that the class itself is passed here (because torch.autograd methods are static)
+                  rather than an object instance.
+        reset_fn: A function that defines how the membrane potential is reset after a spike.
+        surrogate_grad_fn: Choose how to define gradients for the spiking non-linearity during the
+                           backward pass. This is a function of membrane potential.
+        tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+        min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
+        shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+        record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -72,6 +63,7 @@ class IAF(LIF):
 
     @property
     def alpha_mem_calculated(self):
+        """Always returns a tensor of 1."""
         return torch.tensor(1.0)
 
     @property
@@ -96,30 +88,20 @@ class IAFRecurrent(LIFRecurrent):
 
     where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters
-    ----------
-    rec_connect: torch.nn.Module
-        An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
-    spike_threshold: float
-        Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
-    spike_fn: torch.autograd.Function
-        Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
-        a spike threshold and a surrogate gradient function and returns spikes. Be aware
-        that the class itself is passed here (because torch.autograd methods are static)
-        rather than an object instance.
-    reset_fn: Callable
-        A function that defines how the membrane potential is reset after a spike.
-    surrogate_grad_fn: Callable
-        Choose how to define gradients for the spiking non-linearity during the
-        backward pass. This is a function of membrane potential.
-    tau_syn: float
-        Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
-    min_v_mem: float or None
-        Lower bound for membrane potential v_mem, clipped at every time step.
-    shape: torch.Size
-        Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
-    record_states: bool
-        When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
+    Parameters:
+        rec_connect: An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
+        spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
+        spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
+                  a spike threshold and a surrogate gradient function and returns spikes. Be aware
+                  that the class itself is passed here (because torch.autograd methods are static)
+                  rather than an object instance.
+        reset_fn: A function that defines how the membrane potential is reset after a spike.
+        surrogate_grad_fn: Choose how to define gradients for the spiking non-linearity during the
+                           backward pass. This is a function of membrane potential.
+        tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
+        min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
+        shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
+        record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
     """
 
     def __init__(
@@ -147,8 +129,13 @@ class IAFRecurrent(LIFRecurrent):
             norm_input=False,
             record_states=record_states,
         )
-        # deactivate tau_mem being learned
-        self.tau_mem.requires_grad = False
+        # IAF does not have time constants
+        self.tau_mem = None
+
+    @property
+    def alpha_mem_calculated(self):
+        """Always returns a tensor of 1."""
+        return torch.tensor(1.0)
 
     @property
     def _param_dict(self) -> dict:
@@ -178,6 +165,10 @@ class IAFSqueeze(IAF, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
+        """
+        Forward call wrapper that will flatten the input to and
+        unflatten the output from the super class forward call.
+        """
         return self.squeeze_forward(input_data, super().forward)
 
     @property

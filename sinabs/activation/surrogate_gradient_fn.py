@@ -10,9 +10,8 @@ class Heaviside:
     Heaviside surrogate gradient with optional shift.
 
     Parameters:
-        window:
-            Distance between step of Heaviside surrogate gradient and
-            threshold, relative to threshold.
+        window: Distance between step of Heaviside surrogate gradient and
+                threshold, relative to threshold.
     """
 
     window: float = 1.0
@@ -31,6 +30,11 @@ def gaussian(x: torch.Tensor, mu: float, sigma: float):
 class Gaussian:
     """
     Gaussian surrogate gradient function.
+
+    Parameters
+        mu: The mean of the Gaussian.
+        sigma: The standard deviation of the Gaussian.
+        grad_scale: Scale the gradients arbitrarily.
     """
 
     mu: float = 0.0
@@ -50,6 +54,13 @@ class MultiGaussian:
     Surrogate gradient as defined in Yin et al., 2021.
 
     https://www.biorxiv.org/content/10.1101/2021.03.22.436372v2
+
+    Parameters
+        mu: The mean of the Gaussian.
+        sigma: The standard deviation of the Gaussian.
+        h: Controls the magnitude of the negative parts of the kernel.
+        s: Controls the width of the negative parts of the kernel.
+        grad_scale: Scale the gradients arbitrarily.
     """
 
     mu: float = 0.0
