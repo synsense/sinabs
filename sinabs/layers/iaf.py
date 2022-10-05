@@ -9,7 +9,7 @@ import numpy as np
 
 class IAF(LIF):
     """
-    Integrate and Fire neuron layer.
+    Integrate and Fire neuron layer that is designed as a special case of :class:`~sinabs.layers.LIF` with tau_mem=inf.
 
     Neuron dynamics in discrete time:
 
@@ -86,7 +86,7 @@ class IAF(LIF):
 
 class IAFRecurrent(LIFRecurrent):
     """
-    Integrate and Fire neuron layer with recurrent connections.
+    Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.LIFRecurrent`.
 
     Neuron dynamics in discrete time:
 
@@ -172,7 +172,7 @@ class IAFSqueeze(IAF, SqueezeMixin):
     layers that can only take a 4D input, such as convolutional and pooling layers.
 
     Shape:
-        - Input: :math:`(Batch * Time, Channel, Height, Width)` or :math:`(Batch * Time, Channel)`
+        - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
         - Output: Same as input.
 
     Attributes:

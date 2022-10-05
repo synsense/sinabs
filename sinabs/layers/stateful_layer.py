@@ -5,7 +5,8 @@ import torch
 
 class StatefulLayer(torch.nn.Module):
     """
-    A base class that instantiates buffers/states which update at every time step.
+    A base class that instantiates buffers/states which update at every time step
+    and provides helper methods that manage those states.
 
     Parameters:
         state_names: the PyTorch buffers to initialise. These are not parameters.

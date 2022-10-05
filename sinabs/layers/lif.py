@@ -9,16 +9,24 @@ from .reshape import SqueezeMixin
 
 class LIF(StatefulLayer):
     """
-    Leaky Integrate and Fire neuron layer.
+    Leaky Integrate and Fire neuron layer that inherits from :class:`~sinabs.layers.StatefulLayer`.
 
-    Neuron dynamics in discrete time:
+    Neuron dynamics in discrete time for norm_input=True:
 
     .. math ::
-        V_{mem}(t+1) = \\alpha V_{mem}(t) + (1-\\alpha)\\sum z(t)
+        V_{mem}(t+1) = max(\\alpha V_{mem}(t) + (1-\\alpha)\\sum z(t), V_{min})
 
+    Neuron dynamics for norm_input=False:
+
+    .. math ::
+        V_{mem}(t+1) = max(\\alpha V_{mem}(t) + \\sum z(t), V_{min})
+
+    where :math:`\\alpha =  e^{-1/tau_{mem}}`, :math:`V_{min}` is a minimum membrane potential
+    and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
+    We also reset the membrane potential according to reset_fn:
+
+    .. math ::
         \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
-
-    where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
     Parameters:
         tau_mem: Membrane potential time constant.
@@ -208,16 +216,24 @@ class LIF(StatefulLayer):
 
 class LIFRecurrent(LIF):
     """
-    Leaky Integrate and Fire neuron layer with recurrent connections.
+    Leaky Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.LIF`.
 
-    Neuron dynamics in discrete time:
+    Neuron dynamics in discrete time for norm_input=True:
 
     .. math ::
-        V_{mem}(t+1) = \\alpha V_{mem}(t) + (1-\\alpha)\\sum z(t)
+        V_{mem}(t+1) = max(\\alpha V_{mem}(t) + (1-\\alpha)\\sum z_{in}(t) z_{rec}(t), V_{min})
 
+    Neuron dynamics for norm_input=False:
+
+    .. math ::
+        V_{mem}(t+1) = max(\\alpha V_{mem}(t) + \\sum z_{in}(t) z_{rec}(t), V_{min})
+
+    where :math:`\\alpha =  e^{-1/tau_{mem}}`, :math:`V_{min}` is a minimum membrane potential
+    and :math:`\\sum z_{in}(t) z_{rec}(t)` represents the sum of all input and recurrent currents at time :math:`t`.
+    We also reset the membrane potential according to reset_fn:
+
+    .. math ::
         \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
-
-    where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
     Parameters:
         tau_mem: Membrane potential time constant.
@@ -321,9 +337,9 @@ class LIFRecurrent(LIF):
 
 class LIFSqueeze(LIF, SqueezeMixin):
     """
-    LIF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    :class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
 
-    Same as parent LIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
+    Same as parent :class:`~sinabs.layers.LIF` class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
 

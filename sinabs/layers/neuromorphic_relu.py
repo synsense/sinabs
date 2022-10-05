@@ -7,12 +7,13 @@ class NeuromorphicReLU(torch.nn.Module):
     NeuromorphicReLU layer. This layer is NOT used for Sinabs networks; it's
     useful while training analogue pyTorch networks for future use with Sinabs.
 
-    :param quantize: Whether or not to quantize the output (i.e. floor it to \
+    Parameters:
+        quantize: Whether or not to quantize the output (i.e. floor it to \
         the integer below), in order to mimic spiking behavior.
-    :param fanout: Useful when computing the number of SynOps of a quantized \
+        fanout: Useful when computing the number of SynOps of a quantized \
         NeuromorphicReLU. The activity can be accessed through \
         NeuromorphicReLU.activity, and is multiplied by the value of fanout.
-    :param stochastic_rounding: Upon quantization, should the value be rounded stochastically or floored
+        stochastic_rounding: Upon quantization, should the value be rounded stochastically or floored
         Only done during training. During evaluation mode, the value is simply floored
 
     """

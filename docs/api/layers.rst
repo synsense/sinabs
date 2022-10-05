@@ -2,8 +2,20 @@ layers
 ========
 .. currentmodule:: sinabs.layers
 
+Parent layers
+-------------
+
+.. autosummary::
+    :toctree: generated/
+    :template: class_layer.rst
+
+    StatefulLayer
+    SqueezeMixin
+
 Spiking
 -------
+All spiking layers are subclasses of `StatefulLayer` and Squeeze layers additionally inherit from `SqueezeMixin`.
+
 .. autosummary::
     :toctree: generated/
     :template: class_layer.rst
@@ -19,6 +31,8 @@ Spiking
 
 Non-spiking
 -----------
+These layers are special cases of LIF layers.
+
 .. autosummary::
     :toctree: generated/
     :template: class_layer.rst
@@ -43,16 +57,6 @@ Conversion from images / analog signals
 
     Img2SpikeLayer
     Sig2SpikeLayer
-
-
-Parent layers
--------------
-.. autosummary::
-    :toctree: generated/
-    :template: class_layer.rst
-
-    StatefulLayer
-    SqueezeMixin
 
 Auxiliary
 ---------

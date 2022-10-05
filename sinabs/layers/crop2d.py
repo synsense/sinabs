@@ -8,17 +8,15 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 class Cropping2dLayer(nn.Module):
     """
     Crop input image by
+
+    Parameters:
+        cropping: ((top, bottom), (left, right))
     """
 
     def __init__(
         self,
         cropping: ArrayLike = ((0, 0), (0, 0)),
     ):
-        """
-        Crop input to the the rectangle dimensions
-
-        :param cropping: ((top, bottom), (left, right))
-        """
         super().__init__()
         self.top_crop, self.bottom_crop = cropping[0]
         self.left_crop, self.right_crop = cropping[1]
@@ -41,8 +39,11 @@ class Cropping2dLayer(nn.Module):
         """
         Retuns the output dimensions
 
-        :param input_shape: (channels, height, width)
-        :return: (channels, height, width)
+        Parameters:
+            input_shape: (channels, height, width)
+
+        Returns:
+            (channels, height, width)
         """
         channels, height, width = input_shape
         return (

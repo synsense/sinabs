@@ -6,7 +6,7 @@ from .reshape import SqueezeMixin
 
 class ExpLeak(LIF):
     """
-    Leaky Integrator layer.
+    Leaky Integrator layer which is a special case of :class:`~sinabs.layers.LIF` without activation function.
 
     Neuron dynamics in discrete time:
 
@@ -65,6 +65,14 @@ class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
     Same as parent ExpLeak class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
     layers that can only take a 4D input, such as convolutional and pooling layers.
+
+    Shape:
+        - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
+        - Output: Same as input.
+
+    Attributes:
+        v_mem: The membrane potential resets according to reset_fn for every spike.
+        i_syn: This attribute is only available if tau_syn is not None.
     """
 
     def __init__(self, batch_size=None, num_timesteps=None, **kwargs):

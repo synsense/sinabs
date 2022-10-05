@@ -9,7 +9,7 @@ from .reshape import SqueezeMixin
 
 class ALIF(StatefulLayer):
     """
-    Adaptive Leaky Integrate and Fire neuron layer.
+    Adaptive Leaky Integrate and Fire neuron layer that inherits from :class:`~sinabs.layers.StatefulLayer`.
 
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
@@ -208,7 +208,7 @@ class ALIF(StatefulLayer):
 
 class ALIFRecurrent(ALIF):
     """
-    Adaptive Leaky Integrate and Fire neuron layer with recurrent connections.
+    Adaptive Leaky Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.ALIF`.
 
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html

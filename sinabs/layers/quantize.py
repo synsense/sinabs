@@ -6,7 +6,8 @@ class QuantizeLayer(nn.Module):
     """
     Layer that quantizes the input, i.e. returns floor(input).
 
-    :param quantize: If False, this layer will do nothing.
+    Parameters:
+        quantize: If False, this layer will pass on the input without modifying it.
     """
 
     def __init__(self, quantize=True):

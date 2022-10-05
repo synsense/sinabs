@@ -5,7 +5,17 @@ import torch
 
 class Img2SpikeLayer(nn.Module):
     """
-    Layer to convert images to Spikes
+    Layer to convert images to spikes.
+
+    Parameters:
+        image_shape: tuple image shape
+        tw: int Time window length
+        max_rate: maximum firing rate of neurons
+        layer_name: string layer name
+        norm: the supposed maximum value of the input (default 255.0)
+        squeeze: whether to remove singleton dimensions from the input
+        negative_spikes: whether to allow negative spikes in response
+                         to negative input
     """
 
     def __init__(
@@ -17,18 +27,6 @@ class Img2SpikeLayer(nn.Module):
         squeeze: bool = False,
         negative_spikes: bool = False,
     ):
-        """
-        Layer converts images to spikes
-
-        :param image_shape: tuple image shape
-        :param tw: int Time window length
-        :param max_rate: maximum firing rate of neurons
-        :param layer_name: string layer name
-        :param norm: the supposed maximum value of the input (default 255.0)
-        :param squeeze: whether to remove singleton dimensions from the input
-        :param negative_spikes: whether to allow negative spikes in response \
-        to negative input
-        """
         super().__init__()
         self.tw = tw
         self.max_rate = max_rate
@@ -61,7 +59,12 @@ class Img2SpikeLayer(nn.Module):
 
 class Sig2SpikeLayer(torch.nn.Module):
     """
-    Layer to convert analog Signals to Spikes
+    Layer to convert analog Signals to spikes.
+
+    Parameters:
+        channels_in: number of channels in the analog signal
+        tw: int number of time steps for each sample of the signal (up sampling)
+        layer_name: string layer name
     """
 
     def __init__(
@@ -71,14 +74,6 @@ class Sig2SpikeLayer(torch.nn.Module):
         norm_level: float = 1,
         spk_out: bool = True,
     ):
-        """
-        Layer converts analog signals to spikes
-
-        :param channels_in: number of channels in the analog signal
-        :param tw: int number of time steps for each sample of the signal (up sampling)
-        :param layer_name: string layer name
-
-        """
         super().__init__()
         self.tw = tw
         self.norm_level = norm_level
@@ -89,12 +84,6 @@ class Sig2SpikeLayer(torch.nn.Module):
         return (self.tw * time_steps, channels)
 
     def forward(self, signal):
-        """
-        Convert a signal to the corresponding spikes
-
-        :param signal: [Channel, Sample(t)]
-        :return:
-        """
         channels, time_steps = signal.shape
         if self.tw != 1:
             signal = signal.view(-1, 1).repeat(1, self.tw).view(channels, -1)
