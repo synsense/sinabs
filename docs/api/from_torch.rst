@@ -3,6 +3,8 @@ from_torch
 
 This module provides support for importing models into the sinabs from pytorch.
 
-.. py:currentmodule:: sinabs.from_torch
-.. automodule:: sinabs.from_torch
+
+.. autofunction:: sinabs.from_torch.from_model
+
+.. autoclass:: sinabs.from_torch.SpkConverter
     :members:

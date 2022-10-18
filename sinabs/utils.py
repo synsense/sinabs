@@ -49,14 +49,15 @@ def get_activations(torchanalog_model, tsrData, name_list=None):
 
 def get_network_activations(
     model: nn.Module, inp, name_list: List = None, bRate: bool = False
-) -> [np.ndarray]:
+) -> List[np.ndarray]:
     """
     Returns the activity of neurons in each layer of the network
 
-    :param model: Model for which the activations are to be read out
-    :param inp: Input to the model
-    :param bRate: If true returns the rate, else returns spike count
-    :param name_list: list of all layers whose activations need to be compared
+    Parameters:
+        model: Model for which the activations are to be read out
+        inp: Input to the model
+        bRate: If true returns the rate, else returns spike count
+        name_list: list of all layers whose activations need to be compared
     """
     spike_counts = []
     tSim = len(inp)
@@ -102,13 +103,13 @@ def normalize_weights(
     `Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification` by Rueckauer et al.
     https://www.frontiersin.org/article/10.3389/fnins.2017.00682
 
-    Args:
-         ann(nn.Module): Torch module
-         sample_data (nn.Tensor): Input data to normalize the network with
-         output_layers (List[str]): List of layers to verify activity of normalization. Typically this is a relu layer
-         param_layers (List[str]): List of layers whose parameters preceed `output_layers`
-         percentile (float): A number between 0 and 100 to determine activity to be normalized by.
-          where a 100 corresponds to the max activity of the network. Defaults to 99.
+    Parameters:
+         ann: Torch module
+         sample_data: Input data to normalize the network with
+         output_layers: List of layers to verify activity of normalization. Typically this is a relu layer
+         param_layers: List of layers whose parameters preceed `output_layers`
+         percentile: A number between 0 and 100 to determine activity to be normalized by
+                     where a 100 corresponds to the max activity of the network. Defaults to 99.
     """
     # Network activity storage
     output_data = []

@@ -40,24 +40,19 @@ def from_model(
     The modules in the model are analyzed, and a copy is returned, with all
     ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
 
-    Parameters
+    Parameters:
         model: Torch model
-        input_shape: If provided, the layer dimensions are computed.
-                     Otherwise they will be computed at the first forward pass.
+        input_shape: If provided, the layer dimensions are computed. Otherwise they will be computed at the first forward pass.
         spike_threshold: The membrane potential threshold for spiking (same for all layers).
         spike_fn: The spike dynamics to determine the number of spikes out
         reset_fn: The reset mechanism of the neuron (like reset to zero, or subtract)
         surrogate_grad_fn: The surrogate gradient method for the spiking dynamics
         min_v_mem: The lower bound of the potential in (same for all layers).
         bias_rescaling: Biases are divided by this value.
-        batch_size: Must be provided if `num_timesteps` is None and is
-                    ignored otherwise.
-        num_timesteps: Number of timesteps per sample. If None, `batch_size`
-                       must be provided to seperate batch and time dimensions.
-        synops: If True (default: False), register hooks for counting synaptic
-                operations during forward passes.
-        add_spiking_output: If True (default: False), add a spiking layer
-                            to the end of a sequential model if not present.
+        batch_size: Must be provided if `num_timesteps` is None and is ignored otherwise.
+        num_timesteps: Number of timesteps per sample. If None, `batch_size` must be provided to seperate batch and time dimensions.
+        synops: If True (default: False), register hooks for counting synaptic operations during forward passes.
+        add_spiking_output: If True (default: False), add a spiking layer to the end of a sequential model if not present.
         backend: String defining the simulation backend (currently sinabs or exodus)
         kwargs_backend: Dict with additional kwargs for the simulation backend
     """
@@ -83,7 +78,7 @@ class SpkConverter:
     """
     Converts a Torch model and returns a Sinabs network object.
     The modules in the model are analyzed, and a copy is returned, with all
-    ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
+    ReLUs and NeuromorphicReLUs turned into SpikingLayers.
     """
 
     input_shape: Optional[Tuple[int, int, int]] = None

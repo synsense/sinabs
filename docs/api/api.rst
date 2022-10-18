@@ -7,3 +7,4 @@
    activation
    from_torch
    synopcounter
+   utils
