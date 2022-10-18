@@ -23,6 +23,7 @@ ChangeLog
 *.npz
 *.onnx
 docs/tutorials/data/
+*.log
 
 # mac os
 .DS_Store
