@@ -1,5 +1,5 @@
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Callable, Optional, Tuple
 from warnings import warn
 import torch
@@ -20,7 +20,7 @@ else:
 
 
 def from_model(
-    model: torch.Module,
+    model: nn.Module,
     input_shape: Optional[Tuple[int, int, int]] = None,
     spike_threshold: float = 1.0,
     spike_fn: Callable = MultiSpike,
@@ -98,7 +98,7 @@ class SpkConverter:
     synops: bool = False
     add_spiking_output: bool = False
     backend: str = "sinabs"
-    kwargs_backend: dict = dict()
+    kwargs_backend: dict = field(default_factory=dict)
 
     def relu2spiking(self):
         try:
