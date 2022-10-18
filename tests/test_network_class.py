@@ -39,11 +39,11 @@ class NestedANN(nn.Module):
 nested_ann = NestedANN()
 input_shape = (2, 128, 128)
 nested_input_tensor = torch.rand([1, 2, 128, 128])
-nested_network = from_model(nested_ann, input_shape=input_shape)
+nested_network = from_model(nested_ann, input_shape=input_shape, batch_size=1)
 
 # init torch.nn.Sequential instance for test
 ann = nn.Sequential(nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False), nn.ReLU())
-network = from_model(ann)
+network = from_model(ann, batch_size=1)
 data = torch.rand((1, 1, 4, 4))
 
 

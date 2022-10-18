@@ -40,7 +40,7 @@ nb_execution_excludepatterns = [
     "bptt.ipynb",
     "weight_transfer_mnist.ipynb",
 ]
-nb_execution_mode = "off"
+# nb_execution_mode = "off"
 
 templates_path = ["_templates"]
 

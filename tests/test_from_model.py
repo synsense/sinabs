@@ -1,20 +1,19 @@
-import torch
-import sinabs.layers as sil
 import numpy as np
-from torch import nn
-from sinabs.from_torch import from_model
 import pytest
-
-from sinabs.layers import IAFSqueeze
+import sinabs.layers as sl
+import torch
+from sinabs.activation import MembraneReset, SingleSpike
+from sinabs.from_torch import from_model
+from torch import nn
 
 
 def test_reconstruct_image():
     # generate random image
-    img_shape = (3, 100, 100)
+    img_shape = (3, 20, 20)
     image = 255.0 * np.random.random(size=img_shape)
 
     # instantiate layer
-    spklayer = sil.Img2SpikeLayer(
+    spklayer = sl.Img2SpikeLayer(
         image_shape=img_shape, tw=10000, max_rate=1000.0, squeeze=True
     )
 
@@ -27,11 +26,11 @@ def test_reconstruct_image():
 
 def test_reconstruct_real_numbers():
     # generate random image
-    input_shape = (3, 100, 100)
+    input_shape = (3, 20, 20)
     input_data = 2 * np.random.random(size=input_shape) - 1
 
     # instantiate layer
-    spklayer = sil.Img2SpikeLayer(
+    spklayer = sl.Img2SpikeLayer(
         image_shape=input_shape,
         tw=10000,
         max_rate=1000.0,
@@ -47,7 +46,7 @@ def test_reconstruct_real_numbers():
     assert np.allclose(rates, input_data, atol=0.025)
 
 
-def test_network_conversion():
+def test_network_conversion_basic():
     class CNN(nn.Module):
         def __init__(self):
             super(CNN, self).__init__()
@@ -75,8 +74,8 @@ def test_network_conversion():
     cnn.sequence[5].running_mean = 2.0 * torch.rand(8) - 1.0
     cnn.sequence[5].running_var = torch.rand(8) + 1.0
 
-    img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
-    snn = from_model(cnn, input_shape=input_shape)
+    img2spk = sl.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
+    snn = from_model(cnn, input_shape=input_shape, batch_size=1)
 
     img = torch.Tensor(np.random.random(size=input_shape))
 
@@ -112,9 +111,11 @@ def test_network_conversion_add_spk_out():
     cnn[5].running_mean = 2.0 * torch.rand(8) - 1.0
     cnn[5].running_var = torch.rand(8) + 1.0
 
-    img2spk = sil.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
+    img2spk = sl.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
 
-    snn = from_model(cnn, input_shape=input_shape, add_spiking_output=True)
+    snn = from_model(
+        cnn, input_shape=input_shape, add_spiking_output=True, batch_size=1
+    )
 
     img = torch.Tensor(np.random.random(size=input_shape))
 
@@ -139,7 +140,7 @@ def test_network_conversion_complicated_model():
         ),
     )
 
-    snn = from_model(ann)
+    snn = from_model(ann, batch_size=1)
 
 
 def test_network_conversion_with_batch_size():
@@ -197,32 +198,30 @@ def test_network_conversion_backend():
         ),
     )
 
-    snn = from_model(ann, backend="sinabs")
+    snn = from_model(ann, backend="sinabs", batch_size=1)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_parameter_devices():
     cnn = nn.Sequential(nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False), nn.ReLU())
 
-    snn = from_model(cnn.cuda(), input_shape=None)
+    batch_size = 10
+    snn = from_model(cnn.cuda(), input_shape=None, batch_size=batch_size)
 
-    spk_img = torch.rand((10, 1, 28, 28)).cuda()
+    spk_img = torch.rand((batch_size, 1, 28, 28)).cuda()
 
     with torch.no_grad():
         snn(spk_img)
 
 
 def test_activation_change():
-    from sinabs.layers import SumPool2d
-
     ann = nn.Sequential(
         nn.Conv2d(1, 4, (3, 3), padding=1),
         nn.ReLU(),
-        SumPool2d(2, 2),
+        sl.SumPool2d(2, 2),
         nn.Conv2d(1, 4, (3, 3), padding=1),
         nn.ReLU(),
     )
-    from sinabs.activation import SingleSpike, MembraneReset, Heaviside
 
     network = from_model(
         ann,
@@ -230,9 +229,10 @@ def test_activation_change():
         spike_fn=SingleSpike,
         reset_fn=MembraneReset(),
         min_v_mem=-3.0,
+        batch_size=1,
     )
 
-    spk_layer: IAFSqueeze = network.spiking_model[1]
+    spk_layer: sl.IAFSqueeze = network.spiking_model[1]
 
     # Test number of spikes generated against neuron threshold
     input_data = torch.zeros(10, 4, 32, 32)
@@ -248,7 +248,7 @@ def test_activation_change():
     assert out.sum() == 1
 
     # Test same for the second layer
-    spk_layer: IAFSqueeze = network.spiking_model[4]
+    spk_layer: sl.IAFSqueeze = network.spiking_model[4]
 
     # Test number of spikes generated against neuron threshold
     input_data = torch.zeros(10, 4, 32, 32)

@@ -1,5 +1,6 @@
 import copy
-from typing import Callable, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Callable, Optional, Tuple
 from warnings import warn
 import torch
 from torch import nn
@@ -19,20 +20,20 @@ else:
 
 
 def from_model(
-    model,
-    input_shape=None,
-    spike_threshold=1.0,
+    model: torch.Module,
+    input_shape: Optional[Tuple[int, int, int]] = None,
+    spike_threshold: float = 1.0,
     spike_fn: Callable = MultiSpike,
     reset_fn: Callable = MembraneSubtract(),
     surrogate_grad_fn: Callable = SingleExponential(),
-    min_v_mem=-1.0,
-    bias_rescaling=1.0,
-    num_timesteps=None,
-    batch_size=1,
-    synops=False,
-    add_spiking_output=False,
-    backend="sinabs",
-    kwargs_backend=None,
+    min_v_mem: float = -1.0,
+    bias_rescaling: float = 1.0,
+    batch_size: Optional[int] = None,
+    num_timesteps: Optional[int] = None,
+    synops: bool = False,
+    add_spiking_output: bool = False,
+    backend: str = "sinabs",
+    kwargs_backend: dict = dict(),
 ):
     """
     Converts a Torch model and returns a Sinabs network object.
@@ -40,40 +41,25 @@ def from_model(
     ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
 
     Parameters
-    ----------
-    model:
-        Torch model
-    input_shape:
-        If provided, the layer dimensions are computed. \
-        Otherwise they will be computed at the first forward pass.
-    spike_threshold:
-        The membrane potential threshold for spiking (same for all layers).
-    spike_fn: Callable
-        The spike dynamics to determine the number of spikes out
-    reset_fn: Callable
-        The reset mechanism of the neuron (like reset to zero, or subtract)
-    surrogate_grad_fn: Callable
-        The surrogate gradient method for the spiking dynamics
-    min_v_mem:
-        The lower bound of the potential in (same for all layers).
-    bias_rescaling:
-        Biases are divided by this value.
-    num_timesteps:
-        Number of timesteps per sample. If None, `batch_size` \
-        must be provided to seperate batch and time dimensions.
-    batch_size:
-        Must be provided if `num_timesteps` is None and is \
-        ignored otherwise.
-    synops:
-        If True (default: False), register hooks for counting synaptic \
-        operations during forward passes.
-    add_spiking_output:
-        If True (default: False), add a spiking layer \
-        to the end of a sequential model if not present.
-    backend:
-        String defining the simulation backend (currently sinabs or exodus)
-    kwargs_backend:
-        Dict with additional kwargs for the simulation backend
+        model: Torch model
+        input_shape: If provided, the layer dimensions are computed.
+                     Otherwise they will be computed at the first forward pass.
+        spike_threshold: The membrane potential threshold for spiking (same for all layers).
+        spike_fn: The spike dynamics to determine the number of spikes out
+        reset_fn: The reset mechanism of the neuron (like reset to zero, or subtract)
+        surrogate_grad_fn: The surrogate gradient method for the spiking dynamics
+        min_v_mem: The lower bound of the potential in (same for all layers).
+        bias_rescaling: Biases are divided by this value.
+        batch_size: Must be provided if `num_timesteps` is None and is
+                    ignored otherwise.
+        num_timesteps: Number of timesteps per sample. If None, `batch_size`
+                       must be provided to seperate batch and time dimensions.
+        synops: If True (default: False), register hooks for counting synaptic
+                operations during forward passes.
+        add_spiking_output: If True (default: False), add a spiking layer
+                            to the end of a sequential model if not present.
+        backend: String defining the simulation backend (currently sinabs or exodus)
+        kwargs_backend: Dict with additional kwargs for the simulation backend
     """
     return SpkConverter(
         input_shape=input_shape,
@@ -92,78 +78,27 @@ def from_model(
     ).convert(model)
 
 
-class SpkConverter(object):
+@dataclass
+class SpkConverter:
     """
     Converts a Torch model and returns a Sinabs network object.
     The modules in the model are analyzed, and a copy is returned, with all
     ReLUs, LeakyReLUs and NeuromorphicReLUs turned into SpikingLayers.
-
-    Parameters
-    ----------
-
-    input_shape:
-        If provided, the layer dimensions are computed. \
-        Otherwise they will computed at the first forward pass.
-    spike_threshold:
-        The membrane potential threshold for spiking layers (same for all layers).
-    spike_fn: Callable
-        The spike dynamics to determine the number of spikes out
-    reset_fn: Callable
-        The reset mechanism of the neuron (like reset to zero, or subtract)
-    surrogate_grad_fn: Callable
-        The surrogate gradient method for the spiking dynamics
-    min_v_mem:
-        The lower bound of the potential in \
-        convolutional and linear layers (same for all layers).
-    bias_rescaling:
-        Biases are divided by this value.
-    num_timesteps:
-        Number of timesteps per sample. If None, `batch_size` \
-        must be provided to seperate batch and time dimensions.
-    batch_size:
-        Must be provided if `num_timesteps` is None and is \
-        ignored otherwise.
-    synops:
-        If True (default: False), register hooks for counting synaptic \
-        operations during foward passes.
-    add_spiking_output:
-        If True (default: False), add a spiking \
-        layer to the end of a sequential model if not present.
-    backend:
-        String defining the simulation backend (currently sinabs or exodus)
-    kwargs_backend:
-        Dict with additional kwargs for the simulation backend
     """
 
-    def __init__(
-        self,
-        input_shape: Optional[Tuple] = None,
-        spike_threshold=1.0,
-        spike_fn: Callable = MultiSpike,
-        reset_fn: Callable = MembraneSubtract(),
-        surrogate_grad_fn: Callable = SingleExponential(),
-        min_v_mem: float = -1.0,
-        bias_rescaling: float = 1.0,
-        num_timesteps: Optional[int] = None,
-        batch_size: int = 1,
-        synops: bool = False,
-        add_spiking_output: bool = False,
-        backend: str = "bptt",
-        kwargs_backend: dict = None,
-    ):
-        self.min_v_mem = min_v_mem
-        self.spike_threshold = spike_threshold
-        self.spike_fn = spike_fn
-        self.reset_fn = reset_fn
-        self.surrogate_grad_fn = surrogate_grad_fn
-        self.bias_rescaling = bias_rescaling
-        self.batch_size = batch_size
-        self.num_timesteps = num_timesteps
-        self.synops = synops
-        self.input_shape = input_shape
-        self.add_spiking_output = add_spiking_output
-        self.backend = backend
-        self.kwargs_backend = kwargs_backend or dict()
+    input_shape: Optional[Tuple[int, int, int]] = None
+    spike_threshold: float = 1.0
+    spike_fn: Callable = MultiSpike
+    reset_fn: Callable = MembraneSubtract()
+    surrogate_grad_fn: Callable = SingleExponential()
+    min_v_mem: float = -1.0
+    bias_rescaling: float = 1.0
+    batch_size: Optional[int] = None
+    num_timesteps: Optional[int] = None
+    synops: bool = False
+    add_spiking_output: bool = False
+    backend: str = "sinabs"
+    kwargs_backend: dict = dict()
 
     def relu2spiking(self):
         try:
@@ -188,15 +123,12 @@ class SpkConverter(object):
     def convert(self, model: nn.Module) -> Network:
         """
         Converts the Torch model and returns a Sinabs network object.
+
         Parameters
-        ----------
-        model:
-            A torch module.
+            model: A torch module.
 
         Returns
-        -------
-        network:
-            The Sinabs network object created by conversion.
+            network: The Sinabs network object created by conversion.
         """
         spk_model = copy.deepcopy(model)
         # device is taken as the device of the first element of the input state_dict
@@ -231,7 +163,6 @@ class SpkConverter(object):
     def convert_module(self, module):
         submodules = list(module.named_children())
 
-        # iterate over the children
         for name, subm in submodules:
             # if it's one of the layers we're looking for, substitute it
             if isinstance(subm, (nn.ReLU, sl.NeuromorphicReLU)):
@@ -251,4 +182,4 @@ class SpkConverter(object):
 
             # otherwise we have a base layer of the non-interesting ones
             else:
-                pass  # yes this is useless but it's for clarity
+                pass
