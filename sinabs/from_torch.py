@@ -139,7 +139,7 @@ class SpkConverter(object):
         self,
         input_shape: Optional[Tuple] = None,
         spike_threshold=1.0,
-        spike_fn: Callable = MultiSpike(),
+        spike_fn: Callable = MultiSpike,
         reset_fn: Callable = MembraneSubtract(),
         surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: float = -1.0,

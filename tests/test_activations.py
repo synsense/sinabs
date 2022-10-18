@@ -62,6 +62,6 @@ def test_periodic_exponential():
     from sinabs.activation import PeriodicExponential
 
     grad_fn = PeriodicExponential(grad_width=0.1, grad_scale=1.0)
-    x = torch.range(-5.0, 10.5, 0.01)
+    x = torch.arange(-5.0, 10.5, 0.01)
     # Must have 10 peaks
     assert torch.sum(grad_fn(x, 1.0) == 1) == 10

@@ -18,14 +18,14 @@ class NestedANN(nn.Module):
             ),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=(2, 2)),
-            nn.Dropout2d(0.5),
+            nn.Dropout(0.5),
             nn.Conv2d(
                 16, 8, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False
             ),
             nn.ReLU(),
             nn.AvgPool2d(kernel_size=(2, 2)),
             nn.Flatten(),
-            nn.Dropout2d(0.5),
+            nn.Dropout(0.5),
             nn.Linear(8 * 8 * 8, 11, bias=True),
             nn.ReLU(),
         ]

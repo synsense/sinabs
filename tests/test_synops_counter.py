@@ -25,7 +25,7 @@ class Model(torch.nn.Module):
             ),
             NeuromorphicReLU(),
             torch.nn.AvgPool2d(kernel_size=(2, 2), stride=(2, 2)),
-            torch.nn.Dropout2d(0.5),
+            torch.nn.Dropout(0.5),
             torch.nn.Flatten(),
             torch.nn.Linear(432, 10, bias=False),
             NeuromorphicReLU(fanout=0),

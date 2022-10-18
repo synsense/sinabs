@@ -227,7 +227,7 @@ def test_activation_change():
     network = from_model(
         ann,
         spike_threshold=3.0,
-        spike_fn=SingleSpike(),
+        spike_fn=SingleSpike,
         reset_fn=MembraneReset(),
         min_v_mem=-3.0,
     )
