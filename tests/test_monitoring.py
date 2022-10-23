@@ -32,7 +32,7 @@ def build_model():
         nn.ReLU(),
     )
     input_shape = (2, 128, 128)
-    sinabs_net = from_model(ann, input_shape=input_shape)
+    sinabs_net = from_model(ann, input_shape=input_shape, batch_size=1)
     dynapcnn_net = DynapcnnNetwork(sinabs_net.spiking_model, input_shape=input_shape, dvs_input=True)
     return dynapcnn_net
 

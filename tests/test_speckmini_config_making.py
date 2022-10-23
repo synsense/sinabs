@@ -28,7 +28,7 @@ ann_for_kernel_mem_test = nn.Sequential(
 )
 
 SNN_KERNEL_MEM_TEST = DynapcnnNetwork(
-    from_model(ann_for_kernel_mem_test).spiking_model,
+    from_model(ann_for_kernel_mem_test, batch_size=1).spiking_model,
     discretize=True,
     input_shape=(1, 64, 64)
 )
@@ -58,7 +58,7 @@ ann_for_neuron_mem_test = nn.Sequential(
 )
 
 SNN_NEURON_MEM_TEST = DynapcnnNetwork(
-    from_model(ann_for_neuron_mem_test).spiking_model,
+    from_model(ann_for_neuron_mem_test, batch_size=1).spiking_model,
     discretize=True,
     input_shape=(1, 64, 64)
 )
