@@ -49,7 +49,7 @@ class SmartDoorClassifier(nn.Module):
 
 
 sdc = SmartDoorClassifier()
-snn = from_model(sdc)
+snn = from_model(sdc, batch_size=1)
 
 input_shape = (2, 64, 64)
 input_data = torch.rand((1, *input_shape)) * 1000

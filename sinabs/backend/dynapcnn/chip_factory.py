@@ -13,7 +13,8 @@ class ChipFactory:
         "speck2b": Speck2BConfigBuilder,
         "speck2btiny": Speck2BConfigBuilder, # It is the same chip, so doesn't require a separate builder
         "speck2cmini": Speck2CMiniConfigBuilder,
-        "speck2dmini": Speck2DMiniConfigBuilder
+        "speck2dmini": Speck2DMiniConfigBuilder,
+        "speck2e": Speck2EConfigBuilder,
     }
 
     device_name: str

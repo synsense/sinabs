@@ -20,7 +20,7 @@ ann = nn.Sequential(
     nn.Linear(500, 10, bias=False),
 )
 
-sinabs_model = from_model(ann, add_spiking_output=True)
+sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 input_shape = (1, 28, 28)
 
 hardware_compatible_model = DynapcnnNetwork(
