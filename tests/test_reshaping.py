@@ -1,6 +1,7 @@
 import torch
 import sinabs.layers as sl
 import torch.nn as nn
+from packaging import version
 
 
 def test_repeat():
@@ -10,7 +11,10 @@ def test_repeat():
     output = repeated_conv(data)
     alt_output = conv(data.flatten(0, 1)).unflatten(0, (5, 100))
 
-    torch.testing.assert_close(output, alt_output)
+    if version.parse(torch.__version__) > version.parse("1.12"):
+        torch.testing.assert_close(output, alt_output)
+    else:
+        torch.testing.assert_allclose(output, alt_output)
 
 
 def test_flatten_time():
