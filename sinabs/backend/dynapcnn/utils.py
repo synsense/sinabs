@@ -415,10 +415,7 @@ def convert_model_to_layer_list(
     List[nn.Module]
     """
     if isinstance(model, sinabs.Network):
-        submodules = list(model.spiking_model.children())
-        if len(submodules) != 1:
-            raise ValueError("Found multiple submodules instead of sequential")
-        layers = [*submodules[0]]
+        return convert_model_to_layer_list(model.spiking_model)
     elif isinstance(model, nn.Sequential):
         layers = [*model]
     else:

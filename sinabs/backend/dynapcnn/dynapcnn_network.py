@@ -356,9 +356,7 @@ class DynapcnnNetwork(nn.Module):
             return received_evts
         else:
             """Torch's forward pass."""
-            self.eval()
-            with torch.no_grad():
-                return self.sequence(x)
+            return self.sequence(x)
 
     def memory_summary(self):
         """
@@ -382,7 +380,7 @@ class DynapcnnNetwork(nn.Module):
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         for lyr in self.sequence:
-            return lyr.zero_grad(set_to_none)
+            lyr.zero_grad(set_to_none)
 
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
     """ Deprecated class, use DynapcnnNetwork instead."""
