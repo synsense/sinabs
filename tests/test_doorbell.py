@@ -49,7 +49,7 @@ class SmartDoorClassifier(nn.Module):
 
 
 sdc = SmartDoorClassifier()
-snn = from_model(sdc, batch_size=1)
+snn = from_model(sdc.seq, batch_size=1)
 
 input_shape = (2, 64, 64)
 input_data = torch.rand((1, *input_shape)) * 1000
@@ -74,5 +74,5 @@ def test_auto_config():
 
 def test_was_copied():
     # - Make sure that layers of different models are distinct objects
-    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model.seq, dynapcnn_net.sequence):
+    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model, dynapcnn_net.sequence):
         assert lyr_snn is not lyr_dynapcnn

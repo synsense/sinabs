@@ -57,7 +57,7 @@ def test_with_class():
         def forward(self, x):
             return self.seq(x)
 
-    snn = from_model(Net(), batch_size=1)
+    snn = from_model(Net().seq, batch_size=1)
     snn.eval()
     snn_out = snn(input_data).squeeze()  # forward pass
 

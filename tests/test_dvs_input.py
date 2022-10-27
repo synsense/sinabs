@@ -78,7 +78,7 @@ def test_dvs_no_pooling():
 
     # - ANN and SNN generation, no input layer
     ann = Net()
-    snn = from_model(ann, batch_size=1)
+    snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     for dvs_input in (False, True):
@@ -156,7 +156,7 @@ def test_dvs_pooling_2d():
 
     # - ANN and SNN generation, no input layer
     ann = Net()
-    snn = from_model(ann, batch_size=1)
+    snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     for dvs_input in (False, True):
@@ -267,7 +267,7 @@ def test_dvs_mirroring():
         # - ANN and SNN generation
         for dvs_input in (True, False):
             ann = DvsNet(dvs_input=dvs_input, **kwargs_flip)
-            snn = from_model(ann, batch_size=1)
+            snn = from_model(ann.seq, batch_size=1)
             snn.eval()
 
             # - SPN generation
@@ -303,7 +303,7 @@ def test_dvs_crop():
             input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
             # - ANN and SNN generation
             ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape, merge_polarities=merge_polarities)
-            snn = from_model(ann, batch_size=1)
+            snn = from_model(ann.seq, batch_size=1)
             snn.eval()
 
             # - SPN generation
