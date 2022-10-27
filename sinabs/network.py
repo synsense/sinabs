@@ -197,6 +197,10 @@ class Network(torch.nn.Module):
                     i += 1
                 lyr.reset_states(randomize=randomize, value_ranges=vr)
 
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        for lyr in self.spiking_model:
+            lyr.zero_grad(set_to_none)
+
     def get_synops(self, num_evs_in=None) -> dict:
         """
         Please see docs for `sinabs.SNNSynOpCounter.get_synops()`.
