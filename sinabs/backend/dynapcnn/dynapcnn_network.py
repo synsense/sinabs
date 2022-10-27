@@ -380,6 +380,10 @@ class DynapcnnNetwork(nn.Module):
         return summary
 
 
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        for lyr in self.sequence:
+            return lyr.zero_grad(set_to_none)
+
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
     """ Deprecated class, use DynapcnnNetwork instead."""
 

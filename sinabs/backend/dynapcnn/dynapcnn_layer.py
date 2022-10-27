@@ -195,3 +195,6 @@ class DynapcnnLayer(nn.Module):
         if self.pool_layer is not None:
             x = self.pool_layer(x)
         return x
+
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        return self.spk_layer.zero_grad(set_to_none)
