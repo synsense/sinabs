@@ -90,7 +90,11 @@ class LIF(StatefulLayer):
                 if tau_syn is not None
                 else None
             )
-        self.spike_threshold = spike_threshold
+        self.spike_threshold = (
+            torch.tensor(spike_threshold)
+            if type(spike_threshold) == float
+            else spike_threshold
+        )
         self.spike_fn = spike_fn
         self.reset_fn = reset_fn
         self.surrogate_grad_fn = surrogate_grad_fn
