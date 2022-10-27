@@ -67,7 +67,7 @@ def test_learning():
         optim.zero_grad()
         dynapcnn_net.zero_grad()
 
-        out = snn(input_data)
+        out = dynapcnn_net(input_data)
         loss = criterion(out.mean(), torch.tensor(1.0))
         loss.backward()
 
