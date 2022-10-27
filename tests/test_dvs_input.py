@@ -97,7 +97,7 @@ def test_dvs_no_pooling():
         )
         snn_out = snn(input_data).squeeze()
         spn_out = spn_float(input_data).squeeze()
-        assert np.array_equal(snn_out.detach(), spn_out)
+        assert torch.equal(snn_out.detach(), spn_out)
 
         # - Verify DYNAP-CNN config
         target_layers = [5]
@@ -112,7 +112,7 @@ def test_dvs_no_pooling():
     # - ANN and SNN generation, network with input layer
     target_layers = [5]
     ann = Net()
-    snn = from_model(ann, batch_size=1)
+    snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     # - SPN generation
@@ -126,7 +126,7 @@ def test_dvs_no_pooling():
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
-    assert np.array_equal(snn_out.detach(), spn_out)
+    assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
     config = spn.make_config(chip_layers_ordering=target_layers)
@@ -175,7 +175,7 @@ def test_dvs_pooling_2d():
         )
         snn_out = snn(input_data).squeeze()
         spn_out = spn_float(input_data).squeeze()
-        assert np.array_equal(snn_out.detach(), spn_out)
+        assert torch.equal(snn_out.detach(), spn_out)
 
         # - Verify DYNAP-CNN config
         config = spn.make_config(chip_layers_ordering=target_layers)
@@ -189,7 +189,7 @@ def test_dvs_pooling_2d():
 
     # - ANN and SNN generation, network with input layer
     ann = Net(input_layer=True)
-    snn = from_model(ann, batch_size=1)
+    snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     # - SPN generation
@@ -203,7 +203,7 @@ def test_dvs_pooling_2d():
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
-    assert np.array_equal(snn_out.detach(), spn_out)
+    assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
     config = spn.make_config(chip_layers_ordering=target_layers)
@@ -277,7 +277,7 @@ def test_dvs_mirroring():
             spn_float = DynapcnnNetwork(snn, discretize=False)
             snn_out = snn(input_data).squeeze()
             spn_out = spn_float(input_data).squeeze()
-            assert np.array_equal(snn_out.detach(), spn_out)
+            assert torch.equal(snn_out.detach(), spn_out)
 
             # - Verify DYNAP-CNN config
             config = spn.make_config(chip_layers_ordering=target_layers)
@@ -313,7 +313,7 @@ def test_dvs_crop():
             spn_float = DynapcnnNetwork(snn, discretize=False)
             snn_out = snn(input_data).squeeze()
             spn_out = spn_float(input_data).squeeze()
-            assert np.array_equal(snn_out.detach(), spn_out)
+            assert torch.equal(snn_out.detach(), spn_out)
 
             # - Verify DYNAP-CNN config
             config = spn.make_config(chip_layers_ordering=target_layers)
