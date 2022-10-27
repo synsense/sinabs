@@ -46,7 +46,7 @@ class IAF(LIF):
 
     def __init__(
         self,
-        spike_threshold: float = 1.0,
+        spike_threshold: torch.Tensor = torch.tensor(1.0),
         spike_fn: Callable = MultiSpike,
         reset_fn: Callable = MembraneSubtract(),
         surrogate_grad_fn: Callable = SingleExponential(),
@@ -124,7 +124,7 @@ class IAFRecurrent(LIFRecurrent):
     def __init__(
         self,
         rec_connect: torch.nn.Module,
-        spike_threshold: float = 1.0,
+        spike_threshold: torch.Tensor = torch.tensor(1.0),
         spike_fn: Callable = MultiSpike,
         reset_fn: Callable = MembraneSubtract(),
         surrogate_grad_fn: Callable = SingleExponential(),
