@@ -22,7 +22,7 @@ else:
 def from_model(
     model: nn.Module,
     input_shape: Optional[Tuple[int, int, int]] = None,
-    spike_threshold: float = 1.0,
+    spike_threshold: torch.Tensor = torch.tensor(1.0),
     spike_fn: Callable = MultiSpike,
     reset_fn: Callable = MembraneSubtract(),
     surrogate_grad_fn: Callable = SingleExponential(),
@@ -82,7 +82,7 @@ class SpkConverter:
     """
 
     input_shape: Optional[Tuple[int, int, int]] = None
-    spike_threshold: float = 1.0
+    spike_threshold: torch.Tensor = torch.tensor(1.0)
     spike_fn: Callable = MultiSpike
     reset_fn: Callable = MembraneSubtract()
     surrogate_grad_fn: Callable = SingleExponential()
