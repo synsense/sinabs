@@ -1,6 +1,5 @@
 import sinabs
 import sinabs.layers as sl
-import sinabs.exodus.layers as sel
 import torch.nn as nn
 
 
