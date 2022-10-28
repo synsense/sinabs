@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple, Type
 from warnings import warn
 import torch
 from torch import nn
@@ -7,15 +7,6 @@ from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 from sinabs import Network
 import sinabs.layers as sl
 from sinabs.conversion import replace_module
-
-_backends = {"sinabs": sl}
-
-try:
-    import sinabs.exodus.layers as el
-except ModuleNotFoundError:
-    pass
-else:
-    _backends["exodus"] = el
 
 
 def from_model(
@@ -31,7 +22,8 @@ def from_model(
     num_timesteps: Optional[int] = None,
     synops: bool = False,
     add_spiking_output: bool = False,
-    backend: str = "sinabs",
+    spike_layer_class: Type = sl.IAFSqueeze,
+    backend=None,
     kwargs_backend: dict = dict(),
 ):
     """
@@ -52,9 +44,22 @@ def from_model(
         num_timesteps: Number of timesteps per sample. If None, `batch_size` must be provided to seperate batch and time dimensions.
         synops: If True (default: False), register hooks for counting synaptic operations during forward passes.
         add_spiking_output: If True (default: False), add a spiking layer to the end of a sequential model if not present.
+        spike_layer_class: Can be for example sinabs.layers.IAFSqueeze (default) or EXODUS equivalent.
         backend: String defining the simulation backend (currently sinabs or exodus)
         kwargs_backend: Dict with additional kwargs for the simulation backend
     """
+    if backend is not None:
+        warn(
+            "The 'backend' argument is deprecated and will be removed in a future release, please use spike_layer_class instead."
+        )
+        _backends = {"sinabs": sl}
+        try:
+            import sinabs.exodus.layers as el
+        except ModuleNotFoundError:
+            pass
+        else:
+            _backends["exodus"] = el
+        spike_layer_class = _backends[backend].IAFSqueeze
 
     try:
         device = next(model.parameters()).device
@@ -72,15 +77,7 @@ def from_model(
             )
 
     def mapper_fn(module):
-        try:
-            backend_module = _backends[backend]
-        except KeyError:
-            raise ValueError(
-                f"Backend '{backend}' is not available. Available backends: "
-                ", ".join(_backends.keys())
-            )
-
-        return backend_module.IAFSqueeze(
+        return spike_layer_class(
             spike_threshold=spike_threshold,
             spike_fn=spike_fn,
             reset_fn=reset_fn,

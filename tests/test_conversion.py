@@ -15,7 +15,7 @@ def test_layer_replacement_sequential():
     )
 
     mapper_fn = lambda module: sl.IAFSqueeze(**module._param_dict, batch_size=18)
-    filtered_model = sinabs.conversion.replace_layers(
+    filtered_model = sinabs.conversion.replace_module(
         model, sl.IAF, mapper_fn=mapper_fn
     )
 
@@ -38,7 +38,7 @@ def test_layer_replacement_arbitrary():
 
     model = MyModel()
     mapper_fn = lambda module: sl.IAFSqueeze(**module._param_dict, batch_size=18)
-    filtered_model = sinabs.conversion.replace_layers(
+    filtered_model = sinabs.conversion.replace_module(
         model, sl.IAF, mapper_fn=mapper_fn
     )
 
