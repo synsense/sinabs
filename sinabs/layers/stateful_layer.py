@@ -119,6 +119,8 @@ class StatefulLayer(torch.nn.Module):
                 "spike_threshold",
                 "min_v_mem",
                 "norm_input",
+                "batch_size",
+                "num_timesteps",
             ]
             and value is not None
         ]
