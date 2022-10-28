@@ -1,4 +1,4 @@
 pbr
-sinabs >= 1.0.5
+sinabs >= 1.0.7
 samna >= 0.14.19
 
