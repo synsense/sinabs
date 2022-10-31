@@ -10,20 +10,20 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.7", "3.11",]
-        torch-version: ["1.8.0", "1.13.0",]
+        torch-version: ["1.8.1", "1.12.0",]
         exclude:
           - os: ubuntu-latest
             python-version: "3.11"
-            torch-version: "1.8.0"
+            torch-version: "1.8.1"
           - os: windows-latest
             python-version: "3.11"
-            torch-version: "1.8.0"
+            torch-version: "1.8.1"
           - os: ubuntu-latest
             python-version: "3.7"
-            torch-version: "1.13.0"
+            torch-version: "1.12.0"
           - os: windows-latest
             python-version: "3.7"
-            torch-version: "1.13.0"  
+            torch-version: "1.12.0"  
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
