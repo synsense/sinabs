@@ -119,6 +119,8 @@ class StatefulLayer(torch.nn.Module):
                 "spike_threshold",
                 "min_v_mem",
                 "norm_input",
+                "batch_size",
+                "num_timesteps",
             ]
             and value is not None
         ]
@@ -146,6 +148,13 @@ class StatefulLayer(torch.nn.Module):
         parameters as `self`.
         """
         return dict()
+
+    @property
+    def arg_dict(self) -> dict:
+        """
+        A public getter function for the constructor arguments.
+        """
+        return self._param_dict()
 
     @property
     def does_spike(self) -> bool:

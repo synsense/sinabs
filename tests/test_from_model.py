@@ -198,7 +198,8 @@ def test_network_conversion_backend():
         ),
     )
 
-    snn = from_model(ann, backend="sinabs", batch_size=1)
+    with pytest.warns(UserWarning):
+        snn = from_model(ann, backend="sinabs", batch_size=1)
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
