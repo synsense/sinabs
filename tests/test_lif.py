@@ -19,6 +19,9 @@ def test_lif_basic():
     # Make sure __repr__ works
     repr(layer)
 
+    # Make sure arg_dict works
+    layer.arg_dict
+
     assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0

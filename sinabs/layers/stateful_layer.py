@@ -154,7 +154,7 @@ class StatefulLayer(torch.nn.Module):
         """
         A public getter function for the constructor arguments.
         """
-        return self._param_dict()
+        return self._param_dict
 
     @property
     def does_spike(self) -> bool:
