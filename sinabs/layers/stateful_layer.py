@@ -150,6 +150,13 @@ class StatefulLayer(torch.nn.Module):
         return dict()
 
     @property
+    def arg_dict(self) -> dict:
+        """
+        A public getter function for the constructor arguments.
+        """
+        return self._param_dict()
+
+    @property
     def does_spike(self) -> bool:
         """
         Return True if the layer has an activation function.
