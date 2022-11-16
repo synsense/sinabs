@@ -1,8 +1,9 @@
 import warnings
 
 import torch
-from sinabs.layers import NeuromorphicReLU
 from numpy import product
+
+from sinabs.layers import NeuromorphicReLU
 
 
 def synops_hook(layer, inp, out):

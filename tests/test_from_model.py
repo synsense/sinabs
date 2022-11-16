@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
-import sinabs.layers as sl
 import torch
+from torch import nn
+
+import sinabs.layers as sl
 from sinabs.activation import MembraneReset, SingleSpike
 from sinabs.from_torch import from_model
-from torch import nn
 
 
 def test_reconstruct_image():

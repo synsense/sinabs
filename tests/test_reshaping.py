@@ -1,7 +1,8 @@
 import torch
-import sinabs.layers as sl
 import torch.nn as nn
 from packaging import version
+
+import sinabs.layers as sl
 
 
 def test_repeat():

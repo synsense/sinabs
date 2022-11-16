@@ -5,10 +5,10 @@ Exponential Leaky Layer (ExpLeak)
 :class:`~sinabs.layers.ExpLeak` layer.
 """
 
-from utils import plot_evolution
-import sinabs.layers as sl
 import torch
+from utils import plot_evolution
 
+import sinabs.layers as sl
 
 const_current = torch.ones((1, 100, 1)) * 0.03
 

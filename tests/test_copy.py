@@ -1,5 +1,6 @@
-import torch
 from copy import deepcopy
+
+import torch
 
 
 def test_deepcopy_iaf():

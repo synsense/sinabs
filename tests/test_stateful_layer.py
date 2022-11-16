@@ -1,8 +1,9 @@
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
-from sinabs.layers import StatefulLayer, LIF
-import pytest
-import numpy as np
+
+from sinabs.layers import LIF, StatefulLayer
 
 
 def test_stateful_layer():

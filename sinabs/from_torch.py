@@ -1,11 +1,12 @@
 from typing import Callable, Optional, Tuple, Type
 from warnings import warn
+
 import torch
 from torch import nn
-from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 
-from sinabs import Network
+import sinabs
 import sinabs.layers as sl
+from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 from sinabs.conversion import replace_module
 
 
@@ -99,7 +100,7 @@ def from_model(
                 with torch.no_grad():
                     module.bias.data /= bias_rescaling
 
-    network = Network(
+    network = sinabs.network.Network(
         model,
         snn,
         input_shape=input_shape,

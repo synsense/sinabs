@@ -5,9 +5,10 @@ PeriodicExponential
 :class:`~sinabs.activation.PeriodicExponential` surrogate gradient.
 """
 
-import torch
-import sinabs.activation as sina
 import matplotlib.pyplot as plt
+import torch
+
+import sinabs.activation as sina
 
 x = torch.linspace(-2, 4, 500)
 plt.plot(

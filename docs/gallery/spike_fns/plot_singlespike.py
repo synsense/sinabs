@@ -5,9 +5,10 @@ SingleSpike
 :class:`~sinabs.activation.SingleSpike` activation function.
 """
 
-import torch
-import sinabs.activation as sina
 import matplotlib.pyplot as plt
+import torch
+
+import sinabs.activation as sina
 
 v_mem = torch.linspace(0, 5.5, 500)
 

@@ -1,6 +1,7 @@
 def test_maxpool2d():
-    from sinabs.layers import SpikingMaxPooling2dLayer
     import torch
+
+    from sinabs.layers import SpikingMaxPooling2dLayer
 
     inp = torch.zeros((2, 2, 10, 10))
     maxpool = SpikingMaxPooling2dLayer(pool_size=(2, 2), strides=(2, 2))
@@ -10,8 +11,9 @@ def test_maxpool2d():
 
 
 def test_maxpool_function():
-    from sinabs.layers import SpikingMaxPooling2dLayer
     import torch
+
+    from sinabs.layers import SpikingMaxPooling2dLayer
 
     lyr = SpikingMaxPooling2dLayer(pool_size=(2, 3), strides=None)
 

@@ -1,8 +1,8 @@
-import torch
 import pytest
+import torch
 from torch import nn
-from sinabs.utils import normalize_weights
 
+from sinabs.utils import normalize_weights
 
 # init model
 CNN = nn.Sequential(

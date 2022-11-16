@@ -1,5 +1,6 @@
 def test_forward():
     import torch
+
     from sinabs.layers import Sig2SpikeLayer
 
     channels = 4

@@ -1,7 +1,8 @@
+from typing import List
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import List
 
 
 def get_activations(torchanalog_model, tsrData, name_list=None):

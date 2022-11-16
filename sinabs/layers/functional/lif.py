@@ -1,5 +1,6 @@
+from typing import Callable, Optional
+
 import torch
-from typing import Optional, Callable
 
 
 def lif_forward_single(

@@ -1,6 +1,7 @@
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 from random import gauss
+
 import torch
 
 
