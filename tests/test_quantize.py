@@ -1,5 +1,6 @@
 def test_quantize():
     import torch
+
     from sinabs.layers import NeuromorphicReLU
 
     x = torch.rand(20, requires_grad=True)
@@ -15,6 +16,7 @@ def test_quantize():
 
 def test_stochastic_rounding():
     import torch
+
     from sinabs.layers import NeuromorphicReLU
 
     x = torch.rand(20, requires_grad=True)

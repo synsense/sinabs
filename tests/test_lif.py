@@ -1,10 +1,12 @@
 from itertools import product
-import torch
-import torch.nn as nn
-from sinabs.layers import LIF, LIFRecurrent
-import sinabs.activation as sa
+
 import numpy as np
 import pytest
+import torch
+import torch.nn as nn
+
+import sinabs.activation as sa
+from sinabs.layers import LIF, LIFRecurrent
 
 
 def test_lif_basic():

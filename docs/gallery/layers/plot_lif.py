@@ -5,10 +5,10 @@ Leaky Integrate and Fire (LIF)
 The :class:`~sinabs.layers.LIF` layer. This neuron integrates the input and decays its state at every time step.
 """
 
-from utils import plot_evolution
-import sinabs.layers as sl
 import torch
+from utils import plot_evolution
 
+import sinabs.layers as sl
 
 const_current = torch.ones((1, 100, 1)) * 0.03
 single_current = torch.zeros((1, 100, 1))

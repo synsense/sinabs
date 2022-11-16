@@ -1,8 +1,9 @@
-from sinabs import SynOpCounter, SNNSynOpCounter
-from sinabs.layers import NeuromorphicReLU, IAF
-import torch
 import numpy as np
+import torch
 from torch import nn
+
+from sinabs import SNNSynOpCounter, SynOpCounter
+from sinabs.layers import IAF, NeuromorphicReLU
 
 
 class Model(torch.nn.Module):

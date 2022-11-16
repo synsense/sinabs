@@ -1,9 +1,10 @@
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
-from sinabs.layers import IAF, IAFSqueeze, IAFRecurrent
+
 import sinabs.activation as sa
-import pytest
-import numpy as np
+from sinabs.layers import IAF, IAFRecurrent, IAFSqueeze
 
 
 def test_iaf_basic():

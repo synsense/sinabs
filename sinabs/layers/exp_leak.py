@@ -1,5 +1,7 @@
-from typing import Union, Optional
+from typing import Optional, Union
+
 import torch
+
 from .lif import LIF
 from .reshape import SqueezeMixin
 

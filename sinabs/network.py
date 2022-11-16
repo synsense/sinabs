@@ -1,12 +1,13 @@
 import warnings
+from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import Optional, Union, List, Tuple, Dict
-from .utils import get_network_activations, get_activations
+
 from .layers import StatefulLayer
 from .synopcounter import SNNSynOpCounter
+from .utils import get_activations, get_network_activations
 
 ArrayLike = Union[np.ndarray, List, Tuple]
 

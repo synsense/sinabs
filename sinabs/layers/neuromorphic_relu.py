@@ -1,4 +1,5 @@
 import torch
+
 from sinabs.activation import Quantize, StochasticRounding
 
 

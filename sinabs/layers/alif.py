@@ -1,10 +1,13 @@
+from typing import Callable, Optional, Union
+
 import torch
 import torch.nn as nn
-from typing import Optional, Union, Callable
-from sinabs.activation import SingleSpike, MembraneSubtract, SingleExponential
+
+from sinabs.activation import MembraneSubtract, SingleExponential, SingleSpike
+
 from . import functional
-from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
+from .stateful_layer import StatefulLayer
 
 
 class ALIF(StatefulLayer):

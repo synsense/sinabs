@@ -5,10 +5,10 @@ Integrate and Fire (IAF)
 :class:`~sinabs.layers.IAF` layer.
 """
 
-from utils import plot_evolution
-import sinabs.layers as sl
 import torch
+from utils import plot_evolution
 
+import sinabs.layers as sl
 
 const_current = torch.ones((1, 100, 1)) * 0.03
 single_current = torch.zeros((1, 100, 1))

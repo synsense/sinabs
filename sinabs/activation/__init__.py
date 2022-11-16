@@ -1,10 +1,10 @@
 from .quantize import Quantize, StochasticRounding
 from .reset_mechanism import MembraneReset, MembraneSubtract
-from .spike_generation import SingleSpike, MultiSpike, MaxSpike
+from .spike_generation import MaxSpike, MultiSpike, SingleSpike
 from .surrogate_gradient_fn import (
-    Heaviside,
     Gaussian,
+    Heaviside,
     MultiGaussian,
-    SingleExponential,
     PeriodicExponential,
+    SingleExponential,
 )

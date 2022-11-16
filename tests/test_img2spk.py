@@ -1,5 +1,6 @@
 def test_img2spk():
     import torch
+
     from sinabs.layers import Img2SpikeLayer
 
     lyr = Img2SpikeLayer(

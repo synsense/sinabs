@@ -1,6 +1,7 @@
+import torch.nn as nn
+
 import sinabs
 import sinabs.layers as sl
-import torch.nn as nn
 import pytest
 
 

@@ -1,5 +1,6 @@
-from typing import Tuple, List, Dict, Optional
+from typing import Dict, List, Optional, Tuple
 from warnings import warn
+
 import torch
 
 

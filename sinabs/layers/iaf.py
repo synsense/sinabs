@@ -1,10 +1,13 @@
-import torch
 from copy import deepcopy
-from typing import Optional, Callable
-from sinabs.activation import MultiSpike, MembraneSubtract, SingleExponential
-from .reshape import SqueezeMixin
-from .lif import LIF, LIFRecurrent
+from typing import Callable, Optional
+
 import numpy as np
+import torch
+
+from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
+
+from .lif import LIF, LIFRecurrent
+from .reshape import SqueezeMixin
 
 
 class IAF(LIF):

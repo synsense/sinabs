@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Callable, List, Optional, Union
+
 import torch
-from typing import Optional, Callable, Union, List
 
 
 class BackwardClass:

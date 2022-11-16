@@ -1,7 +1,8 @@
-import torch.nn as nn
-from typing import Callable
 from copy import deepcopy
+from typing import Callable
 from warnings import warn
+
+import torch.nn as nn
 
 
 def replace_module(model: nn.Module, source_class: type, mapper_fn: Callable):

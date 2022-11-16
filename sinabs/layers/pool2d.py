@@ -1,7 +1,9 @@
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
-import torch.nn as nn
 import torch
-from typing import Optional, Union, List, Tuple
+import torch.nn as nn
+
 from sinabs.cnnutils import conv_output_size
 
 # - Type alias for array-like objects

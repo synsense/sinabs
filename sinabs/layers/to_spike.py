@@ -1,6 +1,7 @@
-from torch import nn
 from typing import Tuple
+
 import torch
+from torch import nn
 
 
 class Img2SpikeLayer(nn.Module):
