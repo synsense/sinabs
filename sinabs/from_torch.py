@@ -67,16 +67,6 @@ def from_model(
     except StopIteration:
         device = torch.device("cpu")
 
-    if add_spiking_output:
-        if isinstance(model, nn.Sequential) and not isinstance(
-            model[-1], (nn.ReLU, sl.NeuromorphicReLU)
-        ):
-            model.add_module("spike_output", nn.ReLU())
-        else:
-            warn(
-                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
-            )
-
     def mapper_fn(module):
         return spike_layer_class(
             spike_threshold=spike_threshold,
@@ -93,6 +83,16 @@ def from_model(
     snn = replace_module(
         model=snn, source_class=sl.NeuromorphicReLU, mapper_fn=mapper_fn
     )
+
+    if add_spiking_output:
+        if isinstance(model, nn.Sequential) and not isinstance(
+            model[-1], (nn.ReLU, sl.NeuromorphicReLU)
+        ):
+            snn.add_module("spike_output", nn.ReLU())
+        else:
+            warn(
+                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
+            )
 
     for module in snn.modules():
         if bias_rescaling != 1.0 and isinstance(module, (nn.Linear, nn.Conv2d)):
