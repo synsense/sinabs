@@ -4,6 +4,36 @@ import numpy as np
 import torch
 import torch.nn as nn
 
+import sinabs
+
+
+def reset_states(model: nn.Module) -> None:
+    """
+    Helper function to recursively reset all states of spiking layers within the model.
+
+    Parameters:
+        model: The torch module
+    """
+    for layer in model.children():
+        if len(list(layer.children())):
+            reset_states(layer)
+        elif isinstance(layer, sinabs.layers.StatefulLayer):
+            layer.reset_states()
+
+
+def zero_grad(model: nn.Module) -> None:
+    """
+    Helper function to recursively zero the gradients of all spiking layers within the model.
+
+    Parameters:
+        model: The torch module
+    """
+    for layer in model.children():
+        if len(list(layer.children())):
+            zero_grad(layer)
+        elif isinstance(layer, sinabs.layers.StatefulLayer):
+            layer.zero_grad()
+
 
 def get_activations(torchanalog_model, tsrData, name_list=None):
     """

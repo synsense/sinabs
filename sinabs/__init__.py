@@ -6,3 +6,4 @@ from . import conversion, utils
 from .from_torch import from_model
 from .network import Network
 from .synopcounter import SNNSynOpCounter, SynOpCounter
+from .utils import reset_states, zero_grad
