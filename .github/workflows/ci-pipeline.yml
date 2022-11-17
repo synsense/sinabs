@@ -52,7 +52,7 @@ jobs:
           python-version: 3.8
       - name: Generate coverage report
         run: |
-          pip install -r test/requirements.txt
+          pip install -r tests/requirements.txt
           pip install .
           coverage run -m pytest test
           coverage xml
