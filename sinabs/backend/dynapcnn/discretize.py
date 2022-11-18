@@ -307,13 +307,11 @@ def _discretize_conv_spk_(
 
         discr_spk = True
         if spike_lyr.min_v_mem is None:
-            min_v_mem = -2 ** 15
+            min_v_mem = -(2**15)
         else:
             min_v_mem = spike_lyr.min_v_mem
         # - Lower and upper thresholds in a tensor for easier handling
-        thresholds = torch.tensor(
-            (min_v_mem, spike_lyr.spike_threshold)
-        )
+        thresholds = torch.tensor((min_v_mem, spike_lyr.spike_threshold))
 
     # - Scaling of conv_weight, conv_bias, thresholds and neuron states
     # Determine by which common factor conv_weight, conv_bias and thresholds can be scaled
@@ -335,17 +333,22 @@ def _discretize_conv_spk_(
         # Scale neuron state with common scaling factor and discretize
         spike_lyr.v_mem.data = discretize_tensor(
             spike_lyr.v_mem.data, scaling, to_int=to_int
-        )
+        ).float()
     else:
         scaling = min(scaling_w, scaling_b, scaling_t)
 
     # Scale conv_weight, conv_bias and thresholds with common scaling factor and discretize
     if discr_conv:
-        conv_weight.data = discretize_tensor(conv_weight, scaling, to_int=to_int)
-        conv_bias.data = discretize_tensor(conv_bias, scaling, to_int=to_int)
+        conv_weight.data = discretize_tensor(
+            conv_weight, scaling, to_int=to_int
+        ).float()
+        conv_bias.data = discretize_tensor(conv_bias, scaling, to_int=to_int).float()
     if discr_spk:
         spike_lyr.min_v_mem, spike_lyr.spike_threshold = (
-            discretize_tensor(thresholds, scaling, to_int=to_int).detach().numpy()
+            discretize_tensor(thresholds, scaling, to_int=to_int)
+            .float()
+            .detach()
+            .numpy()
         )
         # Logic changes with use of activation functions
         # TODO: Add check for the activation function in use
