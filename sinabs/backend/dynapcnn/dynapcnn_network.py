@@ -108,6 +108,7 @@ class DynapcnnNetwork(nn.Module):
             )  # Ignore the channel dimension
             self.compatible_layers = [dvs_layer] + self.compatible_layers
             self.sequence = nn.Sequential(*self.compatible_layers)
+        
 
         if self.dvs_input:
             # Enable dvs pixels
@@ -175,9 +176,14 @@ class DynapcnnNetwork(nn.Module):
                 self.samna_output_buffer = builder.get_output_buffer()
 
                 # Connect buffer sink node to device
-                self.samna_device.get_model().get_source_node().add_destination(
-                    self.samna_output_buffer.get_input_channel()
+                self.device_output_graph = samna.graph.EventFilterGraph()
+                self.device_output_graph.sequential(
+                    [
+                        self.samna_device.get_model().get_source_node(),
+                        self.samna_output_buffer
+                    ]
                 )
+                self.device_output_graph.start()
                 self.samna_config = config
                 return self
             else:
@@ -381,6 +387,10 @@ class DynapcnnNetwork(nn.Module):
     def zero_grad(self, set_to_none: bool = False) -> None:
         for lyr in self.sequence:
             lyr.zero_grad(set_to_none)
+    
+    def __del__(self):
+        if self.device_output_graph:
+            self.device_output_graph.stop()
 
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
     """ Deprecated class, use DynapcnnNetwork instead."""
