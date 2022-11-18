@@ -88,7 +88,19 @@ def from_model(
         if isinstance(model, nn.Sequential) and not isinstance(
             model[-1], (nn.ReLU, sl.NeuromorphicReLU)
         ):
-            snn.add_module("spike_output", nn.ReLU())
+            snn.add_module(
+                "spike_output",
+                spike_layer_class(
+                    spike_threshold=spike_threshold,
+                    spike_fn=spike_fn,
+                    reset_fn=reset_fn,
+                    surrogate_grad_fn=surrogate_grad_fn,
+                    min_v_mem=min_v_mem,
+                    batch_size=batch_size,
+                    num_timesteps=num_timesteps,
+                    **kwargs_backend,
+                ).to(device),
+            )
         else:
             warn(
                 "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."

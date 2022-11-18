@@ -120,6 +120,7 @@ def test_network_conversion_add_spk_out():
 
     mod_names = [name for name, mod in cnn.named_modules()]
     assert "spike_output" not in mod_names
+    assert isinstance(snn.spiking_model.spike_output, sl.StatefulLayer)
 
     img = torch.Tensor(np.random.random(size=input_shape))
 
