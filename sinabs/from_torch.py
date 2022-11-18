@@ -27,10 +27,9 @@ def from_model(
     backend=None,
     kwargs_backend: dict = dict(),
 ):
-    """
-    Converts a Torch model and returns a Sinabs network object.
-    The modules in the model are analyzed, and a copy is returned, with all
-    ReLUs and NeuromorphicReLUs turned into SpikingLayers.
+    """Converts a Torch model and returns a Sinabs network object. The modules in the model are
+    analyzed, and a copy is returned, with all ReLUs and NeuromorphicReLUs turned into
+    SpikingLayers.
 
     Parameters:
         model: Torch model

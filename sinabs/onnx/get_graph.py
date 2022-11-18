@@ -16,8 +16,7 @@ def print_onnx_model(onnx_model: onnx.ModelProto):
 
 
 def get_graph(model: Network, inputs):
-    """
-    Extract graph from a sinabs Network model
+    """Extract graph from a sinabs Network model.
 
     :param model: sinabs.Netowrk model to extract the graph for
     :param inputs: Input tensor to extract graph

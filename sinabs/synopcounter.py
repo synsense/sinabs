@@ -16,11 +16,9 @@ def synops_hook(layer, inp, out):
 
 
 class SNNSynOpCounter:
-    """
-    Counter for the synaptic operations emitted by all SpikingLayers in a
-    spiking model.
-    Note that this is automatically instantiated by `from_torch` and by
-    `Network` if they are passed `synops=True`.
+    """Counter for the synaptic operations emitted by all SpikingLayers in a spiking model. Note
+    that this is automatically instantiated by `from_torch` and by `Network` if they are passed
+    `synops=True`.
 
     Arguments:
         model: Spiking model.
@@ -70,7 +68,6 @@ class SNNSynOpCounter:
             >>> synops_map = counter.get_synops()
             >>> SynOps_dataframe = pandas.DataFrame.from_dict(synops_map, "index")
             >>> SynOps_dataframe.set_index("Layer", inplace=True)
-
         """
         SynOps_map = {}
         scale_facts = []
@@ -102,8 +99,7 @@ class SNNSynOpCounter:
         return SynOps_map
 
     def get_total_synops(self, per_second=False) -> float:
-        """
-        Sums up total number of synaptic operations across the network.
+        """Sums up total number of synaptic operations across the network.
 
         .. note:: this may not be accurate in presence of average pooling.
 
@@ -126,15 +122,14 @@ class SNNSynOpCounter:
         return synops
 
     def get_total_power_use(self, j_per_synop=1e-11):
-        """
-        Method to quickly get the total power use of the network, estimated
-        over the latest forward pass.
+        """Method to quickly get the total power use of the network, estimated over the latest
+        forward pass.
 
         Arguments:
             j_per_synop: Energy use per synaptic operation, in joules.\
             Default 1e-11 J.
 
-        Returns: 
+        Returns:
             estimated power in mW.
         """
         tot_synops_per_s = self.get_total_synops(per_second=True)
@@ -147,9 +142,8 @@ class SNNSynOpCounter:
 
 
 class SynOpCounter:
-    """
-    Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an
-    analog CNN model.
+    """Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an analog CNN
+    model.
 
     Parameters:
         modules: list of modules, e.g. MyTorchModel.modules()

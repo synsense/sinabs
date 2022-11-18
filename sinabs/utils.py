@@ -8,8 +8,7 @@ import sinabs
 
 
 def reset_states(model: nn.Module) -> None:
-    """
-    Helper function to recursively reset all states of spiking layers within the model.
+    """Helper function to recursively reset all states of spiking layers within the model.
 
     Parameters:
         model: The torch module
@@ -22,8 +21,7 @@ def reset_states(model: nn.Module) -> None:
 
 
 def zero_grad(model: nn.Module) -> None:
-    """
-    Helper function to recursively zero the gradients of all spiking layers within the model.
+    """Helper function to recursively zero the gradients of all spiking layers within the model.
 
     Parameters:
         model: The torch module
@@ -36,9 +34,7 @@ def zero_grad(model: nn.Module) -> None:
 
 
 def get_activations(torchanalog_model, tsrData, name_list=None):
-    """
-    Return torch analog model activations for the specified layers
-    """
+    """Return torch analog model activations for the specified layers."""
     torch_modules = dict(torchanalog_model.named_modules())
 
     # Populate layer names
@@ -81,8 +77,7 @@ def get_activations(torchanalog_model, tsrData, name_list=None):
 def get_network_activations(
     model: nn.Module, inp, name_list: List = None, bRate: bool = False
 ) -> List[np.ndarray]:
-    """
-    Returns the activity of neurons in each layer of the network
+    """Returns the activity of neurons in each layer of the network.
 
     Parameters:
         model: Model for which the activations are to be read out
@@ -127,8 +122,8 @@ def normalize_weights(
     param_layers: List[str],
     percentile: float = 99,
 ):
-    """
-    Rescale the weights of the network, such that the activity of each specified layer is normalized.
+    """Rescale the weights of the network, such that the activity of each specified layer is
+    normalized.
 
     The method implemented here roughly follows the paper:
     `Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification` by Rueckauer et al.

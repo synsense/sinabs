@@ -11,8 +11,8 @@ from .stateful_layer import StatefulLayer
 
 
 class LIF(StatefulLayer):
-    """
-    Leaky Integrate and Fire neuron layer that inherits from :class:`~sinabs.layers.StatefulLayer`.
+    """Leaky Integrate and Fire neuron layer that inherits from
+    :class:`~sinabs.layers.StatefulLayer`.
 
     Neuron dynamics in discrete time for norm_input=True:
 
@@ -222,8 +222,8 @@ class LIF(StatefulLayer):
 
 
 class LIFRecurrent(LIF):
-    """
-    Leaky Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.LIF`.
+    """Leaky Integrate and Fire neuron layer with recurrent connections which inherits from
+    :class:`~sinabs.layers.LIF`.
 
     Neuron dynamics in discrete time for norm_input=True:
 
@@ -369,10 +369,8 @@ class LIFSqueeze(LIF, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """
-        Forward call wrapper that will flatten the input to and
-        unflatten the output from the super class forward call.
-        """
+        """Forward call wrapper that will flatten the input to and unflatten the output from the
+        super class forward call."""
         return self.squeeze_forward(input_data, super().forward)
 
     @property

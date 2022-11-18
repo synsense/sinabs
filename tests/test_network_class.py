@@ -100,10 +100,8 @@ def test_compare_activations():
 
 
 def test_plot_comparison():
-    """
-    Test whether the plot_comparison() method of the sinabs.network.Network class
-    could plot a nested-network which is not defined by torch.nn.Sequential(*module_list) directly.
-    """
+    """Test whether the plot_comparison() method of the sinabs.network.Network class could plot a
+    nested-network which is not defined by torch.nn.Sequential(*module_list) directly."""
 
     # get the names of all spiking layers
     spiking_layers_names = [

@@ -15,10 +15,9 @@ class BackwardClass:
 
 
 class MultiSpike(BackwardClass, torch.autograd.Function):
-    """
-    Autograd function that returns membrane potential integer-divided by spike threshold.
-    Do not instantiate this class when passing as spike_fn (see example).
-    Can be combined with different surrogate gradient functions.
+    """Autograd function that returns membrane potential integer-divided by spike threshold. Do not
+    instantiate this class when passing as spike_fn (see example). Can be combined with different
+    surrogate gradient functions.
 
     Example:
         >>> layer = sinabs.layers.LIF(spike_fn=MultiSpike, ...)
@@ -44,9 +43,9 @@ class MultiSpike(BackwardClass, torch.autograd.Function):
 
 
 class MaxSpikeInner(BackwardClass, torch.autograd.Function):
-    """
-    Autograd function that returns membrane potential divided by
-    spike threshold for a maximum number of spikes per time step.
+    """Autograd function that returns membrane potential divided by spike threshold for a maximum
+    number of spikes per time step.
+
     Can be combined with different surrogate gradient functions.
     """
 
@@ -74,10 +73,8 @@ class MaxSpikeInner(BackwardClass, torch.autograd.Function):
 
 @dataclass
 class MaxSpike:
-    """
-    Wrapper for MaxSpikeInner autograd function. This class needs to
-    be instantiated when used as spike_fn. Notice the difference in example
-    to Single/MultiSpike.
+    """Wrapper for MaxSpikeInner autograd function. This class needs to be instantiated when used
+    as spike_fn. Notice the difference in example to Single/MultiSpike.
 
     Example:
         >>> layer = sinabs.layers.LIF(spike_fn=MaxSpike(max_num_spikes_per_bin=10), ...)
@@ -101,11 +98,9 @@ class MaxSpike:
 
 
 class SingleSpike(BackwardClass, torch.autograd.Function):
-    """
-    Autograd function that returns membrane potential divided by
-    spike threshold for a maximum of one spike per time step.
-    Do not instantiate this class when passing as spike_fn (see example).
-    Can be combined with different surrogate gradient functions.
+    """Autograd function that returns membrane potential divided by spike threshold for a maximum
+    of one spike per time step. Do not instantiate this class when passing as spike_fn (see
+    example). Can be combined with different surrogate gradient functions.
 
     Example:
         >>> layer = sinabs.layers.LIF(spike_fn=SingleSpike, ...)

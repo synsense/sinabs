@@ -7,8 +7,8 @@ from .reshape import SqueezeMixin
 
 
 class ExpLeak(LIF):
-    """
-    Leaky Integrator layer which is a special case of :class:`~sinabs.layers.LIF` without activation function.
+    """Leaky Integrator layer which is a special case of :class:`~sinabs.layers.LIF` without
+    activation function.
 
     Neuron dynamics in discrete time:
 
@@ -61,8 +61,7 @@ class ExpLeak(LIF):
 
 
 class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
-    """
-    ExpLeak layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    """ExpLeak layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
 
     Same as parent ExpLeak class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
@@ -82,10 +81,8 @@ class ExpLeakSqueeze(ExpLeak, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """
-        Forward call wrapper that will flatten the input to and
-        unflatten the output from the super class forward call.
-        """
+        """Forward call wrapper that will flatten the input to and unflatten the output from the
+        super class forward call."""
         return self.squeeze_forward(input_data, super().forward)
 
     @property

@@ -4,9 +4,8 @@ from sinabs.activation import Quantize, StochasticRounding
 
 
 class NeuromorphicReLU(torch.nn.Module):
-    """
-    NeuromorphicReLU layer. This layer is NOT used for Sinabs networks; it's
-    useful while training analogue pyTorch networks for future use with Sinabs.
+    """NeuromorphicReLU layer. This layer is NOT used for Sinabs networks; it's useful while
+    training analogue pyTorch networks for future use with Sinabs.
 
     Parameters:
         quantize: Whether or not to quantize the output (i.e. floor it to \
@@ -16,7 +15,6 @@ class NeuromorphicReLU(torch.nn.Module):
         NeuromorphicReLU.activity, and is multiplied by the value of fanout.
         stochastic_rounding: Upon quantization, should the value be rounded stochastically or floored
         Only done during training. During evaluation mode, the value is simply floored
-
     """
 
     def __init__(self, quantize=True, fanout=1, stochastic_rounding=False):

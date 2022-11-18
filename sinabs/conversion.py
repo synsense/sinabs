@@ -6,8 +6,7 @@ import torch.nn as nn
 
 
 def replace_module(model: nn.Module, source_class: type, mapper_fn: Callable):
-    """
-    A utility function that returns a copy of the model, where specific layers are replaced with
+    """A utility function that returns a copy of the model, where specific layers are replaced with
     another type depending on the mapper function.
 
     Parameters:
@@ -18,7 +17,7 @@ def replace_module(model: nn.Module, source_class: type, mapper_fn: Callable):
     Returns:
         A model copy with replaced modules according to mapper_fn.
     """
-    
+
     # Handle case where `model` is of type `source_class`
     if type(model) == source_class:
         return mapper_fn(model)
@@ -29,8 +28,7 @@ def replace_module(model: nn.Module, source_class: type, mapper_fn: Callable):
 
 
 def replace_module_(model: nn.Sequential, source_class: type, mapper_fn: Callable):
-    """
-    In-place version of replace_module that will step through modules that have children and
+    """In-place version of replace_module that will step through modules that have children and
     apply the mapper_fn.
 
     Parameters:
@@ -56,4 +54,3 @@ def replace_module_(model: nn.Sequential, source_class: type, mapper_fn: Callabl
 
         if type(module) == source_class:
             setattr(model, name, mapper_fn(module))
-

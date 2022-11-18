@@ -5,8 +5,7 @@ from torch import nn
 
 
 class Img2SpikeLayer(nn.Module):
-    """
-    Layer to convert images to spikes.
+    """Layer to convert images to spikes.
 
     Parameters:
         image_shape: tuple image shape
@@ -59,8 +58,7 @@ class Img2SpikeLayer(nn.Module):
 
 
 class Sig2SpikeLayer(torch.nn.Module):
-    """
-    Layer to convert analog Signals to spikes.
+    """Layer to convert analog Signals to spikes.
 
     Parameters:
         channels_in: number of channels in the analog signal

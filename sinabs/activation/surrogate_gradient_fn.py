@@ -6,8 +6,7 @@ import torch
 
 @dataclass
 class Heaviside:
-    """
-    Heaviside surrogate gradient with optional shift.
+    """Heaviside surrogate gradient with optional shift.
 
     Parameters:
         window: Distance between step of Heaviside surrogate gradient and
@@ -28,8 +27,7 @@ def gaussian(x: torch.Tensor, mu: float, sigma: float):
 
 @dataclass
 class Gaussian:
-    """
-    Gaussian surrogate gradient function.
+    """Gaussian surrogate gradient function.
 
     Parameters
         mu: The mean of the Gaussian.
@@ -50,8 +48,7 @@ class Gaussian:
 
 @dataclass
 class MultiGaussian:
-    """
-    Surrogate gradient as defined in Yin et al., 2021.
+    """Surrogate gradient as defined in Yin et al., 2021.
 
     https://www.biorxiv.org/content/10.1101/2021.03.22.436372v2
 
@@ -86,8 +83,7 @@ class MultiGaussian:
 
 @dataclass
 class SingleExponential:
-    """
-    Surrogate gradient as defined in Shrestha and Orchard, 2018.
+    """Surrogate gradient as defined in Shrestha and Orchard, 2018.
 
     https://papers.nips.cc/paper/2018/hash/82f2b308c3b01637c607ce05f52a2fed-Abstract.html
     """
@@ -106,8 +102,7 @@ class SingleExponential:
 
 @dataclass
 class PeriodicExponential:
-    """
-    Surrogate gradient as defined in Weidel and Sheik, 2021.
+    """Surrogate gradient as defined in Weidel and Sheik, 2021.
 
     https://arxiv.org/abs/2111.01456
     """

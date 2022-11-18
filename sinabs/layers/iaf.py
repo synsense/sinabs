@@ -10,8 +10,8 @@ from .reshape import SqueezeMixin
 
 
 class IAF(LIF):
-    """
-    Integrate and Fire neuron layer that is designed as a special case of :class:`~sinabs.layers.LIF` with tau_mem=inf.
+    """Integrate and Fire neuron layer that is designed as a special case of
+    :class:`~sinabs.layers.LIF` with tau_mem=inf.
 
     Neuron dynamics in discrete time:
 
@@ -87,8 +87,8 @@ class IAF(LIF):
 
 
 class IAFRecurrent(LIFRecurrent):
-    """
-    Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.LIFRecurrent`.
+    """Integrate and Fire neuron layer with recurrent connections which inherits from
+    :class:`~sinabs.layers.LIFRecurrent`.
 
     Neuron dynamics in discrete time:
 
@@ -166,8 +166,7 @@ class IAFRecurrent(LIFRecurrent):
 
 
 class IAFSqueeze(IAF, SqueezeMixin):
-    """
-    IAF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    """IAF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
 
     Same as parent IAF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
@@ -192,10 +191,8 @@ class IAFSqueeze(IAF, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """
-        Forward call wrapper that will flatten the input to and
-        unflatten the output from the super class forward call.
-        """
+        """Forward call wrapper that will flatten the input to and unflatten the output from the
+        super class forward call."""
         return self.squeeze_forward(input_data, super().forward)
 
     @property

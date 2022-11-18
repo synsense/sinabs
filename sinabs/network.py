@@ -13,8 +13,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 
 class Network(torch.nn.Module):
-    """
-    Class of a spiking neural network
+    """Class of a spiking neural network.
 
     Attributes:
         spiking_model: torch.nn.Module, a spiking neural network model
@@ -75,9 +74,7 @@ class Network(torch.nn.Module):
         [this_hook.remove() for this_hook in hook_list]
 
     def forward(self, tsrInput) -> torch.Tensor:
-        """
-        Forward pass for this model
-        """
+        """Forward pass for this model."""
         return self.spiking_model(tsrInput)
 
     def compare_activations(
@@ -87,8 +84,7 @@ class Network(torch.nn.Module):
         compute_rate: bool = False,
         verbose: bool = False,
     ) -> Tuple[np.ndarray, np.ndarray, str]:
-        """
-        Compare activations of the analog model and the SNN for a given data sample
+        """Compare activations of the analog model and the SNN for a given data sample.
 
         Args:
             data (np.ndarray):      Data to process
@@ -129,8 +125,7 @@ class Network(torch.nn.Module):
     def plot_comparison(
         self, data, name_list: Optional[ArrayLike] = None, compute_rate=False
     ):
-        """
-        Plots a scatter plot of all the activations
+        """Plots a scatter plot of all the activations.
 
         Args:
             data: Data to be processed
@@ -165,8 +160,7 @@ class Network(torch.nn.Module):
         randomize: bool = False,
         value_ranges: Optional[List[Dict[str, Tuple[float, float]]]] = None,
     ):
-        """
-        Reset all neuron states in the submodules.
+        """Reset all neuron states in the submodules.
 
         Parameters
         ----------
@@ -203,9 +197,7 @@ class Network(torch.nn.Module):
             lyr.zero_grad(set_to_none)
 
     def get_synops(self, num_evs_in=None) -> dict:
-        """
-        Please see docs for `sinabs.SNNSynOpCounter.get_synops()`.
-        """
+        """Please see docs for `sinabs.SNNSynOpCounter.get_synops()`."""
         if num_evs_in is not None:
             warnings.warn("num_evs_in is deprecated and has no effect")
 
@@ -215,9 +207,7 @@ class Network(torch.nn.Module):
 def get_parent_module_by_name(
     root: torch.nn.Module, name: str
 ) -> Tuple[torch.nn.Module, str]:
-    """
-    Find a nested Module of a given name inside a Module, and return its parent
-    Module.
+    """Find a nested Module of a given name inside a Module, and return its parent Module.
 
     Args:
         root: The Module inside which to look for the nested Module
@@ -241,9 +231,8 @@ def get_parent_module_by_name(
 
 
 def infer_module_device(module: torch.nn.Module) -> Union[torch.device, None]:
-    """
-    Infere on which device a module is operating by first looking at its parameters
-    and then, if no parameters are found, at its buffers.
+    """Infere on which device a module is operating by first looking at its parameters and then, if
+    no parameters are found, at its buffers.
 
     Args:
         module: The module whose device is to be inferred.

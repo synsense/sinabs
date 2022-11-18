@@ -130,10 +130,8 @@ def test_network_conversion_add_spk_out():
 
 
 def test_network_conversion_complicated_model():
-    """
-    Try converting rather complicated network model with nested structures, which used
-    to fail before.
-    """
+    """Try converting rather complicated network model with nested structures, which used to fail
+    before."""
 
     ann = nn.Sequential(
         nn.Conv2d(1, 1, 1),
@@ -189,9 +187,7 @@ def test_network_conversion_with_num_timesteps():
 
 
 def test_network_conversion_backend():
-    """
-    Try conversion with sinabs explicitly stated as backend.
-    """
+    """Try conversion with sinabs explicitly stated as backend."""
 
     ann = nn.Sequential(
         nn.Conv2d(1, 1, 1),
