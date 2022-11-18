@@ -389,7 +389,7 @@ class DynapcnnNetwork(nn.Module):
             lyr.zero_grad(set_to_none)
     
     def __del__(self):
-        if self.device_output_graph:
+        if hasattr(self, 'device_output_graph') and self.device_output_graph:
             self.device_output_graph.stop()
 
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
