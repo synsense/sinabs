@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Tuple
 from copy import deepcopy
 from warnings import warn
 
@@ -12,7 +12,7 @@ DYNAPCNN_STATE_PRECISION_BITS = 16
 
 def discretize_conv_spike(
     conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True
-) -> (nn.Conv2d, sl.IAF):
+) -> Tuple[nn.Conv2d, sl.IAF]:
     """Discretize convolutional and spiking layers together.
 
     This function takes a 2D convolutional and a spiking layer and returns a
@@ -42,7 +42,7 @@ def discretize_conv_spike(
 
 def discretize_conv_spike_(
     conv_lyr: nn.Conv2d, spike_lyr: sl.IAF, to_int: bool = True
-) -> (nn.Conv2d, sl.IAF):
+) -> Tuple[nn.Conv2d, sl.IAF]:
     """Discretize convolutional and spiking layers together, in-place.
 
     This function takes a 2D convolutional and a spiking layer and discretizes
