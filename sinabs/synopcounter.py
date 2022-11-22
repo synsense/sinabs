@@ -14,7 +14,7 @@ def spiking_hook(self, input_, output):
     Calculates n_neurons (scalar), firing_rate_per_neuron (C,H,W) and average firing_rate (scalar).
     """
     if isinstance(self, sl.SqueezeMixin):
-        output = output.unflatten(0, (self.batch_size, self.num_timesteps))
+        output = output.reshape(self.batch_size, self.num_timesteps, *output.shape[1:])
     self.n_neurons = output[0, 0].numel()
     self.firing_rate_per_neuron = output.mean((0, 1))
     self.firing_rate = output.mean()
@@ -31,13 +31,7 @@ def synops_hook(unflattened_shape, self, input_, out):
     input_ = input_[0]
     if unflattened_shape is not None:
         batch_size, num_timesteps = unflattened_shape
-        # This here is a hack because PyTorch 1.8 cannot infer shape '-1'
-        # by itself, we need to help it.
-        if batch_size == -1:
-            batch_size = input_.shape[0] // num_timesteps
-        elif num_timesteps == -1:
-            num_timesteps = input_.shape[0] // batch_size
-        input_ = input_.unflatten(0, (batch_size, num_timesteps))
+        input_ = input_.reshape(batch_size, num_timesteps, *input_.shape[1:])
     self.total_input = input_.mean(0).sum()
     self.total_output = out.mean(0).sum()
     self.synops = self.total_input * self.fanout
