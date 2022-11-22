@@ -1,3 +1,6 @@
+import samna
+import time
+
 from abc import ABC, abstractmethod
 from typing import List
 from .mapping import LayerConstraints, get_valid_mapping
@@ -157,5 +160,15 @@ class ConfigBuilder(ABC):
             event.layer = layer_id
             event.neuron_state = 0
             events.append(event)
-        samna_device.get_model().write(events)
+        
+        temporary_source_node = cls.get_input_buffer() 
+        temporary_graph = samna.graph.sequential([
+            temporary_source_node,
+            samna_device.get_model().get_sink_node()
+        ])
+        temporary_graph.start()
+        time.sleep(0.5)
+        temporary_source_node.write(events)
+        time.sleep(1)
+        temporary_graph.stop()
         return
