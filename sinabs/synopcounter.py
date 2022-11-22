@@ -1,144 +1,154 @@
 import warnings
+from functools import partial
 
 import torch
 from numpy import product
 
+import sinabs.layers as sl
 from sinabs.layers import NeuromorphicReLU
 
 
-def synops_hook(layer, inp, out):
-    assert len(inp) == 1, "Multiple inputs not supported for synops hook"
-    inp = inp[0]
-    layer.tot_in = inp.sum()
-    layer.tot_out = out.sum()
-    layer.synops = layer.tot_in * layer.fanout
-    layer.tw = inp.shape[0]
+def spiking_hook(self, input_, output):
+    """Forward hook meant for Sinabs/Exodus layers.
+
+    Calculates n_neurons (scalar), firing_rate_per_neuron (C,H,W) and average firing_rate (scalar).
+    """
+    if isinstance(self, sl.SqueezeMixin):
+        output = output.unflatten(0, (self.batch_size, self.num_timesteps))
+    self.n_neurons = output[0, 0].numel()
+    self.firing_rate_per_neuron = output.mean((0, 1))
+    self.firing_rate = output.mean()
 
 
-class SNNSynOpCounter:
-    """Counter for the synaptic operations emitted by all SpikingLayers in a spiking model. Note
-    that this is automatically instantiated by `from_torch` and by `Network` if they are passed
-    `synops=True`.
+def synops_hook(unflattened_shape, self, input_, out):
+    """Forward hook for parameter layers such as Conv2d or Linear.
 
-    Arguments:
-        model: Spiking model.
-        dt: the number of milliseconds corresponding to a time step in the \
-        simulation (default 1.0).
+    Calculates the total amount of input and output and the number of synaptic operations. The
+    `unflattened_shape` parameter is a bit of a hack since Sinabs sometimes uses squeezed inputs
+    and from inside the hook we cannot know whether the input is squeezed or not.
+    """
+    assert len(input_) == 1, "Multiple inputs not supported for synops hook"
+    input_ = input_[0]
+    if unflattened_shape is not None:
+        input_ = input_.unflatten(0, unflattened_shape)
+    self.total_input = input_.mean(0).sum()
+    self.total_output = out.mean(0).sum()
+    self.synops = self.total_input * self.fanout
+    self.num_timesteps = input_.shape[1]
+
+
+class SNNAnalyzer:
+    """Helper class to acquire statistics for spiking and parameter layers at the same time.
+
+    Parameters:
+        model: Your PyTorch model.
+        dt: the number of milliseconds corresponding to a time step in the simulation (default 1.0).
 
     Example:
-        >>> counter = SNNSynOpCounter(my_spiking_model)
-        >>> output = my_spiking_model(input)  # forward pass
-        >>> synops_table = counter.get_synops()
+        >>> analyser = SNNAnalyser(my_spiking_model)
+        >>> output = my_spiking_model(input_)  # forward pass
+        >>> layer_stats = analyser.get_layer_statistics()
+        >>> model_stats = analyser.get_model_statistics()
     """
 
-    def __init__(self, model, dt=1.0):
+    def __init__(self, model: torch.nn.Module, dt: float = 1.0):
         self.model = model
-        self.handles = []
         self.dt = dt
+        self.handles = []
+
+        # This is a hack to unflatten inputs/outputs in conv/linear layers
+        # inside the hook since we cannot know from the shape alone whether
+        # it is flattened (B*T,C,H,W) or unflattened (B,T,C,H,W)
+        unflattened_shape = None
+        for layer in model.modules():
+            if isinstance(layer, sl.SqueezeMixin):
+                unflattened_shape = (layer.batch_size, layer.num_timesteps)
 
         for layer in model.modules():
-            self._register_synops_hook(layer)
-
-    def _register_synops_hook(self, layer):
-        if isinstance(layer, torch.nn.Conv2d):
-            layer.fanout = (
-                layer.out_channels * product(layer.kernel_size) / product(layer.stride)
-            )
-        elif isinstance(layer, torch.nn.Linear):
-            layer.fanout = layer.out_features
-
-        else:
-            return None
-
-        handle = layer.register_forward_hook(synops_hook)
-        self.handles.append(handle)
-
-    def get_synops(self) -> dict:
-        """Method to compute a table of synaptic operations for the latest forward pass.
-
-        .. note:: this may not be accurate in presence of average pooling.
-
-        Returns:
-            A dictionary containing layer IDs and respectively, for
-            the latest forward pass performed, their number of input spikes,
-            fanout, synaptic operations, number of timesteps, total duration
-            of simulation, number of synaptic operations per second.
-
-        Example:
-            >>> synops_map = counter.get_synops()
-            >>> SynOps_dataframe = pandas.DataFrame.from_dict(synops_map, "index")
-            >>> SynOps_dataframe.set_index("Layer", inplace=True)
-        """
-        SynOps_map = {}
-        scale_facts = []
-        for i, lyr in enumerate(self.model.modules()):
-            if isinstance(lyr, torch.nn.AvgPool2d):
-                if lyr.kernel_size != lyr.stride:
-                    warnings.warn(
-                        f"In order for the Synops counter to work accurately the pooling "
-                        f"layers kernel size should match their strides. At the moment at layer {i}, "
-                        f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
-                    )
-                ks = lyr.kernel_size
-                scale_factor = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
-                scale_facts.append(scale_factor)
-            if hasattr(lyr, "synops"):
-                scale_factor = 1
-                while len(scale_facts) != 0:
-                    scale_factor *= scale_facts.pop()
-                SynOps_map[i] = {
-                    "Layer": i,
-                    "In": lyr.tot_in * scale_factor,
-                    "Fanout_Prev": lyr.fanout,
-                    "SynOps": lyr.synops * scale_factor,
-                    "N. timesteps": lyr.tw,
-                    "Time window (ms)": lyr.tw * self.dt,
-                    "SynOps/s": (lyr.synops * scale_factor) / lyr.tw / self.dt * 1000,
-                }
-
-        return SynOps_map
-
-    def get_total_synops(self, per_second=False) -> float:
-        """Sums up total number of synaptic operations across the network.
-
-        .. note:: this may not be accurate in presence of average pooling.
-
-        Arguments:
-            per_second (bool, default False): if True, gives synops per second
-                            instead of total synops in the last forward pass.
-
-        Returns:
-            synops: the total synops in the network, based on the last forward pass.
-        """
-        synops = 0.0
-        for i, lyr in enumerate(self.model.modules()):
-            if hasattr(lyr, "synops"):
-                if per_second:
-                    layer_synops = lyr.synops / lyr.tw / self.dt * 1000
-                else:
-                    layer_synops = lyr.synops
-
-                synops = synops + layer_synops
-        return synops
-
-    def get_total_power_use(self, j_per_synop=1e-11):
-        """Method to quickly get the total power use of the network, estimated over the latest
-        forward pass.
-
-        Arguments:
-            j_per_synop: Energy use per synaptic operation, in joules.\
-            Default 1e-11 J.
-
-        Returns:
-            estimated power in mW.
-        """
-        tot_synops_per_s = self.get_total_synops(per_second=True)
-        power_in_mW = tot_synops_per_s * j_per_synop * 1000
-        return power_in_mW
+            if isinstance(layer, sl.StatefulLayer):
+                handle = layer.register_forward_hook(spiking_hook)
+                self.handles.append(handle)
+            if isinstance(layer, torch.nn.Conv2d):
+                layer.fanout = (
+                    layer.out_channels
+                    * product(layer.kernel_size)
+                    / product(layer.stride)
+                )
+                handle = layer.register_forward_hook(
+                    partial(synops_hook, unflattened_shape)
+                )
+                self.handles.append(handle)
+            elif isinstance(layer, torch.nn.Linear):
+                layer.fanout = layer.out_features
+                handle = layer.register_forward_hook(
+                    partial(synops_hook, unflattened_shape)
+                )
+                self.handles.append(handle)
 
     def __del__(self):
         for handle in self.handles:
             handle.remove()
+
+    def get_layer_statistics(self) -> dict:
+        spike_dict = {}
+        scale_facts = []
+        for name, module in self.model.named_modules():
+            if hasattr(module, "firing_rate"):
+                if not name in spike_dict.keys():
+                    spike_dict[name] = {}
+                spike_dict[name].update({"firing_rate": module.firing_rate})
+            if hasattr(module, "firing_rate_per_neuron"):
+                if not name in spike_dict.keys():
+                    spike_dict[name] = {}
+                spike_dict[name].update(
+                    {"firing_rate_per_neuron": module.firing_rate_per_neuron}
+                )
+            if hasattr(module, "n_neurons"):
+                if not name in spike_dict.keys():
+                    spike_dict[name] = {}
+                spike_dict[name].update({"n_neurons": module.n_neurons})
+
+            # synops statistics
+            if isinstance(module, torch.nn.AvgPool2d):
+                if module.kernel_size != module.stride:
+                    warnings.warn(
+                        f"In order for the Synops counter to work accurately the pooling "
+                        f"layers kernel size should match their strides. At the moment at layer {name}, "
+                        f"the kernel_size = {module.kernel_size}, the stride = {module.stride}."
+                    )
+                ks = module.kernel_size
+                scale_factor = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
+                scale_facts.append(scale_factor)
+            if hasattr(module, "synops"):
+                scale_factor = 1
+                while len(scale_facts) != 0:
+                    scale_factor *= scale_facts.pop()
+                spike_dict[name] = {
+                    "input": module.total_input * scale_factor,
+                    "fanout_prev": module.fanout,
+                    "synops": module.synops * scale_factor,
+                    "num_timesteps": module.num_timesteps,
+                    "time_window": module.num_timesteps * self.dt,
+                    "SynOps/s": (module.synops * scale_factor)
+                    / module.num_timesteps
+                    / self.dt
+                    * 1000,
+                }
+        return spike_dict
+
+    def get_model_statistics(self):
+        stats_dict = {}
+        firing_rates = []
+        synops = 0.0
+        for name, module in self.model.named_modules():
+            if hasattr(module, "firing_rate_per_neuron"):
+                firing_rates.append(module.firing_rate_per_neuron.ravel())
+            if hasattr(module, "synops"):
+                synops = synops + module.synops
+        if len(firing_rates) > 0:
+            stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
+        stats_dict["synops"] = synops
+        return stats_dict
 
 
 class SynOpCounter:
@@ -165,7 +175,6 @@ class SynOpCounter:
             raise ValueError("No NeuromorphicReLU found in module list.")
 
         self.sum_activations = sum_activations
-        # self.modules[1:] = []
 
     def __call__(self):
         synops = []

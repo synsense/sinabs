@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 
 from .layers import StatefulLayer
-from .synopcounter import SNNSynOpCounter
+from .synopcounter import SNNAnalyzer
 from .utils import get_activations, get_network_activations
 
 ArrayLike = Union[np.ndarray, List, Tuple]
@@ -39,7 +39,7 @@ class Network(torch.nn.Module):
 
         self.synops = synops
         if synops:
-            self.synops_counter = SNNSynOpCounter(self.spiking_model)
+            self.synops_counter = SNNAnalyzer(self.spiking_model)
 
         if input_shape is not None and spiking_model is not None:
             self._compute_shapes(
