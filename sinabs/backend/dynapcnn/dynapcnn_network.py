@@ -401,6 +401,11 @@ class DynapcnnNetwork(nn.Module):
             lyr.zero_grad(set_to_none)
     
     def __del__(self):
+        # Stop the input graph
+        if hasattr(self, 'device_input_graph') and self.device_input_graph:
+            self.device_input_graph.stop()
+        
+        # Stop the output graph.
         if hasattr(self, 'device_output_graph') and self.device_output_graph:
             self.device_output_graph.stop()
 
