@@ -30,7 +30,14 @@ def synops_hook(unflattened_shape, self, input_, out):
     assert len(input_) == 1, "Multiple inputs not supported for synops hook"
     input_ = input_[0]
     if unflattened_shape is not None:
-        input_ = input_.unflatten(0, unflattened_shape)
+        batch_size, num_timesteps = unflattened_shape
+        # This here is a hack because PyTorch 1.8 cannot infer shape '-1'
+        # by itself, we need to help it.
+        if batch_size == -1:
+            batch_size = input_.shape[0] // num_timesteps
+        elif num_timesteps == -1:
+            num_timesteps = input_.shape[0] // batch_size
+        input_ = input_.unflatten(0, (batch_size, num_timesteps))
     self.total_input = input_.mean(0).sum()
     self.total_output = out.mean(0).sum()
     self.synops = self.total_input * self.fanout
