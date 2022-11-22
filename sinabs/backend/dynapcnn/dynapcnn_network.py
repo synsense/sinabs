@@ -171,11 +171,22 @@ class DynapcnnNetwork(nn.Module):
                 self.samna_device.get_model().apply_configuration(config)
                 time.sleep(1)
 
-                # Create output buffer sink node
                 builder = ChipFactory(device).get_config_builder()
+                # Create input source node
+                self.samna_input_buffer = builder.get_input_buffer()
+                # Create output sink node node 
                 self.samna_output_buffer = builder.get_output_buffer()
 
-                # Connect buffer sink node to device
+                # Connect source node to device sink
+                self.device_input_graph = samna.graph.EventFilterGraph()
+                self.device_input_graph.sequential(
+                    [
+                        self.samna_input_buffer,
+                        self.samna_device.get_model().get_sink_node()
+                    ]
+                )
+
+                # Connect sink node to device
                 self.device_output_graph = samna.graph.EventFilterGraph()
                 self.device_output_graph.sequential(
                     [
@@ -183,6 +194,7 @@ class DynapcnnNetwork(nn.Module):
                         self.samna_output_buffer
                     ]
                 )
+                self.device_input_graph.start()
                 self.device_output_graph.start()
                 self.samna_config = config
                 return self
@@ -348,7 +360,7 @@ class DynapcnnNetwork(nn.Module):
             reset_timestamps(self.device)
             enable_timestamps(self.device)
             # Send input
-            self.samna_device.get_model().write(x)
+            self.samna_input_buffer.write(x)
             received_evts = []
             time.sleep(0.1)
             while True:

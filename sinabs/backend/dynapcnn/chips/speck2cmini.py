@@ -24,6 +24,10 @@ class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
+    
+    @classmethod
+    def get_input_buffer(cls):
+        return samna.BasicSourceNode_speck2c_mini_event_input_event()
 
     @classmethod
     def get_output_buffer(cls):

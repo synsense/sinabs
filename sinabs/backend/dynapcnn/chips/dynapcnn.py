@@ -236,6 +236,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config
 
     @classmethod
+    def get_input_buffer(cls):
+        return samna.BasicSourceNode_dynapcnn_event_input_event()
+
+    @classmethod
     def get_output_buffer(cls):
         return samna.BasicSinkNode_dynapcnn_event_output_event()
 

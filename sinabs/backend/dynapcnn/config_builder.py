@@ -109,6 +109,15 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
+    def get_input_buffer(cls):
+        """
+        Initialize and return the appropriate output buffer object
+        Note that this just the buffer object. This does not actually connect the buffer object to the graph.
+        (It is needed as of samna 0.21.0)
+        """
+    
+    @classmethod
+    @abstractmethod
     def get_output_buffer(cls):
         """
         Initialize and return the appropriate output buffer object

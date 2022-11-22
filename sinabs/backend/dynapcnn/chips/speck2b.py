@@ -20,6 +20,10 @@ class Speck2BConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
+    
+    @classmethod
+    def get_input_event(cls):
+        return samna.BasicSourceNode_speck2b_event_input_event()
 
     @classmethod
     def get_output_buffer(cls):
