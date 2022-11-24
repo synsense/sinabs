@@ -32,9 +32,8 @@ def synops_hook(unflattened_shape, self, input_, out):
     if unflattened_shape is not None:
         batch_size, num_timesteps = unflattened_shape
         input_ = input_.reshape(batch_size, num_timesteps, *input_.shape[1:])
-    self.total_input = input_.mean(0).sum()
-    self.total_output = out.mean(0).sum()
-    self.synops = self.total_input * self.fanout
+    self.synops = self.synops + input_.sum() * self.fanout
+    self.n_samples = self.n_samples + input_.shape[0]
     self.num_timesteps = input_.shape[1]
 
 
@@ -75,12 +74,16 @@ class SNNAnalyzer:
                     * product(layer.kernel_size)
                     / product(layer.stride)
                 )
+                layer.synops = 0
+                layer.n_samples = 0
                 handle = layer.register_forward_hook(
                     partial(synops_hook, unflattened_shape)
                 )
                 self.handles.append(handle)
             elif isinstance(layer, torch.nn.Linear):
                 layer.fanout = layer.out_features
+                layer.synops = 0
+                layer.n_samples = 0
                 handle = layer.register_forward_hook(
                     partial(synops_hook, unflattened_shape)
                 )
@@ -125,12 +128,11 @@ class SNNAnalyzer:
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
                 spike_dict[name] = {
-                    "input": module.total_input * scale_factor,
                     "fanout_prev": module.fanout,
-                    "synops": module.synops * scale_factor,
+                    "synops": module.synops / module.n_samples * scale_factor,
                     "num_timesteps": module.num_timesteps,
                     "time_window": module.num_timesteps * self.dt,
-                    "SynOps/s": (module.synops * scale_factor)
+                    "SynOps/s": (module.synops / module.n_samples * scale_factor)
                     / module.num_timesteps
                     / self.dt
                     * 1000,
@@ -145,7 +147,7 @@ class SNNAnalyzer:
             if hasattr(module, "firing_rate_per_neuron"):
                 firing_rates.append(module.firing_rate_per_neuron.ravel())
             if hasattr(module, "synops"):
-                synops = synops + module.synops
+                synops = synops + module.synops / module.n_samples
         if len(firing_rates) > 0:
             stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
         stats_dict["synops"] = synops

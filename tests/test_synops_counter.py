@@ -82,15 +82,70 @@ def test_layer_synops():
     assert len(loss) == 3
 
 
-def test_snn_synops_counter():
-    model = nn.Sequential(nn.Conv2d(1, 5, kernel_size=2), IAFSqueeze(batch_size=1))
-    input_ = torch.tensor([[[[0, 0, 0], [0, 3, 0], [0, 0, 0]]]]).float()
+def test_linear_synops_counter():
+    model = nn.Linear(3, 5)
+    input_ = torch.zeros((1, 3))
+    input_[0, 0] = 3
     analyser = SNNAnalyzer(model)
     model(input_)
     model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    # 3 spikes * 5 channels
+    assert model_stats["synops"] == 15
+    assert layer_stats["synops"] == 15
+    assert layer_stats["fanout_prev"] == 5
+
+
+def test_linear_synops_counter_across_batches():
+    model = nn.Linear(3, 5)
+    input1 = torch.zeros((1, 3))
+    input1[0, 0] = 3
+    input2 = torch.zeros((1, 3))
+    input2[0, 0] = 6
+    analyser = SNNAnalyzer(model)
+    model(input1)
+    model(input2)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    # (3+6)/2 spikes * 5 channels
+    assert model_stats["synops"] == 22.5
+    assert layer_stats["synops"] == 22.5
+    assert layer_stats["fanout_prev"] == 5
+
+
+def test_conv_synops_counter():
+    model = nn.Conv2d(1, 5, kernel_size=2)
+    input_ = torch.zeros((1, 1, 3, 3))
+    input_[0, 0, 1, 1] = 3
+    analyser = SNNAnalyzer(model)
+    model(input_)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
 
     # 3 spikes, 2x2 kernel, 5 channels
     assert model_stats["synops"] == 60
+    assert layer_stats["synops"] == 60
+    assert layer_stats["fanout_prev"] == 20
+
+
+def test_conv_synops_counter_counts_across_batches():
+    model = nn.Conv2d(1, 5, kernel_size=2)
+    input1 = torch.zeros((1, 1, 3, 3))
+    input1[0, 0, 1, 1] = 6
+    input2 = torch.zeros((1, 1, 3, 3))
+    input2[0, 0, 1, 1] = 3
+    analyser = SNNAnalyzer(model)
+    model(input1)
+    model(input2)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    # (3+6)/2 spikes, 2x2 kernel, 5 channels
+    assert model_stats["synops"] == 90
+    assert layer_stats["synops"] == 90
+    assert layer_stats["fanout_prev"] == 20
 
 
 def test_snn_analyser_statistics():
