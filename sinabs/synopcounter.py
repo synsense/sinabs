@@ -105,27 +105,29 @@ class SNNAnalyzer:
 
     def get_layer_statistics(self) -> dict:
         spike_dict = {}
+        spike_dict["spiking"] = {}
+        spike_dict["parameter"] = {}
         scale_facts = []
         for name, module in self.model.named_modules():
-            if hasattr(module, "firing_rate"):
-                if not name in spike_dict.keys():
-                    spike_dict[name] = {}
-                spike_dict[name].update(
+            if (
+                hasattr(module, "tracked_firing_rate")
+                or hasattr(module, "firing_rate_per_neuron")
+                or hasattr(module, "n_neurons")
+            ):
+                spike_dict["spiking"][name] = {}
+            if hasattr(module, "tracked_firing_rate"):
+                spike_dict["spiking"][name].update(
                     {"firing_rate": module.tracked_firing_rate / module.n_batches}
                 )
             if hasattr(module, "firing_rate_per_neuron"):
-                if not name in spike_dict.keys():
-                    spike_dict[name] = {}
-                spike_dict[name].update(
+                spike_dict["spiking"][name].update(
                     {
                         "firing_rate_per_neuron": module.firing_rate_per_neuron
                         / module.n_batches
                     }
                 )
             if hasattr(module, "n_neurons"):
-                if not name in spike_dict.keys():
-                    spike_dict[name] = {}
-                spike_dict[name].update({"n_neurons": module.n_neurons})
+                spike_dict["spiking"][name].update({"n_neurons": module.n_neurons})
 
             # synops statistics
             if isinstance(module, torch.nn.AvgPool2d):
@@ -142,7 +144,7 @@ class SNNAnalyzer:
                 scale_factor = 1
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
-                spike_dict[name] = {
+                spike_dict["parameter"][name] = {
                     "fanout_prev": module.fanout,
                     "synops": module.synops / module.n_samples * scale_factor,
                     "num_timesteps": module.num_timesteps,

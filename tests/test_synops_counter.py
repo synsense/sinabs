@@ -91,7 +91,7 @@ def test_linear_synops_counter():
     analyser = SNNAnalyzer(model)
     model(input_)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["parameter"][""]
 
     # 3 spikes * 5 channels
     assert model_stats["synops"] == 15
@@ -109,7 +109,7 @@ def test_linear_synops_counter_across_batches():
     model(input1)
     model(input2)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["parameter"][""]
 
     # (3+6)/2 spikes * 5 channels
     assert model_stats["synops"] == 22.5
@@ -124,7 +124,7 @@ def test_conv_synops_counter():
     analyser = SNNAnalyzer(model)
     model(input_)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["parameter"][""]
 
     # 3 spikes, 2x2 kernel, 5 channels
     assert model_stats["synops"] == 60
@@ -142,7 +142,7 @@ def test_conv_synops_counter_counts_across_batches():
     model(input1)
     model(input2)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["parameter"][""]
 
     # (3+6)/2 spikes, 2x2 kernel, 5 channels
     assert model_stats["synops"] == 90
@@ -157,7 +157,7 @@ def test_spiking_layer_firing_rate():
     analyser = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.25
@@ -176,7 +176,7 @@ def test_spiking_layer_firing_rate_across_batches():
     sinabs.reset_states(layer)
     output = layer(input2)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["spiking"][""]
 
     assert (output == input2).all()
     assert model_stats["firing_rate"] == 0.375
@@ -196,7 +196,7 @@ def test_analyser_reset():
     analyser.reset()
     output = layer(input_)
     model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()[""]
+    layer_stats = analyser.get_layer_statistics()["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.5
@@ -219,31 +219,33 @@ def test_snn_analyser_statistics():
     input_ = torch.rand((batch_size, num_timesteps, 1, 4, 4)) * 100
     input_flattended = input_.flatten(0, 1)
     output = model(input_flattended)
-    layer_stats = analyser.get_layer_statistics()
+    spike_layer_stats = analyser.get_layer_statistics()["spiking"]
+    param_layer_stats = analyser.get_layer_statistics()["parameter"]
     model_stats = analyser.get_model_statistics()
 
     # spiking layer checks
     assert (
-        layer_stats["3"]["firing_rate"] == output.mean()
+        spike_layer_stats["3"]["firing_rate"] == output.mean()
     ), "The output mean should be equivalent to the firing rate of the last spiking layer"
     assert (
         torch.cat(
             (
-                layer_stats["1"]["firing_rate_per_neuron"].ravel(),
-                layer_stats["3"]["firing_rate_per_neuron"].ravel(),
+                spike_layer_stats["1"]["firing_rate_per_neuron"].ravel(),
+                spike_layer_stats["3"]["firing_rate_per_neuron"].ravel(),
             )
         ).mean()
         == model_stats["firing_rate"]
     ), "Mean of layer 1 and 3 firing rates is not equal to calculated model firing rate."
 
     # parameter layer checks
-    layer_stats["0"]["synops"] == input_.mean(0).sum() * np.product(
+    param_layer_stats["0"]["synops"] == input_.mean(0).sum() * np.product(
         model[0].kernel_size
     ) * model[0].out_channels
-    assert layer_stats["0"]["num_timesteps"] == num_timesteps
-    assert layer_stats["2"]["num_timesteps"] == num_timesteps
+    assert param_layer_stats["0"]["num_timesteps"] == num_timesteps
+    assert param_layer_stats["2"]["num_timesteps"] == num_timesteps
     assert (
-        model_stats["synops"] == layer_stats["0"]["synops"] + layer_stats["2"]["synops"]
+        model_stats["synops"]
+        == param_layer_stats["0"]["synops"] + param_layer_stats["2"]["synops"]
     )
 
 
