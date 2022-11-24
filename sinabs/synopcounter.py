@@ -59,16 +59,19 @@ class SNNAnalyzer:
         self.model = model
         self.dt = dt
         self.handles = []
+        self._setup_hooks()
 
+    def _setup_hooks(self):
+        """Attaches spiking and parameter hooks to matching layers and resets all counters."""
         # This is a hack to unflatten inputs/outputs in conv/linear layers
         # inside the hook since we cannot know from the shape alone whether
         # it is flattened (B*T,C,H,W) or unflattened (B,T,C,H,W)
         unflattened_shape = None
-        for layer in model.modules():
+        for layer in self.model.modules():
             if isinstance(layer, sl.SqueezeMixin):
                 unflattened_shape = (layer.batch_size, layer.num_timesteps)
 
-        for layer in model.modules():
+        for layer in self.model.modules():
             if isinstance(layer, sl.StatefulLayer):
                 layer.firing_rate_per_neuron = None
                 layer.tracked_firing_rate = 0
@@ -166,6 +169,11 @@ class SNNAnalyzer:
             stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
         stats_dict["synops"] = synops
         return stats_dict
+
+    def reset(self):
+        for handle in self.handles:
+            handle.remove()
+        self._setup_hooks()
 
 
 class SynOpCounter:

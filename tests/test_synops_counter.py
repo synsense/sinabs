@@ -185,6 +185,26 @@ def test_spiking_layer_firing_rate_across_batches():
     assert layer_stats["firing_rate_per_neuron"].mean() == 0.375
 
 
+def test_analyser_reset():
+    layer = sl.IAF()
+    input_ = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
+
+    analyser = sinabs.SNNAnalyzer(layer)
+    output = layer(input_)
+    output = layer(input_)
+    sinabs.reset_states(layer)
+    analyser.reset()
+    output = layer(input_)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    assert (output == input_).all()
+    assert model_stats["firing_rate"] == 0.5
+    assert layer_stats["firing_rate"] == 0.5
+    assert layer_stats["firing_rate_per_neuron"].shape == (4, 4)
+    assert layer_stats["firing_rate_per_neuron"].mean() == 0.5
+
+
 def test_snn_analyser_statistics():
     batch_size = 3
     num_timesteps = 10
