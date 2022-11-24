@@ -2,6 +2,8 @@ import numpy as np
 import torch
 from torch import nn
 
+import sinabs
+import sinabs.layers as sl
 from sinabs import SNNAnalyzer, SynOpCounter
 from sinabs.layers import IAFSqueeze, NeuromorphicReLU
 
@@ -146,6 +148,41 @@ def test_conv_synops_counter_counts_across_batches():
     assert model_stats["synops"] == 90
     assert layer_stats["synops"] == 90
     assert layer_stats["fanout_prev"] == 20
+
+
+def test_spiking_layer_firing_rate():
+    layer = sl.IAF()
+    input_ = torch.eye(4).unsqueeze(0).unsqueeze(0)
+
+    analyser = sinabs.SNNAnalyzer(layer)
+    output = layer(input_)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    assert (output == input_).all()
+    assert model_stats["firing_rate"] == 0.25
+    assert layer_stats["firing_rate"] == 0.25
+    assert layer_stats["firing_rate_per_neuron"].shape == (4, 4)
+    assert layer_stats["firing_rate_per_neuron"].mean() == 0.25
+
+
+def test_spiking_layer_firing_rate_across_batches():
+    layer = sl.IAF()
+    input1 = torch.eye(4).unsqueeze(0).unsqueeze(0)
+    input2 = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
+
+    analyser = sinabs.SNNAnalyzer(layer)
+    output = layer(input1)
+    sinabs.reset_states(layer)
+    output = layer(input2)
+    model_stats = analyser.get_model_statistics()
+    layer_stats = analyser.get_layer_statistics()[""]
+
+    assert (output == input2).all()
+    assert model_stats["firing_rate"] == 0.375
+    assert layer_stats["firing_rate"] == 0.375
+    assert layer_stats["firing_rate_per_neuron"].shape == (4, 4)
+    assert layer_stats["firing_rate_per_neuron"].mean() == 0.375
 
 
 def test_snn_analyser_statistics():
