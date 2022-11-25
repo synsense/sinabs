@@ -11,7 +11,7 @@ class BackwardClass:
         (v_mem,) = ctx.saved_tensors
         grad = ctx.surrogate_grad_fn(v_mem, ctx.spike_threshold)
         grad_input = grad_output * grad
-        return grad_input, None, None
+        return grad_input, None, None, None
 
 
 class MultiSpike(BackwardClass, torch.autograd.Function):
