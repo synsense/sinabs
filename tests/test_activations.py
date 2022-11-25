@@ -1,12 +1,13 @@
 import pytest
 import torch
+
 from sinabs.activation import (
-    MembraneSubtract,
-    MembraneReset,
-    MultiSpike,
-    SingleSpike,
     MaxSpike,
+    MembraneReset,
+    MembraneSubtract,
+    MultiSpike,
     SingleExponential,
+    SingleSpike,
 )
 
 

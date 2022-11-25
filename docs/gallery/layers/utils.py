@@ -1,7 +1,8 @@
+import matplotlib.pyplot as plt
+import torch
+
 import sinabs
 import sinabs.layers as sl
-import torch
-import matplotlib.pyplot as plt
 
 
 def plot_evolution(neuron_model: sinabs.layers, input: torch.Tensor):

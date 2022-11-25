@@ -1,10 +1,11 @@
 import numpy as np
 import pytest
-import sinabs.layers as sl
 import torch
+from torch import nn
+
+import sinabs.layers as sl
 from sinabs.activation import MembraneReset, SingleSpike
 from sinabs.from_torch import from_model
-from torch import nn
 
 
 def test_reconstruct_image():
@@ -117,6 +118,10 @@ def test_network_conversion_add_spk_out():
         cnn, input_shape=input_shape, add_spiking_output=True, batch_size=1
     )
 
+    mod_names = [name for name, mod in cnn.named_modules()]
+    assert "spike_output" not in mod_names
+    assert isinstance(snn.spiking_model.spike_output, sl.StatefulLayer)
+
     img = torch.Tensor(np.random.random(size=input_shape))
 
     with torch.no_grad():
@@ -125,10 +130,8 @@ def test_network_conversion_add_spk_out():
 
 
 def test_network_conversion_complicated_model():
-    """
-    Try converting rather complicated network model with nested structures, which used
-    to fail before.
-    """
+    """Try converting rather complicated network model with nested structures, which used to fail
+    before."""
 
     ann = nn.Sequential(
         nn.Conv2d(1, 1, 1),
@@ -184,9 +187,7 @@ def test_network_conversion_with_num_timesteps():
 
 
 def test_network_conversion_backend():
-    """
-    Try conversion with sinabs explicitly stated as backend.
-    """
+    """Try conversion with sinabs explicitly stated as backend."""
 
     ann = nn.Sequential(
         nn.Conv2d(1, 1, 1),

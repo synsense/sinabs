@@ -1,4 +1,5 @@
-from typing import Union, List, Tuple
+from typing import List, Tuple, Union
+
 import numpy as np
 from torch import nn
 
@@ -6,8 +7,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 
 class Cropping2dLayer(nn.Module):
-    """
-    Crop input image by
+    """Crop input image by.
 
     Parameters:
         cropping: ((top, bottom), (left, right))
@@ -36,8 +36,7 @@ class Cropping2dLayer(nn.Module):
         return crop_out
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
-        """
-        Retuns the output dimensions
+        """Retuns the output dimensions.
 
         Parameters:
             input_shape: (channels, height, width)

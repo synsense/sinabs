@@ -1,12 +1,10 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 
 @dataclass
 class MembraneReset:
-    """
-    Reset the membrane potential v_mem to a given value
-    after it spiked.
+    """Reset the membrane potential v_mem to a given value after it spiked.
 
     Parameters:
         reset_value: fixed value that a neuron should be reset to. Defaults to zero.
@@ -27,9 +25,7 @@ class MembraneReset:
 
 @dataclass
 class MembraneSubtract:
-    """
-    Subtract the spiking threshold from the membrane potential
-    for every neuron that spiked.
+    """Subtract the spiking threshold from the membrane potential for every neuron that spiked.
 
     Parameters:
         subtract_value: optional value that will be subtraced from

@@ -1,15 +1,18 @@
+from typing import Callable, Optional, Union
+
 import torch
 import torch.nn as nn
-from typing import Optional, Union, Callable
-from sinabs.activation import SingleSpike, MembraneSubtract, SingleExponential
+
+from sinabs.activation import MembraneSubtract, SingleExponential, SingleSpike
+
 from . import functional
-from .stateful_layer import StatefulLayer
 from .reshape import SqueezeMixin
+from .stateful_layer import StatefulLayer
 
 
 class ALIF(StatefulLayer):
-    """
-    Adaptive Leaky Integrate and Fire neuron layer that inherits from :class:`~sinabs.layers.StatefulLayer`.
+    """Adaptive Leaky Integrate and Fire neuron layer that inherits from
+    :class:`~sinabs.layers.StatefulLayer`.
 
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
@@ -207,8 +210,8 @@ class ALIF(StatefulLayer):
 
 
 class ALIFRecurrent(ALIF):
-    """
-    Adaptive Leaky Integrate and Fire neuron layer with recurrent connections which inherits from :class:`~sinabs.layers.ALIF`.
+    """Adaptive Leaky Integrate and Fire neuron layer with recurrent connections which inherits
+    from :class:`~sinabs.layers.ALIF`.
 
     Pytorch implementation of a Long Short Term Memory SNN (LSNN) by Bellec et al., 2018:
     https://papers.neurips.cc/paper/2018/hash/c203d8a151612acf12457e4d67635a95-Abstract.html
@@ -344,8 +347,7 @@ class ALIFRecurrent(ALIF):
 
 
 class ALIFSqueeze(ALIF, SqueezeMixin):
-    """
-    ALIF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    """ALIF layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
 
     Same as parent ALIF class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
@@ -372,10 +374,8 @@ class ALIFSqueeze(ALIF, SqueezeMixin):
         self.squeeze_init(batch_size, num_timesteps)
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """
-        Forward call wrapper that will flatten the input to and
-        unflatten the output from the super class forward call.
-        """
+        """Forward call wrapper that will flatten the input to and unflatten the output from the
+        super class forward call."""
         return self.squeeze_forward(input_data, super().forward)
 
     @property

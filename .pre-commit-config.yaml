@@ -1,6 +1,18 @@
 repos:
--   repo: https://github.com/python/black
+  - repo: https://github.com/python/black
     rev: 22.6.0 
     hooks:
     - id: black
       language_version: python3
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.10.1
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--filter-files"]
+
+  - repo: https://github.com/myint/docformatter
+    rev: v1.4
+    hooks:
+      - id: docformatter
+        args: [--in-place, --wrap-summaries=99, --wrap-descriptions=99]

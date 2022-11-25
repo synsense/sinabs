@@ -1,14 +1,14 @@
+from typing import Callable, Optional
+
 import torch
 import torch.nn as nn
-from typing import Callable, Optional
 
 
 class Repeat(nn.Module):
-    """
-    Utility layer which wraps any nn.Module. It flattens time and batch
-    dimensions of the input before feeding it to the child module and
-    unflattens those dimensions to the original shape before passing it
-    to the next layer.
+    """Utility layer which wraps any nn.Module.
+
+    It flattens time and batch dimensions of the input before feeding it to the child module and
+    unflattens those dimensions to the original shape before passing it to the next layer.
     """
 
     def __init__(self, module: nn.Module):
@@ -26,11 +26,9 @@ class Repeat(nn.Module):
 
 
 class FlattenTime(nn.Flatten):
-    """
-    Utility layer which always flattens first two dimensions and is
-    a special case of `torch.nn.Flatten()`. Meant
-    to convert a tensor of dimensions (Batch, Time, Channels, Height, Width)
-    into a tensor of (Batch*Time, Channels, Height, Width).
+    """Utility layer which always flattens first two dimensions and is a special case of
+    `torch.nn.Flatten()`. Meant to convert a tensor of dimensions (Batch, Time, Channels, Height,
+    Width) into a tensor of (Batch*Time, Channels, Height, Width).
 
     Shape:
         - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
@@ -42,10 +40,9 @@ class FlattenTime(nn.Flatten):
 
 
 class UnflattenTime(nn.Module):
-    """
-    Utility layer which always unflattens (expands) the first dimension into two separate ones.
-    Meant to convert a tensor of dimensions (Batch*Time, Channels, Height, Width)
-    into a tensor of (Batch, Time, Channels, Height, Width).
+    """Utility layer which always unflattens (expands) the first dimension into two separate ones.
+    Meant to convert a tensor of dimensions (Batch*Time, Channels, Height, Width) into a tensor of
+    (Batch, Time, Channels, Height, Width).
 
     Shape:
         - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
@@ -62,11 +59,11 @@ class UnflattenTime(nn.Module):
 
 
 class SqueezeMixin:
-    """
-    Utility mixin class that will wrap the __init__ and forward call to
-    flatten the input to and the output from a child class.
-    The wrapped __init__ will provide two additional parameters batch_size and num_timesteps
-    and the wrapped forward will unpack and repack the first dimension into batch and time.
+    """Utility mixin class that will wrap the __init__ and forward call to flatten the input to and
+    the output from a child class.
+
+    The wrapped __init__ will provide two additional parameters batch_size and num_timesteps and
+    the wrapped forward will unpack and repack the first dimension into batch and time.
     """
 
     def squeeze_init(self, batch_size: Optional[int], num_timesteps: Optional[int]):

@@ -1,7 +1,9 @@
+from typing import List, Optional, Tuple, Union
+
 import numpy as np
-import torch.nn as nn
 import torch
-from typing import Optional, Union, List, Tuple
+import torch.nn as nn
+
 from sinabs.cnnutils import conv_output_size
 
 # - Type alias for array-like objects
@@ -9,9 +11,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 
 
 class SpikingMaxPooling2dLayer(nn.Module):
-    """
-    Torch implementation of SpikingMaxPooling.
-    """
+    """Torch implementation of SpikingMaxPooling."""
 
     def __init__(
         self,
@@ -72,8 +72,7 @@ class SpikingMaxPooling2dLayer(nn.Module):
         return max_input_sum.float()  # Float is just to keep things compatible
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
-        """
-        Returns the shape of output, given an input to this layer
+        """Returns the shape of output, given an input to this layer.
 
         Parameters:
             input_shape: (channels, height, width)
@@ -93,8 +92,8 @@ class SpikingMaxPooling2dLayer(nn.Module):
 
 
 class SumPool2d(torch.nn.LPPool2d):
-    """
-    Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to torch.nn.LPPool2d with p=1.
+    """Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to
+    torch.nn.LPPool2d with p=1.
 
     Parameters:
         kernel_size: the size of the window

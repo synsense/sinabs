@@ -1,7 +1,8 @@
-from sinabs.from_torch import from_model
-from torch import nn
-import torch
 import numpy as np
+import torch
+from torch import nn
+
+from sinabs.from_torch import from_model
 
 
 class NestedANN(nn.Module):
@@ -99,10 +100,8 @@ def test_compare_activations():
 
 
 def test_plot_comparison():
-    """
-    Test whether the plot_comparison() method of the sinabs.network.Network class
-    could plot a nested-network which is not defined by torch.nn.Sequential(*module_list) directly.
-    """
+    """Test whether the plot_comparison() method of the sinabs.network.Network class could plot a
+    nested-network which is not defined by torch.nn.Sequential(*module_list) directly."""
 
     # get the names of all spiking layers
     spiking_layers_names = [
@@ -134,6 +133,7 @@ def test_deepcopy():
 
 def test_reset_states():
     from copy import deepcopy
+
     from sinabs.layers import StatefulLayer
 
     mynet = deepcopy(nested_network)

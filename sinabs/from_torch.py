@@ -1,11 +1,12 @@
 from typing import Callable, Optional, Tuple, Type
 from warnings import warn
+
 import torch
 from torch import nn
-from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 
-from sinabs import Network
+import sinabs
 import sinabs.layers as sl
+from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 from sinabs.conversion import replace_module
 
 
@@ -26,10 +27,9 @@ def from_model(
     backend=None,
     kwargs_backend: dict = dict(),
 ):
-    """
-    Converts a Torch model and returns a Sinabs network object.
-    The modules in the model are analyzed, and a copy is returned, with all
-    ReLUs and NeuromorphicReLUs turned into SpikingLayers.
+    """Converts a Torch model and returns a Sinabs network object. The modules in the model are
+    analyzed, and a copy is returned, with all ReLUs and NeuromorphicReLUs turned into
+    SpikingLayers.
 
     Parameters:
         model: Torch model
@@ -66,16 +66,6 @@ def from_model(
     except StopIteration:
         device = torch.device("cpu")
 
-    if add_spiking_output:
-        if isinstance(model, nn.Sequential) and not isinstance(
-            model[-1], (nn.ReLU, sl.NeuromorphicReLU)
-        ):
-            model.add_module("spike_output", nn.ReLU())
-        else:
-            warn(
-                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
-            )
-
     def mapper_fn(module):
         return spike_layer_class(
             spike_threshold=spike_threshold,
@@ -93,13 +83,35 @@ def from_model(
         model=snn, source_class=sl.NeuromorphicReLU, mapper_fn=mapper_fn
     )
 
+    if add_spiking_output:
+        if isinstance(model, nn.Sequential) and not isinstance(
+            model[-1], (nn.ReLU, sl.NeuromorphicReLU)
+        ):
+            snn.add_module(
+                "spike_output",
+                spike_layer_class(
+                    spike_threshold=spike_threshold,
+                    spike_fn=spike_fn,
+                    reset_fn=reset_fn,
+                    surrogate_grad_fn=surrogate_grad_fn,
+                    min_v_mem=min_v_mem,
+                    batch_size=batch_size,
+                    num_timesteps=num_timesteps,
+                    **kwargs_backend,
+                ).to(device),
+            )
+        else:
+            warn(
+                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
+            )
+
     for module in snn.modules():
         if bias_rescaling != 1.0 and isinstance(module, (nn.Linear, nn.Conv2d)):
             if hasattr(module, "bias") and module.bias is not None:
                 with torch.no_grad():
                     module.bias.data /= bias_rescaling
 
-    network = Network(
+    network = sinabs.network.Network(
         model,
         snn,
         input_shape=input_shape,

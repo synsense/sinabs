@@ -1,8 +1,9 @@
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
+
 from sinabs.layers import ALIF, ALIFRecurrent
-import pytest
-import numpy as np
 
 
 def test_alif_basic():

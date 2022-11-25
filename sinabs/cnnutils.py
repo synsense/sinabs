@@ -2,15 +2,13 @@ from typing import Tuple
 
 
 def conv_output_size(image_length: int, kernel_length: int, stride: int) -> int:
-    """
-    Computes output dimension given input dimension, kernel size and stride,
-    assumign no padding, *per* dimension given
+    """Computes output dimension given input dimension, kernel size and stride, assumign no
+    padding, *per* dimension given.
 
     :param image_length: int image size on one dimension
     :param kernel_length: int kernel_length size on one dimension
     :param stride: int Stride size on one dimension
     :return: int -- convolved output image size on one dimension
-
     """
     try:
         assert image_length >= kernel_length
@@ -24,8 +22,7 @@ def conv_output_size(image_length: int, kernel_length: int, stride: int) -> int:
 
 
 def compute_same_padding_size(kernel_length: int) -> (int, int):
-    """
-    Computes padding for 'same' padding *per* dimension given
+    """Computes padding for 'same' padding *per* dimension given.
 
     :param kernel_length: int Kernel size
     :returns: Tuple -- (padStart, padStop) , padding on left/right or top/bottom
@@ -40,8 +37,7 @@ def compute_same_padding_size(kernel_length: int) -> (int, int):
 def compute_padding(
     kernel_shape: tuple, input_shape: tuple, mode="valid"
 ) -> (int, int, int, int):
-    """
-    Computes padding for 'same' or 'valid' padding
+    """Computes padding for 'same' or 'valid' padding.
 
     :param kernel_shape: Kernel shape (height, width)
     :param input_shape: Input shape (channels, height, width)
@@ -61,8 +57,7 @@ def compute_padding(
 
 
 def infer_output_shape(torch_layer, input_shape: Tuple) -> Tuple:
-    """
-    Compute the output dimensions given input dimensions
+    """Compute the output dimensions given input dimensions.
 
     :param torch_layer: a Torch layer
     :param input_shape: the shape of the input tensor

@@ -1,12 +1,11 @@
-from typing import Tuple, List, Dict, Optional
-from warnings import warn
+from typing import Dict, List, Optional, Tuple
+
 import torch
 
 
 class StatefulLayer(torch.nn.Module):
-    """
-    A base class that instantiates buffers/states which update at every time step
-    and provides helper methods that manage those states.
+    """A base class that instantiates buffers/states which update at every time step and provides
+    helper methods that manage those states.
 
     Parameters:
         state_names: the PyTorch buffers to initialise. These are not parameters.
@@ -42,29 +41,21 @@ class StatefulLayer(torch.nn.Module):
         )
 
     def is_state_initialised(self) -> bool:
-        """
-        Checks if buffers are of shape 0 and returns
-        True only if none of them are.
-        """
+        """Checks if buffers are of shape 0 and returns True only if none of them are."""
         for buffer in self.buffers():
             if buffer.shape == torch.Size([0]):
                 return False
         return True
 
     def state_has_shape(self, shape) -> bool:
-        """
-        Checks if all state have a given shape.
-        """
+        """Checks if all state have a given shape."""
         for buff in self.buffers():
             if buff.shape != shape:
                 return False
         return True
 
     def init_state_with_shape(self, shape, randomize: bool = False) -> None:
-        """
-        Initialise state/buffers with either zeros or random
-        tensor of specific shape.
-        """
+        """Initialise state/buffers with either zeros or random tensor of specific shape."""
         for name, buffer in self.named_buffers():
             self.register_buffer(name, torch.zeros(shape, device=buffer.device))
         self.reset_states(randomize=randomize)
@@ -74,8 +65,7 @@ class StatefulLayer(torch.nn.Module):
         randomize: bool = False,
         value_ranges: Optional[Dict[str, Tuple[float, float]]] = None,
     ):
-        """
-        Reset the state/buffers in a layer.
+        """Reset the state/buffers in a layer.
 
         Parameters:
             randomize: If true, reset the states between a range provided. Else, the states are reset to zero.
@@ -89,7 +79,6 @@ class StatefulLayer(torch.nn.Module):
             layer.<state_name>.data = <your desired data>
 
             layer.<state_name>.detach_()
-
         """
         if self.is_state_initialised():
             for name, buffer in self.named_buffers():
@@ -143,22 +132,16 @@ class StatefulLayer(torch.nn.Module):
 
     @property
     def _param_dict(self) -> dict:
-        """
-        Dict of all parameters relevant for creating a new instance with same
-        parameters as `self`.
-        """
+        """Dict of all parameters relevant for creating a new instance with same parameters as
+        `self`."""
         return dict()
 
     @property
     def arg_dict(self) -> dict:
-        """
-        A public getter function for the constructor arguments.
-        """
+        """A public getter function for the constructor arguments."""
         return self._param_dict
 
     @property
     def does_spike(self) -> bool:
-        """
-        Return True if the layer has an activation function.
-        """
+        """Return True if the layer has an activation function."""
         return hasattr(self, "spike_fn") and self.spike_fn is not None

@@ -5,10 +5,10 @@ Adaptive Leaky Integrate and Fire (ALIF)
 :class:`~sinabs.layers.ALIF` layer with an adaptive threshold based on the output spikes. 
 """
 
-from utils import plot_evolution
-import sinabs.layers as sl
 import torch
+from utils import plot_evolution
 
+import sinabs.layers as sl
 
 const_current = torch.ones((1, 100, 1)) * 0.12
 
