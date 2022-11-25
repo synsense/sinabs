@@ -1,4 +1,5 @@
 from subprocess import CalledProcessError
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 try:
     import samna
     from samna.speck2e.configuration import SpeckConfiguration
@@ -24,3 +25,11 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_output_buffer(cls):
         return samna.BasicSinkNode_speck2e_event_output_event()
+
+    @classmethod
+    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
+        config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
+        config_dict.pop("weights_kill_bit")
+        config_dict.pop("biases_kill_bit")
+        config_dict.pop("neurons_value_kill_bit")
+        return config_dict
