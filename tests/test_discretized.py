@@ -164,12 +164,13 @@ def test_discretize_conv_spike():
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
-        assert obj.dtype == torch.int
+        assert torch.equal(obj, obj.int())
     for obj in (
         spk_discr.spike_threshold,
         spk_discr.spike_threshold,
     ):
-        assert isinstance(obj, (int, np.integer))
+        # Does not work if this is a tensor
+        assert obj == int(obj)
 
     # - In-place mutations
     conv_discr, spk_discr = validate_discretization(conv_copy, spk_copy, inplace=True)

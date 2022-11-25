@@ -1,9 +1,36 @@
 CHANGES
 =======
 
+* add speck2e devkit and testboard support
+* remove redundant comment code
+* Name added to io
+* naive copy of config generation
+* moved kill bits to a separate method
+
+v1.0.8
+------
+
+* Type definition updated to Tuple
+* compatibility with torch 1.13
+* Name added to io
+* Failing unit test
+* Requirements for samna version updated
+* Change to get the same functionality in 'to()' method in samna Version: 0.21.2.0
+* moved kill bits to a separate method
+
+v1.0.7
+------
+
+* requirement bumped to 1.0.7
+* using torch.equal instead of np equal
+* tests fixed
 * fixing test
 * wip enable learning
 * added zero\_grad function
+
+v1.0.5
+------
+
 * updates to latest sinabs requirements
 * add speck2e config builder
 
