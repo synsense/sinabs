@@ -5,6 +5,7 @@ from sinabs.activation import (
     MembraneReset,
     MultiSpike,
     SingleSpike,
+    MaxSpike,
     SingleExponential,
 )
 
@@ -49,6 +50,28 @@ def test_activation_functions(spike_fn, reset_fn, output, v_mem):
 
     assert torch.allclose(spikes, output)
     assert torch.allclose(new_state["v_mem"], v_mem)
+
+    loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
+    loss.backward()
+
+    assert not (state["v_mem"].grad == 0).all()
+    assert not torch.isnan(state["v_mem"].grad).any()
+    assert not torch.isinf(state["v_mem"].grad).any()
+
+
+def test_maxspike_activation():
+    spike_threshold = 1.0
+    max_num_spikes = 4
+    spike_fn = MaxSpike(max_num_spikes)
+    reset_fn = MembraneSubtract()
+
+    v_mem = torch.tensor([6.5, 1.3], requires_grad=True)
+    state = {"v_mem": v_mem}
+    spikes = spike_fn.apply(v_mem, spike_threshold, SingleExponential())
+    new_state = reset_fn(spikes, state, spike_threshold)
+
+    assert torch.allclose(spikes, torch.tensor([4., 1.]))
+    assert torch.allclose(new_state["v_mem"], torch.tensor([2.5, 0.3]))
 
     loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
     loss.backward()
