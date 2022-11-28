@@ -136,7 +136,6 @@ class ChipFactory:
             ev.x = row["x"]
             ev.y = row["y"]
             ev.feature = row["p"]
-            # Note that samna API uses 64-bit unsigned integer.
             if reset_timestamps:
                 ev.timestamp = int(row["t"] - tstart + ( delay_factor * 1e6 ) )# Time in uS
             else:
