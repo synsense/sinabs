@@ -88,7 +88,7 @@ class ChipFactory:
             ev.x = row[3]
             ev.y = row[2]
             ev.feature = row[1]
-            ev.timestamp = np.uint64(row[0].item() * 1e6 * dt) + np.uint64(delay_factor * 1e6)  # Time in uS
+            ev.timestamp = np.uint64( ( row[0].item() * 1e6 * dt ) + ( delay_factor * 1e6 ) )  # Time in uS
             events.append(ev)
         return events
 
@@ -130,9 +130,9 @@ class ChipFactory:
             ev.y = row["y"]
             ev.feature = row["p"]
             if reset_timestamps:
-                ev.timestamp = row["t"] - tstart + np.uint64(delay_factor * 1e6)# Time in uS
+                ev.timestamp = np.uint64(row["t"] - tstart + delay_factor * 1e6)# Time in uS
             else:
-                ev.timestamp = row["t"] + np.uint64(delay_factor * 1e6)
+                ev.timestamp = np.uint64(row["t"] + delay_factor * 1e6)
             events.append(ev)
         return events
 
