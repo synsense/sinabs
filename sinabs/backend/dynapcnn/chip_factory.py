@@ -65,6 +65,7 @@ class ChipFactory:
         events: List[Spike]
             A list of events that will be streamed to the device
         """
+        assert delay_factor >= 0.0, print("Delay factor cannot be a negative value!")
         samna_module = self.get_config_builder().get_samna_module()
         # Get the appropriate Spike class
         Spike = samna_module.event.Spike
@@ -88,7 +89,7 @@ class ChipFactory:
             ev.x = row[3]
             ev.y = row[2]
             ev.feature = row[1]
-            ev.timestamp = int(row[0].item() * 1e6 * dt) + int(delay_factor * 1e6)  # Time in uS
+            ev.timestamp = int( ( row[0].item() * 1e6 * dt ) + ( delay_factor * 1e6 ) )  # Time in uS
             events.append(ev)
         return events
 
@@ -117,12 +118,18 @@ class ChipFactory:
         events: List[Spike]
             A list of events that will be streamed to the device
         """
+
+        # Check delay factor as it being negative will crash the method.
+        assert delay_factor >= 0, print("Delay factor cannot be a negative value!")
+
+        # Check the smallest timestamp is larger or equal to zero to prevent overflows.
+        tstart = xytp["t"].min()
+        assert tstart >= 0, print("Timestamps cannot be negative values!")
         samna_module = self.get_config_builder().get_samna_module()
         # Get the appropriate Spike class
         Spike = samna_module.event.Spike
 
         events = []
-        tstart = xytp["t"].min()
         for row in xytp:
             ev = Spike()
             ev.layer = layer
@@ -130,9 +137,9 @@ class ChipFactory:
             ev.y = row["y"]
             ev.feature = row["p"]
             if reset_timestamps:
-                ev.timestamp = row["t"] - tstart + int(delay_factor * 1e6)# Time in uS
+                ev.timestamp = int(row["t"] - tstart + ( delay_factor * 1e6 ) )# Time in uS
             else:
-                ev.timestamp = row["t"] + int(delay_factor * 1e6)
+                ev.timestamp = int(row["t"] + ( delay_factor * 1e6 ) )
             events.append(ev)
         return events
 
