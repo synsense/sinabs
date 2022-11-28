@@ -315,9 +315,12 @@ class DynapcnnNetwork(nn.Module):
                 # Note: The below shouldn't be necessary ideally
                 # Erase all vmem memory
                 if not randomize:
-                    for lyr_idx in self.chip_layers_ordering:
-                        config_builder.set_all_v_mem_to_zeros(self.samna_device, lyr_idx)
-                        time.sleep(0.1)
+                    if hasattr(self, "samna_input_graph"):
+                        self.samna_input_graph.stop()
+                        for lyr_idx in self.chip_layers_ordering:
+                            config_builder.set_all_v_mem_to_zeros(self.samna_device, lyr_idx)
+                            time.sleep(0.1)
+                        self.samna_input_graph.start()
                 return
         for layer in self.compatible_layers:
             if isinstance(layer, DynapcnnLayer):

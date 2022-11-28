@@ -167,8 +167,6 @@ class ConfigBuilder(ABC):
             samna_device.get_model().get_sink_node()
         ])
         temporary_graph.start()
-        time.sleep(0.5)
         temporary_source_node.write(events)
-        time.sleep(1)
         temporary_graph.stop()
         return
