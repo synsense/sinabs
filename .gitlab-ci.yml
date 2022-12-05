@@ -57,7 +57,7 @@ test coverage:
    - unittests
   script:
     - pip install pytest-cov
-    - pytest --cov tests
+    - pytest --cov
 
 test coverage deplop:
   tags:
@@ -71,7 +71,7 @@ test coverage deplop:
       - master
   script:
     - pip install pytest-cov
-    - pytest --cov tests
+    - pytest --cov
     - coverage report
     - coverage xml
     - curl -Os https://uploader.codecov.io/latest/linux/codecov
