@@ -64,6 +64,9 @@ test coverage deplop:
   stage: deploy
   dependencies:
     - test coverage
+  only:
+    refs:
+      - master
   script:
     - pip install pytest-cov
     - pytest --cov tests
