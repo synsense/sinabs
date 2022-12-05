@@ -39,14 +39,29 @@ pages:
   only:
     refs:
       - master
-
   script:
     - python setup.py build_sphinx
     - mv docs/build/html/ public/
-
   artifacts:
     paths:
       - public
+
+test coverage:
+  tags:
+    - python
+    - aiCTX
+  stage: test
+  script:
+    - pip install pytest pytest-cov
+    - coverage run -m pytest
+    - coverage report
+    - coverage xml
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
 
 doc_tests:
   tags:
