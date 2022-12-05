@@ -56,12 +56,11 @@ test coverage:
     - coverage run -m pytest
     - coverage report
     - coverage xml
-  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+    - mv coverage/ public/
   artifacts:
-    reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
+    paths:
+      - public
+    expire_in: 30 days
 
 doc_tests:
   tags:
