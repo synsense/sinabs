@@ -1,2 +1,2 @@
 [run]
-source=sinabs/backend/dynapcnn
+source=/home/synsense/.pyenv/versions/3.7.5/lib/python3.7/site-packages/sinabs/backend/dynapcnn
