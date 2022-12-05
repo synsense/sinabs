@@ -55,8 +55,8 @@ test coverage:
     - pip install pytest pytest-cov
     - coverage run -m pytest
     - coverage report
-    - coverage xml
-    - mv coverage/ public/
+    - coverage html
+    - mv htmlcov/ public/
   artifacts:
     paths:
       - public
