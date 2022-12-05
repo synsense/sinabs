@@ -13,19 +13,14 @@ dist_build:
   tags:
     - python
     - aiCTX
-
   stage: build
-
   only:
     refs:
       - master
-
   before_script:
     - pip install wheel
-
   script:
     - python setup.py sdist bdist_wheel
-
   artifacts:
     paths:
       - dist
@@ -34,7 +29,6 @@ pages:
   tags:
     - python
     - aiCTX
-
   stage: deploy
   only:
     refs:
@@ -64,9 +58,7 @@ doc_tests:
   tags:
     - python
     - aiCTX
-
   stage: test
-
   script:
     - python setup.py build_sphinx
 
@@ -74,31 +66,23 @@ unittests:
   tags:
     - python
     - aiCTX
-
   stage: test
-
   script:
     - pytest
-
 
 pypi_deploy:
   tags:
     - python
     - aiCTX
-
   stage: deploy
-
   only:
     refs:
       - master
     variables:
       - $TWINE_USERNAME == "sheiksadique"
-
   dependencies:
     - dist_build
-
   before_script:
     - pip install --upgrade twine
-
   script:
     - twine upload dist/*
