@@ -1,5 +1,11 @@
 image: aictx/ci-python-arch:latest
 
+stages:
+    - build
+    - test
+    - coverage
+    - deploy
+
 before_script:
   - pacman -Sy graphviz --noconfirm
   - pacman -Sy libxrandr libxi libxinerama libxcursor glu --noconfirm
@@ -44,9 +50,9 @@ test coverage:
   tags:
     - python
     - aiCTX
-  stage: test
+  stage: coverage
   dependencies:
-    - unittests
+   - unittests
   script:
     - pip install pytest-cov
     - pytest --cov tests
