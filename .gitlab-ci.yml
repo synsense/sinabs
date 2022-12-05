@@ -14,6 +14,8 @@ before_script:
   - pip install -r requirements.txt
   - pip install . --no-cache-dir
   - pip install -r docs/requirements.txt
+  - export PYTHON_SITE_PACKAGES=$(python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+
 
 dist_build:
   tags:
