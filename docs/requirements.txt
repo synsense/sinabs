@@ -1,6 +1,5 @@
 sphinx
 sphinx_book_theme
-sphinx-gallery
 pandoc
 pbr
 tqdm

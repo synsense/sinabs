@@ -38,18 +38,8 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.autosummary",
     "sphinx.ext.viewcode",
-    "sphinx_gallery.gen_gallery",
     "sphinx.ext.graphviz",
 ]
-
-sphinx_gallery_conf = {
-    "examples_dirs": "gallery/",  # path to your example scripts
-    "gallery_dirs": "auto_examples",  # path to where to save gallery generated output
-    # "backreferences_dir": "gen_modules/backreferences",
-    "doc_module": ("sinabs",),
-    "download_all_examples": False,
-    "ignore_pattern": r"utils\.py",
-}
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -57,7 +47,7 @@ napoleon_numpy_docstring = True
 
 # MyST settings
 suppress_warnings = ["myst.header"]
-jupyter_execute_notebooks = "off"
+nb_execution_mode = "off"
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
