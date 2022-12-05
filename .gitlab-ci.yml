@@ -48,6 +48,15 @@ test coverage:
   script:
     - pip install pytest-cov
     - pytest --cov tests
+
+test coverage deplop:
+  tags:
+    - python
+    - aiCTX
+  stage: deploy
+  dependencies:
+    - test coverage
+  script:
     - coverage report
     - coverage xml
     - curl -Os https://uploader.codecov.io/latest/linux/codecov
