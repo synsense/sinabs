@@ -45,6 +45,8 @@ test coverage:
     - python
     - aiCTX
   stage: test
+  dependencies:
+    - unittests
   script:
     - pip install pytest-cov
     - pytest --cov tests
