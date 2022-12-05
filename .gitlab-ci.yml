@@ -65,6 +65,8 @@ test coverage deplop:
   dependencies:
     - test coverage
   script:
+    - pip install pytest-cov
+    - pytest --cov tests
     - coverage report
     - coverage xml
     - curl -Os https://uploader.codecov.io/latest/linux/codecov
