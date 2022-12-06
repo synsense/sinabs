@@ -1,12 +1,12 @@
 import warnings
+from itertools import groupby
+from typing import Dict, List, Tuple
 
+import numpy as np
 import samna
 import torch
-from itertools import groupby
-from typing import List, Dict, Tuple
-import numpy as np
-from .utils import standardize_device_id, parse_device_id
 
+from .utils import parse_device_id, standardize_device_id
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {

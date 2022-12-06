@@ -1,13 +1,7 @@
-from subprocess import CalledProcessError
-try:
-    import samna
-    from samna.speck2dMini.configuration import SpeckConfiguration
-except (ImportError, ModuleNotFoundError, CalledProcessError):
-    SAMNA_AVAILABLE = False
-else:
-    SAMNA_AVAILABLE = True
-from .speck2cmini import Speck2CMiniConfigBuilder
+import samna
+from samna.speck2dMini.configuration import SpeckConfiguration
 
+from .speck2cmini import Speck2CMiniConfigBuilder
 
 # Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
