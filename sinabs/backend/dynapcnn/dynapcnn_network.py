@@ -1,32 +1,21 @@
 import time
 from subprocess import CalledProcessError
-from sinabs.backend.dynapcnn.chip_factory import ChipFactory
-from .exceptions import InputConfigurationError
+from typing import List, Optional, Sequence, Tuple, Union
 
-try:
-    import samna
-except (ImportError, ModuleNotFoundError, CalledProcessError):
-    SAMNA_AVAILABLE = False
-else:
-    # IO module only works if samna is available
-    from .io import (
-        open_device,
-        enable_timestamps,
-        disable_timestamps,
-        reset_timestamps,
-    )
-
-    SAMNA_AVAILABLE = True
-
+import samna
 import torch
 import torch.nn as nn
+
 import sinabs
-from typing import Tuple, Union, Optional, Sequence, List
-from .dynapcnn_layer import DynapcnnLayer
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
 from .dvs_layer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
+from .exceptions import InputConfigurationError
+from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .utils import (
-    convert_model_to_layer_list,
     build_from_list,
+    convert_model_to_layer_list,
     infer_input_shape,
     parse_device_id,
 )
@@ -255,9 +244,6 @@ class DynapcnnNetwork(nn.Module):
             ImportError
                 If samna is not available.
         """
-
-        if not SAMNA_AVAILABLE:
-            raise ImportError("`samna` does not appear to be installed.")
 
         config_builder = ChipFactory(device).get_config_builder()
 

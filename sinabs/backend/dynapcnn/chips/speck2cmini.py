@@ -1,17 +1,12 @@
-from subprocess import CalledProcessError
-try:
-    import samna
-    from samna.speck2cMini.configuration import SpeckConfiguration
-except (ImportError, ModuleNotFoundError, CalledProcessError):
-    SAMNA_AVAILABLE = False
-else:
-    SAMNA_AVAILABLE = True
-from .dynapcnn import DynapcnnConfigBuilder
-
 from typing import List
+
+import samna
+from samna.speck2cMini.configuration import SpeckConfiguration
+
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
+from .dynapcnn import DynapcnnConfigBuilder
 
 # Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
