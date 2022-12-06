@@ -3,9 +3,10 @@ import warnings
 import samna
 import torch
 from itertools import groupby
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import numpy as np
-from .utils import _parse_device_string
+
+# from .utils import _parse_device_string
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
@@ -13,7 +14,7 @@ device_types = {
     "speck2b": "Speck2bTestboard",
     "speck2devkit": "Speck2DevKit",
     "speck2btiny": "Speck2bDevKitTiny",
-    "speck2e": "Speck2eTestBoard", # with a capital B for board
+    "speck2e": "Speck2eTestBoard",  # with a capital B for board
     "speck2edevkit": "Speck2eDevKit",
     "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
@@ -28,8 +29,9 @@ device_types = {
 device_type_map = {v: k for (k, v) in device_types.items()}
 device_map = {}
 
+
 def enable_timestamps(
-        device_id: str,
+    device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
@@ -40,7 +42,8 @@ def enable_timestamps(
         Name of the device to initialize. Required for different existing APIs
         for Dynapcnndevkit and Speck chips
     """
-    device_name, device_idx = _parse_device_string(device_id)
+    device_id = standardize_device_id(device_id=device_id)
+    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
@@ -50,7 +53,7 @@ def enable_timestamps(
 
 
 def disable_timestamps(
-        device_id: str,
+    device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
@@ -62,7 +65,8 @@ def disable_timestamps(
         Name of the device to initialize. Required for different existing APIs
         for Dynapcnndevkit and Speck chips
     """
-    device_name, device_idx = _parse_device_string(device_id)
+    device_id = standardize_device_id(device_id=device_id)
+    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
@@ -72,7 +76,7 @@ def disable_timestamps(
 
 
 def reset_timestamps(
-        device_id: str,
+    device_id: str,
 ) -> None:
     """
     Disable timestamps of the samna node
@@ -83,7 +87,8 @@ def reset_timestamps(
         Name of the device to initialize. Required for different existing APIs
         for Dynapcnndevkit and Speck chips
     """
-    device_name, device_idx = _parse_device_string(device_id)
+    device_id = standardize_device_id(device_id=device_id)
+    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
     if device_name.lower() == "dynapcnndevkit":
@@ -110,7 +115,9 @@ def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
 
     raster: torch.Tensor
     """
-    evs_filtered = filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list)
+    evs_filtered = filter(
+        lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list
+    )
     evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
     raise NotImplementedError
     raster = map(rasterize, evs_filtered)
@@ -136,10 +143,20 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
     xytc: np.array
         A numpy structured array with columns `x`, `y`, `t`, `channel`.
     """
-    evs_filtered = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer, event_list))
+    evs_filtered = list(
+        filter(
+            lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer,
+            event_list,
+        )
+    )
     xytc = np.empty(
         len(evs_filtered),
-        dtype=[("x", np.uint16), ("y", np.uint16), ("t", np.uint64), ("channel", np.uint16)]
+        dtype=[
+            ("x", np.uint16),
+            ("y", np.uint16),
+            ("t", np.uint64),
+            ("channel", np.uint16),
+        ],
     )
 
     for i, event in enumerate(evs_filtered):
@@ -158,15 +175,19 @@ def get_device_map() -> Dict:
         dict(str: samna.device.DeviceInfo)
         Returns a dict of device name and device identifier.
     """
+
     def sort_devices(devices: List) -> List:
         devices.sort(key=lambda x: x.usb_device_address)
         return devices
+
     # Get all devices available
     devices = samna.device.get_all_devices()
     # Group by device_type_name
     device_groups = groupby(devices, lambda x: x.device_type_name)
     # Switch keys from samna's device_type_name to device_type names
-    device_groups = {device_type_map[k]: sort_devices(list(v)) for k, v in device_groups}
+    device_groups = {
+        device_type_map[k]: sort_devices(list(v)) for k, v in device_groups
+    }
     # Flat map
     for dev_type, dev_list in device_groups.items():
         for i, dev in enumerate(dev_list):
@@ -209,6 +230,7 @@ def discover_device(device_id: str):
 
     device_info: samna.device.DeviceInfo
     """
+    device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
     return device_info
 
@@ -229,10 +251,11 @@ def open_device(device_id: str):
     device_handle: samna.device.*
         Device handle received from samna.
     """
+    device_id = standardize_device_id(device_id=device_id)
     device_map = get_device_map()
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    
+
     if device_handle is not None:
         return device_handle
     else:
@@ -250,9 +273,8 @@ def close_device(device_id: str):
         device_name:device_id pair given as a string.
         dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
     """
+    device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
     print(f"Closing device: {device_id}")
     samna.device.close_device(device_handle)
-
-
