@@ -1,6 +1,8 @@
 sinabs-dynapcnn
 ===============
 
+[![codecov](https://codecov.io/gl/synsense/sinabs-dynapcnn/branch/master/graph/badge.svg?token=TJJJBJTHWK)](https://codecov.io/gl/synsense/sinabs-dynapcnn)
+
 This `sinabs` plugin enables porting sinabs models to chips and dev-kits with DYNAP-CNN technology.
 
 Documentation
