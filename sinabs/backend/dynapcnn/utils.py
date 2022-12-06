@@ -85,7 +85,7 @@ def convert_cropping2dlayer_to_crop2d(
 
 def construct_dvs_layer(
     layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start=0
-) -> (Optional[DVSLayer], int, float):
+) -> Tuple[Optional[DVSLayer], int, float]:
     """
     Generate a DVSLayer given a list of layers
     NOTE: The number of channels is implicitly assumed to be 2 because of DVS
@@ -204,7 +204,7 @@ def merge_conv_bn(conv, bn):
 
 def construct_next_pooling_layer(
     layers: List[nn.Module], idx_start: int
-) -> (Optional[sl.SumPool2d], int, float):
+) -> Tuple[Optional[sl.SumPool2d], int, float]:
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -270,10 +270,10 @@ def construct_next_pooling_layer(
 def construct_next_dynapcnn_layer(
     layers: List[nn.Module],
     idx_start: int,
-    in_shape: (int, int, int),
+    in_shape: Tuple[int, int, int],
     discretize: bool,
     rescale_factor: float = 1,
-) -> (DynapcnnLayer, int, float):
+) -> Tuple[DynapcnnLayer, int, float]:
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
     pooling layers.
