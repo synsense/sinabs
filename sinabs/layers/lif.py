@@ -71,6 +71,7 @@ class LIF(StatefulLayer):
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
         record_states: bool = False,
+        individual_time_constants: bool = False,
     ):
         super().__init__(
             state_names=["v_mem", "i_syn"] if tau_syn is not None else ["v_mem"]
@@ -105,8 +106,12 @@ class LIF(StatefulLayer):
         self.train_alphas = train_alphas
         self.norm_input = norm_input
         self.record_states = record_states
+        self.individual_time_constants = individual_time_constants
         if shape:
             self.init_state_with_shape(shape)
+            if individual_time_constants:
+                # Assumes first dimension is batch size
+                self.expand_time_constants_to_shape(shape[1:])
 
     @property
     def alpha_mem_calculated(self) -> torch.Tensor:
@@ -149,6 +154,18 @@ class LIF(StatefulLayer):
         else:
             return self.tau_syn
 
+    def expand_time_constants_to_shape(self, shape):
+        if self.train_alphas:
+            if self.alpha_syn is not None:
+                self.alpha_syn = self.alpha_syn.expand(shape)
+            if self.alpha_mem is not None:
+                self.alpha_mem = self.alpha_mem.expand(shape)
+        else:
+            if self.tau_syn is not None:
+                self.tau_syn = self.tau_syn.expand(shape)
+            if self.tau_mem is not None:
+                self.tau_mem = self.tau_mem.expand(shape)
+
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
         Parameters:
@@ -164,6 +181,10 @@ class LIF(StatefulLayer):
             (batch_size, *trailing_dim)
         ):
             self.init_state_with_shape((batch_size, *trailing_dim))
+
+        if self.individual_time_constants:
+            # TODO: what if size is to be reduced?
+            self.expand_time_constants_to_shape(trailing_dim)
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
