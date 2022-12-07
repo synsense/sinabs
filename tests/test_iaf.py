@@ -27,7 +27,6 @@ def test_iaf_v_mem_recordings():
     spike_output = layer(input_current)
 
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -37,10 +36,10 @@ def test_iaf_i_syn_recordings():
     layer = IAF(tau_syn=10.0, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_iaf_recurrent_v_mem_recordings():
@@ -52,8 +51,9 @@ def test_iaf_recurrent_v_mem_recordings():
     layer = IAFRecurrent(rec_connect=rec_connect, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -66,10 +66,10 @@ def test_iaf_recurrent_i_syn_recordings():
     layer = IAFRecurrent(tau_syn=10.0, rec_connect=rec_connect, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_iaf_single_spike():

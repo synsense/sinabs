@@ -81,7 +81,7 @@ def lif_forward(
         output_spikes.append(spikes)
         if record_states:
             for name in state_names:
-                recordings[name].append(state[name].detach().clone())
+                recordings[name].append(state[name].clone())
 
     if record_states:
         record_dict = {name: torch.stack(vals, 1) for name, vals in recordings.items()}
@@ -137,6 +137,6 @@ def lif_recurrent(
     if record_states:
         for state_name in state_names:
             record_dict[state_name] = torch.stack(
-                [item[state_name].detach() for item in recordings], 1
+                [item[state_name] for item in recordings], 1
             )
     return torch.stack(output_spikes, 1), state, record_dict

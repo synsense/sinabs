@@ -53,10 +53,12 @@ def test_lif_v_mem_recordings():
     layer = LIF(tau_mem=20.0, norm_input=False, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+    assert layer.tau_mem.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     # Ensure causality
     assert (layer.recordings["v_mem"][:, :5] == 0).all()
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -66,10 +68,11 @@ def test_lif_i_syn_recordings():
     layer = LIF(tau_mem=20.0, tau_syn=10.0, norm_input=False, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+    assert layer.tau_syn.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_lif_recurrent_v_mem_recordings():
@@ -83,8 +86,10 @@ def test_lif_recurrent_v_mem_recordings():
     )
     spike_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+    assert layer.tau_mem.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -103,10 +108,11 @@ def test_lif_recurrent_i_syn_recordings():
     )
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+    assert layer.tau_syn.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_lif_single_spike():

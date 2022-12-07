@@ -60,6 +60,8 @@ def test_leaky_v_mem_recordings():
     layer = ExpLeak(tau_mem=30.0, record_states=True)
     membrane_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+    assert layer.tau_mem.grad is not None
+
     assert layer.recordings["v_mem"].shape == membrane_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
