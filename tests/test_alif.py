@@ -150,10 +150,11 @@ def test_alif_v_mem_recordings():
     layer = ALIF(tau_mem=20.0, tau_adapt=10.0, norm_input=False, record_states=True)
     spike_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+    assert layer.tau_mem.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert layer.recordings["spike_threshold"].shape == spike_output.shape
-    assert not layer.recordings["spike_threshold"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -165,10 +166,12 @@ def test_alif_i_syn_recordings():
     )
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+    assert layer.tau_syn.grad is not None
+    assert layer.tau_mem.grad is None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 def test_alif_recurrent_v_mem_recordings():
@@ -186,8 +189,10 @@ def test_alif_recurrent_v_mem_recordings():
     )
     spike_output = layer(input_current)
 
+    layer.recordings["v_mem"].sum().backward()
+    assert layer.tau_mem.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
     assert "i_syn" not in layer.recordings.keys()
 
 
@@ -207,10 +212,11 @@ def test_alif_recurrent_i_syn_recordings():
     )
     spike_output = layer(input_current)
 
+    layer.recordings["i_syn"].sum().backward()
+    assert layer.tau_syn.grad is not None
+
     assert layer.recordings["v_mem"].shape == spike_output.shape
     assert layer.recordings["i_syn"].shape == spike_output.shape
-    assert not layer.recordings["v_mem"].requires_grad
-    assert not layer.recordings["i_syn"].requires_grad
 
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")

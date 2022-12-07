@@ -92,7 +92,7 @@ def alif_forward(
     if record_states:
         for state_name in state_names:
             record_dict[state_name] = torch.stack(
-                [item[state_name].detach() for item in recordings], 1
+                [item[state_name] for item in recordings], 1
             )
     return torch.stack(output_spikes, 1), state, record_dict
 
@@ -147,6 +147,6 @@ def alif_recurrent(
     if record_states:
         for state_name in state_names:
             record_dict[state_name] = torch.stack(
-                [item[state_name].detach() for item in recordings], 1
+                [item[state_name] for item in recordings], 1
             )
     return torch.stack(output_spikes, 1), state, record_dict
