@@ -15,7 +15,7 @@ def test_lif_basic():
     tau_mem = torch.tensor(20.0)
     alpha = torch.exp(-1 / tau_mem)
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7) / (1 - alpha)
-    layer = LIF(tau_mem=tau_mem)
+    layer = LIF(tau_mem=tau_mem, min_v_mem=-2.0)
     spike_output = layer(input_current)
 
     # Make sure __repr__ works
@@ -24,6 +24,8 @@ def test_lif_basic():
     # Make sure arg_dict works
     layer.arg_dict
 
+    assert "min_v_mem" in layer.state_dict().keys()
+    assert "spike_threshold" in layer.state_dict().keys()
     assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0

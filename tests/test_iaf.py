@@ -10,9 +10,11 @@ from sinabs.layers import IAF, IAFRecurrent, IAFSqueeze
 def test_iaf_basic():
     batch_size, time_steps = 10, 100
     input_current = torch.rand(batch_size, time_steps, 2, 7, 7)
-    layer = IAF()
+    layer = IAF(min_v_mem=-2.0)
     spike_output = layer(input_current)
 
+    assert "min_v_mem" in layer.state_dict().keys()
+    assert "spike_threshold" in layer.state_dict().keys()
     assert layer.does_spike
     assert input_current.shape == spike_output.shape
     assert torch.isnan(spike_output).sum() == 0

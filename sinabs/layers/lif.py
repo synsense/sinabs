@@ -93,18 +93,22 @@ class LIF(StatefulLayer):
                 if tau_syn is not None
                 else None
             )
-        self.spike_threshold = (
-            torch.tensor(spike_threshold)
-            if type(spike_threshold) == float
-            else spike_threshold
-        )
         self.spike_fn = spike_fn
         self.reset_fn = reset_fn
         self.surrogate_grad_fn = surrogate_grad_fn
-        self.min_v_mem = min_v_mem
         self.train_alphas = train_alphas
         self.norm_input = norm_input
         self.record_states = record_states
+        self.min_v_mem = (
+            nn.Parameter(torch.as_tensor(min_v_mem), requires_grad=False)
+            if min_v_mem
+            else None
+        )
+        self.spike_threshold = (
+            nn.Parameter(torch.as_tensor(spike_threshold), requires_grad=False)
+            if spike_threshold
+            else None
+        )
         if shape:
             self.init_state_with_shape(shape)
 
