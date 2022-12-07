@@ -11,7 +11,7 @@ def plot_evolution(neuron_model: sinabs.layers, input: torch.Tensor):
 
     plt.figure(figsize=(10, 3))
     for key, recording in neuron_model.recordings.items():
-        plt.plot(recording.flatten(), drawstyle="steps", label=key)
+        plt.plot(recording.detach().flatten(), drawstyle="steps", label=key)
     plt.plot(
         output.detach().flatten(), drawstyle="steps", color="black", label="output"
     )
