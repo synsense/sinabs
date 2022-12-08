@@ -49,10 +49,10 @@ class SNNAnalyzer:
         dt: the number of milliseconds corresponding to a time step in the simulation (default 1.0).
 
     Example:
-        >>> analyser = SNNAnalyser(my_spiking_model)
+        >>> analyzer = SNNAnalyzer(my_spiking_model)
         >>> output = my_spiking_model(input_)  # forward pass
-        >>> layer_stats = analyser.get_layer_statistics()
-        >>> model_stats = analyser.get_model_statistics()
+        >>> layer_stats = analyzer.get_layer_statistics()
+        >>> model_stats = analyzer.get_model_statistics()
     """
 
     def __init__(self, model: torch.nn.Module, dt: float = 1.0):

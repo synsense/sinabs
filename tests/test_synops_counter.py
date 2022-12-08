@@ -88,10 +88,10 @@ def test_linear_synops_counter():
     model = nn.Linear(3, 5)
     input_ = torch.zeros((1, 3))
     input_[0, 0] = 3
-    analyser = SNNAnalyzer(model)
+    analyzer = SNNAnalyzer(model)
     model(input_)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
     # 3 spikes * 5 channels
     assert model_stats["synops"] == 15
@@ -105,11 +105,11 @@ def test_linear_synops_counter_across_batches():
     input1[0, 0] = 3
     input2 = torch.zeros((1, 3))
     input2[0, 0] = 6
-    analyser = SNNAnalyzer(model)
+    analyzer = SNNAnalyzer(model)
     model(input1)
     model(input2)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
     # (3+6)/2 spikes * 5 channels
     assert model_stats["synops"] == 22.5
@@ -121,10 +121,10 @@ def test_conv_synops_counter():
     model = nn.Conv2d(1, 5, kernel_size=2)
     input_ = torch.zeros((1, 1, 3, 3))
     input_[0, 0, 1, 1] = 3
-    analyser = SNNAnalyzer(model)
+    analyzer = SNNAnalyzer(model)
     model(input_)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
     # 3 spikes, 2x2 kernel, 5 channels
     assert model_stats["synops"] == 60
@@ -138,11 +138,11 @@ def test_conv_synops_counter_counts_across_batches():
     input1[0, 0, 1, 1] = 6
     input2 = torch.zeros((1, 1, 3, 3))
     input2[0, 0, 1, 1] = 3
-    analyser = SNNAnalyzer(model)
+    analyzer = SNNAnalyzer(model)
     model(input1)
     model(input2)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
     # (3+6)/2 spikes, 2x2 kernel, 5 channels
     assert model_stats["synops"] == 90
@@ -154,10 +154,10 @@ def test_spiking_layer_firing_rate():
     layer = sl.IAF()
     input_ = torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyser = sinabs.SNNAnalyzer(layer)
+    analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.25
@@ -171,12 +171,12 @@ def test_spiking_layer_firing_rate_across_batches():
     input1 = torch.eye(4).unsqueeze(0).unsqueeze(0)
     input2 = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyser = sinabs.SNNAnalyzer(layer)
+    analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input1)
     sinabs.reset_states(layer)
     output = layer(input2)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
 
     assert (output == input2).all()
     assert model_stats["firing_rate"] == 0.375
@@ -185,18 +185,18 @@ def test_spiking_layer_firing_rate_across_batches():
     assert layer_stats["firing_rate_per_neuron"].mean() == 0.375
 
 
-def test_analyser_reset():
+def test_analyzer_reset():
     layer = sl.IAF()
     input_ = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyser = sinabs.SNNAnalyzer(layer)
+    analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
     output = layer(input_)
     sinabs.reset_states(layer)
-    analyser.reset()
+    analyzer.reset()
     output = layer(input_)
-    model_stats = analyser.get_model_statistics()
-    layer_stats = analyser.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics()
+    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.5
@@ -205,7 +205,7 @@ def test_analyser_reset():
     assert layer_stats["firing_rate_per_neuron"].mean() == 0.5
 
 
-def test_snn_analyser_statistics():
+def test_snn_analyzer_statistics():
     batch_size = 3
     num_timesteps = 10
     model = nn.Sequential(
@@ -215,13 +215,13 @@ def test_snn_analyser_statistics():
         IAFSqueeze(batch_size=batch_size),
     )
 
-    analyser = SNNAnalyzer(model)
+    analyzer = SNNAnalyzer(model)
     input_ = torch.rand((batch_size, num_timesteps, 1, 4, 4)) * 100
     input_flattended = input_.flatten(0, 1)
     output = model(input_flattended)
-    spike_layer_stats = analyser.get_layer_statistics()["spiking"]
-    param_layer_stats = analyser.get_layer_statistics()["parameter"]
-    model_stats = analyser.get_model_statistics()
+    spike_layer_stats = analyzer.get_layer_statistics()["spiking"]
+    param_layer_stats = analyzer.get_layer_statistics()["parameter"]
+    model_stats = analyzer.get_model_statistics()
 
     # spiking layer checks
     assert (
@@ -249,20 +249,20 @@ def test_snn_analyser_statistics():
     )
 
 
-def test_snn_analyser_does_not_depend_on_batch_size():
+def test_snn_analyzer_does_not_depend_on_batch_size():
     batch_size_1 = 5
     num_timesteps = 10
     linear1 = nn.Linear(3, 4, bias=False)
-    analyser = SNNAnalyzer(linear1)
+    analyzer = SNNAnalyzer(linear1)
     input_ = torch.ones((batch_size_1, num_timesteps, 3)) * 10
     linear1(input_)
-    model_stats_batch_size_1 = analyser.get_model_statistics()
+    model_stats_batch_size_1 = analyzer.get_model_statistics()
 
     batch_size_2 = 10
     linear2 = nn.Linear(3, 4, bias=False)
-    analyser = SNNAnalyzer(linear2)
+    analyzer = SNNAnalyzer(linear2)
     input_ = torch.ones((batch_size_2, num_timesteps, 3)) * 10
     linear2(input_)
-    model_stats_batch_size_2 = analyser.get_model_statistics()
+    model_stats_batch_size_2 = analyzer.get_model_statistics()
 
     assert model_stats_batch_size_1["synops"] == model_stats_batch_size_2["synops"]
