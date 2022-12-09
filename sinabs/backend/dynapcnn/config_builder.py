@@ -1,3 +1,6 @@
+import samna
+import time
+
 from abc import ABC, abstractmethod
 from typing import List
 from .mapping import LayerConstraints, get_valid_mapping
@@ -109,6 +112,15 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
+    def get_input_buffer(cls):
+        """
+        Initialize and return the appropriate output buffer object
+        Note that this just the buffer object. This does not actually connect the buffer object to the graph.
+        (It is needed as of samna 0.21.0)
+        """
+    
+    @classmethod
+    @abstractmethod
     def get_output_buffer(cls):
         """
         Initialize and return the appropriate output buffer object
@@ -148,5 +160,13 @@ class ConfigBuilder(ABC):
             event.layer = layer_id
             event.neuron_state = 0
             events.append(event)
-        samna_device.get_model().write(events)
+        
+        temporary_source_node = cls.get_input_buffer() 
+        temporary_graph = samna.graph.sequential([
+            temporary_source_node,
+            samna_device.get_model().get_sink_node()
+        ])
+        temporary_graph.start()
+        temporary_source_node.write(events)
+        temporary_graph.stop()
         return

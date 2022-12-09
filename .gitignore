@@ -1,4 +1,3 @@
-docs/source/notebooks/data/
 *.pyc
 __pycache__
 *.egg-info
@@ -12,4 +11,4 @@ samna.log
 data
 .vscode
 .venv
-imgui.ini
+.coverage

@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 from typing import List, Tuple, Optional
-from .utils import _parse_device_string
+from .utils import parse_device_id
 from .config_builder import ConfigBuilder
 from .chips import *
 
@@ -11,7 +11,7 @@ class ChipFactory:
     supported_devices = {
         "dynapcnndevkit": DynapcnnConfigBuilder,
         "speck2b": Speck2BConfigBuilder,
-        "speck2btiny": Speck2BConfigBuilder, # It is the same chip, so doesn't require a separate builder
+        "speck2btiny": Speck2BConfigBuilder,  # It is the same chip, so doesn't require a separate builder
         "speck2cmini": Speck2CMiniConfigBuilder,
         "speck2dmini": Speck2DMiniConfigBuilder,
         "speck2e": Speck2EConfigBuilder,
@@ -29,14 +29,21 @@ class ChipFactory:
         ----------
         device_str
         """
-        self.device_name, self.device_id = _parse_device_string(device_str)
+        self.device_name, self.device_id = parse_device_id(device_str)
         if self.device_name not in self.supported_devices:
             raise Exception(f"Builder not found for device type: {self.device_name}")
 
     def get_config_builder(self) -> ConfigBuilder:
         return self.supported_devices[self.device_name]()
 
-    def raster_to_events(self, raster: torch.Tensor, layer, dt=1e-3, truncate: bool = False, delay_factor: float = 0) -> List:
+    def raster_to_events(
+        self,
+        raster: torch.Tensor,
+        layer,
+        dt=1e-3,
+        truncate: bool = False,
+        delay_factor: float = 0,
+    ) -> List:
         """
         Convert spike raster to events for DynapcnnNetworks
 
@@ -65,6 +72,7 @@ class ChipFactory:
         events: List[Spike]
             A list of events that will be streamed to the device
         """
+        assert delay_factor >= 0.0, print("Delay factor cannot be a negative value!")
         samna_module = self.get_config_builder().get_samna_module()
         # Get the appropriate Spike class
         Spike = samna_module.event.Spike
@@ -88,11 +96,15 @@ class ChipFactory:
             ev.x = row[3]
             ev.y = row[2]
             ev.feature = row[1]
-            ev.timestamp = int(row[0].item() * 1e6 * dt) + int(delay_factor * 1e6)  # Time in uS
+            ev.timestamp = int(
+                (row[0].item() * 1e6 * dt) + (delay_factor * 1e6)
+            )  # Time in uS
             events.append(ev)
         return events
 
-    def xytp_to_events(self, xytp: np.ndarray, layer, reset_timestamps, delay_factor: float = 0) -> List:
+    def xytp_to_events(
+        self, xytp: np.ndarray, layer, reset_timestamps, delay_factor: float = 0
+    ) -> List:
         """
         Convert series of spikes in a structured array (eg. from aermanager) to events for DynaapcnnDevKit
 
@@ -117,12 +129,18 @@ class ChipFactory:
         events: List[Spike]
             A list of events that will be streamed to the device
         """
+
+        # Check delay factor as it being negative will crash the method.
+        assert delay_factor >= 0, print("Delay factor cannot be a negative value!")
+
+        # Check the smallest timestamp is larger or equal to zero to prevent overflows.
+        tstart = xytp["t"].min()
+        assert tstart >= 0, print("Timestamps cannot be negative values!")
         samna_module = self.get_config_builder().get_samna_module()
         # Get the appropriate Spike class
         Spike = samna_module.event.Spike
 
         events = []
-        tstart = xytp["t"].min()
         for row in xytp:
             ev = Spike()
             ev.layer = layer
@@ -130,13 +148,17 @@ class ChipFactory:
             ev.y = row["y"]
             ev.feature = row["p"]
             if reset_timestamps:
-                ev.timestamp = row["t"] - tstart + int(delay_factor * 1e6)# Time in uS
+                ev.timestamp = int(
+                    row["t"] - tstart + (delay_factor * 1e6)
+                )  # Time in uS
             else:
-                ev.timestamp = row["t"] + int(delay_factor * 1e6)
+                ev.timestamp = int(row["t"] + (delay_factor * 1e6))
             events.append(ev)
         return events
 
-    def events_to_raster(self, events: List, dt: float =1e-3, shape: Optional[Tuple]=None) -> torch.Tensor:
+    def events_to_raster(
+        self, events: List, dt: float = 1e-3, shape: Optional[Tuple] = None
+    ) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
 
@@ -165,12 +187,21 @@ class ChipFactory:
 
         # Initialize an empty raster
         if shape:
-            shape = (int(max(timestamps)*dt)+1, *shape)
+            shape = (int(max(timestamps) * dt) + 1, *shape)
             raster = torch.zeros(shape)
         else:
-            raster = torch.zeros(int(max(timestamps)*dt)+1, max(features)+1, max(xs)+1, max(ys)+1)
+            raster = torch.zeros(
+                int(max(timestamps) * dt) + 1,
+                max(features) + 1,
+                max(xs) + 1,
+                max(ys) + 1,
+            )
 
         for event in events:
-            raster[int((event.timestamp - start_timestamp)*dt), event.feature, event.x, event.y] += 1
+            raster[
+                int((event.timestamp - start_timestamp) * dt),
+                event.feature,
+                event.x,
+                event.y,
+            ] += 1
         return raster
-

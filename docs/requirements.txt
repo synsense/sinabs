@@ -1,8 +1,9 @@
 sphinx
-pandoc
-nbsphinx
 sphinx_book_theme
-m2r2
+pandoc
+pbr
 tqdm
 torchvision
 myst_nb
+ipywidgets
+matplotlib

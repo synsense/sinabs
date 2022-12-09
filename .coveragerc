@@ -1,0 +1,2 @@
+[run]
+source=${PYTHON_SITE_PACKAGES}/sinabs/backend/dynapcnn
