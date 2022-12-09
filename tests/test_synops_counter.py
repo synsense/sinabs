@@ -96,7 +96,6 @@ def test_linear_synops_counter():
     # 3 spikes * 5 channels
     assert model_stats["synops"] == 15
     assert layer_stats["synops"] == 15
-    assert layer_stats["fanout_prev"] == 5
 
 
 def test_linear_synops_counter_across_batches():
@@ -114,40 +113,33 @@ def test_linear_synops_counter_across_batches():
     # (3+6)/2 spikes * 5 channels
     assert model_stats["synops"] == 22.5
     assert layer_stats["synops"] == 22.5
-    assert layer_stats["fanout_prev"] == 5
 
 
 def test_conv_synops_counter():
     model = nn.Conv2d(1, 5, kernel_size=2)
-    input_ = torch.zeros((1, 1, 3, 3))
-    input_[0, 0, 1, 1] = 3
+    input_ = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
     analyzer = SNNAnalyzer(model)
     model(input_)
     model_stats = analyzer.get_model_statistics()
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
-    # 3 spikes, 2x2 kernel, 5 channels
-    assert model_stats["synops"] == 60
-    assert layer_stats["synops"] == 60
-    assert layer_stats["fanout_prev"] == 20
+    # 1 spike x4, 2 spikes x1, all x5 output channels. Number is averaged across batch size
+    assert model_stats["synops"] == 30
+    assert layer_stats["synops"] == 30
 
 
-def test_conv_synops_counter_counts_across_batches():
+def test_conv_synops_counter_counts_across_inputs():
     model = nn.Conv2d(1, 5, kernel_size=2)
-    input1 = torch.zeros((1, 1, 3, 3))
-    input1[0, 0, 1, 1] = 6
-    input2 = torch.zeros((1, 1, 3, 3))
-    input2[0, 0, 1, 1] = 3
+    input1 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
+    input2 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1) * 2
     analyzer = SNNAnalyzer(model)
     model(input1)
     model(input2)
     model_stats = analyzer.get_model_statistics()
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
-    # (3+6)/2 spikes, 2x2 kernel, 5 channels
-    assert model_stats["synops"] == 90
-    assert layer_stats["synops"] == 90
-    assert layer_stats["fanout_prev"] == 20
+    assert model_stats["synops"] == 45
+    assert layer_stats["synops"] == 45
 
 
 def test_spiking_layer_firing_rate():

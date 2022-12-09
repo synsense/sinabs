@@ -2,6 +2,7 @@ import warnings
 from functools import partial
 
 import torch
+import torch.nn as nn
 from numpy import product
 
 import sinabs.layers as sl
@@ -24,7 +25,7 @@ def spiking_hook(self, input_, output):
     self.n_batches = self.n_batches + 1
 
 
-def synops_hook(unflattened_shape, self, input_, out):
+def synops_hook(deconvolve, self, input_, output):
     """Forward hook for parameter layers such as Conv2d or Linear.
 
     Calculates the total amount of input and output and the number of synaptic operations. The
@@ -33,12 +34,23 @@ def synops_hook(unflattened_shape, self, input_, out):
     """
     assert len(input_) == 1, "Multiple inputs not supported for synops hook"
     input_ = input_[0]
-    if unflattened_shape is not None:
-        batch_size, num_timesteps = unflattened_shape
+    if self.unflattened_shape is not None:
+        batch_size, num_timesteps = self.unflattened_shape
         input_ = input_.reshape(batch_size, num_timesteps, *input_.shape[1:])
-    self.synops = self.synops + input_.sum() * self.fanout
+        output = output.reshape(batch_size, num_timesteps, *output.shape[1:])
+        self.num_timesteps = input_.shape[1]
+        # for the purposes of counting synops, we can just sum over time and work a fixed shape from now on
+        input_ = input_.sum(1)
+        output = output.sum(1)
+    else:
+        self.num_timesteps = 0
+    if isinstance(self, nn.Conv2d):
+        with torch.no_grad():
+            connection_map = deconvolve(torch.ones_like(output))
+        self.synops = self.synops + (input_ * connection_map).sum()
+    else:
+        self.synops = self.synops + input_.sum() * self.fanout
     self.n_samples = self.n_samples + input_.shape[0]
-    self.num_timesteps = input_.shape[1]
 
 
 class SNNAnalyzer:
@@ -79,24 +91,30 @@ class SNNAnalyzer:
                 handle = layer.register_forward_hook(spiking_hook)
                 self.handles.append(handle)
             if isinstance(layer, torch.nn.Conv2d):
-                layer.fanout = (
-                    layer.out_channels
-                    * product(layer.kernel_size)
-                    / product(layer.stride)
+                deconvolve = nn.ConvTranspose2d(
+                    layer.out_channels,
+                    layer.in_channels,
+                    kernel_size=layer.kernel_size,
+                    padding=layer.padding,
+                    stride=layer.stride,
+                    dilation=layer.dilation,
+                    groups=layer.groups,
+                    bias=False,
                 )
+                deconvolve.weight.requires_grad = False
+                # with torch.no_grad():
+                deconvolve.weight.data = torch.ones_like(deconvolve.weight)
                 layer.synops = 0
                 layer.n_samples = 0
-                handle = layer.register_forward_hook(
-                    partial(synops_hook, unflattened_shape)
-                )
+                layer.unflattened_shape = unflattened_shape
+                handle = layer.register_forward_hook(partial(synops_hook, deconvolve))
                 self.handles.append(handle)
             elif isinstance(layer, torch.nn.Linear):
                 layer.fanout = layer.out_features
                 layer.synops = 0
                 layer.n_samples = 0
-                handle = layer.register_forward_hook(
-                    partial(synops_hook, unflattened_shape)
-                )
+                layer.unflattened_shape = unflattened_shape
+                handle = layer.register_forward_hook(partial(synops_hook, None))
                 self.handles.append(handle)
 
     def __del__(self):
@@ -145,7 +163,7 @@ class SNNAnalyzer:
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
                 spike_dict["parameter"][name] = {
-                    "fanout_prev": module.fanout,
+                    # "fanout_prev": module.fanout,
                     "synops": module.synops / module.n_samples * scale_factor,
                     "num_timesteps": module.num_timesteps,
                     "time_window": module.num_timesteps * self.dt,
@@ -162,11 +180,17 @@ class SNNAnalyzer:
         synops = 0.0
         for name, module in self.model.named_modules():
             if hasattr(module, "firing_rate_per_neuron"):
-                firing_rates.append(
-                    module.firing_rate_per_neuron.ravel() / module.n_batches
-                )
+                if module.n_batches > 0:
+                    firing_rates.append(
+                        module.firing_rate_per_neuron.ravel() / module.n_batches
+                    )
+                else:
+                    firing_rates.append(torch.tensor([0.0]))
             if hasattr(module, "synops"):
-                synops = synops + module.synops / module.n_samples
+                if module.n_samples > 0:
+                    synops = synops + module.synops / module.n_samples
+                else:
+                    synops = 0
         if len(firing_rates) > 0:
             stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
         stats_dict["synops"] = synops
