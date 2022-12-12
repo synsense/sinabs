@@ -164,7 +164,7 @@ def test_discretize_conv_spike():
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
-        assert torch.equal(obj, obj.int())
+        assert torch.equal(obj, obj.int().float())
     for obj in (
         spk_discr.spike_threshold,
         spk_discr.spike_threshold,
