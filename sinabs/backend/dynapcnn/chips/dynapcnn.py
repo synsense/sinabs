@@ -1,22 +1,16 @@
-from subprocess import CalledProcessError
 import copy
-try:
-    import samna
-    from samna.dynapcnn.configuration import DynapcnnConfiguration
-except (ImportError, ModuleNotFoundError, CalledProcessError):
-    SAMNA_AVAILABLE = False
-else:
-    SAMNA_AVAILABLE = True
-
-import torch
 from typing import List
+
+import samna
+import torch
+from samna.dynapcnn.configuration import DynapcnnConfiguration
+
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
+from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
-from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
-from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.dvs_layer import expand_to_pair
 
 class DynapcnnConfigBuilder(ConfigBuilder):
 
@@ -277,6 +271,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
         return config
+
+    @classmethod
+    def get_input_buffer(cls):
+        return samna.BasicSourceNode_dynapcnn_event_input_event()
 
     @classmethod
     def get_output_buffer(cls):
