@@ -344,12 +344,12 @@ def _discretize_conv_spk_(
         ).float()
         conv_bias.data = discretize_tensor(conv_bias, scaling, to_int=to_int).float()
     if discr_spk:
-        spike_lyr.min_v_mem, spike_lyr.spike_threshold = (
-            discretize_tensor(thresholds, scaling, to_int=to_int)
-            .float()
-            .detach()
-            .numpy()
+        min_v_mem, spike_threshold = discretize_tensor(
+            thresholds, scaling, to_int=to_int
         )
+        spike_lyr.min_v_mem, spike_lyr.spike_threshold = nn.Parameter(
+            min_v_mem, requires_grad=False
+        ), nn.Parameter(spike_threshold, requires_grad=False)
         # Logic changes with use of activation functions
         # TODO: Add check for the activation function in use
         # if spike_lyr.membrane_subtract != spike_lyr.threshold:
