@@ -97,11 +97,16 @@ class DynapcnnNetwork(nn.Module):
         self.compatible_layers = [*self.sequence]
 
         # Add a DVS layer in case dvs_input is flagged
-        if self.dvs_input and not isinstance(self.compatible_layers[0], DVSLayer):
+        if self.dvs_input:
             dvs_layer = DVSLayer(
                 input_shape=input_shape[1:]
             )  # Ignore the channel dimension
-            self.compatible_layers = [dvs_layer] + self.compatible_layers
+            if self.compatible_layers:
+                if not isinstance(self.compatible_layers[0], DVSLayer):
+                    self.compatible_layers = [dvs_layer] + self.compatible_layers
+            else:
+                # No layers initialized
+                self.compatible_layers = [dvs_layer]
             self.sequence = nn.Sequential(*self.compatible_layers)
 
         if self.dvs_input:
