@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* added checks if the network is empty
 * add spike count visualization notebook into tutorials.rst
 * fix typo in the notebook of visualize spike count
 * delete chip top level figure
