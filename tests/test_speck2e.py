@@ -26,5 +26,11 @@ def test_no_kill_bits():
 
 
 def test_speck2e_coordinates():
-    ann = nn.Sequential()
-    network = DynapcnnNetwork(nn.Sequential(), input_shape=(2, 10, 10))
+    ann = nn.Sequential(
+        nn.Conv2d(2, 6, 3),
+        nn.ReLU()
+    )
+    snn = from_model(ann, input_shape=(2, 10, 10), batch_size=1)
+
+    network = DynapcnnNetwork(snn, input_shape=(2, 10, 10), dvs_input=True)
+    network.to("speck2edevkit:0")
