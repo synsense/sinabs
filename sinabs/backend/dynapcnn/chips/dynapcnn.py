@@ -51,8 +51,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             (weights,) = layer.conv_layer.parameters()
             biases = torch.zeros(layer.conv_layer.out_channels)
 
-        config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
+        config_dict["weights_kill_bit"] = (~weights.bool()).tolist()
+        config_dict["biases_kill_bit"] = (~biases.bool()).tolist()
 
         # - Neuron states
         if not layer.spk_layer.is_state_initialised():
@@ -105,8 +105,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict["weights"] = weights.int().tolist()
         config_dict["biases"] = biases.int().tolist()
         config_dict["leak_enable"] = biases.bool().any()
-        config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
+        #config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
+        #config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
 
         # Update parameters from the spiking layer
 
@@ -145,7 +145,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             "threshold_low": min_v_mem,
             "monitor_enable": False,
             "neurons_initial_value": neurons_state.int().tolist(),
-            "neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
+            #"neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
         })
         # Update parameters from pooling
         if layer.pool_layer is not None:
@@ -154,6 +154,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         else:
             pass
 
+        # Set kill bits
+        config_dict = cls.set_kill_bits(layer=layer, config_dict=config_dict)
 
         return config_dict
 
