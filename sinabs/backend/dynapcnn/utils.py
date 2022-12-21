@@ -36,7 +36,7 @@ def infer_input_shape(
         )
 
     input_shape_from_layer = None
-    if isinstance(layers[0], DVSLayer):
+    if layers and isinstance(layers[0], DVSLayer):
         input_shape_from_layer = layers[0].input_shape
         if len(input_shape_from_layer) != 3:
             raise InputConfigurationError(

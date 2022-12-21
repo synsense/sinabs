@@ -1,8 +1,69 @@
 CHANGES
 =======
 
+* add spike count visualization notebook into tutorials.rst
+* fix typo in the notebook of visualize spike count
+* delete chip top level figure
+* change the speck top level figure path
+* change top level figure
+* add notebooks into docs/source/tutorials.rst
+* update the noteboob
+* Update requirements.txt
+* notebook and image for spike counts visualization
+* modify the parent folder name identical to the notebook
+* modify the image load path
+* make spike\_threshold and min\_v\_mem a parameter
+* fix test which seems to have relied on older version of PyTorch
+* fix wrong calculation formula in remapping neruon index function
+* fix conflict when merge develop into 34-add-readout-layer-usage-instruction-notebook
+* add samna graph plot for power monitor notebook
+* add notebook for power monitoring
+* update the readout-layer intro notebook
+* add FAQ and known dev kit bugs
+* rm change in tutorials.rst to avoid merge conflict
+* add figures for overview notebook
+* add overview tutorial notebook for speck/dynapcnn
+* removed all samna checks from imports
+* imports fixed and type annotation for Tuple corrected
+* add notebook about dvs input visualization
+* added standardize\_device\_id before all IO methods
+* add codecov badges
+* pytest command fixed for coverage
+* added path to installation for coverage
+* try hard-coded path for coverage
+* added conditional deplopment
+* rerunning test in deploy stage
+* custom stage added
+* added dependenct to unitttests
+* two stage coverage deployment
+* changed command for acquiring code coverage
+* coverage path fixed
+* remove gallery from docs as not needed at the moment
+* added galary template, updated config -> sinabs
+* add coverage config file that specifies the folder to include in the coverage, excluding the test folder
+* remove some whitespace in the gitlab ci config
+* use codecov token so that hopefully CI is pushed via gitlab.com
+* update gitlab CI to produce html coverage report for pages
+* try using gitlab pages for coverage report
+* adding test coverage job to CI pipeline according to Python template from gitlab.com
+* remove gallery from docs as not needed at the moment
+* add figures for the readout layer intro notebook
+* add readout layer usage example notebook
+* added galary template, updated config -> sinabs
+* init tutorial file
+* Change last uint
+* Remove comment
+* Uint64 to int
+* Check the timestamp and delay factor for negative values
+* Casting to int after conversion
+* Do not sleep while resetting the states when the function is called. Stop the input graph, while the neuron values are written. Sleep for a bit and then start the graph again
+* Fix to the bug
+* update ChangeLog after add support of speck2e
 * add speck2e devkit and testboard support
 * remove redundant comment code
+* Device input graph stopped on destruction of the DynapcnnNetwork object
+* Writing all v mem to zeros changed. -> Now when you call this method it creates a temporary buffer and a temporary graph, starts the graph, writes the events, stops the graph then it is destroyed
+* Implement an input buffer for all devices: -> In the config\_builder there is now a function called get\_input\_buffer which gives a source node. -> For each chip this is implemented to get the appropriate source node. -> To method changed to construct the input buffer. -> Forward method changed to write the events to this source node
 * Name added to io
 * naive copy of config generation
 * moved kill bits to a separate method
