@@ -12,7 +12,7 @@ from .flipdims import FlipDims
 
 
 def infer_input_shape(
-        layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
+    layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
 ) -> Tuple[int, int, int]:
     """
     Checks if the input_shape is specified.
@@ -31,14 +31,17 @@ def infer_input_shape(
         (channels, height, width)
     """
     if input_shape is not None and len(input_shape) != 3:
-        raise InputConfigurationError(f"input_shape expected to have length 3 or None but input_shape={input_shape} given.")
+        raise InputConfigurationError(
+            f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
+        )
 
     input_shape_from_layer = None
-    if isinstance(layers[0], DVSLayer):
+    if layers and isinstance(layers[0], DVSLayer):
         input_shape_from_layer = layers[0].input_shape
         if len(input_shape_from_layer) != 3:
             raise InputConfigurationError(
-                f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found.")
+                f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found."
+            )
     if (input_shape is not None) and (input_shape_from_layer is not None):
         if input_shape == input_shape_from_layer:
             return input_shape
@@ -55,7 +58,7 @@ def infer_input_shape(
 
 
 def convert_cropping2dlayer_to_crop2d(
-        layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
+    layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
 ) -> Crop2d:
     """
     Convert a sinabs layer of type Cropping2dLayer to Crop2d layer
@@ -81,8 +84,8 @@ def convert_cropping2dlayer_to_crop2d(
 
 
 def construct_dvs_layer(
-        layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start=0
-) -> (Optional[DVSLayer], int, float):
+    layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start=0
+) -> Tuple[Optional[DVSLayer], int, float]:
     """
     Generate a DVSLayer given a list of layers
     NOTE: The number of channels is implicitly assumed to be 2 because of DVS
@@ -112,7 +115,9 @@ def construct_dvs_layer(
     flip_lyr = None
 
     if len(input_shape) != 3:
-        raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
+        raise ValueError(
+            f"Input shape should be 3 dimensional but input_shape={input_shape} was given."
+        )
 
     # Return existing DVS layer as is
     if len(layers) and isinstance(layers[0], DVSLayer):
@@ -198,8 +203,8 @@ def merge_conv_bn(conv, bn):
 
 
 def construct_next_pooling_layer(
-        layers: List[nn.Module], idx_start: int
-) -> (Optional[sl.SumPool2d], int, float):
+    layers: List[nn.Module], idx_start: int
+) -> Tuple[Optional[sl.SumPool2d], int, float]:
     """
     Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
 
@@ -263,12 +268,12 @@ def construct_next_pooling_layer(
 
 
 def construct_next_dynapcnn_layer(
-        layers: List[nn.Module],
-        idx_start: int,
-        in_shape: (int, int, int),
-        discretize: bool,
-        rescale_factor: float = 1,
-) -> (DynapcnnLayer, int, float):
+    layers: List[nn.Module],
+    idx_start: int,
+    in_shape: Tuple[int, int, int],
+    discretize: bool,
+    rescale_factor: float = 1,
+) -> Tuple[DynapcnnLayer, int, float]:
     """
     Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
     pooling layers.
@@ -353,7 +358,7 @@ def construct_next_dynapcnn_layer(
 
 
 def build_from_list(
-        layers: List[nn.Module], in_shape, discretize=True
+    layers: List[nn.Module], in_shape, discretize=True
 ) -> nn.Sequential:
     """
     Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
@@ -401,7 +406,7 @@ def build_from_list(
 
 
 def convert_model_to_layer_list(
-        model: Union[nn.Sequential, sinabs.Network]
+    model: Union[nn.Sequential, sinabs.Network]
 ) -> List[nn.Module]:
     """
     Convert a model to a list of layers.
@@ -423,19 +428,51 @@ def convert_model_to_layer_list(
     return layers
 
 
-def _parse_device_string(device_id: str) -> (str, int):
-    """
-    Parse the device identifier
+def parse_device_id(device_id: str) -> Tuple[str, int]:
+    """Parse device id into device type and device index
+
     Args:
-        device_id: str
-            device_name:device_id pair given as a string
+        device_id (str): Device id typically of the form `device_type:index`.
+            In case no index is specified, the default index of zero is returned.
+
     Returns:
-        Tuple(str, int) = (device_name, device_id)
+        Tuple[str, int]: (device_type, index) Returns a tuple with the index and device type.
     """
-    device_splits = device_id.split(":")
-    device_name = device_splits[0]
-    if len(device_splits) > 1:
-        device_num = int(device_splits[1])
+    parts = device_id.split(sep=":")
+    if len(parts) == 1:
+        device_type = parts[0]
+        index = 0
+    elif len(parts) == 2:
+        device_type, index = parts
     else:
-        device_num = 0
-    return device_name, device_num
+        raise Exception(
+            "Device id not understood. A string of form `device_type:index` expected."
+        )
+
+    return device_type, int(index)
+
+
+def get_device_id(device_type: str, index: int) -> str:
+    """Generate a device id string given a device type and its index
+
+    Args:
+        device_type (str): Device type
+        index (int): Device index
+
+    Returns:
+        str: A string of the form `device_type:index`
+    """
+    return f"{device_type}:{index}"
+
+
+def standardize_device_id(device_id: str) -> str:
+    """Standardize device id string
+
+    Args:
+        device_id (str): Device id string. Could be of the form `device_type` or `device_type:index`
+
+    Returns:
+        str: Returns a sanitized device id of the form `device_type:index`
+    """
+    device_type, index = parse_device_id(device_id=device_id)
+    return get_device_id(device_type=device_type, index=index)

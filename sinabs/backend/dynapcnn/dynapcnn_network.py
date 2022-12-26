@@ -1,30 +1,24 @@
 import time
 from subprocess import CalledProcessError
-from sinabs.backend.dynapcnn.chip_factory import ChipFactory
-from .exceptions import InputConfigurationError
+from typing import List, Optional, Sequence, Tuple, Union
 
-try:
-    import samna
-except (ImportError, ModuleNotFoundError, CalledProcessError):
-    SAMNA_AVAILABLE = False
-else:
-    # IO module only works if samna is available
-    from .io import (
-        open_device,
-        enable_timestamps,
-        disable_timestamps,
-        reset_timestamps,
-    )
-
-    SAMNA_AVAILABLE = True
-
+import samna
 import torch
 import torch.nn as nn
+
 import sinabs
-from typing import Tuple, Union, Optional, Sequence, List
-from .dynapcnn_layer import DynapcnnLayer
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
 from .dvs_layer import DVSLayer
-from .utils import convert_model_to_layer_list, build_from_list, infer_input_shape, _parse_device_string
+from .dynapcnn_layer import DynapcnnLayer
+from .exceptions import InputConfigurationError
+from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
+from .utils import (
+    build_from_list,
+    convert_model_to_layer_list,
+    infer_input_shape,
+    parse_device_id,
+)
 
 
 class DynapcnnNetwork(nn.Module):
@@ -91,7 +85,8 @@ class DynapcnnNetwork(nn.Module):
 
         if len(input_shape) != 3:
             raise InputConfigurationError(
-                f"input_shape expected to have length 3 or None but input_shape={input_shape} given.")
+                f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
+            )
 
         # Build model from layers
         self.sequence = build_from_list(
@@ -102,13 +97,17 @@ class DynapcnnNetwork(nn.Module):
         self.compatible_layers = [*self.sequence]
 
         # Add a DVS layer in case dvs_input is flagged
-        if self.dvs_input and not isinstance(self.compatible_layers[0], DVSLayer):
+        if self.dvs_input:
             dvs_layer = DVSLayer(
                 input_shape=input_shape[1:]
             )  # Ignore the channel dimension
-            self.compatible_layers = [dvs_layer] + self.compatible_layers
+            if self.compatible_layers:
+                if not isinstance(self.compatible_layers[0], DVSLayer):
+                    self.compatible_layers = [dvs_layer] + self.compatible_layers
+            else:
+                # No layers initialized
+                self.compatible_layers = [dvs_layer]
             self.sequence = nn.Sequential(*self.compatible_layers)
-        
 
         if self.dvs_input:
             # Enable dvs pixels
@@ -156,7 +155,7 @@ class DynapcnnNetwork(nn.Module):
         if isinstance(device, torch.device):
             return super().to(device)
         elif isinstance(device, str):
-            device_name, _ = _parse_device_string(device)
+            device_name, _ = parse_device_id(device)
             if device_name in ChipFactory.supported_devices:
                 # Generate config
                 config = self.make_config(
@@ -174,7 +173,7 @@ class DynapcnnNetwork(nn.Module):
                 builder = ChipFactory(device).get_config_builder()
                 # Create input source node
                 self.samna_input_buffer = builder.get_input_buffer()
-                # Create output sink node node 
+                # Create output sink node node
                 self.samna_output_buffer = builder.get_output_buffer()
 
                 # Connect source node to device sink
@@ -182,7 +181,7 @@ class DynapcnnNetwork(nn.Module):
                 self.device_input_graph.sequential(
                     [
                         self.samna_input_buffer,
-                        self.samna_device.get_model().get_sink_node()
+                        self.samna_device.get_model().get_sink_node(),
                     ]
                 )
 
@@ -191,7 +190,7 @@ class DynapcnnNetwork(nn.Module):
                 self.device_output_graph.sequential(
                     [
                         self.samna_device.get_model().get_source_node(),
-                        self.samna_output_buffer
+                        self.samna_output_buffer,
                     ]
                 )
                 self.device_input_graph.start()
@@ -251,9 +250,6 @@ class DynapcnnNetwork(nn.Module):
                 If samna is not available.
         """
 
-        if not SAMNA_AVAILABLE:
-            raise ImportError("`samna` does not appear to be installed.")
-
         config_builder = ChipFactory(device).get_config_builder()
 
         # Figure out layer ordering
@@ -262,7 +258,9 @@ class DynapcnnNetwork(nn.Module):
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
             if self.dvs_input:
-                chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)-1]
+                chip_layers_ordering = chip_layers_ordering[
+                    : len(self.compatible_layers) - 1
+                ]
             chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
 
         # Save the chip layers
@@ -274,19 +272,20 @@ class DynapcnnNetwork(nn.Module):
         # Check if any monitoring is enabled and if not, enable monitoring for the last layer
         if monitor_layers is None:
             monitor_layers = [-1]
-        elif monitor_layers == 'all':
+        elif monitor_layers == "all":
             monitor_layers = list(range(len(self.compatible_layers)))
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
-        monitor_chip_layers = [self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"]
+        monitor_chip_layers = [
+            self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"
+        ]
         if "dvs" in monitor_layers:
             monitor_chip_layers.append("dvs")
         config_builder.monitor_layers(config, monitor_chip_layers)
 
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
         # config.factory_settings.monitor_input_enable = False
-
 
         # Apply user config modifier
         if config_modifier is not None:
@@ -304,7 +303,7 @@ class DynapcnnNetwork(nn.Module):
         Reset the states of the network.
         """
         if hasattr(self, "device") and isinstance(self.device, str):
-            device_name, _ = _parse_device_string(self.device)
+            device_name, _ = parse_device_id(self.device)
             if device_name in ChipFactory.supported_devices:
                 config_builder = ChipFactory(self.device).get_config_builder()
                 # Set all the vmem states in the samna config to zero
@@ -318,7 +317,9 @@ class DynapcnnNetwork(nn.Module):
                     if hasattr(self, "samna_input_graph"):
                         self.samna_input_graph.stop()
                         for lyr_idx in self.chip_layers_ordering:
-                            config_builder.set_all_v_mem_to_zeros(self.samna_device, lyr_idx)
+                            config_builder.set_all_v_mem_to_zeros(
+                                self.samna_device, lyr_idx
+                            )
                             time.sleep(0.1)
                         self.samna_input_graph.start()
                 return
@@ -349,14 +350,16 @@ class DynapcnnNetwork(nn.Module):
         if isinstance(self.compatible_layers[0], DVSLayer):
             num_cores_required -= 1
         if len(self.chip_layers_ordering) != num_cores_required:
-            raise Exception(f"Number of layers specified in chip_layers_ordering {self.chip_layers_ordering} does not correspond to the number of cores required for this model {num_cores_required}")
+            raise Exception(
+                f"Number of layers specified in chip_layers_ordering {self.chip_layers_ordering} does not correspond to the number of cores required for this model {num_cores_required}"
+            )
 
         return self.chip_layers_ordering[layer_idx]
 
     def forward(self, x):
         if (
             hasattr(self, "device")
-            and _parse_device_string(self.device)[0] in ChipFactory.supported_devices
+            and parse_device_id(self.device)[0] in ChipFactory.supported_devices
         ):
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
@@ -398,22 +401,22 @@ class DynapcnnNetwork(nn.Module):
                 summary[k].append(v)
         return summary
 
-
     def zero_grad(self, set_to_none: bool = False) -> None:
         for lyr in self.sequence:
             lyr.zero_grad(set_to_none)
-    
+
     def __del__(self):
         # Stop the input graph
-        if hasattr(self, 'device_input_graph') and self.device_input_graph:
+        if hasattr(self, "device_input_graph") and self.device_input_graph:
             self.device_input_graph.stop()
-        
+
         # Stop the output graph.
-        if hasattr(self, 'device_output_graph') and self.device_output_graph:
+        if hasattr(self, "device_output_graph") and self.device_output_graph:
             self.device_output_graph.stop()
 
+
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
-    """ Deprecated class, use DynapcnnNetwork instead."""
+    """Deprecated class, use DynapcnnNetwork instead."""
 
     def __init__(
         self,
@@ -423,6 +426,9 @@ class DynapcnnCompatibleNetwork(DynapcnnNetwork):
         discretize: bool = True,
     ):
         from warnings import warn
-        warn("DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork " +
-             "and will be removed in a future release.")
+
+        warn(
+            "DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork "
+            + "and will be removed in a future release."
+        )
         super().__init__(snn, input_shape, dvs_input, discretize)
