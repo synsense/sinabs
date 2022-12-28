@@ -220,3 +220,14 @@ def test_no_spk_middle():
         DynapcnnNetwork(
             seq, input_shape=input_data.shape[1:], discretize=False
         )
+
+
+def test_no_conv_layers():
+    seq = nn.Sequential()
+
+    from sinabs.backend.dynapcnn.utils import infer_input_shape
+    from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
+
+    net = DynapcnnNetwork(snn=seq, input_shape=(2, 10, 10), dvs_input=True)
+
+    assert isinstance(net.compatible_layers[0], DVSLayer)
