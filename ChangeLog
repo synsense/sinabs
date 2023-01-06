@@ -4,6 +4,9 @@ CHANGES
 * modify speck2e test to deploy dummy network
 * added test for killbit
 * test updated to check for type
+* update figure
+* add a time.sleep statement after dynapcnn network reset-states to wait the config take effect
+* test updated to check for type
 * added checks if the network is empty
 * add spike count visualization notebook into tutorials.rst
 * fix typo in the notebook of visualize spike count
