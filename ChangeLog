@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* Speck2fDevKit support added
+* update samna version requirements
+* update ChangeLog
 * add speck2f module devkit support and remove speck2f characterization board support
 * Implementation a test that will create a single neuron on a single core, that receives a single event and outputs a single event
 * edit visualizer.md
