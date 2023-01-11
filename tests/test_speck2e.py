@@ -3,6 +3,7 @@ import torch.nn as nn
 from sinabs import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
+from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 
 def test_no_kill_bits():
     ann = nn.Sequential(
@@ -33,4 +34,14 @@ def test_speck2e_coordinates():
     snn = from_model(ann, input_shape=(2, 10, 10), batch_size=1)
 
     network = DynapcnnNetwork(snn, input_shape=(2, 10, 10), dvs_input=True)
-    network.to("speck2edevkit:0")
+    config = network.make_config(device="speck2edevkit:0")
+    print(config.to_json())
+
+    
+def test_dvs_layer_generation():
+    """
+    DVSLayer should be generated is dvs input is enabled even for an empty network
+    """
+    ann = nn.Sequential()
+    network = DynapcnnNetwork(nn.Sequential(), input_shape=(2, 10, 10), dvs_input=True)
+    assert isinstance(network.sequence[0], DVSLayer)
