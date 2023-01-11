@@ -32,7 +32,4 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
         config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
-        #config_dict.pop("weights_kill_bit")
-        #config_dict.pop("biases_kill_bit")
-        #config_dict.pop("neurons_value_kill_bit")
         return config_dict
