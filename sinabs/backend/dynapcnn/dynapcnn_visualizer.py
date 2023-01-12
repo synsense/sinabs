@@ -1,9 +1,10 @@
 import samna, samnagui
 from multiprocessing import Process
 from typing import List, Tuple, Union, Optional, Dict
-import os
+import os, socket
 import time
 import warnings
+from functools import partial
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 class DynapcnnVisualizer:
@@ -38,10 +39,11 @@ class DynapcnnVisualizer:
 
     def __init__(
         self,
-        sender_endpoint: str,
-        receiver_endpoint: str,
         dvs_shape: Tuple[int, int] = (128, 128),  # height, width
         gui_type: str = "ds",
+        spike_collection_interval: int = 500,
+        readout_prediction_threshold: int = 10,
+        readout_default_return_value: Optional[int] = None,
         feature_names: Optional[List[str]] = None, 
         readout_images: Optional[List[str]] = None,
         feature_count: Optional[int] = None
@@ -49,10 +51,6 @@ class DynapcnnVisualizer:
         """Quick wrapper around Samna objects to get a basic dynapcnn visualizer.
 
         Args:
-            sender_endpoint (str): 
-                Samna node sender endpoint 
-            receiver_endpoint (str):
-                Samna node receiver endpoint
             dvs_shape (Tuple[int, int], optional): 
                 Shape of the DVS sensor in (height, width). 
                 Defaults to (128, 128) -- Speck sensor resolution.
@@ -63,6 +61,14 @@ class DynapcnnVisualizer:
                     "dsp"  -> Dvs plot + Spike count plot + power monitor plot
                     "dsr"  -> Dvs plot + Spike count plot + readout plot
                     "dsrp" -> Dvs plot + Spike count plot + readout plot + power monitor plot 
+            spike_collection_interval: int (defaults to 500) (in milliseconds)
+                Spike collection is done using a low-pass filter with a window size.
+                This parameter sets the window size of the spike collection 
+            readout_prediction_threshold: int (defaults to 10)
+                Defines the number of spikes needed for making a prediction.
+            readout_default_return_value: Optional[int] (defaults to None)
+                Defines the default prediction of the network. Usually used for `other` class in the
+                network.
             feature_names: Optional[List[str]] (defaults to None)
                 List of feature names. If this is passed they will be displayed on the spike count plot
                 as output labels
@@ -81,16 +87,26 @@ class DynapcnnVisualizer:
                 `Readout Layer Plot`. 
 
         """
-        # Samna components
-        self.receiver_endpoint = receiver_endpoint
-        self.sender_endpoint = sender_endpoint
-        
         # Visualizer layout components
         self.feature_names = feature_names
         self.readout_images = readout_images
         self.feature_count = feature_count
         self.dvs_shape = dvs_shape
         self.gui_type = gui_type
+
+        # Spike count layer components
+        self.spike_collection_interval = spike_collection_interval
+
+        # Readout layer components
+        self.readout_prediction_threshold = readout_prediction_threshold
+        self.readout_default_return_value = readout_default_return_value
+
+        # Samna TCP communication ports
+        ## Default samna ports
+        self.samna_receiver_port = "33345"
+        self.samna_sender_port = "33346"
+        ## Visualizer port
+        self.samna_visualizer_port = get_free_tcp_port()
     
     @staticmethod
     def parse_feature_names_from_image_names(
@@ -219,9 +235,10 @@ class DynapcnnVisualizer:
         plot.set_layout(*layout)
         return (plot, plot_id)
     
-    def add_readout_layer_plot():
+    def add_output_prediction_layer_plot():
         """
         What we want to have is something as described below:
+        Plot for visualizating the chip readout layers.
 
         output neuron id
         ^ 
@@ -400,20 +417,228 @@ class DynapcnnVisualizer:
             raise ValueError(
                 f"Last layer running on core: {last_layer} is not monitored." +
                 "Hint: in `.to()` method `monitor layers` parameter should " +
-                "contain key `-1`. "
+                "contain key `-1` or the last layer `idx`. "
             )
         
+        # Update the feature count before initializing and connecting plots
+        self.update_feature_count(dynapcnn_network)
+        
         # Create graph and connect network attributes to plots
+        ## Determine the port and create the graph
+        self.streamer_graph = samna.graph.EventFilterGraph()
 
         ## Start visualizer and create plots based on parameters.
         remote_visualizer_node = self.create_visualizer_process(
-            sender_endpoint=...,
-            receiver_endpoint=...,
-            initial_window_scale=...,
-            visualizer_id=...
+            sender_endpoint="tcp://0.0.0.0:" + self.samna_sender_port,
+            receiver_endpoint="tcp://0.0.0.0:" + self.samna_sender_port,
         )
 
         (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(visualizer_node=remote_visualizer_node)
 
-        ## Create graph
-        self.communication_graph = samna.graph.EventFilterGraph()
+        # Streamer graph
+        ## Dvs node
+        (_, _, streamer_node) = self.streamer_graph.sequential([
+            dynapcnn_network.samna_device.get_model_source_node(),
+            ..., # Here goes JitDvsToViz()
+            "VizEventStreamer"
+        ])
+
+        ## Spike count node
+        (
+            _, 
+            member_filter, 
+            spike_collection_node, 
+            spike_count_node, 
+            streamer_node
+        ) = self.streamer_graph.sequential([
+            dynapcnn_network.samna_device.get_model_source_node(),
+            samna.graph.JitMemberSelect(),
+            samna.graph.JitSpikeCollectionNode(),
+            samna.graph.JitSpikeCountNode(),
+            streamer_node 
+        ])
+        member_filter.set_white_list([last_layer], "layer")
+        spike_collection_node.set_interval_milli_sec(self.spike_collection_interval)
+        spike_count_node.set_feature_count(self.feature_count)
+
+        ## Power monitor node
+        if "p" in self.gui_type:
+            # Initialize power monitor
+            power_monitor = dynapcnn_network.samna_device.get_power_monitor()
+            power_monitor.start_auto_power_measurement(50)
+            # Connect its output to streamer_node
+            self.streamer_graph.sequential([
+                power_monitor.get_source_node(),
+                "MeasurementToVizConverter",
+                streamer_node
+            ])
+        
+        ## Readout node
+        if "r" in self.gui_type:
+            jit_readout_node = JitReadoutNode(
+                default_return_value=self.readout_default_return_value,
+                n_spikes_threshold=self.readout_prediction_threshold
+            )
+            self.streamer_graph.sequential([ 
+                spike_collection_node, 
+                jit_readout_node.get_filter(),
+                streamer_node 
+            ])
+        
+        ## Readout layer visualization
+        if "o" in self.gui_type:
+            raise NotImplementedError("A lot of work in progress!")
+        
+        streamer_node.set_streamer_endpoint(f"tcp://0.0.0.0:{self.samna_visualizer_port}")
+        
+        # Connect the visualizer components
+        remote_visualizer_node.receiver.set_receiver_endpoint(f"tcp://0.0.0.0:{self.samna_visualizer_port}")
+        remote_visualizer_node.receiver.add_destination(remote_visualizer_node.splitter.get_input_channel())
+        ## Connect Dvs visualizer to its plot
+        remote_visualizer_node.splitter.add_destination("dvs_event", remote_visualizer_node.plots.get_plot_input(dvs_plot[1]))
+        ## Connect Spike count visualizer to its plot
+        remote_visualizer_node.splitter.add_destination("spike_count", remote_visualizer_node.plots.get_plot_input(spike_count_plot[1]))
+        ## Connect Readout visualizer to its plot
+        if "r" in self.gui_type:
+            remote_visualizer_node.splitter.add_destination("readout", remote_visualizer_node.plots.get_plot_input(readout_plot[1]))
+        ## Connect power monitor visualizer to its plot
+        if "p" in self.gui_type:
+            remote_visualizer_node.splitter.add_destination("measurement", remote_visualizer_node.plots.get_plot_input(power_plot[1]))
+
+
+    def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
+        # Find last layer output
+        raise NotImplementedError("Work in progress!") 
+    
+    def start(self):
+        self.streamer_graph.start()
+
+    def stop(self):
+        self.streamer_graph.stop()
+
+class JitReadoutNode:
+    def __init__(
+        self,
+        default_return_value: int,
+        n_spikes_threshold: int
+    ):
+        self.default_return_value = default_return_value
+        self.n_spikes_threshold = n_spikes_threshold
+        self.filter = samna.graph.JitFilter(
+            'JitReadoutNode', 
+            self.get_source()
+        ) 
+    
+    def get_source(self):
+        raise NotImplementedError("Work in progress!")
+        # source_code = """"""
+        # return source_code
+    
+    def get_filter(self):
+        return self.filter
+
+def get_free_tcp_port():
+    """Returns a free tcp port.
+    Returns:
+        str: A port which is free in the system 
+    """
+    free_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    free_socket.bind(('0.0.0.0', 0))
+    free_socket.listen(5)
+    port = free_socket.getsockname()[1] # get port
+    free_socket.close()
+    return port
+
+# --- These will be removed after their functionality is added
+# --- to the `JitReadoutNode` class.
+def generate_ui_readout_event(predicted_class: int):
+    # TODO: To be deleted.
+    """Make a readout event for samna interface and send it in a list.
+    Args:
+        predicted_class: int 
+            Predicted class index
+    Returns:
+        List[samna.ui.Readout]: Samna UI Readout Type event with given feature
+    """
+    e = samna.ui.Readout()
+    e.feature = predicted_class 
+    return [e]
+
+def find_max_in_dictionary(feature_dictionary):
+    # TODO: To be deleted
+    """Find the maximum value of all keys in the dictionary and return both 
+    the key and value
+
+    Args:
+        feature_dictionary (Dict[int, int]): 
+            Dictionary that contains (int, int) pairs of feature number 
+            and number of recorded spikes
+
+    Returns:
+        Tuple(int, int): Feature number and number of recorded spikes
+    """
+    max_feature = 0
+    max_n_spikes = 0
+    for feature, n_spikes in feature_dictionary.items():
+        if n_spikes > max_n_spikes:
+            max_feature = feature
+            max_n_spikes = n_spikes
+    return max_feature, max_n_spikes
+
+    
+class ReadoutCallback:
+    # TODO: To be deleted
+    def __init__(
+        self,
+        default_return_value: int,
+        n_spikes_threshold: int
+    ):
+        self.default_return_value = default_return_value
+        self.n_spikes_threshold = n_spikes_threshold
+    
+    def __call__(
+        self, 
+        output_events
+    ):
+        returned_features = {}
+        for event in output_events:
+            # only take into account network output events
+            if hasattr(event, "feature"):
+                if event.feature in returned_features:
+                    # if the feature has already been seen before.
+                    returned_features[event.feature] += 1
+                else:
+                    # if the feature is encountered for the first time.
+                    returned_features[event.feature] = 1
+        max_feature, max_n_events = find_max_in_dictionary(returned_features)
+        if max_n_events > self.n_spikes_threshold:
+            # if there are sufficient events for prediction
+            return generate_ui_readout_event(max_feature)
+        else:
+            # else return the default class 
+            return generate_ui_readout_event(self.default_return_value) 
+
+def graceful_shutdown(
+    graph: samna.graph.EventFilterGraph, 
+    readout_node: samna.graph.node.ReadoutNode, 
+    signal, 
+    frame
+):
+    # TODO: To be deleted
+    """The signal handler to close the readout nodes first and then the graphs.
+    Note: This function should be called as a partial by Python's own signal class.
+    
+    Args:
+        input_graph (samna.graph.EventFilterGraph): 
+            Graph that connects the sensor to the clustering algorithm.
+        output_graph (samna.graph.EventFilterGraph): 
+            Graph that connects the clustering algorithm back into the chip.
+        readout_nodes (List[samna.graph.node.*CustomFilterNode]): 
+            A list of readout nodes that may be used in the script.
+        signal: Signals corresponding to signal events such as (CTRL+C)
+        frame : Frame of the signal.
+    """
+    readout_node.stop()
+    graph.stop()
+    print('Shutting down interface!')
+    exit(0)
