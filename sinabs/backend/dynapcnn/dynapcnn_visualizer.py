@@ -40,7 +40,8 @@ class DynapcnnVisualizer:
     def __init__(
         self,
         dvs_shape: Tuple[int, int] = (128, 128),  # height, width
-        gui_type: str = "ds",
+        add_readout_plot: bool = False,
+        add_power_monitor_plot: bool = False,
         spike_collection_interval: int = 500,
         readout_prediction_threshold: int = 10,
         readout_default_return_value: Optional[int] = None,
@@ -54,13 +55,10 @@ class DynapcnnVisualizer:
             dvs_shape (Tuple[int, int], optional): 
                 Shape of the DVS sensor in (height, width). 
                 Defaults to (128, 128) -- Speck sensor resolution.
-            gui_type: str (defaults to "ds")
-                Which GUI components are required.
-                Options:
-                    "ds"   -> Dvs plot + Spike count plot
-                    "dsp"  -> Dvs plot + Spike count plot + power monitor plot
-                    "dsr"  -> Dvs plot + Spike count plot + readout plot
-                    "dsrp" -> Dvs plot + Spike count plot + readout plot + power monitor plot 
+            add_readout_plot: bool (defaults to False)
+                If set true adds a readout plot to the GUI
+            add_power_monitor_plot: bool (defaults to False)
+                If set true adds a power monitor plot to the GUI.
             spike_collection_interval: int (defaults to 500) (in milliseconds)
                 Spike collection is done using a low-pass filter with a window size.
                 This parameter sets the window size of the spike collection 
@@ -92,7 +90,13 @@ class DynapcnnVisualizer:
         self.readout_images = readout_images
         self.feature_count = feature_count
         self.dvs_shape = dvs_shape
-        self.gui_type = gui_type
+
+        # Modify the GUI type based on the parameters
+        self.gui_type = "ds" 
+        if add_readout_plot:
+            self.gui_type += "r"
+        if add_power_monitor_plot:
+            self.gui_type += "p"
 
         # Spike count layer components
         self.spike_collection_interval = spike_collection_interval
@@ -475,15 +479,15 @@ class DynapcnnVisualizer:
         
         ## Readout node
         if "r" in self.gui_type:
-            jit_readout_node = JitReadoutNode(
-                default_return_value=self.readout_default_return_value,
-                n_spikes_threshold=self.readout_prediction_threshold
-            )
-            self.streamer_graph.sequential([ 
+            (_, majority_readout_node, _) = self.streamer_graph.sequential([ 
                 spike_collection_node, 
-                jit_readout_node.get_filter(),
+                samna.graph.MajorityReadoutNode(),
                 streamer_node 
             ])
+            majority_readout_node.set_feature_count(self.feature_count)
+            majority_readout_node.set_default_feature(self.readout_default_return_value)
+            # majority_readout_node.set_threshold_low()
+            # majority_readout_node.set_threshold_high()
         
         ## Readout layer visualization
         if "o" in self.gui_type:
@@ -516,26 +520,6 @@ class DynapcnnVisualizer:
     def stop(self):
         self.streamer_graph.stop()
 
-class JitReadoutNode:
-    def __init__(
-        self,
-        default_return_value: int,
-        n_spikes_threshold: int
-    ):
-        self.default_return_value = default_return_value
-        self.n_spikes_threshold = n_spikes_threshold
-        self.filter = samna.graph.JitFilter(
-            'JitReadoutNode', 
-            self.get_source()
-        ) 
-    
-    def get_source(self):
-        raise NotImplementedError("Work in progress!")
-        # source_code = """"""
-        # return source_code
-    
-    def get_filter(self):
-        return self.filter
 
 def get_free_tcp_port():
     """Returns a free tcp port.
@@ -548,97 +532,3 @@ def get_free_tcp_port():
     port = free_socket.getsockname()[1] # get port
     free_socket.close()
     return port
-
-# --- These will be removed after their functionality is added
-# --- to the `JitReadoutNode` class.
-def generate_ui_readout_event(predicted_class: int):
-    # TODO: To be deleted.
-    """Make a readout event for samna interface and send it in a list.
-    Args:
-        predicted_class: int 
-            Predicted class index
-    Returns:
-        List[samna.ui.Readout]: Samna UI Readout Type event with given feature
-    """
-    e = samna.ui.Readout()
-    e.feature = predicted_class 
-    return [e]
-
-def find_max_in_dictionary(feature_dictionary):
-    # TODO: To be deleted
-    """Find the maximum value of all keys in the dictionary and return both 
-    the key and value
-
-    Args:
-        feature_dictionary (Dict[int, int]): 
-            Dictionary that contains (int, int) pairs of feature number 
-            and number of recorded spikes
-
-    Returns:
-        Tuple(int, int): Feature number and number of recorded spikes
-    """
-    max_feature = 0
-    max_n_spikes = 0
-    for feature, n_spikes in feature_dictionary.items():
-        if n_spikes > max_n_spikes:
-            max_feature = feature
-            max_n_spikes = n_spikes
-    return max_feature, max_n_spikes
-
-    
-class ReadoutCallback:
-    # TODO: To be deleted
-    def __init__(
-        self,
-        default_return_value: int,
-        n_spikes_threshold: int
-    ):
-        self.default_return_value = default_return_value
-        self.n_spikes_threshold = n_spikes_threshold
-    
-    def __call__(
-        self, 
-        output_events
-    ):
-        returned_features = {}
-        for event in output_events:
-            # only take into account network output events
-            if hasattr(event, "feature"):
-                if event.feature in returned_features:
-                    # if the feature has already been seen before.
-                    returned_features[event.feature] += 1
-                else:
-                    # if the feature is encountered for the first time.
-                    returned_features[event.feature] = 1
-        max_feature, max_n_events = find_max_in_dictionary(returned_features)
-        if max_n_events > self.n_spikes_threshold:
-            # if there are sufficient events for prediction
-            return generate_ui_readout_event(max_feature)
-        else:
-            # else return the default class 
-            return generate_ui_readout_event(self.default_return_value) 
-
-def graceful_shutdown(
-    graph: samna.graph.EventFilterGraph, 
-    readout_node: samna.graph.node.ReadoutNode, 
-    signal, 
-    frame
-):
-    # TODO: To be deleted
-    """The signal handler to close the readout nodes first and then the graphs.
-    Note: This function should be called as a partial by Python's own signal class.
-    
-    Args:
-        input_graph (samna.graph.EventFilterGraph): 
-            Graph that connects the sensor to the clustering algorithm.
-        output_graph (samna.graph.EventFilterGraph): 
-            Graph that connects the clustering algorithm back into the chip.
-        readout_nodes (List[samna.graph.node.*CustomFilterNode]): 
-            A list of readout nodes that may be used in the script.
-        signal: Signals corresponding to signal events such as (CTRL+C)
-        frame : Frame of the signal.
-    """
-    readout_node.stop()
-    graph.stop()
-    print('Shutting down interface!')
-    exit(0)
