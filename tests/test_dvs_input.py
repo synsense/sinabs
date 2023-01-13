@@ -105,7 +105,7 @@ def test_dvs_no_pooling():
         verify_dvs_config(
             config,
             input_shape=INPUT_SHAPE,
-            destination=target_layers[0] if dvs_input else None,
+            destination=target_layers[0],
             dvs_input=dvs_input,
         )
 
@@ -271,10 +271,10 @@ def test_dvs_mirroring():
             snn.eval()
 
             # - SPN generation
-            spn = DynapcnnNetwork(snn)
+            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
             # - Compare snn and spn outputs
-            spn_float = DynapcnnNetwork(snn, discretize=False)
+            spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
             snn_out = snn(input_data).squeeze()
             spn_out = spn_float(input_data).squeeze()
             assert torch.equal(snn_out.detach(), spn_out)
@@ -307,10 +307,10 @@ def test_dvs_crop():
             snn.eval()
 
             # - SPN generation
-            spn = DynapcnnNetwork(snn)
+            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
             # - Compare snn and spn outputs
-            spn_float = DynapcnnNetwork(snn, discretize=False)
+            spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
             snn_out = snn(input_data).squeeze()
             spn_out = spn_float(input_data).squeeze()
             assert torch.equal(snn_out.detach(), spn_out)
@@ -327,3 +327,40 @@ def test_dvs_crop():
                 dvs_input=dvs_input,
                 merge_polarities=merge_polarities,
             )
+
+
+def test_whether_dvs_mirror_cfg_is_all_switched_off():
+    from sinabs.layers import IAFSqueeze, SumPool2d
+    from torch import nn
+    from sinabs.backend.dynapcnn import DynapcnnNetwork
+
+    snn = nn.Sequential(
+        nn.Conv2d(in_channels=1,
+                  out_channels=2,
+                  kernel_size=(16, 16),
+                  stride=(2, 2),
+                  padding=(0, 0),
+                  bias=False),
+        IAFSqueeze(min_v_mem=-1.0, batch_size=1))
+
+    snn_with_pool = nn.Sequential(
+        SumPool2d(kernel_size=(1, 1)),
+        nn.Conv2d(in_channels=1,
+                  out_channels=2,
+                  kernel_size=(16, 16),
+                  stride=(2, 2),
+                  padding=(0, 0),
+                  bias=False),
+        IAFSqueeze(min_v_mem=-1.0, batch_size=1))
+
+    for model in [snn, snn_with_pool]:
+
+        for dvs_input in [True, False]:
+
+            dynapcnn = DynapcnnNetwork(snn=model, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True)
+            samna_cfg = dynapcnn.make_config(device="speck2edevkit")
+
+            assert samna_cfg.dvs_layer.pass_sensor_events == dvs_input
+            assert samna_cfg.dvs_layer.mirror.x is False
+            assert samna_cfg.dvs_layer.mirror.y is False
+            assert samna_cfg.dvs_layer.mirror_diagonal is False

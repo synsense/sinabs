@@ -102,7 +102,12 @@ class DynapcnnNetwork(nn.Module):
         )  # Ignore the channel dimension
         if self.compatible_layers:
             if not isinstance(self.compatible_layers[0], DVSLayer):
+                # We also need to add a DVSLayer at the very beginning to configure the hardware's DVS layer
                 self.compatible_layers = [dvs_layer] + self.compatible_layers
+            else:
+                # if the 1st layer of self.compatible_layers is already a DVSLayer instance
+                # we only need to reset the "disable_pixel_array" attribute based on the dvs_input flag
+                self.compatible_layers[0].disable_pixel_array = (not self.dvs_input)
         else:
             # No layers initialized
             self.compatible_layers = [dvs_layer]
@@ -389,8 +394,10 @@ class DynapcnnNetwork(nn.Module):
 
         """
         summary = {}
-        summary.update({k: list() for k in self.sequence[0].memory_summary().keys()})
-        for lyr in self.sequence:
+
+        dynapcnn_layers = [lyr for lyr in self.sequence if isinstance(lyr, DynapcnnLayer)]
+        summary.update({k: list() for k in dynapcnn_layers[0].memory_summary().keys()})
+        for lyr in dynapcnn_layers:
             lyr_summary = lyr.memory_summary()
             for k, v in lyr_summary.items():
                 summary[k].append(v)
