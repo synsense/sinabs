@@ -16,6 +16,7 @@ device_types = {
     "speck2btiny": "Speck2bDevKitTiny",
     "speck2e": "Speck2eTestBoard",  # with a capital B for board
     "speck2edevkit": "Speck2eDevKit",
+    "speck2fcharacter": "Speck2fCharacterizationBoard",
     "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
