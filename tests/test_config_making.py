@@ -35,11 +35,19 @@ hardware_compatible_model = DynapcnnNetwork(
 
 
 def test_zero_initial_states():
-    config = hardware_compatible_model.make_config("auto", device="dynapcnndevkit")
-    for idx, lyr in enumerate(config.cnn_layers):
-        initial_value = torch.tensor(lyr.neurons_initial_value)
+    for devkit in [
+        "dynapcnndevkit",
+        "speck2btiny",
+        "speck2e",
+        "speck2edevkit",
+        "speck2fcharacter"
 
-        shape = initial_value.shape
-        zeros = torch.zeros(shape, dtype=torch.int)
+    ]:
+        config = hardware_compatible_model.make_config("auto", device=devkit)
+        for idx, lyr in enumerate(config.cnn_layers):
+            initial_value = torch.tensor(lyr.neurons_initial_value)
 
-        assert initial_value.all() == zeros.all(), f"Initial values of layer{idx} neuron states is not zeros!"
+            shape = initial_value.shape
+            zeros = torch.zeros(shape, dtype=torch.int)
+
+            assert initial_value.all() == zeros.all(), f"Initial values of layer{idx} neuron states is not zeros!"
