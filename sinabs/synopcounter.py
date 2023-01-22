@@ -102,7 +102,6 @@ class SNNAnalyzer:
                     bias=False,
                 )
                 deconvolve.weight.requires_grad = False
-                # with torch.no_grad():
                 deconvolve.weight.data = torch.ones_like(deconvolve.weight)
                 layer.synops = 0
                 layer.n_samples = 0
@@ -122,6 +121,11 @@ class SNNAnalyzer:
             handle.remove()
 
     def get_layer_statistics(self) -> dict:
+        """Outputs a dictionary with statistics for each individual layer.
+
+        The statistics such as firing rate per neuron, the number of neurons or synops are averaged
+        across batches.
+        """
         spike_dict = {}
         spike_dict["spiking"] = {}
         spike_dict["parameter"] = {}
@@ -175,6 +179,10 @@ class SNNAnalyzer:
         return spike_dict
 
     def get_model_statistics(self):
+        """Outputs a dictionary with statistics that are summarised across all layers.
+
+        The statistics such as firing rate per neuron or synops are averaged across batches.
+        """
         stats_dict = {}
         firing_rates = []
         synops = 0.0
