@@ -1,0 +1,15 @@
+# Scaling parameters for rate-coded conversion to SNNs
+When training a convolutional neural network (CNN) on binned frames of your event inputs to then convert the network to an SNN, the different scales of outputs in your CNN layers might make it difficult for the SNN to perform properly. Sometimes you may run into a problem where you deal with very low or high output in your converted SNN as soon as you start feeding the actual events. This is why weight normalization in your CNN is used so that the maximum values across your CNN are roughly equal to the spike threshold in your SNN. 
+
+Let's assume for the moment a single input pixel in the first layer and identity weights. The input frame was binned from 10 events, so is a float of 10. The output of the first CNN layer is therefore 10. Now we need to normalize the activity across all CNN layers to a maximum of 1. This is because otherwise we would have troubles representing very small and very large CNN values in the SNN. This process is described in a [paper](https://www.frontiersin.org/articles/10.3389/fnins.2017.00682/full).
+The output of the first layer is one, for the frame that contains 10 events. After conversion to SNN, we feed the events individually. Each event increases the membrane potential by 1/10 because all inputs are integrated over time. But the threshold is 1, so the layer would only fire at the very last event. At that point, the end of the recording, the signal has progressed only to the second layer!
+So because the output of a spiking layer is heavily quantized, the signal has issues propagating through the network. By scaling up the weights, we ensure that more spikes are output and therefore the information can flow.
+
+There is not one ideal scaling factor for the weights, as this will depend on many parameters such as the spike rate in your dataset, your network depth, your spike threshold and many more. One technique is to scale the weights of the first layer gradually until the SNN outputs enough spikes at the last layer. In Sinabs, a neuron can spike multiple times per time step per default (uses sinabs.activation.MultiSpike), which means that in theory you can crank up the scale of the first layer considerably to alleviate the effect of the heavy quantization that spiking neurons cause. This however has the drawback that you increase the overall amount of spikes, which is not what we want in our SNN, because we really want sparse activation ideally! So the weight scaling factor of the first layer is a trade-off between network performance and overall firing rate. 
+
+As a summary, try the following:
+
+* Train your CNN on binned frames of events (or images directly)
+* Normalise the activations of the CNN (using sinabs.utils.normalise_weights)
+* Convert the CNN to an SNN using sinabs.from_model.from_torch
+* Scale up the weights of the first layer by different factors and check the accuracy for your test set! It is likely that you'll need to scale the first layer by a factor of 2-10 to get good performacne
