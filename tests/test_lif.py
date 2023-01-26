@@ -297,7 +297,7 @@ def test_lif_norm_input_with_synapse(tau_syn):
     # Different tau_mem between 10 and 100
     tau_mem = (torch.rand(n_neurons) * 90) + 10
     input_current = torch.rand((batch_size, time_steps, n_neurons))
-    # Very high spike threshold
+    # Very high spike threshold to prevent model from spiking (we need pre-spike v_mem)
     spike_threshold = 1e6
 
     layer = LIF(
