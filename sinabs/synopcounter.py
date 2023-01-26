@@ -54,7 +54,17 @@ def synops_hook(deconvolve, self, input_, output):
 
 
 class SNNAnalyzer:
-    """Helper class to acquire statistics for spiking and parameter layers at the same time.
+    """Helper class to acquire statistics for spiking and parameter layers at the same time. To
+    calculate the number of synapses between neurons accurately, a simple scaling factor based on
+    the kernel size is not enough, as neurons on the edges of the input will have a different
+    amount of connections as neurons in the center. This is why we make use of a transposed
+    convolution layer to calculate this synaptic connection map once. The amount of synapses
+    between two layers depends on all parameters of a conv layer such as kernel size, stride,
+    groups etc. Transposed conv will take all those parameters into account and 'reproject' the
+    output of a conv layer. As long as the spatial dimensions don't change during training, we can
+    reuse the same connection map, which is a tensor of the same dimensions as the layer output. We
+    can therefore calculate the number of synaptic operations accurately for each layer by
+    multiplying the respective connection map with the output.
 
     Parameters:
         model: Your PyTorch model.
@@ -151,8 +161,8 @@ class SNNAnalyzer:
             if hasattr(module, "n_neurons"):
                 spike_dict["spiking"][name].update({"n_neurons": module.n_neurons})
 
-            # synops statistics
             if isinstance(module, torch.nn.AvgPool2d):
+                # Here we need to scale the amount of synops based on the kernel size.
                 if module.kernel_size != module.stride:
                     warnings.warn(
                         f"In order for the Synops counter to work accurately the pooling "
