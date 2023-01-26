@@ -291,6 +291,42 @@ def test_lif_firing_rate():
     assert layer.firing_rate > 0
     assert layer.firing_rate == spikes.sum() / (batch_size * time_steps * n_neurons)
 
+@pytest.mark.parametrize("tau_syn", [20.0, None])
+def test_lif_norm_input_with_synapse(tau_syn):
+    batch_size, time_steps, n_neurons = 5, 10, 5
+    # Different tau_mem between 10 and 100
+    tau_mem = (torch.rand(n_neurons) * 90) + 10
+    input_current = torch.rand((batch_size, time_steps, n_neurons))
+    # Very high spike threshold
+    spike_threshold = 1e6
+
+    layer = LIF(
+        spike_threshold=spike_threshold,
+        tau_syn=tau_syn,
+        tau_mem=tau_mem,
+        norm_input=False,
+        record_states=True,
+    )
+    layer_norm = LIF(
+        spike_threshold=spike_threshold,
+        tau_syn=tau_syn,
+        tau_mem=tau_mem,
+        norm_input=True,
+        record_states=True,
+    )
+    spikes = layer(input_current)
+    spikes_norm = layer_norm(input_current)
+
+    alpha_mem = torch.exp(-1.0 / tau_mem)
+    normalization_factor = 1 - alpha_mem
+
+    assert torch.allclose(
+        layer.recordings["v_mem"] * normalization_factor, layer_norm.recordings["v_mem"]
+    )
+    if tau_syn is not None:
+        # synaptic current should not be affected by normalization
+        assert (layer.recordings["i_syn"] == layer_norm.recordings["i_syn"]).all()
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_lif_on_gpu():
