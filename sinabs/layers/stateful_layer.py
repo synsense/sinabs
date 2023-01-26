@@ -55,6 +55,12 @@ class StatefulLayer(torch.nn.Module):
         return True
     
     def handle_state_batch_size_mismatch(self, new_batch_size: int):
+        """Handles the state mismatch based on the new batch size by randomly selecting 
+        `new_batch_size` number of states from the previous batch_size in a repated way.
+        Args:
+            new_batch_size: int
+                New batch size.
+        """
         for name, buffer in self.named_buffers():
             indices = torch.randint(low=0, high=buffer.shape[0], size=(new_batch_size,))
             new_buffer = torch.index_select(buffer, 0, indices) 
