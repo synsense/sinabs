@@ -29,6 +29,43 @@ def test_leaky_squeezed():
     assert membrane_output.sum() > 0
 
 
+def test_leaky_norm_input():
+    # - Make sure outputs are scaled according to normalization factor
+
+    batch_size = 10
+    time_steps = 100
+    trailing_dims = (2, 7, 7)
+    # Different tau_mem between 10 and 100
+    tau_mem = (torch.rand(*trailing_dims) * 90) + 10
+    input_current = torch.rand(batch_size, time_steps, *trailing_dims)
+    layer = ExpLeak(tau_mem=tau_mem, norm_input=False)
+    layer_norm = ExpLeak(tau_mem=tau_mem, norm_input=True)
+    membrane_output = layer(input_current)
+    membrane_output_norm = layer_norm(input_current)
+
+    alpha_mem = torch.exp(-1.0 / tau_mem)
+    normalization_factor = 1 - alpha_mem
+
+    assert torch.allclose(membrane_output * normalization_factor, membrane_output_norm)
+
+    # - Make sure sum under impulse response curve is independent of tau_mem when normalizing
+    # Use more time steps to make sure impulse response has decayed for all neurons
+    batch_size = 2
+    time_steps = 1000
+    layer_norm = ExpLeak(tau_mem=tau_mem, norm_input=True)
+    input_current = torch.zeros((batch_size, time_steps, *trailing_dims))
+    input_current[:, 0] = 1
+
+    # Sum membrane output over time - should be 1 for all dimensions
+    membrane_output_integrated = layer_norm(input_current).sum(1)
+
+    assert torch.allclose(
+        membrane_output_integrated,
+        torch.ones_like(membrane_output_integrated),
+        atol=5e-5,
+    )
+
+
 def test_leaky_membrane_decay():
     batch_size = 10
     time_steps = 100
