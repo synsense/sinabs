@@ -25,7 +25,7 @@ def from_model(
     add_spiking_output: bool = False,
     spike_layer_class: Type = sl.IAFSqueeze,
     backend=None,
-    kwargs_backend: dict = dict(),
+    kwargs_backend: Optional[dict] = None,
 ):
     """Converts a Torch model and returns a Sinabs network object. The modules in the model are
     analyzed, and a copy is returned, with all ReLUs and NeuromorphicReLUs turned into
@@ -65,6 +65,11 @@ def from_model(
         device = next(model.parameters()).device
     except StopIteration:
         device = torch.device("cpu")
+    if kwargs_backend is None:
+        kwargs_backend = dict()
+    if issubclass(spike_layer_class, sl.SqueezeMixin):
+        kwargs_backend["batch_size"] = batch_size
+        kwargs_backend["num_timesteps"] = num_timesteps
 
     def mapper_fn(module):
         return spike_layer_class(
@@ -73,8 +78,6 @@ def from_model(
             reset_fn=reset_fn,
             surrogate_grad_fn=surrogate_grad_fn,
             min_v_mem=min_v_mem,
-            batch_size=batch_size,
-            num_timesteps=num_timesteps,
             **kwargs_backend,
         ).to(device)
 
@@ -95,8 +98,6 @@ def from_model(
                     reset_fn=reset_fn,
                     surrogate_grad_fn=surrogate_grad_fn,
                     min_v_mem=min_v_mem,
-                    batch_size=batch_size,
-                    num_timesteps=num_timesteps,
                     **kwargs_backend,
                 ).to(device),
             )

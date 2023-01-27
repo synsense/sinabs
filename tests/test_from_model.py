@@ -8,72 +8,48 @@ from sinabs.activation import MembraneReset, SingleSpike
 from sinabs.from_torch import from_model
 
 
-def test_reconstruct_image():
-    # generate random image
-    img_shape = (3, 20, 20)
-    image = 255.0 * np.random.random(size=img_shape)
+class CNN(nn.Sequential):
+    def __init__(self):
+        super().__init__(
+            nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False),
+            nn.BatchNorm2d(16, affine=True),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=2),
+            nn.Conv2d(16, 8, kernel_size=(3, 3), bias=True),
+            nn.BatchNorm2d(8, affine=False, track_running_stats=True),
+        )
 
-    # instantiate layer
-    spklayer = sl.Img2SpikeLayer(
-        image_shape=img_shape, tw=10000, max_rate=1000.0, squeeze=True
+
+@pytest.mark.parametrize("spike_layer_class", [sl.IAFSqueeze, sl.IAF])
+def test_network_conversion_basic(spike_layer_class):
+    ann = nn.Sequential(
+        nn.Linear(5, 10),
+        nn.ReLU(),
+    )
+    batch_size, num_timesteps, n_neurons = 2, 10, 5
+    input_ = torch.rand((batch_size, num_timesteps, n_neurons))
+    snn = from_model(
+        ann,
+        input_shape=input_.shape,
+        spike_layer_class=spike_layer_class,
+        batch_size=batch_size,
     )
 
-    spikes = spklayer(torch.Tensor(image))
-    rates = spikes.mean(0).unsqueeze(0)
-
-    # accept errors of 0.025 for numbers in (0, 1), over 10000 tsteps
-    assert np.allclose(rates, image / 255.0, atol=0.025)
+    assert isinstance(snn.spiking_model[1], spike_layer_class)
 
 
-def test_reconstruct_real_numbers():
-    # generate random image
-    input_shape = (3, 20, 20)
-    input_data = 2 * np.random.random(size=input_shape) - 1
-
-    # instantiate layer
-    spklayer = sl.Img2SpikeLayer(
-        image_shape=input_shape,
-        tw=10000,
-        max_rate=1000.0,
-        squeeze=True,
-        negative_spikes=True,
-        norm=1.0,
-    )
-
-    spikes = spklayer(torch.Tensor(input_data))
-    rates = spikes.mean(0).unsqueeze(0)
-
-    # accept errors of 0.025 for numbers in (0, 1), over 10000 tsteps
-    assert np.allclose(rates, input_data, atol=0.025)
-
-
-def test_network_conversion_basic():
-    class CNN(nn.Module):
-        def __init__(self):
-            super(CNN, self).__init__()
-            self.sequence = nn.Sequential(
-                nn.Conv2d(1, 16, kernel_size=(3, 3), bias=False),
-                nn.BatchNorm2d(16, affine=True),
-                nn.ReLU(),
-                nn.AvgPool2d(kernel_size=2),
-                nn.Conv2d(16, 8, kernel_size=(3, 3), bias=True),
-                nn.BatchNorm2d(8, affine=False, track_running_stats=True),
-            )
-
-        def forward(self, x):
-            return self.sequence(x)
-
+def test_network_conversion_advanced():
     input_shape = (1, 28, 28)
 
     cnn = CNN().eval()
 
-    cnn.sequence[1].running_mean = 2.0 * torch.rand(16) - 1.0
-    cnn.sequence[1].running_var = torch.rand(16) + 1.0
-    cnn.sequence[1].weight = nn.Parameter(2 * torch.rand(16) - 1.0)
-    cnn.sequence[1].bias = nn.Parameter(2 * torch.rand(16) - 1.0)
+    cnn[1].running_mean = 2.0 * torch.rand(16) - 1.0
+    cnn[1].running_var = torch.rand(16) + 1.0
+    cnn[1].weight = nn.Parameter(2 * torch.rand(16) - 1.0)
+    cnn[1].bias = nn.Parameter(2 * torch.rand(16) - 1.0)
 
-    cnn.sequence[5].running_mean = 2.0 * torch.rand(8) - 1.0
-    cnn.sequence[5].running_var = torch.rand(8) + 1.0
+    cnn[5].running_mean = 2.0 * torch.rand(8) - 1.0
+    cnn[5].running_var = torch.rand(8) + 1.0
 
     img2spk = sl.Img2SpikeLayer(image_shape=input_shape, tw=1000, norm=1.0)
     snn = from_model(cnn, input_shape=input_shape, batch_size=1)
@@ -84,10 +60,6 @@ def test_network_conversion_basic():
         spk_img = img2spk(img)
         snn_res = snn(spk_img).mean(0)
         cnn_res = cnn(img.unsqueeze(0))
-
-    # import matplotlib.pyplot as plt
-    # plt.plot(snn_res.numpy().ravel(), cnn_res.numpy().ravel(), '.')
-    # plt.show()
 
     assert np.allclose(snn_res, cnn_res, atol=0.025)
 
