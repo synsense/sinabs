@@ -162,7 +162,9 @@ class SNNAnalyzer:
                 spike_dict["spiking"][name].update({"n_neurons": module.n_neurons})
 
             if isinstance(module, torch.nn.AvgPool2d):
-                # Here we need to scale the amount of synops based on the kernel size.
+                # Average pooling scales down the number of counted synops due to the averaging.
+                # We need to correct for that by accumulating the scaling factors and multiplying
+                # them to the counted Synops in the next conv or linear layer
                 if module.kernel_size != module.stride:
                     warnings.warn(
                         f"In order for the Synops counter to work accurately the pooling "
