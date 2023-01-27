@@ -107,10 +107,14 @@ class DynapcnnVisualizer:
 
         # Samna TCP communication ports
         ## Default samna ports
-        self.samna_receiver_port = "33345"
-        self.samna_sender_port = "33346"
+        self.samna_receiver_port = "33335"
+        self.samna_sender_port = "33336"
         ## Visualizer port
         self.samna_visualizer_port = get_free_tcp_port()
+
+        # Initialize samna node for visualization
+        self.samna_node = samna.init_samna(f"tcp://0.0.0.0:{self.samna_receiver_port}", f"tcp://0.0.0.0:{self.samna_sender_port}")
+        time.sleep(1)
     
     @staticmethod
     def parse_feature_names_from_image_names(
@@ -133,10 +137,8 @@ class DynapcnnVisualizer:
         else:
             return None
     
-    @staticmethod
     def create_visualizer_process(
-        sender_endpoint: str,
-        receiver_endpoint: str,
+        self,
         initial_window_scale: Tuple[int, int] = (2, 4),
         visualizer_id: int = 3
     ):
@@ -167,8 +169,8 @@ class DynapcnnVisualizer:
             args=(
                 width_proportion,
                 height_proportion,
-                receiver_endpoint,
-                sender_endpoint,
+                self.samna_node.get_receiver_endpoint(),
+                self.samna_node.get_sender_endpoint(),
                 visualizer_id
             )
         )                
@@ -280,12 +282,10 @@ class DynapcnnVisualizer:
             Tuple[samna.ui.SpikeCountPlot, int]: 
                 A tuple of the plot object and its id.
         """
-        feature_names = list(self.lookup_table.values())
-        feature_count = len(feature_names)
         plot_id = visualizer.plots.add_spike_count_plot(
             "Spike Count Plot",
-            feature_count,
-            feature_names
+            self.feature_count,
+            self.feature_names
         )
         spike_count_plot = getattr(visualizer, f"plot_{plot_id}")
         spike_count_plot.set_layout(*layout)
@@ -425,7 +425,11 @@ class DynapcnnVisualizer:
             )
         
         # Update the feature count before initializing and connecting plots
-        self.update_feature_count(dynapcnn_network)
+        if self.feature_count is None:
+            self.update_feature_count(dynapcnn_network)
+        
+        if self.feature_names is None:
+            self.update_feature_names()
         
         # Create graph and connect network attributes to plots
         ## Determine the port and create the graph
@@ -433,17 +437,17 @@ class DynapcnnVisualizer:
 
         ## Start visualizer and create plots based on parameters.
         remote_visualizer_node = self.create_visualizer_process(
-            sender_endpoint="tcp://0.0.0.0:" + self.samna_sender_port,
-            receiver_endpoint="tcp://0.0.0.0:" + self.samna_sender_port,
+            initial_window_scale=(2, 4),
+            visualizer_id=3
         )
 
         (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(visualizer_node=remote_visualizer_node)
 
         # Streamer graph
-        ## Dvs node
-        (_, _, streamer_node) = self.streamer_graph.sequential([
+        # Dvs node
+        (_, event_type_filter, _, streamer_node) = self.streamer_graph.sequential([
             dynapcnn_network.samna_device.get_model_source_node(),
-            ..., # Here goes JitDvsToViz()
+            samna.graph.JitDvsEventToViz(), # Here goes JitDvsToViz()
             "VizEventStreamer"
         ])
 
@@ -457,8 +461,8 @@ class DynapcnnVisualizer:
         ) = self.streamer_graph.sequential([
             dynapcnn_network.samna_device.get_model_source_node(),
             samna.graph.JitMemberSelect(),
-            samna.graph.JitSpikeCollectionNode(),
-            samna.graph.JitSpikeCountNode(),
+            samna.graph.JitSpikeCollection(),
+            samna.graph.JitSpikeCount(),
             streamer_node 
         ])
         member_filter.set_white_list([last_layer], "layer")
@@ -481,11 +485,12 @@ class DynapcnnVisualizer:
         if "r" in self.gui_type:
             (_, majority_readout_node, _) = self.streamer_graph.sequential([ 
                 spike_collection_node, 
-                samna.graph.MajorityReadoutNode(),
+                samna.graph.MajorityReadout(),
                 streamer_node 
             ])
             majority_readout_node.set_feature_count(self.feature_count)
             majority_readout_node.set_default_feature(self.readout_default_return_value)
+            # TODO: Handle the following parameters
             # majority_readout_node.set_threshold_low()
             # majority_readout_node.set_threshold_high()
         
@@ -513,6 +518,12 @@ class DynapcnnVisualizer:
     def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
         # Find last layer output
         raise NotImplementedError("Work in progress!") 
+    
+    def update_feature_names(self):
+        if self.readout_images:
+            self.feature_names = self.parse_feature_names_from_image_names(readout_image_paths=self.readout_images)
+        else:
+            self.feature_names = [f"{i}" for i in range(len(self.feature_count))]
     
     def start(self):
         self.streamer_graph.start()
