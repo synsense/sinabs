@@ -189,7 +189,7 @@ class LIF(StatefulLayer):
         self.i_syn = state["i_syn"] if alpha_syn is not None else None
         self.recordings = recordings
 
-        self.firing_rate = spikes.sum() / spikes.numel()
+        self.firing_rate = spikes.mean()
         return spikes
 
     @property

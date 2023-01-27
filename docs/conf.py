@@ -39,6 +39,7 @@ nb_execution_excludepatterns = [
     "LeNet_5_EngChinese.ipynb",
     "bptt.ipynb",
     "weight_transfer_mnist.ipynb",
+    "synops_loss_ann.ipynb",
 ]
 # nb_execution_mode = "off"
 
