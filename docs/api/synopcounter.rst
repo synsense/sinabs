@@ -3,10 +3,10 @@ SynOpCounter
 
 .. currentmodule:: sinabs.synopcounter
 
-SNNSynOpCounter
+SNNAnalyzer
 ~~~~~~~~~~~~~~~
 
-.. autoclass:: SNNSynOpCounter
+.. autoclass:: SNNAnalyzer
     :members:
 
 

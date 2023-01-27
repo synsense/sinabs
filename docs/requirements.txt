@@ -1,5 +1,6 @@
-sphinx>=4.0
-sphinx-book-theme
+sphinx>=4.5.0
+sphinx-book-theme>=0.3.3
+pydata-sphinx-theme>=0.8.1
 sphinx-gallery
 myst_nb
 pbr
