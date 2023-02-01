@@ -16,6 +16,7 @@ class ChipFactory:
         "speck2dmini": Speck2DMiniConfigBuilder,
         "speck2e": Speck2EConfigBuilder,
         "speck2edevkit": Speck2EConfigBuilder,
+        "speck2fcharacter": Speck2FConfigBuilder,  # Speck2fCharacterizationBoard
     }
 
     device_name: str
