@@ -434,7 +434,6 @@ class DynapcnnVisualizer:
                     readout_plot = self.add_readout_plot(
                         visualizer_node,
                         layout=layout[2],
-                        images=self.readout_images,
                         **readout_args
                     )
                 except Exception as e:

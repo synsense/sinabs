@@ -42,19 +42,18 @@ ann = nn.Sequential(
 )
 load_result = ann.load_state_dict(torch.load("dvs_gesture_params.pt"), strict=False)
 print(load_result)
-with torch.no_grad():
-    ann[0].weight *= 4 # scale first layer weights to get more activity
 sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 
 input_shape = (2, 128, 128)
 hardware_compatible_model = DynapcnnNetwork(
     sinabs_model.spiking_model.cpu(),
+    dvs_input=True,
     discretize=True,
-    input_shape=input_shape,
+    input_shape=input_shape
 )
 
 hardware_compatible_model.to(
-    device="speck2b",
+    device="speck2edevkit",
     monitor_layers=["dvs", -1],  # Last layer
     chip_layers_ordering="auto"
 )
@@ -66,24 +65,8 @@ visualizer = DynapcnnVisualizer(
     dvs_shape=(128, 128),
     add_power_monitor_plot=True,
     add_readout_plot=True,
-    spike_collection_interval=2000,
+    spike_collection_interval=500,
     feature_count=11,
     readout_images=sorted([os.path.join(icons_folder_path, f) for f in os.listdir(icons_folder_path)])
 )
 visualizer.connect(hardware_compatible_model)
-
-import samna
-import time
-graph = samna.graph.EventFilterGraph()
-(_, evf, buff) = graph.sequential(
-    [
-        hardware_compatible_model.samna_device.get_model_source_node(),
-        samna.graph.JitMemberSelect(),
-        samna.BasicSinkNode_speck2e_event_output_event()
-    ]
-)
-evf.set_white_list([0, 1, 2, 3, 4, 5, 6, 7, 8], "layer")
-while True:
-    evs = buff.get_events()
-    print(len(evs))
-    time.sleep(0.5)
