@@ -1,7 +1,7 @@
 import samna, samnagui
 from multiprocessing import Process
 from typing import List, Tuple, Union, Optional, Dict
-import os, socket
+import socket
 import time
 import warnings
 from functools import partial
@@ -45,9 +45,13 @@ class DynapcnnVisualizer:
         spike_collection_interval: int = 500,
         readout_prediction_threshold: int = 10,
         readout_default_return_value: Optional[int] = None,
+        readout_default_threshold_low: Optional[int] = 0,
+        readout_default_threshold_high: Optional[int] = 32000, 
+        power_monitor_number_of_items: Optional[int] = 3,
         feature_names: Optional[List[str]] = None, 
         readout_images: Optional[List[str]] = None,
-        feature_count: Optional[int] = None
+        feature_count: Optional[int] = None,
+        extra_arguments: Optional[Dict[str, Dict[str, any]]] = None
     ):
         """Quick wrapper around Samna objects to get a basic dynapcnn visualizer.
 
@@ -67,6 +71,12 @@ class DynapcnnVisualizer:
             readout_default_return_value: Optional[int] (defaults to None)
                 Defines the default prediction of the network. Usually used for `other` class in the
                 network.
+            readout_default_threshold_low: Optional[int] (defaults to 0)
+                Default lower threshold value for `MajorityReadoutNode`
+            readout_default_threshold_high: Optional[int] (defaults to int.max())
+                Default higher threshold value for `MajorityReadoutNode`
+            power_monitor_number_of_items: Optional[int] (defaults to 3)
+                Can be set to `3` or `5`
             feature_names: Optional[List[str]] (defaults to None)
                 List of feature names. If this is passed they will be displayed on the spike count plot
                 as output labels
@@ -83,8 +93,21 @@ class DynapcnnVisualizer:
                 If the `feature_names` and `readout_images` was passed, this is not needed. Otherwise this parameter
                 should be passed, so that the GUI knows how many lines should be drawn on the `Spike Count Plot` and
                 `Readout Layer Plot`. 
+            extra_arguments: Optional[Dict[str, Dict[str, any]]] (defaults to None)
+                Extra arguments that can be passed to individual plots. Available keys are:
+                - `spike_count`: Arguments that can be passed to `spike_count` plot.
+                - `readout`: Arguments that can be passed to `readout` plot.
+                - `power_measurement`: Arguments that can be passed `power_measurement` plot.
 
         """
+        # Checks if the configuration passed is valid
+        if add_readout_plot and not readout_images:
+            raise ValueError(
+                "If a readout plot is to be displayed image paths should be passed as a list." + 
+                "The order of the images, should match the model output."
+            )
+            
+        
         # Visualizer layout components
         self.feature_names = feature_names
         self.readout_images = readout_images
@@ -104,6 +127,15 @@ class DynapcnnVisualizer:
         # Readout layer components
         self.readout_prediction_threshold = readout_prediction_threshold
         self.readout_default_return_value = readout_default_return_value
+        self.readout_default_threshold_low = readout_default_threshold_low
+        self.readout_default_threshold_high = readout_default_threshold_high
+
+        # Power monitor components
+        if power_monitor_number_of_items != 3 and power_monitor_number_of_items != 5:
+            warnings.warn("Power monitor number of items can be 3 ('io', 'logic', 'memory') or" + \
+                "5 ('io', 'logic', 'memory', 'vdd', 'vda'). Setting to 3.")
+            power_monitor_number_of_items = 3
+        self.power_monitor_number_of_items = power_monitor_number_of_items
 
         # Samna TCP communication ports
         ## Default samna ports
@@ -111,6 +143,12 @@ class DynapcnnVisualizer:
         self.samna_sender_port = "33336"
         ## Visualizer port
         self.samna_visualizer_port = get_free_tcp_port()
+        
+        # Chip fixed parameters
+        self.dvs_layer_id = 13
+        
+        # Extra plot arguments:
+        self.extra_arguments = extra_arguments
 
         # Initialize samna node for visualization
         self.samna_node = samna.init_samna(f"tcp://0.0.0.0:{self.samna_receiver_port}", f"tcp://0.0.0.0:{self.samna_sender_port}")
@@ -214,7 +252,7 @@ class DynapcnnVisualizer:
         self,
         visualizer,
         layout: Tuple[float, float, float, float],
-        images: List[str]
+        **kwargs
     ):
         """Add a readout plot (image showing the predicted class) to the visualizer 
 
@@ -235,10 +273,16 @@ class DynapcnnVisualizer:
         """
         plot_id = visualizer.plots.add_readout_plot(
             "Readout Plot",
-            images
+            self.readout_images 
         )
         plot = getattr(visualizer, f"plot_{plot_id}")
         plot.set_layout(*layout)
+        for k, v in kwargs.items():
+            try:
+                method = getattr(plot, k)
+                method(v)
+            except:
+                warnings.warn(f"The passed keyword does not exist in `Readout plot`: {k}")
         return (plot, plot_id)
     
     def add_output_prediction_layer_plot():
@@ -258,7 +302,7 @@ class DynapcnnVisualizer:
         Where every time the readout layer has been read, if some output returns True, put an `x` there,
         denoting a prediction
         """
-        raise NotImplementedError("This is not implemented as it has to be supported by samna first!")
+        raise NotImplementedError("Waiting for samna support!")
     
     def add_spike_count_plot(
         self, 
@@ -325,10 +369,14 @@ class DynapcnnVisualizer:
         """
 
         # Set up power measurement plot
+        if self.power_monitor_number_of_items == 3:
+            item_names = ["io", "ram", "logic"]
+        elif self.power_monitor_number_of_items == 5:
+            item_names = ["io", "ram", "logic", "vdd", "vda"]
         power_measurement_plot_id = visualizer.plots.add_power_measurement_plot(
             "Power monitor plot",
-            3,
-            ["io", "ram", "logic"]
+            self.power_monitor_number_of_items,
+            item_names 
         )
         power_measurement_plot = getattr(visualizer, f"plot_{power_measurement_plot_id}")
         power_measurement_plot.set_layout(*layout)
@@ -345,6 +393,7 @@ class DynapcnnVisualizer:
                 method(v)
             except:
                 warnings.warn(f"The passed keyword does not exist in `Power Monitor Plot`: {k}")
+        return (power_measurement_plot, power_measurement_plot_id) 
 
     def create_plots(
             self, 
@@ -367,32 +416,50 @@ class DynapcnnVisualizer:
                 shape=self.dvs_shape, 
                 layout=layout[0] 
             )
+            if self.extra_arguments and "spike_count" in self.extra_argument.keys():
+                spike_count_plot_args = self.extra_arguments["spike_count"]
+            else:
+                spike_count_plot_args = {}
             spike_count_plot = self.add_spike_count_plot(
                 visualizer_node, 
-                layout=layout[1]
+                layout=layout[1],
+                **spike_count_plot_args
             )
             if "r" in self.gui_type:
                 try:
+                    if self.extra_arguments and "readout" in self.extra_arguments.keys():
+                        readout_args = self.extra_arguments["readout"]
+                    else:
+                        readout_args = {}
                     readout_plot = self.add_readout_plot(
-                    visualizer_node,
-                    layout=layout[2],
-                    images=self.readout_images
+                        visualizer_node,
+                        layout=layout[2],
+                        images=self.readout_images,
+                        **readout_args
                     )
-                except:
+                except Exception as e:
                     readout_plot = None
                     print(f"Either the layout or the images are missing in the readout plot. ")
+                    print(e)
             else:
                 readout_plot = None
             
             if "p" in self.gui_type:
                 try:
-                    power_monitor_plot = self.add_power_monitor_plot(visualizer_node, layout=layout[3])
+                    if self.extra_arguments and "power_measurement" in self.extra_arguments.keys():
+                        power_measurement_kwargs = self.extra_arguments["power_measurement"]
+                    else:
+                        power_measurement_kwargs = {}
+                    power_monitor_plot = self.add_power_monitor_plot(
+                        visualizer_node, 
+                        layout=layout[3],
+                        **power_measurement_kwargs
+                    )
                 except:
                     power_monitor_plot = None
                     print(f"Layout missing the power monitor plot. ")
             else:
-                readout_plot = None
-
+                power_monitor_plot = None
             
             return dvs_plot, spike_count_plot, readout_plot, power_monitor_plot
     
@@ -424,12 +491,17 @@ class DynapcnnVisualizer:
                 "contain key `-1` or the last layer `idx`. "
             )
         
+        print("Connecting: This process may take up to 10 seconds!")
+        
         # Update the feature count before initializing and connecting plots
         if self.feature_count is None:
             self.update_feature_count(dynapcnn_network)
         
         if self.feature_names is None:
             self.update_feature_names()
+        
+        if self.readout_default_return_value is None:
+            self.update_default_readout_return_value()
         
         # Create graph and connect network attributes to plots
         ## Determine the port and create the graph
@@ -445,27 +517,36 @@ class DynapcnnVisualizer:
 
         # Streamer graph
         # Dvs node
-        (_, event_type_filter, _, streamer_node) = self.streamer_graph.sequential([
+        (_, dvs_member_filter, _, streamer_node) = self.streamer_graph.sequential([
             dynapcnn_network.samna_device.get_model_source_node(),
-            samna.graph.JitDvsEventToViz(), # Here goes JitDvsToViz()
+            samna.graph.JitMemberSelect(),
+            samna.graph.JitDvsEventToViz(samna.ui.Event), 
             "VizEventStreamer"
         ])
+        dvs_member_filter.set_white_list([13], "layer")
 
         ## Spike count node
+        
+        # NOTE: This is a work-around suggested by `sys-int` team.
+        # NOTE: This should be removed after there is a better implementation in samna.
+        source_node_class = dynapcnn_network.samna_device.get_model_source_node()
+        chip_name_in_samna = source_node_class.__class__.__name__.split("_")[1]
+        spike_event_class = getattr( getattr( getattr(samna, chip_name_in_samna), "event" ), "Spike")
+        
         (
             _, 
-            member_filter, 
+            last_layer_member_filter, 
             spike_collection_node, 
             spike_count_node, 
             streamer_node
         ) = self.streamer_graph.sequential([
             dynapcnn_network.samna_device.get_model_source_node(),
             samna.graph.JitMemberSelect(),
-            samna.graph.JitSpikeCollection(),
-            samna.graph.JitSpikeCount(),
+            samna.graph.JitSpikeCollection(spike_event_class),
+            samna.graph.JitSpikeCount(samna.ui.Event),
             streamer_node 
         ])
-        member_filter.set_white_list([last_layer], "layer")
+        last_layer_member_filter.set_white_list([last_layer], "layer")
         spike_collection_node.set_interval_milli_sec(self.spike_collection_interval)
         spike_count_node.set_feature_count(self.feature_count)
 
@@ -485,18 +566,17 @@ class DynapcnnVisualizer:
         if "r" in self.gui_type:
             (_, majority_readout_node, _) = self.streamer_graph.sequential([ 
                 spike_collection_node, 
-                samna.graph.MajorityReadout(),
+                samna.graph.JitMajorityReadout(samna.ui.Event),
                 streamer_node 
             ])
             majority_readout_node.set_feature_count(self.feature_count)
             majority_readout_node.set_default_feature(self.readout_default_return_value)
-            # TODO: Handle the following parameters
-            # majority_readout_node.set_threshold_low()
-            # majority_readout_node.set_threshold_high()
+            majority_readout_node.set_threshold_low(self.readout_default_threshold_low)
+            majority_readout_node.set_threshold_high(self.readout_default_threshold_high)
         
         ## Readout layer visualization
         if "o" in self.gui_type:
-            raise NotImplementedError("A lot of work in progress!")
+            raise NotImplementedError("Work in progress!")
         
         streamer_node.set_streamer_endpoint(f"tcp://0.0.0.0:{self.samna_visualizer_port}")
         
@@ -513,17 +593,31 @@ class DynapcnnVisualizer:
         ## Connect power monitor visualizer to its plot
         if "p" in self.gui_type:
             remote_visualizer_node.splitter.add_destination("measurement", remote_visualizer_node.plots.get_plot_input(power_plot[1]))
-
+        
+        self.start()
+        print("Set up completed!")
+        
 
     def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
-        # Find last layer output
-        raise NotImplementedError("Work in progress!") 
+        """Extract feature count from the last layer and pass it to GUI
+        Args:
+            dynapcnn_network: DynapcnnNetwork
+                sinabs-dynapcnn, `DynapcnnNetwork` object.
+        """
+        last_layer = dynapcnn_network.chip_layers_ordering[-1]
+        config = dynapcnn_network.samna_config
+        model_output_feature_count = config.cnn_layers[last_layer].dimensions.output_shape.feature_count
+        self.feature_count = model_output_feature_count 
     
     def update_feature_names(self):
         if self.readout_images:
             self.feature_names = self.parse_feature_names_from_image_names(readout_image_paths=self.readout_images)
         else:
             self.feature_names = [f"{i}" for i in range(len(self.feature_count))]
+    
+    def update_default_readout_return_value(self):
+        """For now last class is the default"""
+        self.readout_default_return_value = self.feature_count - 1
     
     def start(self):
         self.streamer_graph.start()
