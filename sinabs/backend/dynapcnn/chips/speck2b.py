@@ -18,7 +18,7 @@ class Speck2BConfigBuilder(DynapcnnConfigBuilder):
         return SpeckConfiguration()
     
     @classmethod
-    def get_input_event(cls):
+    def get_input_buffer(cls):
         return samna.BasicSourceNode_speck2b_event_input_event()
 
     @classmethod
