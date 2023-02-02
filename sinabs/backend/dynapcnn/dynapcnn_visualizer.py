@@ -9,9 +9,6 @@ from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 class DynapcnnVisualizer:
     """
-    cluster_dvs_layout = (0, 0, 0.33, 1)
-    cluster_readout_layout = (0.66, 0, 1, 1)
-    cluster_spike_count_layout = (0.33, 0, 0.66, 1)
     (tlx, tly, brx, bry)
     """
     # Default layouts
@@ -23,7 +20,7 @@ class DynapcnnVisualizer:
         (0, 0, 0.5, 0.66), (0.5, 0, 1, 0.66), None, (0, 0.66, 1, 1)
     ]
     DEFAULT_LAYOUT_DSR = [
-        (0, 0, 0.33, 1), (0.33, 0, 0.66, 1), (0, 0.66, 1, 1), None
+        (0, 0, 0.33, 1), (0.33, 0, 0.66, 1), (0.66, 0, 1, 1), None
     ]
     
     DEFAULT_LAYOUT_DSRP = [
@@ -612,7 +609,7 @@ class DynapcnnVisualizer:
         if self.readout_images:
             self.feature_names = self.parse_feature_names_from_image_names(readout_image_paths=self.readout_images)
         else:
-            self.feature_names = [f"{i}" for i in range(len(self.feature_count))]
+            self.feature_names = [f"{i}" for i in range(self.feature_count)]
     
     def update_default_readout_return_value(self):
         """For now last class is the default"""

@@ -66,7 +66,6 @@ visualizer = DynapcnnVisualizer(
     add_power_monitor_plot=True,
     add_readout_plot=True,
     spike_collection_interval=500,
-    feature_count=11,
     readout_images=sorted([os.path.join(icons_folder_path, f) for f in os.listdir(icons_folder_path)])
 )
 visualizer.connect(hardware_compatible_model)
