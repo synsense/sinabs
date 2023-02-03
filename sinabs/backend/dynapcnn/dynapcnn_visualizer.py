@@ -86,6 +86,7 @@ class DynapcnnVisualizer:
                 NOTE: Class numbers should match that of the network output channels. This is so that they
                 can be sorted properly. At each operating system the behaviour in which the extraction of the
                 images from a folder may differ.
+                NOTE: For now only `.png` images are supported.
             feature_count: Optional[int] (defaults to None)
                 If the `feature_names` and `readout_images` was passed, this is not needed. Otherwise this parameter
                 should be passed, so that the GUI knows how many lines should be drawn on the `Spike Count Plot` and
