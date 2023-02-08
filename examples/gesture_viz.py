@@ -62,6 +62,7 @@ icons_folder_path = str(os.path.abspath(__file__)).split("/")[:-1]
 icons_folder_path = os.path.join("/", os.path.join(*icons_folder_path),"icons")
 
 visualizer = DynapcnnVisualizer(
+    window_scale=(4, 8),
     dvs_shape=(128, 128),
     add_power_monitor_plot=True,
     add_readout_plot=True,
