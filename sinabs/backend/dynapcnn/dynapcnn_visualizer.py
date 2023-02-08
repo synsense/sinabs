@@ -36,6 +36,7 @@ class DynapcnnVisualizer:
 
     def __init__(
         self,
+        window_scale: Tuple[int, int] = (4, 8),
         dvs_shape: Tuple[int, int] = (128, 128),  # height, width
         add_readout_plot: bool = False,
         add_power_monitor_plot: bool = False,
@@ -53,6 +54,8 @@ class DynapcnnVisualizer:
         """Quick wrapper around Samna objects to get a basic dynapcnn visualizer.
 
         Args:
+            window_scale: Tuple[int, int] (defaults to (4, 8))
+                Scale of window based on a 16/9 monitor layout. (in height, width)
             dvs_shape (Tuple[int, int], optional): 
                 Shape of the DVS sensor in (height, width). 
                 Defaults to (128, 128) -- Speck sensor resolution.
@@ -107,6 +110,7 @@ class DynapcnnVisualizer:
             
         
         # Visualizer layout components
+        self.window_scale = window_scale
         self.feature_names = feature_names
         self.readout_images = readout_images
         self.feature_count = feature_count
@@ -175,7 +179,6 @@ class DynapcnnVisualizer:
     
     def create_visualizer_process(
         self,
-        initial_window_scale: Tuple[int, int] = (2, 4),
         visualizer_id: int = 3
     ):
         """Create a samnagui visualizer process
@@ -185,8 +188,6 @@ class DynapcnnVisualizer:
                 Samna node sender endpoint
             receiver_endpoint (str): 
                 Samna node receiver endpoint
-            initial_window_scale (Tuple[int, int], optional): 
-                Initial scale of one visualizer window in (height, width). Defaults to (2, 4).
             visualizer_id (int, optional): 
                 Id of the visualizer node to be created. 
                 Defaults to 3. -- samna default 
@@ -195,9 +196,8 @@ class DynapcnnVisualizer:
             samna.submodule: 
                 Samna remote visualizer node.
         """
-        # Height and width based on the proportion to a 16:9 screen.
-        height_proportion = 1/9 * initial_window_scale[0]
-        width_proportion = 1/16 * initial_window_scale[1]
+        height_proportion = 1/9 * self.window_scale[0]
+        width_proportion = 1/16 * self.window_scale[1]
         
         # Create and start the process
         process = Process(
@@ -505,10 +505,7 @@ class DynapcnnVisualizer:
         self.streamer_graph = samna.graph.EventFilterGraph()
 
         ## Start visualizer and create plots based on parameters.
-        remote_visualizer_node = self.create_visualizer_process(
-            initial_window_scale=(4, 8),
-            visualizer_id=3
-        )
+        remote_visualizer_node = self.create_visualizer_process(visualizer_id=3)
 
         (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(visualizer_node=remote_visualizer_node)
 
