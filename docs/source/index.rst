@@ -26,6 +26,7 @@ Table of contents
    dynapcnn_model
    advanced_concepts
    dangers
+   visualizer
    tutorials
    api/api.rst
    development
