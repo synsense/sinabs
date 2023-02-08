@@ -488,7 +488,7 @@ class DynapcnnVisualizer:
                 "contain key `-1` or the last layer `idx`. "
             )
         
-        print("Connecting: This process may take up to 10 seconds!")
+        print("Connecting: Please wait until the JIT compilation is done, this might take a while. You will get notified on completion.")
         
         # Update the feature count before initializing and connecting plots
         if self.feature_count is None:
@@ -506,7 +506,7 @@ class DynapcnnVisualizer:
 
         ## Start visualizer and create plots based on parameters.
         remote_visualizer_node = self.create_visualizer_process(
-            initial_window_scale=(2, 4),
+            initial_window_scale=(4, 8),
             visualizer_id=3
         )
 

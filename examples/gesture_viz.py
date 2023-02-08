@@ -40,7 +40,7 @@ ann = nn.Sequential(
     # core 8
     nn.Linear(128, 11, bias=False),
 )
-load_result = ann.load_state_dict(torch.load("dvs_gesture_params.pt"), strict=False)
+load_result = ann.load_state_dict(torch.load("dvs_gesture_params.pt", map_location=torch.device('cpu')), strict=False)
 print(load_result)
 sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 
