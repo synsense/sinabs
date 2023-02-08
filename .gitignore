@@ -12,3 +12,4 @@ data
 .vscode
 .venv
 .coverage
+imgui.ini
