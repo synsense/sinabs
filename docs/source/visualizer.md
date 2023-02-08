@@ -1,17 +1,20 @@
-# Visualizing DynapCNN
+# Visualizing DynapCNN input and output events
 ## Introduction
-Currently the development kits that SynSense provides are mainly used for benchmarking purposes. However, the through our backend library `samna` we do support processing of events and interpretation of the output in a streaming fashion. `samna` API however is mainly designed and developed for low-level communication with the chips. This sometimes makes it complicated and hard to work with. `samna` also has a package called `samnagui` with which we can do some visualization. Internally, we use it for testing of our models real-time in real-life conditions. 
+Currently the development kits that SynSense provides are mainly used for benchmarking purposes. However, through our backend library `samna` we support processing of events and interpretation of the output in a streaming fashion. `samna` API however is mainly designed and developed for low-level communication with the chips. This sometimes makes it tricky to work with for higher-level functions. `samna` also has a package called `samnagui` with which we can do some visualization. Internally, we use it for testing of our models in real-time and real-life conditions. 
 In order to give users an easy access without having to deal with a lot of boilerplate code and burdensome logic, we implemented a visualizer class.  
+
 ## Available plots in `samnagui`
 There are 4 different plots in `samnagui` that are available for use.
 - <b>Activity Plot:</b> A plot that visualizes the events produced by the on-chip sensor.
 - <b>Line Plot:</b> A plot that allows visualization of the events produced by the model running on the chip. Additionally this is used when we display power consumption measurements.
-- <b>Image Plot:</b> A plot that allows you to display an image. Internally we have used this plot to display an image denoting a predicted output class. <br>
+- <b>Image Plot:</b> A plot that allows you to display an image. Internally we have used this plot to display an image denoting a predicted output class. 
+
 Documentation is available under the following link: [samna-viz-imgui documentation](`https://synsense-sys-int.gitlab.io/samna/reference/viz/imgui/index.html#samna-viz-imgui`)
+
 ## Useful `samna` nodes for visualizing and Just-In-Time (JIT) compiled nodes.
 ### Nodes
 `samna` also comes with implementation of several nodes that are useful for communicating between a `samnagui` visualizer and the chip. <br>
-The ones that are related to DVS events from sensor. With methods:
+Events that are related to DVS events from the sensor are:
 - `DvsEventDecimate`: Eliminating `L` out of `M` events. <br>
 <t>`set_decimation_fraction(M: int, L: int)`
 - `DvsEventRescale`: Rescale events. `x / width` and `y / height`. <br>
@@ -25,11 +28,12 @@ The ones that are related to DVS events from sensor. With methods:
 - `MajorityReadoutNode`: Among the events produced by `SpikeCollectionNode` selects the most active output channel. Used alongside the `ImagePlot`.
 
 These nodes are available for different chips. Further documentation can be found in the following link: [samna-available-filters](https://synsense-sys-int.gitlab.io/samna/filters.html) 
+
 ### Just-In-Time compiled nodes
-The nodes mentioned above are also available for any board under `samna.graph.Jit{nameOfNode}`. 
+The nodes mentioned above are also available for any devboard under `samna.graph.Jit{nameOfNode}`. 
 
 ## Dynapcnn Visualizer
-`DynapcnnVisualizer` class uses the nodes and plots mentioned above in order to use it and provides a good and intuitive interface. An example code-snippet can be found below:
+`DynapcnnVisualizer` class uses the nodes and plots mentioned above in order to use it and provides an intuitive interface. An example code-snippet can be found below:
 
 #### Setup
 ```
@@ -94,7 +98,7 @@ load_result = ann.load_state_dict(torch.load(params_path), strict=False)
 ```
 
 #### Convert to SNN
-Convert to an `SNN` and a `DynapcnnNetwork` using `sinabs` and `sinabs-dynapcnn`. Important!<br>
+When converting to a `DynapcnnNetwork` using `sinabs` and `sinabs-dynapcnn`, please use the following flags:
 - `dvs_input`=`True` has to be set so that the model can receive input from the on-board sensor or an external DVS sensor.
 - `discretize`=`True` has to be set so that the model can be ported to the chip.
 
