@@ -1,5 +1,8 @@
 # Release notes
 
+## v1.2.0 (15/02/2023)
+Included the SNNAnalyzer module to collect model statistics such as number of synops or neurons automatically.
+
 ## v1.0.1 (26/08/2022)
 Mostly making v0.3.x stable, with a revamped documentation that includes a gallery and how-tos!
 
