@@ -46,7 +46,9 @@ def synops_hook(deconvolve, self, input_, output):
         self.num_timesteps = 0
     if isinstance(self, nn.Conv2d):
         with torch.no_grad():
-            connection_map = deconvolve(torch.ones_like(output))
+            connection_map = deconvolve(
+                torch.ones_like(output), output_size=input_.size()
+            )
         self.synops = self.synops + (input_ * connection_map).sum()
     else:
         self.synops = self.synops + input_.sum() * self.fanout
@@ -111,6 +113,7 @@ class SNNAnalyzer:
                     groups=layer.groups,
                     bias=False,
                 )
+                deconvolve.to(layer.weight.device)
                 deconvolve.weight.requires_grad = False
                 deconvolve.weight.data = torch.ones_like(deconvolve.weight)
                 layer.synops = 0

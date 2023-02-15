@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 from torch import nn
 
@@ -201,14 +202,14 @@ def test_snn_analyzer_statistics():
     batch_size = 3
     num_timesteps = 10
     model = nn.Sequential(
-        nn.Conv2d(1, 2, kernel_size=2, bias=False),
+        nn.Conv2d(1, 2, kernel_size=2, padding=3, stride=2, bias=False),
         IAFSqueeze(batch_size=batch_size),
         nn.Conv2d(2, 3, kernel_size=2, bias=False),
         IAFSqueeze(batch_size=batch_size),
     )
 
     analyzer = SNNAnalyzer(model)
-    input_ = torch.rand((batch_size, num_timesteps, 1, 4, 4)) * 100
+    input_ = torch.rand((batch_size, num_timesteps, 1, 16, 16)) * 100
     input_flattended = input_.flatten(0, 1)
     output = model(input_flattended)
     spike_layer_stats = analyzer.get_layer_statistics()["spiking"]
@@ -258,3 +259,13 @@ def test_snn_analyzer_does_not_depend_on_batch_size():
     model_stats_batch_size_2 = analyzer.get_model_statistics()
 
     assert model_stats_batch_size_1["synops"] == model_stats_batch_size_2["synops"]
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_snnanalyzer_on_gpu():
+    linear = nn.Linear(3, 4, bias=False)
+    analyzer = SNNAnalyzer(linear)
+    linear.cuda()
+    input_ = torch.ones((2, 10, 3), device="cuda") * 10
+    linear(input_)
+    model_stats_batch_size_1 = analyzer.get_model_statistics()
