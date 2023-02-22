@@ -49,9 +49,9 @@ def synops_hook(deconvolve, self, input_, output):
             connection_map = deconvolve(
                 torch.ones_like(output), output_size=input_.size()
             )
-        self.synops = self.synops + (input_ * connection_map).sum()
+        self.synops = self.synops.detach() + (input_ * connection_map).sum()
     else:
-        self.synops = self.synops + input_.sum() * self.fanout
+        self.synops = self.synops.detach() + input_.sum() * self.fanout
     self.n_samples = self.n_samples + input_.shape[0]
 
 
@@ -114,16 +114,16 @@ class SNNAnalyzer:
                     bias=False,
                 )
                 deconvolve.to(layer.weight.device)
-                deconvolve.weight.requires_grad = False
                 deconvolve.weight.data = torch.ones_like(deconvolve.weight)
-                layer.synops = 0
+                deconvolve.weight.requires_grad = False
+                layer.synops = torch.tensor(0)
                 layer.n_samples = 0
                 layer.unflattened_shape = unflattened_shape
                 handle = layer.register_forward_hook(partial(synops_hook, deconvolve))
                 self.handles.append(handle)
             elif isinstance(layer, torch.nn.Linear):
                 layer.fanout = layer.out_features
-                layer.synops = 0
+                layer.synops = torch.tensor(0)
                 layer.n_samples = 0
                 layer.unflattened_shape = unflattened_shape
                 handle = layer.register_forward_hook(partial(synops_hook, None))
