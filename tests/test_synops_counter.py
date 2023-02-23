@@ -108,8 +108,8 @@ def test_linear_synops_counter_across_batches():
     analyzer = SNNAnalyzer(model)
     model(input1)
     model(input2)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
 
     # (3+6)/2 spikes * 5 channels
     assert model_stats["synops"] == 22.5
@@ -121,8 +121,8 @@ def test_conv_synops_counter():
     input_ = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
     analyzer = SNNAnalyzer(model)
     model(input_)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
 
     # 1 spike x4, 2 spikes x1, all x5 output channels. Number is averaged across batch size
     assert model_stats["synops"] == 30
@@ -136,8 +136,8 @@ def test_conv_synops_counter_counts_across_inputs():
     analyzer = SNNAnalyzer(model)
     model(input1)
     model(input2)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["parameter"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
 
     assert model_stats["synops"] == 45
     assert layer_stats["synops"] == 45
@@ -249,14 +249,14 @@ def test_snn_analyzer_does_not_depend_on_batch_size():
     analyzer = SNNAnalyzer(linear1)
     input_ = torch.ones((batch_size_1, num_timesteps, 3)) * 10
     linear1(input_)
-    model_stats_batch_size_1 = analyzer.get_model_statistics()
+    model_stats_batch_size_1 = analyzer.get_model_statistics(average=True)
 
     batch_size_2 = 10
     linear2 = nn.Linear(3, 4, bias=False)
     analyzer = SNNAnalyzer(linear2)
     input_ = torch.ones((batch_size_2, num_timesteps, 3)) * 10
     linear2(input_)
-    model_stats_batch_size_2 = analyzer.get_model_statistics()
+    model_stats_batch_size_2 = analyzer.get_model_statistics(average=True)
 
     assert model_stats_batch_size_1["synops"] == model_stats_batch_size_2["synops"]
 

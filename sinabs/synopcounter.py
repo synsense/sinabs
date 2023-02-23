@@ -65,11 +65,11 @@ def synops_hook(self, input_, output):
                 torch.ones_like(output), output_size=input_.size()
             )
             self.connection_map = connection_map.detach()
-        self.synops = (
-            self.synops.detach() + (input_ * self.connection_map.detach()).sum()
-        )
+            self.connection_map.requires_grad = False
+        self.synops = (input_ * self.connection_map).sum()
     else:
-        self.synops = self.synops.detach() + input_.sum() * self.fanout
+        self.synops = input_.sum() * self.fanout
+    self.accumulated_synops = self.accumulated_synops.detach() + self.synops
     self.n_samples = self.n_samples + input_.shape[0]
 
 
@@ -121,6 +121,7 @@ class SNNAnalyzer:
                 handle = layer.register_forward_hook(spiking_hook)
                 self.handles.append(handle)
             if isinstance(layer, torch.nn.Conv2d):
+                layer.accumulated_synops = torch.tensor(0)
                 layer.synops = torch.tensor(0)
                 layer.connection_map = torch.tensor([])
                 layer.n_samples = 0
@@ -128,8 +129,9 @@ class SNNAnalyzer:
                 handle = layer.register_forward_hook(synops_hook)
                 self.handles.append(handle)
             elif isinstance(layer, torch.nn.Linear):
-                layer.fanout = layer.out_features
+                layer.accumulated_synops = torch.tensor(0)
                 layer.synops = torch.tensor(0)
+                layer.fanout = layer.out_features
                 layer.n_samples = 0
                 layer.unflattened_shape = unflattened_shape
                 handle = layer.register_forward_hook(synops_hook)
@@ -139,11 +141,11 @@ class SNNAnalyzer:
         for handle in self.handles:
             handle.remove()
 
-    def get_layer_statistics(self) -> dict:
+    def get_layer_statistics(self, average: bool = False) -> dict:
         """Outputs a dictionary with statistics for each individual layer.
 
-        The statistics such as firing rate per neuron, the number of neurons or synops are averaged
-        across batches.
+        Parameters:
+            average (bool): The statistics such as firing rate per neuron, the number of neurons or synops are averaged across batches.
         """
         spike_dict = {}
         spike_dict["spiking"] = {}
@@ -187,26 +189,32 @@ class SNNAnalyzer:
                 scale_factor = 1
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
+                synops = (
+                    module.accumulated_synops / module.n_samples
+                    if average
+                    else module.synops
+                )
                 spike_dict["parameter"][name] = {
-                    # "fanout_prev": module.fanout,
-                    "synops": module.synops / module.n_samples * scale_factor,
+                    "synops": synops * scale_factor,
                     "num_timesteps": module.num_timesteps,
                     "time_window": module.num_timesteps * self.dt,
-                    "SynOps/s": (module.synops / module.n_samples * scale_factor)
+                    "SynOps/s": synops
+                    * scale_factor
                     / module.num_timesteps
                     / self.dt
                     * 1000,
                 }
         return spike_dict
 
-    def get_model_statistics(self):
+    def get_model_statistics(self, average=False):
         """Outputs a dictionary with statistics that are summarised across all layers.
 
-        The statistics such as firing rate per neuron or synops are averaged across batches.
+        Parameters:
+            average (bool): The statistics such as firing rate per neuron or synops are averaged across batches.
         """
         stats_dict = {}
         firing_rates = []
-        synops = 0.0
+        synops = torch.tensor(0.0)
         for name, module in self.model.named_modules():
             if hasattr(module, "firing_rate_per_neuron"):
                 if module.n_batches > 0:
@@ -217,9 +225,10 @@ class SNNAnalyzer:
                     firing_rates.append(torch.tensor([0.0]))
             if hasattr(module, "synops"):
                 if module.n_samples > 0:
-                    synops = synops + module.synops / module.n_samples
-                else:
-                    synops = 0
+                    if average:
+                        synops = synops + module.accumulated_synops / module.n_samples
+                    else:
+                        synops = synops + module.synops
         if len(firing_rates) > 0:
             stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
         stats_dict["synops"] = synops
