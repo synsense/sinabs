@@ -20,12 +20,14 @@ def spiking_hook(self, input_, output):
     if self.firing_rate_per_neuron == None:
         self.firing_rate_per_neuron = output.mean((0, 1))
     else:
-        self.firing_rate_per_neuron = self.firing_rate_per_neuron + output.mean((0, 1))
-    self.tracked_firing_rate = self.tracked_firing_rate + output.mean()
+        self.firing_rate_per_neuron = (
+            self.firing_rate_per_neuron.detach() + output.mean((0, 1))
+        )
+    self.tracked_firing_rate = self.tracked_firing_rate.detach() + output.mean()
     self.n_batches = self.n_batches + 1
 
 
-def synops_hook(deconvolve, self, input_, output):
+def synops_hook(self, input_, output):
     """Forward hook for parameter layers such as Conv2d or Linear.
 
     Calculates the total amount of input and output and the number of synaptic operations. The
@@ -45,11 +47,27 @@ def synops_hook(deconvolve, self, input_, output):
     else:
         self.num_timesteps = 0
     if isinstance(self, nn.Conv2d):
-        with torch.no_grad():
+        if self.connection_map.shape != input_.shape:
+            deconvolve = nn.ConvTranspose2d(
+                self.out_channels,
+                self.in_channels,
+                kernel_size=self.kernel_size,
+                padding=self.padding,
+                stride=self.stride,
+                dilation=self.dilation,
+                groups=self.groups,
+                bias=False,
+            )
+            deconvolve.to(self.weight.device)
+            deconvolve.weight.data = torch.ones_like(deconvolve.weight)
+            deconvolve.weight.requires_grad = False
             connection_map = deconvolve(
                 torch.ones_like(output), output_size=input_.size()
             )
-        self.synops = self.synops.detach() + (input_ * connection_map).sum()
+            self.connection_map = connection_map.detach()
+        self.synops = (
+            self.synops.detach() + (input_ * self.connection_map.detach()).sum()
+        )
     else:
         self.synops = self.synops.detach() + input_.sum() * self.fanout
     self.n_samples = self.n_samples + input_.shape[0]
@@ -98,35 +116,23 @@ class SNNAnalyzer:
         for layer in self.model.modules():
             if isinstance(layer, sl.StatefulLayer):
                 layer.firing_rate_per_neuron = None
-                layer.tracked_firing_rate = 0
+                layer.tracked_firing_rate = torch.tensor(0)
                 layer.n_batches = 0
                 handle = layer.register_forward_hook(spiking_hook)
                 self.handles.append(handle)
             if isinstance(layer, torch.nn.Conv2d):
-                deconvolve = nn.ConvTranspose2d(
-                    layer.out_channels,
-                    layer.in_channels,
-                    kernel_size=layer.kernel_size,
-                    padding=layer.padding,
-                    stride=layer.stride,
-                    dilation=layer.dilation,
-                    groups=layer.groups,
-                    bias=False,
-                )
-                deconvolve.to(layer.weight.device)
-                deconvolve.weight.data = torch.ones_like(deconvolve.weight)
-                deconvolve.weight.requires_grad = False
                 layer.synops = torch.tensor(0)
+                layer.connection_map = torch.tensor([])
                 layer.n_samples = 0
                 layer.unflattened_shape = unflattened_shape
-                handle = layer.register_forward_hook(partial(synops_hook, deconvolve))
+                handle = layer.register_forward_hook(synops_hook)
                 self.handles.append(handle)
             elif isinstance(layer, torch.nn.Linear):
                 layer.fanout = layer.out_features
                 layer.synops = torch.tensor(0)
                 layer.n_samples = 0
                 layer.unflattened_shape = unflattened_shape
-                handle = layer.register_forward_hook(partial(synops_hook, None))
+                handle = layer.register_forward_hook(synops_hook)
                 self.handles.append(handle)
 
     def __del__(self):
