@@ -149,8 +149,8 @@ def test_spiking_layer_firing_rate():
 
     analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.25
@@ -168,8 +168,8 @@ def test_spiking_layer_firing_rate_across_batches():
     output = layer(input1)
     sinabs.reset_states(layer)
     output = layer(input2)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["spiking"][""]
 
     assert (output == input2).all()
     assert model_stats["firing_rate"] == 0.375
@@ -188,8 +188,8 @@ def test_analyzer_reset():
     sinabs.reset_states(layer)
     analyzer.reset()
     output = layer(input_)
-    model_stats = analyzer.get_model_statistics()
-    layer_stats = analyzer.get_layer_statistics()["spiking"][""]
+    model_stats = analyzer.get_model_statistics(average=True)
+    layer_stats = analyzer.get_layer_statistics(average=True)["spiking"][""]
 
     assert (output == input_).all()
     assert model_stats["firing_rate"] == 0.5
@@ -212,9 +212,9 @@ def test_snn_analyzer_statistics():
     input_ = torch.rand((batch_size, num_timesteps, 1, 16, 16)) * 100
     input_flattended = input_.flatten(0, 1)
     output = model(input_flattended)
-    spike_layer_stats = analyzer.get_layer_statistics()["spiking"]
-    param_layer_stats = analyzer.get_layer_statistics()["parameter"]
-    model_stats = analyzer.get_model_statistics()
+    spike_layer_stats = analyzer.get_layer_statistics(average=True)["spiking"]
+    param_layer_stats = analyzer.get_layer_statistics(average=True)["parameter"]
+    model_stats = analyzer.get_model_statistics(average=True)
 
     # spiking layer checks
     assert (
