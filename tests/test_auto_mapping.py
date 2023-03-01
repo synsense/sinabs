@@ -36,7 +36,7 @@ def test_auto_mapping():
         "speck2btiny",
         "speck2e",
         "speck2edevkit",
-        "speck2fcharacter"
+        "speck2fmodule"
 
     ]:
 

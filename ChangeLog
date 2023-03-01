@@ -1,13 +1,42 @@
 CHANGES
 =======
 
-* modify speck2e test to deploy dummy network
-* added test for killbit
-* test updated to check for type
-* modify speck2e test to deploy dummy network
-* added test for killbit
+* Implementation a test that will create a single neuron on a single core, that receives a single event and outputs a single event
+* edit visualizer.md
+* Added the visualizer documentation to the index.rst
+* Replacing the notebook which cannot spawn a samnagui window with a markdown file
+* Visualizer example updated with the window scale parameter
+* Window scale parameter is now passed to the constructor
+* load model onto CPU and change warning message for JIT compilation
+* exclude Samna visualiser generated file
+* Samna version requirement incremented to cover the latest changes
+* Notebook forgotten connect method added. Readout visualizer only supports .png images. Information regarding to this has been added to the documentation
+* Example notebook with explanations added
+* Minor bugfixes in readout layout and feature name automatic setting to numbers
+* A fully working model
+* (WIP) Apart from one issue on not getting any output from the chip it works
+* (WIP) blocked by problems in samna. Turns out  and  were not tested in samna prior to release. Sys-Int team will be fixing it, then I can fix  in samna. Then all the features, but plotting the readoutpins will function
+* fix errors in using\_radout\_layer.ipynb
+* merge conflicts
+* update ChangeLog
+* modify config making tests can cover different types of devkits
+* add speck2f characterization board support
+* Waiting for sys-int team to provide a JitDvsToViz template directly into samna itself. I implement it myself if it is not ready on monday. Anything related to readout has been removed, as well as the JitReadoutNode. This functionality already exists in  under . The API that uses strings in the front end to create plots have been changed with one that uses boolean flags to create readout and power monitor plots
+* fix errors in tests after init DVSLayer in any case
+* make DVSLayer can be initnitialized in anycase
+* (WIP) For readout we have been using something that has been out of performance, this should be replaced with a proper functionality. In order to support all the chips and cameras ToViz converter filters should be Jitted, for which there is no template in  right now
+* (WIP) Dynapcnn Visualizer initial implementation
+* black formatted
+* renamed test
+
+v1.0.9
+------
+
+* update ChangeLog
 * update figure
 * add a time.sleep statement after dynapcnn network reset-states to wait the config take effect
+* modify speck2e test to deploy dummy network
+* added test for killbit
 * test updated to check for type
 * added checks if the network is empty
 * add spike count visualization notebook into tutorials.rst
@@ -60,6 +89,7 @@ CHANGES
 * add readout layer usage example notebook
 * added galary template, updated config -> sinabs
 * init tutorial file
+* Fix to the issue
 * Change last uint
 * Remove comment
 * Uint64 to int
