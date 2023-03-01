@@ -35,6 +35,7 @@ supported_device_types_for_testing = {
     "speck2btiny": "Speck2bDevKitTiny",
     "speck2e": "Speck2eTestBoard",
     "speck2edevkit": "Speck2eDevKit",
+    "speck2fmodule": "Speck2fModuleDevKit",
     "dynapcnndevkit": "DynapcnnDevKit",
 }
 
