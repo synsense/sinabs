@@ -1,10 +1,10 @@
 import pytest
+import torch
 
 @pytest.mark.parametrize(
     "first_batch_size,second_batch_size", [(2, 4), (4, 2), (2, 2)]
 )
 def test_batch_size_mismatch(first_batch_size, second_batch_size):
-    import torch
     import sinabs.layers as sl
     from copy import copy
 
@@ -47,9 +47,34 @@ def test_batch_size_mismatch(first_batch_size, second_batch_size):
     # previously statement == 0, due to reset for case the cases first_batch_size != second_batch_size
     assert (state_after_second_batch[:min_batch_size, ...] - state_after_first_batch[:min_batch_size, ...]).sum() > 0
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_correct_device():
+    import sinabs.layers as sl
+    
+    # The same test as above
+    n_timesteps = 10
+    spike_threshold = 50
+    tested_state = "v_mem"
+    gpu_device_str = "cuda:0"
+
+    layer = sl.IAF(spike_threshold=spike_threshold)
+    layer.to(gpu_device_str)
+    
+    # Check if the layer is indeed on the gpu
+    for name, buff in layer.named_buffers():
+        assert buff.device.type in gpu_device_str 
+
+    first_batch = torch.ones(size=(2, n_timesteps, 1, 28, 28)).to(gpu_device_str) 
+    second_batch = torch.ones(size=(4, n_timesteps, 1, 28, 28)).to(gpu_device_str)
+
+    first_out = layer(first_batch)
+    # Here it `sometimes` crashed. Especially if the GPU is close to being full. 
+    second_out = layer(second_batch)
+    assert second_out.shape[0] == second_batch.shape[0]
+
+
 
 def test_trailing_dim_change():
-    import torch
     import sinabs.layers as sl
 
     layer = sl.IAF()

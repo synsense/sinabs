@@ -62,7 +62,7 @@ class StatefulLayer(torch.nn.Module):
                 New batch size.
         """
         for name, buffer in self.named_buffers():
-            indices = torch.randint(low=0, high=buffer.shape[0], size=(new_batch_size,))
+            indices = torch.randint(low=0, high=buffer.shape[0], size=(new_batch_size,)).to(buffer.device)
             new_buffer = torch.index_select(buffer, 0, indices) 
             self.register_buffer(name, new_buffer)
     
