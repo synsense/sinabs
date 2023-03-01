@@ -40,7 +40,7 @@ def test_zero_initial_states():
         "speck2btiny",
         "speck2e",
         "speck2edevkit",
-        "speck2fcharacter"
+        "speck2fmodule"
 
     ]:
         config = hardware_compatible_model.make_config("auto", device=devkit)
