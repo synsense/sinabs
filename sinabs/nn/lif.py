@@ -6,7 +6,6 @@ import torch.nn as nn
 from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 
 from . import functional
-from .reshape import SqueezeMixin
 from .stateful_layer import StatefulLayer
 
 
@@ -65,12 +64,11 @@ class LIF(StatefulLayer):
         spike_threshold: torch.Tensor = torch.tensor(1.0),
         spike_fn: Callable = MultiSpike,
         reset_fn: Callable = MembraneSubtract(),
-        surrogate_grad_fn: Callable = SingleExponential(),
         min_v_mem: Optional[float] = None,
+        surrogate_grad_fn: Callable = SingleExponential(),
         train_alphas: bool = False,
         shape: Optional[torch.Size] = None,
         norm_input: bool = True,
-        record_states: bool = False,
     ):
         super().__init__(
             state_names=["v_mem", "i_syn"] if tau_syn is not None else ["v_mem"]
@@ -98,7 +96,6 @@ class LIF(StatefulLayer):
         self.surrogate_grad_fn = surrogate_grad_fn
         self.train_alphas = train_alphas
         self.norm_input = norm_input
-        self.record_states = record_states
         self.min_v_mem = (
             nn.Parameter(torch.as_tensor(min_v_mem), requires_grad=False)
             if min_v_mem
@@ -153,7 +150,7 @@ class LIF(StatefulLayer):
         else:
             return self.tau_syn
 
-    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
+    def forward(self, input_data: torch.Tensor, state: torch.Tensor) -> torch.Tensor:
         """
         Parameters:
             input_data: Data to be processed. Expected shape: (batch, time, ...)
@@ -161,50 +158,22 @@ class LIF(StatefulLayer):
         Returns:
             Output data with same shape as `input_data`.
         """
-        batch_size, time_steps, *trailing_dim = input_data.shape
-
-        # Ensure the state is initialized.
-        if not self.is_state_initialised():
-            self.init_state_with_shape((batch_size, *trailing_dim))
-        
-        if not self.state_has_shape((batch_size, *trailing_dim)):
-            # If the trailing dim has changed, we reinitialize the states.
-            if not self.has_trailing_dimension(trailing_dim):
-                self.init_state_with_shape((batch_size, *trailing_dim))
-            # Otherwise only the batch size has changed.
-            else: 
-                self.handle_state_batch_size_mismatch(batch_size) # with the input batch size
-
-
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
 
-        spikes, state, recordings = functional.lif_forward(
+        spikes, state = functional.lif_forward_single(
             input_data=input_data,
             alpha_mem=alpha_mem,
             alpha_syn=alpha_syn,
-            state=dict(self.named_buffers()),
+            state=state,
             spike_threshold=self.spike_threshold,
             spike_fn=self.spike_fn,
             reset_fn=self.reset_fn,
             surrogate_grad_fn=self.surrogate_grad_fn,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
-            record_states=self.record_states,
         )
-        self.v_mem = state["v_mem"]
-        self.i_syn = state["i_syn"] if alpha_syn is not None else None
-        self.recordings = recordings
-
-        self.firing_rate = spikes.mean()
-        return spikes
-
-    @property
-    def shape(self):
-        if self.is_state_initialised():
-            return self.v_mem.shape
-        else:
-            return None
+        return spikes, state
 
     @property
     def _param_dict(self) -> dict:
@@ -224,10 +193,8 @@ class LIF(StatefulLayer):
             reset_fn=self.reset_fn,
             surrogate_grad_fn=self.surrogate_grad_fn,
             train_alphas=self.train_alphas,
-            shape=self.shape,
             min_v_mem=self.min_v_mem,
             norm_input=self.norm_input,
-            record_states=self.record_states,
         )
         return param_dict
 
@@ -351,39 +318,3 @@ class LIFRecurrent(LIF):
         param_dict = super()._param_dict
         param_dict.update(rec_connect=self.rec_connect)
         return param_dict
-
-
-class LIFSqueeze(LIF, SqueezeMixin):
-    """
-    :class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
-
-    Same as parent :class:`~sinabs.layers.LIF` class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
-    instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with
-    layers that can only take a 4D input, such as convolutional and pooling layers.
-
-    Shape:
-        - Input: :math:`(Batch \\times Time, Channel, Height, Width)` or :math:`(Batch \\times Time, Channel)`
-        - Output: Same as input.
-
-    Attributes:
-        v_mem: The membrane potential resets according to reset_fn for every spike.
-        i_syn: This attribute is only available if tau_syn is not None.
-    """
-
-    def __init__(
-        self,
-        batch_size=None,
-        num_timesteps=None,
-        **kwargs,
-    ):
-        super().__init__(**kwargs)
-        self.squeeze_init(batch_size, num_timesteps)
-
-    def forward(self, input_data: torch.Tensor) -> torch.Tensor:
-        """Forward call wrapper that will flatten the input to and unflatten the output from the
-        super class forward call."""
-        return self.squeeze_forward(input_data, super().forward)
-
-    @property
-    def _param_dict(self) -> dict:
-        return self.squeeze_param_dict(super()._param_dict)
