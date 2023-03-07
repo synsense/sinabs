@@ -222,6 +222,7 @@ class SNNAnalyzer:
         stats_dict = {}
         firing_rates = []
         synops = torch.tensor(0.0)
+        n_neurons = torch.tensor(0.0)
         for name, module in self.model.named_modules():
             if hasattr(module, "firing_rate_per_neuron"):
                 if module.n_batches > 0:
@@ -238,9 +239,12 @@ class SNNAnalyzer:
                         synops = synops + module.accumulated_synops / module.n_samples
                     else:
                         synops = synops + module.synops
+            if hasattr(module, "n_neurons"):
+                n_neurons = n_neurons + module.n_neurons
         if len(firing_rates) > 0:
             stats_dict["firing_rate"] = torch.cat(firing_rates).mean()
         stats_dict["synops"] = synops
+        stats_dict["n_spiking_neurons"] = n_neurons.to(synops.device)
         return stats_dict
 
     def reset(self):
