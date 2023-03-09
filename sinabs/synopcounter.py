@@ -1,9 +1,7 @@
 import warnings
-from functools import partial
 
 import torch
 import torch.nn as nn
-from numpy import product
 
 import sinabs.layers as sl
 from sinabs.layers import NeuromorphicReLU
@@ -14,15 +12,14 @@ def spiking_hook(self, input_, output):
 
     Calculates n_neurons (scalar), firing_rate_per_neuron (C,H,W) and average firing_rate (scalar).
     """
+    input_ = input_[0]
     if isinstance(self, sl.SqueezeMixin):
+        input_ = input_.reshape(self.batch_size, self.num_timesteps, *input_.shape[1:])
         output = output.reshape(self.batch_size, self.num_timesteps, *output.shape[1:])
     self.n_neurons = output[0, 0].numel()
-    self.firing_rate_per_neuron = output.mean((0, 1))
-    self.acc_firing_rate_per_neuron = (
-        self.acc_firing_rate_per_neuron.detach() + self.firing_rate_per_neuron
-    )
-    self.firing_rate = output.mean()
-    self.acc_firing_rate = self.acc_firing_rate.detach() + self.firing_rate
+    self.input_ = input_
+    self.output_ = output
+    self.acc_output = self.acc_output.detach() + output
     self.n_batches = self.n_batches + 1
 
 
@@ -114,10 +111,7 @@ class SNNAnalyzer:
 
         for layer in self.model.modules():
             if isinstance(layer, sl.StatefulLayer):
-                layer.firing_rate_per_neuron = torch.tensor(0)
-                layer.acc_firing_rate_per_neuron = torch.tensor(0)
-                layer.firing_rate = torch.tensor(0)
-                layer.acc_firing_rate = torch.tensor(0)
+                layer.acc_output = torch.tensor(0)
                 layer.n_batches = 0
                 handle = layer.register_forward_hook(spiking_hook)
                 self.handles.append(handle)
@@ -153,32 +147,21 @@ class SNNAnalyzer:
         spike_dict["parameter"] = {}
         scale_facts = []
         for name, module in self.model.named_modules():
-            if (
-                hasattr(module, "acc_firing_rate")
-                or hasattr(module, "firing_rate_per_neuron")
-                or hasattr(module, "n_neurons")
-            ):
-                spike_dict["spiking"][name] = {}
-            if hasattr(module, "acc_firing_rate"):
-                spike_dict["spiking"][name].update(
-                    {
-                        "firing_rate": module.acc_firing_rate / module.n_batches
-                        if average
-                        else module.firing_rate
-                    }
-                )
-            if hasattr(module, "firing_rate_per_neuron"):
-                spike_dict["spiking"][name].update(
-                    {
-                        "firing_rate_per_neuron": module.acc_firing_rate_per_neuron
-                        / module.n_batches
-                        if average
-                        else module.firing_rate_per_neuron
-                    }
-                )
-            if hasattr(module, "n_neurons"):
-                spike_dict["spiking"][name].update({"n_neurons": module.n_neurons})
-
+            if hasattr(module, "acc_output"):
+                spike_dict["spiking"][name] = {
+                    "n_neurons": module.n_neurons,
+                    "input": module.input_,
+                    "output": module.acc_output / module.n_batches
+                    if average
+                    else module.output_,
+                    "firing_rate": module.acc_output.mean() / module.n_batches
+                    if average
+                    else module.output_.mean(),
+                    "firing_rate_per_neuron": module.acc_output.mean((0, 1))
+                    / module.n_batches
+                    if average
+                    else module.output_.mean((0, 1)),
+                }
             if isinstance(module, torch.nn.AvgPool2d):
                 # Average pooling scales down the number of counted synops due to the averaging.
                 # We need to correct for that by accumulating the scaling factors and multiplying
@@ -213,7 +196,7 @@ class SNNAnalyzer:
                 }
         return spike_dict
 
-    def get_model_statistics(self, average=False):
+    def get_model_statistics(self, average: bool = False) -> dict:
         """Outputs a dictionary with statistics that are summarised across all layers.
 
         Parameters:
@@ -224,12 +207,12 @@ class SNNAnalyzer:
         synops = torch.tensor(0.0)
         n_neurons = torch.tensor(0.0)
         for name, module in self.model.named_modules():
-            if hasattr(module, "firing_rate_per_neuron"):
+            if hasattr(module, "acc_output"):
                 if module.n_batches > 0:
                     firing_rates.append(
-                        module.acc_firing_rate_per_neuron.ravel() / module.n_batches
+                        module.acc_output.mean((0, 1)).ravel() / module.n_batches
                         if average
-                        else module.firing_rate_per_neuron.ravel()
+                        else module.output_.mean((0, 1)).ravel()
                     )
                 else:
                     firing_rates.append(torch.tensor([0.0]))
