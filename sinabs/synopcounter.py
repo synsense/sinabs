@@ -14,6 +14,7 @@ def spiking_hook(self, input_, output):
     """
     input_ = input_[0]
     if isinstance(self, sl.SqueezeMixin):
+        input_ = input_.reshape(self.batch_size, self.num_timesteps, *input_.shape[1:])
         output = output.reshape(self.batch_size, self.num_timesteps, *output.shape[1:])
     self.n_neurons = output[0, 0].numel()
     self.input_ = input_

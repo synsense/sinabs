@@ -226,6 +226,8 @@ def test_snn_analyzer_statistics():
     model_stats = analyzer.get_model_statistics(average=True)
 
     # spiking layer checks
+    assert spike_layer_stats["3"]["input"].shape[0] == batch_size
+    assert spike_layer_stats["3"]["input"].shape[1] == num_timesteps
     assert (
         spike_layer_stats["3"]["firing_rate"] == output.mean()
     ), "The output mean should be equivalent to the firing rate of the last spiking layer"
