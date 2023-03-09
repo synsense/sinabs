@@ -107,13 +107,16 @@ def test_linear_synops_counter_across_batches():
     input2[0, 0] = 6
     analyzer = SNNAnalyzer(model)
     model(input1)
+    batch1_stats = analyzer.get_model_statistics(average=False)
     model(input2)
+    batch2_stats = analyzer.get_model_statistics(average=False)
     model_stats = analyzer.get_model_statistics(average=True)
     layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
 
     # (3+6)/2 spikes * 5 channels
     assert model_stats["synops"] == 22.5
     assert layer_stats["synops"] == 22.5
+    assert 2 * batch1_stats["synops"] == batch2_stats["synops"]
 
 
 def test_conv_synops_counter():
@@ -129,16 +132,19 @@ def test_conv_synops_counter():
     assert layer_stats["synops"] == 30
 
 
-def test_conv_synops_counter_counts_across_inputs():
+def test_conv_synops_counter_counts_across_batches():
     model = nn.Conv2d(1, 5, kernel_size=2)
     input1 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
     input2 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1) * 2
     analyzer = SNNAnalyzer(model)
     model(input1)
+    batch1_stats = analyzer.get_model_statistics(average=False)
     model(input2)
+    batch2_stats = analyzer.get_model_statistics(average=False)
     model_stats = analyzer.get_model_statistics(average=True)
     layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
 
+    assert 2 * batch1_stats["synops"] == batch2_stats["synops"]
     assert model_stats["synops"] == 45
     assert layer_stats["synops"] == 45
 
@@ -166,12 +172,15 @@ def test_spiking_layer_firing_rate_across_batches():
 
     analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input1)
+    batch1_stats = analyzer.get_model_statistics(average=False)
     sinabs.reset_states(layer)
     output = layer(input2)
+    batch2_stats = analyzer.get_model_statistics(average=False)
     model_stats = analyzer.get_model_statistics(average=True)
     layer_stats = analyzer.get_layer_statistics(average=True)["spiking"][""]
 
     assert (output == input2).all()
+    assert 2 * batch1_stats["firing_rate"] == batch2_stats["firing_rate"]
     assert model_stats["firing_rate"] == 0.375
     assert layer_stats["firing_rate"] == 0.375
     assert layer_stats["firing_rate_per_neuron"].shape == (4, 4)
