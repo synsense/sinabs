@@ -40,6 +40,14 @@ def synops_hook(self, input_, output):
         # for the purposes of counting synops, we can just sum over time and work a fixed shape from now on
         input_ = input_.sum(1)
         output = output.sum(1)
+    elif (
+        isinstance(self, nn.Linear)
+        and len(input_.shape) >= 3
+        and self.unflattened_shape is None
+    ):
+        self.num_timesteps = input_.shape[1]
+        input_ = input_.sum(1)
+        output = output.sum(1)
     else:
         self.num_timesteps = 0
     if isinstance(self, nn.Conv2d):
@@ -189,6 +197,11 @@ class SNNAnalyzer:
                     "num_timesteps": module.num_timesteps,
                     "time_window": module.num_timesteps * self.dt,
                     "SynOps/s": synops
+                    * scale_factor
+                    / module.num_timesteps
+                    / self.dt
+                    * 1000,
+                    "synops/s": synops
                     * scale_factor
                     / module.num_timesteps
                     / self.dt
