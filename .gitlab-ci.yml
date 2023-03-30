@@ -7,7 +7,7 @@ stages:
     - deploy
 
 before_script:
-  - pacman -Sy archlinux-keyring
+  - pacman -Sy archlinux-keyring --noconfirm
   - pacman -Sy graphviz --noconfirm
   - pacman -Sy libxrandr libxi libxinerama libxcursor glu --noconfirm
   - pip install torchvision -U
