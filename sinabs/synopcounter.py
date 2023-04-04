@@ -70,11 +70,11 @@ def synops_hook(self, input_, output):
             )
             self.connection_map = connection_map.detach()
             self.connection_map.requires_grad = False
-        self.synops = (input_ * self.connection_map).sum()
+        self.synops = (input_ * self.connection_map).mean(0).sum()
     else:
-        self.synops = input_.sum() * self.fanout
+        self.synops = input_.mean(0).sum() * self.fanout
     self.accumulated_synops = self.accumulated_synops.detach() + self.synops
-    self.n_samples = self.n_samples + input_.shape[0]
+    self.n_batches = self.n_batches + 1
 
 
 class SNNAnalyzer:
@@ -127,7 +127,7 @@ class SNNAnalyzer:
                 layer.accumulated_synops = torch.tensor(0)
                 layer.synops = torch.tensor(0)
                 layer.connection_map = torch.tensor([])
-                layer.n_samples = 0
+                layer.n_batches = 0
                 layer.unflattened_shape = unflattened_shape
                 handle = layer.register_forward_hook(synops_hook)
                 self.handles.append(handle)
@@ -135,7 +135,7 @@ class SNNAnalyzer:
                 layer.accumulated_synops = torch.tensor(0)
                 layer.synops = torch.tensor(0)
                 layer.fanout = layer.out_features
-                layer.n_samples = 0
+                layer.n_batches = 0
                 layer.unflattened_shape = unflattened_shape
                 handle = layer.register_forward_hook(synops_hook)
                 self.handles.append(handle)
@@ -188,7 +188,7 @@ class SNNAnalyzer:
                 while len(scale_facts) != 0:
                     scale_factor *= scale_facts.pop()
                 synops = (
-                    module.accumulated_synops / module.n_samples
+                    module.accumulated_synops / module.n_batches
                     if average
                     else module.synops
                 )
@@ -230,9 +230,9 @@ class SNNAnalyzer:
                 else:
                     firing_rates.append(torch.tensor([0.0]))
             if hasattr(module, "synops"):
-                if module.n_samples > 0:
+                if module.n_batches > 0:
                     if average:
-                        synops = synops + module.accumulated_synops / module.n_samples
+                        synops = synops + module.accumulated_synops / module.n_batches
                     else:
                         synops = synops + module.synops
             if hasattr(module, "n_neurons"):
