@@ -87,29 +87,31 @@ def test_layer_synops():
 
 def test_linear_synops_counter():
     model = nn.Linear(3, 5)
-    input_ = torch.zeros((1, 3))
+    input_ = torch.zeros((2, 3))
     input_[0, 0] = 3
+    input_[1, 2] = 5
     analyzer = SNNAnalyzer(model)
     model(input_)
     model_stats = analyzer.get_model_statistics()
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
-    # 3 spikes * 5 channels
-    assert model_stats["synops"] == 15
-    assert layer_stats["synops"] == 15
-    assert layer_stats["synops/s"] == torch.inf
+    # (3 + 5) spikes * 5 channels, over 2 samples
+    assert model_stats["synops"] == 20
+    assert layer_stats["synops"] == 20
+    assert layer_stats["SynOps/s"] == torch.inf
 
 
 def test_linear_synops_counter_with_time():
     model = nn.Linear(3, 5)
     n_steps, dt = 10, 10.0
-    input_ = torch.zeros((1, n_steps, 3))
+    input_ = torch.zeros((2, n_steps, 3))
     input_[0, 0, 0] = 3
+    input_[1, 0, 1] = 5
     analyzer = SNNAnalyzer(model, dt=dt)
     model(input_)
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
-    assert layer_stats["synops"] == layer_stats["synops/s"] * n_steps * dt / 1000
+    assert layer_stats["synops"] == layer_stats["SynOps/s"] * n_steps * dt / 1000
 
 
 def test_linear_synops_counter_across_batches():
