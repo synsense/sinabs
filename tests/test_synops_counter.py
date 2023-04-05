@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pytest
 import torch
@@ -98,7 +100,7 @@ def test_linear_synops_counter():
     # (3 + 5) spikes * 5 channels, over 2 samples
     assert model_stats["synops"] == 20
     assert layer_stats["synops"] == 20
-    assert layer_stats["SynOps/s"] == torch.inf
+    assert layer_stats["synops/s"] == math.inf
 
 
 def test_linear_synops_counter_with_time():
@@ -111,7 +113,7 @@ def test_linear_synops_counter_with_time():
     model(input_)
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
-    assert layer_stats["synops"] == layer_stats["SynOps/s"] * n_steps * dt / 1000
+    assert layer_stats["synops"] == layer_stats["synops/s"] * n_steps * dt / 1000
 
 
 def test_linear_synops_counter_across_batches():
