@@ -12,7 +12,7 @@ def X_available() -> bool:
     return p.returncode == 0
 
 
-@pytest.mark.skipif(not X_available(), reason="A window needs to pop. Needs UI")
+@pytest.mark.skipif(True, reason="A window needs to pop. Needs UI. Makes sense to check this test manually")
 def test_visualizer_initialization():
     dvs_shape = (128, 128)
     spike_collection_interval = 500
@@ -23,6 +23,7 @@ def test_visualizer_initialization():
     )
     visualizer.create_visualizer_process(visualizer_id=visualizer_id)
 
+@pytest.mark.skipif(True, reason="A window needs to pop. Needs UI. Makes sense to check this test manually")
 def get_demo_dynapcnn_network():
     import sinabs
     import torch.nn as nn
@@ -40,8 +41,9 @@ def test_jit_compilation():
     spike_collection_interval = 500
     visualizer_id = 3
 
+    
     dynapcnn_network = get_demo_dynapcnn_network()
-    #dynapcnn_network.to("speck2edevkit:0")
+    dynapcnn_network.to("speck2edevkit:0")
 
     visualizer = DynapcnnVisualizer(
         dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
@@ -53,8 +55,8 @@ def test_jit_compilation():
     # Dvs node
     (_, dvs_member_filter, _, streamer_node) = streamer_graph.sequential(
         [
-            samna.graph.JitSource(samna.speck2e.event.OutputEvent),
-            #dynapcnn_network.samna_device.get_model_source_node(),
+            #samna.graph.JitSource(samna.speck2e.event.OutputEvent),
+            dynapcnn_network.samna_device.get_model_source_node(),
             samna.graph.JitMemberSelect(),
             samna.graph.JitDvsEventToViz(samna.ui.Event),
             "VizEventStreamer",

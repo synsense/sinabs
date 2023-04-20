@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* added test
+* added noconfirm
+* added update keyring to gitlab-ci
+* renamed test
 * Speck2fDevKit support added
 * update samna version requirements
 * update ChangeLog
