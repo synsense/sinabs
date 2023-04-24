@@ -31,6 +31,9 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 * **{doc}`Contribution guidelines<about/contributing>`**. Please read this before opening a pull request.
 * **{doc}`Release notes<about/release_notes>`**. Version changes.
 
+### Contact
+* **{doc}`Contact us<contact>`**. For questions and bug reports!
+
 ```{toctree}
 :hidden:
 getting_started/getting_started
@@ -40,4 +43,5 @@ how_tos/how_tos
 plugins/plugins
 api/api
 about/about
+contact
 ```
