@@ -7,8 +7,8 @@ stages:
     - deploy
 
 before_script:
-  - apt-get install graphivz
-  - apt-get installlibxrandr libxi libxinerama libxcursor glu
+  - apt install graphviz
+  - apt-get install libxrandr libxi libxinerama libxcursor glu
   - pip install torchvision -U
   - pip install --upgrade pip
   - pip install -r requirements.txt
