@@ -7,6 +7,8 @@ stages:
     - deploy
 
 before_script:
+  - add-apt-repository universe
+  - apt update
   - apt install graphviz
   - apt-get install libxrandr libxi libxinerama libxcursor glu
   - pip install torchvision -U
