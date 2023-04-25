@@ -7,6 +7,7 @@ stages:
     - deploy
 
 before_script:
+  - apt-get install software-properties-common
   - add-apt-repository universe
   - apt update
   - apt install graphviz
