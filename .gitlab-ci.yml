@@ -1,4 +1,4 @@
-image: aictx/ci-python-arch:latest
+image: "registry.gitlab.com/synsense/rockpool/test:latest"
 
 stages:
     - build
@@ -7,8 +7,8 @@ stages:
     - deploy
 
 before_script:
-  - pacman -Sy graphviz --noconfirm
-  - pacman -Sy libxrandr libxi libxinerama libxcursor glu --noconfirm
+  - apt-get install graphivz
+  - apt-get installlibxrandr libxi libxinerama libxcursor glu
   - pip install torchvision -U
   - pip install --upgrade pip
   - pip install -r requirements.txt
