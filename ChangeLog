@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+* add neuron leak tutorial notebook
+* fix bug for neuron address mapping and add unit test case
+* update ChangeLog
 * add neruon leak option and related unit test
 * remove system package install cmd
 * fix add-apt-repository can't be found error
