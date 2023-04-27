@@ -353,7 +353,7 @@ def neuron_address_to_cxy(address: int, feature_map_size: Tuple[int, int, int]) 
     y_shift_bits = channel_bits + y_bits
 
     y = address >> y_shift_bits
-    x = address >> x_shift_bits
+    x = (address >> x_shift_bits) & (2 ** x_bits - 1)
     c = address & (2 ** channel_bits - 1)
 
     return c, x, y

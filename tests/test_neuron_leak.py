@@ -16,6 +16,23 @@ from hw_utils import (
 )
 
 
+def test_neuron_address_calculation():
+
+    feature_map_shape = (16, 32, 32)  # channel, height, width
+
+    for x in range(0, feature_map_shape[2]):
+        for y in range(0, feature_map_shape[1]):
+            for c in range(0, feature_map_shape[0]):
+                address = calculate_neuron_address(x, y, c, feature_map_shape)
+
+                recover_c, recover_x, recover_y = neuron_address_to_cxy(address, feature_map_shape)
+                assert c == recover_c
+                assert x == recover_x
+                assert y == recover_y
+
+                pass
+
+
 def test_neuron_leak_config():
 
     snn = nn.Sequential(
