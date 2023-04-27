@@ -1,7 +1,7 @@
-import os
 import pytest
 from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
 import samna
+from hw_utils import is_any_samna_device_connected, find_open_devices
 
 
 def X_available() -> bool:
@@ -36,29 +36,32 @@ def get_demo_dynapcnn_network():
     return dynapcnn_network
 
 
+@pytest.mark.skipif(not is_any_samna_device_connected(), reason="No samna device found!")
 def test_jit_compilation():
     dvs_shape = (128, 128)
     spike_collection_interval = 500
     visualizer_id = 3
 
-    
+    devices = find_open_devices()
+
     dynapcnn_network = get_demo_dynapcnn_network()
-    dynapcnn_network.to("speck2edevkit:0")
+    for device_name, _ in devices.items():
+        dynapcnn_network.to(device=device_name)
 
-    visualizer = DynapcnnVisualizer(
-        dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
-    )
-    visualizer.create_visualizer_process(visualizer_id=visualizer_id) 
+        visualizer = DynapcnnVisualizer(
+            dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
+        )
+        visualizer.create_visualizer_process(visualizer_id=visualizer_id)
 
-    streamer_graph = samna.graph.EventFilterGraph()
-    # Streamer graph
-    # Dvs node
-    (_, dvs_member_filter, _, streamer_node) = streamer_graph.sequential(
-        [
-            #samna.graph.JitSource(samna.speck2e.event.OutputEvent),
-            dynapcnn_network.samna_device.get_model_source_node(),
-            samna.graph.JitMemberSelect(),
-            samna.graph.JitDvsEventToViz(samna.ui.Event),
-            "VizEventStreamer",
-        ]
-    )
+        streamer_graph = samna.graph.EventFilterGraph()
+        # Streamer graph
+        # Dvs node
+        (_, dvs_member_filter, _, streamer_node) = streamer_graph.sequential(
+            [
+                #samna.graph.JitSource(samna.speck2e.event.OutputEvent),
+                dynapcnn_network.samna_device.get_model_source_node(),
+                samna.graph.JitMemberSelect(),
+                samna.graph.JitDvsEventToViz(samna.ui.Event),
+                "VizEventStreamer",
+            ]
+        )
