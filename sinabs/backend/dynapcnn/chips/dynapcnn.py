@@ -1,5 +1,6 @@
 import copy
 from typing import List
+from warnings import warn
 
 import samna
 import torch
@@ -269,9 +270,21 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         monitor_layers = layers.copy()
         if "dvs" in monitor_layers:
             config.dvs_layer.monitor_enable = True
+            if config.dvs_layer.pooling.x != 1 or config.dvs_layer.pooling.y != 1:
+                warn(
+                    f"DVS layer has pooling and is being monitored. "
+                    "Note that pooling will not be reflected in the monitored events."
+                )
             monitor_layers.remove("dvs")
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
+            if any(
+                dest.pooling != 1 for dest in config.cnn_layers[lyr_indx].destinations
+            ):
+                warn(
+                    f"Layer {lyr_indx} has pooling and is being monitored. "
+                    "Note that pooling will not be reflected in the monitored events."
+                )
         return config
 
     @classmethod
