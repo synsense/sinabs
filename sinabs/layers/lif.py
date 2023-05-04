@@ -101,12 +101,12 @@ class LIF(StatefulLayer):
         self.record_states = record_states
         self.min_v_mem = (
             nn.Parameter(torch.as_tensor(min_v_mem), requires_grad=False)
-            if min_v_mem
+            if min_v_mem is not None
             else None
         )
         self.spike_threshold = (
             nn.Parameter(torch.as_tensor(spike_threshold), requires_grad=False)
-            if spike_threshold
+            if spike_threshold is not None
             else None
         )
         if shape:
