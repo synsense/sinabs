@@ -54,3 +54,15 @@ def is_any_samna_device_connected():
 
 def is_device_connected(device_type: str):
     return device_type in find_open_devices().keys()
+
+def reset_all_connected_boards():
+    print("Boards are being reset!")
+    # this step is necessary as the gitlab-ci runner may send the chip erroneous events
+    import samna 
+    devs = samna.device.get_unopened_devices()
+    if len(devs) > 0: # check if the connected board is found.
+        for device in devs:
+            handle = samna.device.open_device(device)
+            handle.reset_board_soft(True)
+            samna.device.close_device(handle)
+            print(f"Resetted board: {device.device_type_name}")
