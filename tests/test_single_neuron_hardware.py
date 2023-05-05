@@ -62,6 +62,8 @@ def test_deploy_dynapcnnnetwork():
 
 @pytest.mark.skipif(not is_any_samna_device_connected(), reason="No samna device found!")
 def test_deploy_with_device_id():
+    # Reset boards
+    reset_all_connected_boards()
     model = get_ones_network()
     device_map = find_open_devices()
     print(device_map)
