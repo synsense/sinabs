@@ -1,4 +1,5 @@
-# Visualizing DynapCNN input and output events
+# Dynapcnn Visualizer
+
 ## Introduction
 Currently the development kits that SynSense provides are mainly used for benchmarking purposes. However, through our backend library `samna` we support processing of events and interpretation of the output in a streaming fashion. `samna` API however is mainly designed and developed for low-level communication with the chips. This sometimes makes it tricky to work with for higher-level functions. `samna` also has a package called `samnagui` with which we can do some visualization. Internally, we use it for testing of our models in real-time and real-life conditions. 
 In order to give users an easy access without having to deal with a lot of boilerplate code and burdensome logic, we implemented a visualizer class.  

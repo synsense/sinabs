@@ -33,10 +33,9 @@ Table of contents
 
    installation
    dynapcnn_model
+   getting_started_with_devkit
    advanced_concepts
    dangers
-   visualizer
-   tutorials
    api/api.rst
    development
    change_log
