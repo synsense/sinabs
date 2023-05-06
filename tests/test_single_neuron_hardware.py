@@ -5,7 +5,8 @@ from hw_utils import (
     is_device_connected, 
     is_any_samna_device_connected, 
     find_open_devices,
-    get_ones_network
+    get_ones_network,
+    reset_all_connected_boards
 )
 
 
@@ -14,6 +15,9 @@ def test_deploy_dynapcnnnetwork():
     import time, torch
     import numpy as np
     from numpy.lib import recfunctions
+
+    # at the beginning of the test make sure the boards are reset.
+    reset_all_connected_boards()
 
     devices = find_open_devices()
     dtype = np.dtype([("x", np.uint16), ("y", np.uint16), ("t", np.uint64), ("p", bool),])
@@ -58,6 +62,8 @@ def test_deploy_dynapcnnnetwork():
 
 @pytest.mark.skipif(not is_any_samna_device_connected(), reason="No samna device found!")
 def test_deploy_with_device_id():
+    # Reset boards
+    reset_all_connected_boards()
     model = get_ones_network()
     device_map = find_open_devices()
     print(device_map)
