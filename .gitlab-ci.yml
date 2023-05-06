@@ -72,7 +72,7 @@ test coverage deplop:
     - pytest --cov
     - coverage report
     - coverage xml
-    - curl -Os https://uploader.codecov.io/latest/linux/codecov
+    - wget https://uploader.codecov.io/latest/linux/codecov
     - chmod +x codecov
     - ./codecov
 
