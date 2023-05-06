@@ -110,22 +110,23 @@ with a convolutional layer is defined as
 * {math}`f`, output channel number
 * {math}`k_x` and {math}`k_y` kernel size
 
-The theoretial number of entries required for kernel memory $K_M$ is then
+The theoretial number of entries required for kernel memory {math}`K_M` is then:
 
-$$K_M = cfk_{x}k_{y}$$
+{math}`K_M = c \times f \times k_{x} \times k_{y}`
 
 The actual number of entries required in chip because of the address encoding scheme, the actual total memory requires {math}`K_{MT}` is then:
 
-$$K_{MT}=c \cdot 2^{log_{2}^{k_{x}k_{y}} + log_{2}^{f}}$$
+{math}`K_{MT}=c \cdot 2^{log_{2}^{k_{x}k_{y}} + log_{2}^{f}}`
 
 The required neuron memory entries depends on the output feature map where define the input feature map size {math}`c_{x}`, {math}`c_{y}`, stride {math}`s_{x}`, {math}`s_{y}`, padding {math}`p_{x}`, {math}`p_{y}`.
 
-$$f_x = \frac{c_{x}-k_{x}+2p_{x}}{s_{x}} + 1$$
-$$f_y = \frac{c_{y}-k_{y}+2p_{y}}{s_{y}} + 1$$
+{math}`f_x = \frac{c_{x}-k_{x}+2p_{x}}{s_{x}} + 1`
 
-The actual neuron memory entries `{math}N_{M}` is then defined as:
+{math}`f_y = \frac{c_{y}-k_{y}+2p_{y}}{s_{y}} + 1`
 
-$$N_{M} = ff_{x}f_{y}$$
+The actual neuron memory entries {math}`N_{M}` is then defined as:
+
+{math}`N_{M} = f \times f_{x} \times f_{y}`
 
 
 Taking an example of convolutional layer
@@ -134,18 +135,18 @@ Taking an example of convolutional layer
     
 Assume the input dimension of 64x64 we could obtain the output feature map size as:
 
-$$f_x = \frac{64-3+2 \times 1}{1} + 1 = 64$$
+{math}`f_x = \frac{64-3+2 \times 1}{1} + 1 = 64`
 
-$$f_y = \frac{64-3+2 \times 1}{1} + 1 = 64$$
+{math}`f_y = \frac{64-3+2 \times 1}{1} + 1 = 64`
 
 
 The actual kernel memory entries is calculated thus:
 
-$$K_{MT}=16 \times 32 \times 4 \times 4 = 8Ki$$
+{math}`K_{MT}=16 \times 32 \times 4 \times 4 = 8Ki`
 
 The actual Neuron memory entries is then:
 
-$$N_{M} = 64 \times 64 \times 32 = 128Ki$$
+{math}`N_{M} = 64 \times 64 \times 32 = 128Ki`
 
 Where 128Ki neuron exceeds any available neuron memory contrains among 9 layers, thus this layer **CANNOT** be deployed on the chip
 
