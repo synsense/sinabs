@@ -75,9 +75,7 @@ class DynapcnnNetwork(nn.Module):
         # This attribute stores the location/core-id of each of the DynapcnnLayers upon placement on chip
         self.chip_layers_ordering = []
 
-        self.compatible_layers = []
-        self.input_shape = input_shape
-        # Convert models  to sequential
+        self.input_shape = input_shape        # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
         if dvs_input:
@@ -96,26 +94,22 @@ class DynapcnnNetwork(nn.Module):
         self.sequence = build_from_list(
             layers, in_shape=input_shape, discretize=discretize
         )
-        # this holds the DynapcnnLayer objects which can be used for testing
-        # and also deal with single-layer-level configuration issues
-        self.compatible_layers = [*self.sequence]
 
         dvs_layer = DVSLayer(
             input_shape=input_shape[1:],
             disable_pixel_array=(not self.dvs_input)
         )  # Ignore the channel dimension
-        if self.compatible_layers:
-            if not isinstance(self.compatible_layers[0], DVSLayer):
+        if self.sequence:
+            if not isinstance(self.sequence[0], DVSLayer):
                 # We also need to add a DVSLayer at the very beginning to configure the hardware's DVS layer
-                self.compatible_layers = [dvs_layer] + self.compatible_layers
+                self.sequence = nn.Sequential(dvs_layer, *self.sequence)
             else:
-                # if the 1st layer of self.compatible_layers is already a DVSLayer instance
+                # if the 1st layer of self.sequence is already a DVSLayer instance
                 # we only need to reset the "disable_pixel_array" attribute based on the dvs_input flag
-                self.compatible_layers[0].disable_pixel_array = (not self.dvs_input)
+                self.sequence[0].disable_pixel_array = (not self.dvs_input)
         else:
             # No layers initialized
-            self.compatible_layers = [dvs_layer]
-        self.sequence = nn.Sequential(*self.compatible_layers)
+            self.sequence = nn.Sequential(dvs_layer)
 
     def to(
         self,
@@ -267,9 +261,9 @@ class DynapcnnNetwork(nn.Module):
             # Truncate chip_layers_ordering just in case a longer list is passed
             if self.dvs_input:
                 chip_layers_ordering = chip_layers_ordering[
-                    : len(self.compatible_layers) - 1
+                    : len(self.sequence) - 1
                 ]
-            chip_layers_ordering = chip_layers_ordering[: len(self.compatible_layers)]
+            chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
 
         # Save the chip layers
         self.chip_layers_ordering = chip_layers_ordering
@@ -281,7 +275,7 @@ class DynapcnnNetwork(nn.Module):
         if monitor_layers is None:
             monitor_layers = [-1]
         elif monitor_layers == "all":
-            monitor_layers = list(range(len(self.compatible_layers)))
+            monitor_layers = list(range(len(self.sequence)))
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
@@ -331,7 +325,7 @@ class DynapcnnNetwork(nn.Module):
                             time.sleep(0.1)
                         self.samna_input_graph.start()
                 return
-        for layer in self.compatible_layers:
+        for layer in self.sequence:
             if isinstance(layer, DynapcnnLayer):
                 layer.spk_layer.reset_states(randomize=randomize)
 
@@ -354,8 +348,8 @@ class DynapcnnNetwork(nn.Module):
             Index of the layer on the chip where the model layer is placed.
         """
         # Compute the expected number of cores
-        num_cores_required = len(self.compatible_layers)
-        if isinstance(self.compatible_layers[0], DVSLayer):
+        num_cores_required = len(self.sequence)
+        if isinstance(self.sequence[0], DVSLayer):
             num_cores_required -= 1
         if len(self.chip_layers_ordering) != num_cores_required:
             raise Exception(
