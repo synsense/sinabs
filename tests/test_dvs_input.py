@@ -97,7 +97,7 @@ class NetPool2D(nn.Module):
 
 
 @pytest.mark.parametrize("dvs_input", (False, True))
-def test_dvs_no_pooling_no_input_layer(dvs_input):
+def test_dvs_no_pooling(dvs_input):
     # - ANN and SNN generation
     ann = NetNoPooling()
     snn = from_model(ann.seq, batch_size=1)
@@ -105,6 +105,9 @@ def test_dvs_no_pooling_no_input_layer(dvs_input):
 
     # - SPN generation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
+
+    # If there is no pooling, a DVSLayer should only be added if `dvs_input` is True
+    assert (isinstance(spn.sequence[0], DVSLayer) == dvs_input)
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
@@ -136,6 +139,9 @@ def test_dvs_pooling_2d(dvs_input):
 
     # - SPN generation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
+
+    # When there is pooling, a DVSLayer should also be added if `dvs_input` is True
+    assert isinstance(spn.sequence[0], DVSLayer)
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
@@ -189,7 +195,7 @@ class DvsNet(nn.Module):
         return self.seq(x)
 
 @pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
-def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
+def test_dvs_mirroring(flip_x, flip_y,   swap_xy, dvs_input):
 
     # - DYNAP-CNN layer arrangement
     target_layers = [5]
