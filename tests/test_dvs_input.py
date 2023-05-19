@@ -15,10 +15,14 @@ import numpy as np
 
 from typing import Optional, Tuple
 import pytest
+from itertools import product
 
 INPUT_SHAPE = (2, 16, 16)
 input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
 
+
+def combine_n_binary_choices(n):
+    return tuple(product(*[(True, False) for __ in range(n)]))
 
 def verify_dvs_config(
     config,
@@ -65,62 +69,46 @@ def verify_dvs_config(
     assert dvs.merge == merge_polarities
 
 
-def test_dvs_no_pooling():
-    class Net(nn.Module):
-        def __init__(self):
-            super().__init__()
-            layers = []
-            layers += [nn.Conv2d(2, 4, kernel_size=2, stride=2), nn.ReLU()]
-            self.seq = nn.Sequential(*layers)
+class NetNoPooling(nn.Module):
+    def __init__(self):
+        super().__init__()
+        layers = []
+        layers += [nn.Conv2d(2, 4, kernel_size=2, stride=2), nn.ReLU()]
+        self.seq = nn.Sequential(*layers)
 
-        def forward(self, x):
-            return self.seq(x)
+    def forward(self, x):
+        return self.seq(x)
 
-    # - ANN and SNN generation, no input layer
-    ann = Net()
-    snn = from_model(ann.seq, batch_size=1)
-    snn.eval()
 
-    for dvs_input in (False, True):
-        # - SPN generation
-        spn = DynapcnnNetwork(
-            snn, input_shape=INPUT_SHAPE, dvs_input=dvs_input
-        )
+class NetPool2D(nn.Module):
+    def __init__(self, input_layer: bool = False):
+        super().__init__()
+        layers = []
+        layers += [
+            nn.AvgPool2d(kernel_size=(2, 2)),
+            nn.AvgPool2d(kernel_size=(1, 2)),
+            nn.Conv2d(2, 4, kernel_size=2, stride=2),
+            nn.ReLU(),
+        ]
+        self.seq = nn.Sequential(*layers)
 
-        # - Make sure missing input shape causes exception
-        with pytest.raises(InputConfigurationError):
-            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
+    def forward(self, x):
+        return self.seq(x)
 
-        # - Compare snn and spn outputs
-        spn_float = DynapcnnNetwork(
-            snn, input_shape=INPUT_SHAPE, dvs_input=dvs_input, discretize=False
-        )
-        snn_out = snn(input_data).squeeze()
-        spn_out = spn_float(input_data).squeeze()
-        assert torch.equal(snn_out.detach(), spn_out)
 
-        # - Verify DYNAP-CNN config
-        target_layers = [5]
-        config = spn.make_config(chip_layers_ordering=target_layers)
-        verify_dvs_config(
-            config,
-            input_shape=INPUT_SHAPE,
-            destination=target_layers[0],
-            dvs_input=dvs_input,
-        )
-
-    # - ANN and SNN generation, network with input layer
-    target_layers = [5]
-    ann = Net()
+@pytest.mark.parametrize("dvs_input", (False, True))
+def test_dvs_no_pooling_no_input_layer(dvs_input):
+    # - ANN and SNN generation
+    ann = NetNoPooling()
     snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     # - SPN generation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
-    ## - Make sure non-matching input shapes cause exception
-    #with pytest.raises(InputConfigurationError):
-    #    spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=(1, 2, 3))
+    # - Make sure missing input shapes cause exception
+    with pytest.raises(InputConfigurationError):
+        spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
     # - Compare snn and spn outputs
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
@@ -129,75 +117,29 @@ def test_dvs_no_pooling():
     assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
+    target_layers = [5]
     config = spn.make_config(chip_layers_ordering=target_layers)
     verify_dvs_config(
-        config, input_shape=INPUT_SHAPE, destination=target_layers[0], dvs_input=True
+        config, 
+        input_shape=INPUT_SHAPE, 
+        destination=target_layers[0] if dvs_input else None,
+        dvs_input=dvs_input,
     )
 
 
-def test_dvs_pooling_2d():
-    class Net(nn.Module):
-        def __init__(self, input_layer: bool = False):
-            super().__init__()
-            layers = []
-            layers += [
-                nn.AvgPool2d(kernel_size=(2, 2)),
-                nn.AvgPool2d(kernel_size=(1, 2)),
-                nn.Conv2d(2, 4, kernel_size=2, stride=2),
-                nn.ReLU(),
-            ]
-            self.seq = nn.Sequential(*layers)
-
-        def forward(self, x):
-            return self.seq(x)
-
-    pooling = (2, 4)
-    target_layers = [5]
-
-    # - ANN and SNN generation, no input layer
-    ann = Net()
-    snn = from_model(ann.seq, batch_size=1)
-    snn.eval()
-
-    for dvs_input in (False, True):
-        # - SPN generation
-        spn = DynapcnnNetwork(
-            snn, input_shape=INPUT_SHAPE, dvs_input=dvs_input
-        )
-
-        # - Make sure missing input shape causes exception
-        with pytest.raises(InputConfigurationError):
-            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
-
-        # - Compare snn and spn outputs
-        spn_float = DynapcnnNetwork(
-            snn, input_shape=INPUT_SHAPE, dvs_input=dvs_input, discretize=False
-        )
-        snn_out = snn(input_data).squeeze()
-        spn_out = spn_float(input_data).squeeze()
-        assert torch.equal(snn_out.detach(), spn_out)
-
-        # - Verify DYNAP-CNN config
-        config = spn.make_config(chip_layers_ordering=target_layers)
-        verify_dvs_config(
-            config,
-            input_shape=INPUT_SHAPE,
-            destination=target_layers[0],
-            dvs_input=dvs_input,
-            pooling=pooling,
-        )
-
-    # - ANN and SNN generation, network with input layer
-    ann = Net(input_layer=True)
+@pytest.mark.parametrize("dvs_input", (False, True))
+def test_dvs_pooling_2d(dvs_input):
+    # - ANN and SNN generation
+    ann = NetPool2D(input_layer=True)
     snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     # - SPN generation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
-    ## - Make sure non-matching input shapes cause exception
-    #with pytest.raises(InputConfigurationError):
-    #    spn = DynapcnnNetwork(snn, input_shape=(1, 2, 3))
+    # - Make sure missing input shapes cause exception
+    with pytest.raises(InputConfigurationError):
+        spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
     # - Compare snn and spn outputs
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
@@ -206,13 +148,14 @@ def test_dvs_pooling_2d():
     assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
+    target_layers = [5]
     config = spn.make_config(chip_layers_ordering=target_layers)
     verify_dvs_config(
         config,
         input_shape=INPUT_SHAPE,
         destination=target_layers[0],
-        dvs_input=True,
-        pooling=pooling,
+        dvs_input=dvs_input,
+        pooling=(2,4),
     )
 
 
@@ -245,122 +188,101 @@ class DvsNet(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
-
-def test_dvs_mirroring():
+@pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
+def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
 
     # - DYNAP-CNN layer arrangement
     target_layers = [5]
 
-    keys = ["flip_x", "flip_y", "swap_xy"]
-    for flag_combination in (
-        (False, False, False),
-        (False, False, True),
-        (False, True, False),
-        (False, True, True),
-        (True, False, False),
-        (True, False, True),
-        (True, True, False),
-        (True, True, True),
-    ):
-        kwargs_flip = {key: flag for key, flag in zip(keys, flag_combination)}
+    kwargs_flip = {"flip_x": flip_x, "flip_y": flip_y, "swap_xy": swap_xy}
 
-        # - ANN and SNN generation
-        for dvs_input in (True, False):
-            ann = DvsNet(dvs_input=dvs_input, **kwargs_flip)
-            snn = from_model(ann.seq, batch_size=1)
-            snn.eval()
+    # - ANN and SNN generation
+    ann = DvsNet(dvs_input=dvs_input, **kwargs_flip)
+    snn = from_model(ann.seq, batch_size=1)
+    snn.eval()
 
-            # - SPN generation
-            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
+    # - SPN generation
+    spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
-            # - Compare snn and spn outputs
-            spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
-            snn_out = snn(input_data).squeeze()
-            spn_out = spn_float(input_data).squeeze()
-            assert torch.equal(snn_out.detach(), spn_out)
+    # - Compare snn and spn outputs
+    spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
+    snn_out = snn(input_data).squeeze()
+    spn_out = spn_float(input_data).squeeze()
+    assert torch.equal(snn_out.detach(), spn_out)
 
-            # - Verify DYNAP-CNN config
-            config = spn.make_config(chip_layers_ordering=target_layers)
-            verify_dvs_config(
-                config,
-                input_shape=INPUT_SHAPE,
-                destination=target_layers[0],
-                dvs_input=dvs_input,
-                flip=kwargs_flip,
-            )
+    # - Verify DYNAP-CNN config
+    config = spn.make_config(chip_layers_ordering=target_layers)
+    verify_dvs_config(
+        config,
+        input_shape=INPUT_SHAPE,
+        destination=target_layers[0],
+        dvs_input=dvs_input,
+        flip=kwargs_flip,
+    )
 
 
-def test_dvs_crop():
+@pytest.mark.parametrize("dvs_input,merge_polarities", combine_n_binary_choices(2))
+def test_dvs_crop(dvs_input, merge_polarities):
 
     # - DYNAP-CNN layer arrangement
     target_layers = [5]
     crop = ((20, 62), (12, 32))
     pool = (1, 2)
 
-    for dvs_input in (True, False):
-        for merge_polarities in (True, False):
-            shape = (1, 128, 128) if merge_polarities else (2, 128, 128)
-            input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
-            # - ANN and SNN generation
-            ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape, merge_polarities=merge_polarities)
-            snn = from_model(ann.seq, batch_size=1)
-            snn.eval()
+    shape = (1, 128, 128) if merge_polarities else (2, 128, 128)
+    input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
+    # - ANN and SNN generation
+    ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape, merge_polarities=merge_polarities)
+    snn = from_model(ann.seq, batch_size=1)
+    snn.eval()
 
-            # - SPN generation
-            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
+    # - SPN generation
+    spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
-            # - Compare snn and spn outputs
-            spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
-            snn_out = snn(input_data).squeeze()
-            spn_out = spn_float(input_data).squeeze()
-            assert torch.equal(snn_out.detach(), spn_out)
+    # - Compare snn and spn outputs
+    spn_float = DynapcnnNetwork(snn, discretize=False, dvs_input=dvs_input)
+    snn_out = snn(input_data).squeeze()
+    spn_out = spn_float(input_data).squeeze()
+    assert torch.equal(snn_out.detach(), spn_out)
 
-            # - Verify DYNAP-CNN config
-            config = spn.make_config(chip_layers_ordering=target_layers)
-            verify_dvs_config(
-                config,
-                input_shape=shape,
-                pooling=pool,
-                origin=(20, 12),
-                cut=(62, 32),
-                destination=target_layers[0],
-                dvs_input=dvs_input,
-                merge_polarities=merge_polarities,
-            )
+    # - Verify DYNAP-CNN config
+    config = spn.make_config(chip_layers_ordering=target_layers)
+    verify_dvs_config(
+        config,
+        input_shape=shape,
+        pooling=pool,
+        origin=(20, 12),
+        cut=(62, 32),
+        destination=target_layers[0],
+        dvs_input=dvs_input,
+        merge_polarities=merge_polarities,
+    )
 
 
-def test_whether_dvs_mirror_cfg_is_all_switched_off():
+@pytest.mark.parametrize("dvs_input,pool", combine_n_binary_choices(2))
+def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
     from sinabs.layers import IAFSqueeze, SumPool2d
     from torch import nn
     from sinabs.backend.dynapcnn import DynapcnnNetwork
 
-    snn = nn.Sequential(
+    layer_list = [SumPool2d(kernel_size=(1,1))] if pool else []
+    layer_list += [
         nn.Conv2d(in_channels=1,
                   out_channels=2,
                   kernel_size=(16, 16),
                   stride=(2, 2),
                   padding=(0, 0),
                   bias=False),
-        IAFSqueeze(min_v_mem=-1.0, batch_size=1))
+        IAFSqueeze(min_v_mem=-1.0, batch_size=1),
+    ]
 
-    snn_with_pool = nn.Sequential(
-        SumPool2d(kernel_size=(1, 1)),
-        nn.Conv2d(in_channels=1,
-                  out_channels=2,
-                  kernel_size=(16, 16),
-                  stride=(2, 2),
-                  padding=(0, 0),
-                  bias=False),
-        IAFSqueeze(min_v_mem=-1.0, batch_size=1))
+    snn = nn.Sequential(*layer_list)
 
-    for model in [snn, snn_with_pool]:
+    dynapcnn = DynapcnnNetwork(snn=snn, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True)
+    samna_cfg = dynapcnn.make_config(device="speck2edevkit")
 
-        for dvs_input in [True, False]:
-
-            dynapcnn = DynapcnnNetwork(snn=model, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True)
-            samna_cfg = dynapcnn.make_config(device="speck2edevkit")
-
-            assert samna_cfg.dvs_layer.pass_sensor_events == dvs_input
-            assert samna_cfg.dvs_layer.mirror.x is False
-            assert samna_cfg.dvs_layer.mirror.y is False
-            assert samna_cfg.dvs_layer.mirror_diagonal is False
+    assert samna_cfg.dvs_layer.pass_sensor_events == dvs_input
+    if dvs_input:
+        assert samna_cfg.dvs_layer.mirror.x is False
+        assert samna_cfg.dvs_layer.mirror.y is False
+        assert samna_cfg.dvs_layer.mirror_diagonal is False
