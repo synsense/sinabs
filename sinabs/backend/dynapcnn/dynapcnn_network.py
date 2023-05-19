@@ -84,32 +84,12 @@ class DynapcnnNetwork(nn.Module):
             self.dvs_input = False
 
         input_shape = infer_input_shape(layers, input_shape=input_shape)
-
-        if len(input_shape) != 3:
-            raise InputConfigurationError(
-                f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
-            )
+        assert len(input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         # Build model from layers
         self.sequence = build_from_list(
-            layers, in_shape=input_shape, discretize=discretize
+            layers, in_shape=input_shape, discretize=discretize, dvs_input=self.dvs_input
         )
-
-        dvs_layer = DVSLayer(
-            input_shape=input_shape[1:],
-            disable_pixel_array=(not self.dvs_input)
-        )  # Ignore the channel dimension
-        if self.sequence:
-            if not isinstance(self.sequence[0], DVSLayer):
-                # We also need to add a DVSLayer at the very beginning to configure the hardware's DVS layer
-                self.sequence = nn.Sequential(dvs_layer, *self.sequence)
-            else:
-                # if the 1st layer of self.sequence is already a DVSLayer instance
-                # we only need to reset the "disable_pixel_array" attribute based on the dvs_input flag
-                self.sequence[0].disable_pixel_array = (not self.dvs_input)
-        else:
-            # No layers initialized
-            self.sequence = nn.Sequential(dvs_layer)
 
     def to(
         self,

@@ -92,6 +92,7 @@ class DVSLayer(nn.Module):
             pool_layer: Optional[SumPool2d] = None,
             crop_layer: Optional[Crop2d] = None,
             flip_layer: Optional[FlipDims] = None,
+            disable_pixel_array: bool = True,
     ) -> "DVSLayer":
         """
         Alternative factory method.
@@ -107,6 +108,8 @@ class DVSLayer(nn.Module):
             Crop2d layer
         flip_layer:
             FlipDims layer
+        disable_pixel_array:
+            Whether pixel array of new DVSLayer should be disabled.
 
         Returns
         -------
@@ -121,6 +124,8 @@ class DVSLayer(nn.Module):
 
         if len(input_shape) != 3:
             raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
+        if not 0 < input_shape[0] < 2:
+            raise ValueError(f"Only 1 and 2 channels are supported. Provided input_shape has {input_shape[0]}.")
 
         if pool_layer is not None:
             pool = expand_to_pair(pool_layer.kernel_size)
@@ -141,7 +146,8 @@ class DVSLayer(nn.Module):
             flip_x=False if flip_x is None else flip_x,
             flip_y=False if flip_y is None else flip_y,
             swap_xy=False if swap_xy is None else swap_xy,
-            merge_polarities=(input_shape[0] == 1)
+            merge_polarities=(input_shape[0] == 1),
+            disable_pixel_array=disable_pixel_array,
         )
 
     @property
