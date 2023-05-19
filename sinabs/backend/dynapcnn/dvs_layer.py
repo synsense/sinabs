@@ -124,7 +124,7 @@ class DVSLayer(nn.Module):
 
         if len(input_shape) != 3:
             raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
-        if not 0 < input_shape[0] < 2:
+        if not 0 < input_shape[0] <= 2:
             raise ValueError(f"Only 1 and 2 channels are supported. Provided input_shape has {input_shape[0]}.")
 
         if pool_layer is not None:
