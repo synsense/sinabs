@@ -82,8 +82,8 @@ class ConfigBuilder(ABC):
         # turn the mapping into a dict
         mapping = {m[0]: m[1] for m in mapping}
         # Check if there is a dvs layer in the model
-        num_dynapcnn_cores = len(model.compatible_layers)
-        if isinstance(model.compatible_layers[0], DVSLayer):
+        num_dynapcnn_cores = len(model.sequence)
+        if isinstance(model.sequence[0], DVSLayer):
             num_dynapcnn_cores -= 1
         # apply the mapping
         chip_layers_ordering = [
