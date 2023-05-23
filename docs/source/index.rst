@@ -12,7 +12,7 @@ Welcome to sinabs-dynapcnn's documentation!
 This `sinabs` plugin enables porting sinabs models to chips and dev-kits with DYNAP-CNN technology.
 
 DYNAP-CNN/Speck DevKits
------------------
+-----------------------
 
 - :doc:`Overview of the devkits<notebooks/Overview>`.
 

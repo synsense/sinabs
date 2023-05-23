@@ -1,5 +1,5 @@
 Getting Started With Speck/DynapCNN
-=========
+===================================
 
 .. toctree::
     notebooks/Overview
