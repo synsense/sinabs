@@ -9,7 +9,7 @@ A: Currently we only support Conv2d, Avgpool, Sumpool, Linear, Flatten, as well 
 ## 3. What execution order should I notice when I am implementing a sequential structure?
 A: You should be aware with the internal layer order. DYNAP-CNN techonology defines serveral layers that can be communicates each other. In a layer, the Convolution and Neuron activation must be implemented with **Conv-->IAF order-->pool(optional)** order. The cascaded convolution and neuron activation in a DYNAPCNN layer is not allowed.
 
-![dataflow](../_static/Overview/dataflow_layers.png)
+![dataflow](_static/Overview/dataflow_layers.png)
 
 ### Ex1. Bad Case: Cascaded convlution
 ```
