@@ -19,19 +19,19 @@ DYNAP-CNN/Speck DevKits
 .. image:: ./_static/devkits_images/dynapcnn_devkit.png
    :width: 366
    :height: 312
-   :target: ./getting_started_with_devkit.html
+   :target: ./getting_started/index.html
 .. image:: ./_static/devkits_images/speck_devkit.png
    :width: 366
    :height: 312
-   :target: ./getting_started_with_devkit.html
+   :target: ./getting_started/index.html
 .. image:: ./_static/devkits_images/speck_module.png
    :width: 366
    :height: 312
-   :target: ./getting_started_with_devkit.html
+   :target: ./getting_started/index.html
 .. image:: ./_static/devkits_images/speck_module_devkit.png
    :width: 366
    :height: 312
-   :target: ./getting_started_with_devkit.html
+   :target: ./getting_started/index.html
 
 Table of contents
 -----------------
