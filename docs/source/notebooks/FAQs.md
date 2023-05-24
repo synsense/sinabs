@@ -78,3 +78,5 @@ A: we introduced the neuron memory and kernel memory constraints in the design. 
 
 
 ## 6. How to use the leak-neuron
+
+A: Please check this [notebook:](./leak_neuron.ipynb)
