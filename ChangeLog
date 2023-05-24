@@ -5,11 +5,26 @@ CHANGES
 * fix bug for neuron address mapping and add unit test case
 * update ChangeLog
 * add neruon leak option and related unit test
+* replace all math equation
+* Added board resetting before second test. Note that the device will be opened already before the second test starts, so it is not actually necessary
+* Implemented resetting the boards before running the test
+* add getting started with speck section
+* skip visualizer test
+* add speck image at the doc homepage
+* Add notes in docstrings and in the documentation about the fact that attribute modifications after the  call have no effects
+* specify inline math latex for Overview tutorial
+* make tutorial notebook that contains latex a markdown documentsince it doesn't contain any code
+* add skipif condition for test-case that need hardware connected to the CI machine
 * remove system package install cmd
 * fix add-apt-repository can't be found error
 * add apt repository for graphviz localization
 * try another way install graphviz
 * fix CI pipeline failure
+* checked tests pass on mac
+* added test
+* added noconfirm
+* added update keyring to gitlab-ci
+* renamed test
 * Speck2fDevKit support added
 * update samna version requirements
 * update ChangeLog

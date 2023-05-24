@@ -11,11 +11,27 @@ Welcome to sinabs-dynapcnn's documentation!
    
 This `sinabs` plugin enables porting sinabs models to chips and dev-kits with DYNAP-CNN technology.
 
-To get started take a look at the
+DYNAP-CNN/Speck DevKits
+-----------------
 
-- The documentation below
-- :doc:`cnn-to-dynapcnn tutorial<notebooks/cnn_to_dynapcnn>`.
-- `examples <https://gitlab.com/synsense/sinabs-dynapcnn/~/tree/master/examples>`_
+- :doc:`Overview of the devkits<notebooks/Overview>`.
+
+.. image:: ./_static/devkits_images/dynapcnn_devkit.png
+   :width: 366
+   :height: 312
+   :target: ./getting_started_with_devkit.html
+.. image:: ./_static/devkits_images/speck_devkit.png
+   :width: 366
+   :height: 312
+   :target: ./getting_started_with_devkit.html
+.. image:: ./_static/devkits_images/speck_module.png
+   :width: 366
+   :height: 312
+   :target: ./getting_started_with_devkit.html
+.. image:: ./_static/devkits_images/speck_module_devkit.png
+   :width: 366
+   :height: 312
+   :target: ./getting_started_with_devkit.html
 
 Table of contents
 -----------------
@@ -23,13 +39,13 @@ Table of contents
    :maxdepth: 2
 
    installation
-   dynapcnn_model
+   getting_started_with_devkit
+   the_basics
    advanced_concepts
    dangers
-   visualizer
-   tutorials
    api/api.rst
    development
+   contact_us
    change_log
 
 

@@ -1,3 +1,5 @@
+from itertools import product
+import pytest
 import torch
 import torch.nn as nn
 
@@ -31,8 +33,9 @@ def test_from_layers_empty():
 
     assert (out == data).all()
 
-
-def test_from_layers():
+params = tuple(product((True, False), (0, 1, 2, 3)))
+@pytest.mark.parametrize("disable_pixel_array,num_channels", params)
+def test_from_layers(disable_pixel_array, num_channels):
     from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.crop2d import Crop2d
@@ -40,7 +43,15 @@ def test_from_layers():
     pool_layer = sl.SumPool2d(2)
     crop_layer = Crop2d(((0, 59), (0, 54)))
 
-    dvs_layer = DVSLayer.from_layers(input_shape=(2, 128, 128), pool_layer=pool_layer, crop_layer=crop_layer)
+    kwargs_layer = dict(input_shape=(num_channels, 128, 128), pool_layer=pool_layer, crop_layer=crop_layer, disable_pixel_array=disable_pixel_array)
+    
+    if 0 < num_channels <= 2:
+        dvs_layer = DVSLayer.from_layers(**kwargs_layer)
+    else:
+        with pytest.raises(ValueError):
+            dvs_layer = DVSLayer.from_layers(**kwargs_layer)
+        return
+
 
     print(dvs_layer)
 
@@ -53,7 +64,7 @@ def test_from_layers():
 
     out = dvs_layer(data)
 
-    assert out.shape == (1, 2, (64 - 5), (64 - 10))
+    assert out.shape == (1, num_channels, (64 - 5), (64 - 10))
 
     assert dvs_layer.get_roi() == ((0, 59), (0, 54))
 

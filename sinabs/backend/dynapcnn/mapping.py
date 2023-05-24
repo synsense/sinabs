@@ -58,7 +58,7 @@ def get_valid_mapping(model: "DynapcnnNetwork", constraints: List[LayerConstrain
     """
     layer_mapping = []
 
-    for layer in model.compatible_layers:
+    for layer in model.sequence:
         if isinstance(layer, DynapcnnLayer):
             layer_mapping.append(find_chip_layers(layer, constraints))
 
