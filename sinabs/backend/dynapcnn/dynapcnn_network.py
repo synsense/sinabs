@@ -97,6 +97,7 @@ class DynapcnnNetwork(nn.Module):
         chip_layers_ordering="auto",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
+        slow_clk_frequency:int = None,
     ):
         """
         Note that the model parameters are only ever transferred to the device on the 
@@ -151,6 +152,12 @@ class DynapcnnNetwork(nn.Module):
                 self.samna_device = open_device(device)
                 self.samna_device.get_model().apply_configuration(config)
                 time.sleep(1)
+
+                # Set external slow-clock if need
+                if slow_clk_frequency is not None:
+                    dk_io = self.samna_device.get_io_module()
+                    dk_io.set_slow_clk(True)
+                    dk_io.set_slow_clk_rate(slow_clk_frequency)  # Hz
 
                 builder = ChipFactory(device).get_config_builder()
                 # Create input source node

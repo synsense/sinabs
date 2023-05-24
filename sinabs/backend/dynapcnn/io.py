@@ -1,4 +1,4 @@
-import warnings
+import math
 from itertools import groupby
 from typing import Dict, List, Tuple
 
@@ -280,3 +280,80 @@ def close_device(device_id: str):
     device_handle = samna.device.open_device(device_info)
     print(f"Closing device: {device_id}")
     samna.device.close_device(device_handle)
+
+
+def calculate_neuron_address(x: int, y: int, c: int, feature_map_size: Tuple[int, int, int]) -> int:
+    """
+    Calculate the neuron address on the devkit. This function is designed for ReadNeuronValue event
+    to help the user check the neuron value of the SNN on the devkit.
+
+    Args
+    ----
+
+    x: int
+        x coordinate of the neuron
+    y: int
+        y coordinate of the neuron
+    c: int
+        channel index of the neuron
+    feature_map_size: Tuple[int, int, int]
+        the size of the feature map [channel, height, width]
+
+    Returns
+    ----
+
+    neuron_address: int
+
+    """
+    # calculate how many bits it takes based on the feature map size
+    channel, height, width = feature_map_size
+    x_bits = math.ceil(math.log2(width))
+    y_bits = math.ceil(math.log2(height))
+    channel_bits = math.ceil(math.log2(channel))
+    assert x_bits + y_bits + channel_bits <= 18, "Bits overflow! Check if your input arguments are correct!"
+
+    x_shift_bits = channel_bits
+    y_shift_bits = channel_bits + y_bits
+    y_address = y << y_shift_bits
+    x_address = x << x_shift_bits
+    c_address = c
+
+    neuron_address = y_address | x_address | c_address
+
+    return neuron_address
+
+
+def neuron_address_to_cxy(address: int, feature_map_size: Tuple[int, int, int]) -> Tuple:
+
+    """
+    Calculate the c, x, y, coordinate of a neuron when the address of the NeuronValue event is given
+    Args
+    ----
+
+    address: int
+        the neuron address of the NeuronValue event
+    feature_map_size: Tuple[int, int, int]
+        the size of the feature map [channel, height, width]
+
+    Returns
+    ----
+
+    neuron_cxy: Tuple[int, int, int]
+        the [channel, x, y] of the neuron
+
+    """
+    # calculate how many bits it takes based on the feature map size
+    channel, height, width = feature_map_size
+    x_bits = math.ceil(math.log2(width))
+    y_bits = math.ceil(math.log2(height))
+    channel_bits = math.ceil(math.log2(channel))
+    assert x_bits + y_bits + channel_bits <= 18, "Bits overflow! Check if your input arguments are correct!"
+
+    x_shift_bits = channel_bits
+    y_shift_bits = channel_bits + y_bits
+
+    y = address >> y_shift_bits
+    x = (address >> x_shift_bits) & (2 ** x_bits - 1)
+    c = address & (2 ** channel_bits - 1)
+
+    return c, x, y

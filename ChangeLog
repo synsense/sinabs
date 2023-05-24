@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* add neuron leak tutorial notebook
+* fix bug for neuron address mapping and add unit test case
+* update ChangeLog
+* add neruon leak option and related unit test
 * replace all math equation
 * Added board resetting before second test. Note that the device will be opened already before the second test starts, so it is not actually necessary
 * Implemented resetting the boards before running the test
