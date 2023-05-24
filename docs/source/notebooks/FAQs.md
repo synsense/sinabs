@@ -75,3 +75,6 @@ A: we introduced the neuron memory and kernel memory constraints in the design. 
 ## 5. Known dev-kit bugs
 
 * Channel index mapping error between the output DYNAP-CNN layer and readout block(on Speck2e/2f), for details see [here](https://synsense.gitlab.io/sinabs-dynapcnn/notebooks/using_readout_layer.html)
+
+
+## 6. How to use the leak-neuron
