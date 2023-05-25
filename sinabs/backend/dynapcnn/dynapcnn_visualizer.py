@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import samna
 import samnagui
+from .io import launch_visualizer
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
@@ -144,9 +145,6 @@ class DynapcnnVisualizer:
         self.power_monitor_number_of_items = power_monitor_number_of_items
 
         # Samna TCP communication ports
-        ## Default samna ports
-        self.samna_receiver_port = "33335"
-        self.samna_sender_port = "33336"
         ## Visualizer port
         self.samna_visualizer_port = get_free_tcp_port()
 
@@ -156,12 +154,6 @@ class DynapcnnVisualizer:
         # Extra plot arguments:
         self.extra_arguments = extra_arguments
 
-        # Initialize samna node for visualization
-        self.samna_node = samna.init_samna(
-            f"tcp://0.0.0.0:{self.samna_receiver_port}",
-            f"tcp://0.0.0.0:{self.samna_sender_port}",
-        )
-        time.sleep(1)
 
     @staticmethod
     def parse_feature_names_from_image_names(readout_image_paths: List[str]):
@@ -182,39 +174,33 @@ class DynapcnnVisualizer:
         else:
             return None
 
-    def create_visualizer_process(self, visualizer_id: int = 3):
+    def create_visualizer_process(self, visualizer_endpoint: str, disjoint_process: bool =False):
         """Create a samnagui visualizer process
 
         Args:
-            sender_endpoint (str):
-                Samna node sender endpoint
-            receiver_endpoint (str):
-                Samna node receiver endpoint
-            visualizer_id (int, optional):
-                Id of the visualizer node to be created.
-                Defaults to 3. -- samna default
+            visualizer_endpoint (str):
+                TCP url with the port for the visualizer. eg. `tcp://0.0.0.0:40000`
+            disjoint_process (bool):
+                If True, the visualizer is launched with a terminal command and is run as an independent process (Useful for MacOS users). 
+                Else, it is run as a subprocess by default.
 
         Returns:
-            samna.submodule:
-                Samna remote visualizer node.
+            subprocess( Optional[Process]):
+                Returns a process in case the GUI is not launched as a disjoint process.
         """
         height_proportion = 1 / 9 * self.window_scale[0]
         width_proportion = 1 / 16 * self.window_scale[1]
 
-        receiver_endpoint = self.samna_node.get_receiver_endpoint()
-        sender_endpoint = self.samna_node.get_sender_endpoint()
-
         # Create and start the process
-        os.system(
-            f'python -c \'import samna, samnagui; samnagui.runVisualizer({width_proportion}, {height_proportion}, "{receiver_endpoint}", "{sender_endpoint}", {visualizer_id}); \' &'
+        gui_process = launch_visualizer(
+            receiver_endpoint=visualizer_endpoint,
+            width_proportion=width_proportion,
+            height_proportion=height_proportion,
+            disjoint_process=disjoint_process,
         )
 
-        # Wait until the process is properly initialized
-        time.sleep(2)
+        return gui_process
 
-        # Create a remote samna node and return it.
-        samna.open_remote_node(visualizer_id, f"visualizer_{visualizer_id}")
-        return getattr(samna, f"visualizer_{visualizer_id}")
 
     def add_dvs_plot(
         self,
@@ -385,7 +371,7 @@ class DynapcnnVisualizer:
         """Utility function to create a Cluster visualizer
 
         Args:
-            visualizer (samna.submodule):
+            visualizer_node (samna.submodule):
                 Remote samnagui node.
 
         Returns:
@@ -486,11 +472,8 @@ class DynapcnnVisualizer:
         self.streamer_graph = samna.graph.EventFilterGraph()
 
         ## Start visualizer and create plots based on parameters.
-        remote_visualizer_node = self.create_visualizer_process(visualizer_id=3)
+        gui_process = self.create_visualizer_process(visualizer_endpoint=f"tcp://0.0.0.0:{self.samna_visualizer_port}")
 
-        (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(
-            visualizer_node=remote_visualizer_node
-        )
 
         # Streamer graph
         # Dvs node
@@ -503,6 +486,18 @@ class DynapcnnVisualizer:
             ]
         )
         dvs_member_filter.set_white_list([13], "layer")
+
+
+        # Visualizer configuration branch of the graph.
+        visualizer_config_node, _ = self.streamer_graph.sequential([
+            samna.BasicSourceNode_ui_event(),  # For generating UI commands
+            streamer_node
+        ])
+
+        # Create plots
+        (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(
+            visualizer_node=visualizer_config_node
+        )
 
         ## Spike count node
 
@@ -572,7 +567,7 @@ class DynapcnnVisualizer:
         )
 
         # Connect the visualizer components
-        remote_visualizer_node.receiver.set_receiver_endpoint(
+        .set_receiver_endpoint(
             f"tcp://0.0.0.0:{self.samna_visualizer_port}"
         )
         remote_visualizer_node.receiver.add_destination(
