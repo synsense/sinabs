@@ -1,9 +1,12 @@
+import os
 import math
 from itertools import groupby
+from multiprocessing import Process
 from typing import Dict, List, Tuple
 
 import numpy as np
 import samna
+import samnagui
 import torch
 
 from .utils import parse_device_id, standardize_device_id
@@ -280,6 +283,29 @@ def close_device(device_id: str):
     device_handle = samna.device.open_device(device_info)
     print(f"Closing device: {device_id}")
     samna.device.close_device(device_handle)
+
+
+def launch_visualizer(receiver_endpoint: str, width_proportion: float=0.6, height_proportion: float=0.6, disjoint_process: bool = True):
+    """
+    Launch the samna visualizer in a separate process.
+
+    NOTE: MacOS users will want to use disjoint_process as True as a GUI process cannot be launched as a subprocess.
+
+    Args:
+        receiver_endpoint (str): the visualiser’s endpoint for receiving events (e.g. “tcp://0.0.0.0:33335”).
+        width_proportion (bool): the rate between window width and workarea width of main monitor, default 0.75 which means this window has a width which equals to 3/4 width of main monitor’s workarea.
+        height_proportion (bool): the rate between window height and workarea height of main monitor, default 0.75 which means this window has a height which equals to 3/4 height of main monitor’s workarea.
+        disjoint_process (bool, optional): If true, will be launched in a disjoint shell process. Defaults to True. If false, this just runs the default samna command.
+    
+    Returns:
+        gui_process (Process): The gui sub-process handle if disjoint_process was False.
+    """
+    if disjoint_process:
+        os.system(f"samnagui -W {width_proportion} -H {height_proportion} {receiver_endpoint} &")
+    else:
+        gui_process = Process(target=samnagui.runVisualizer, args=(receiver_endpoint, width_proportion, height_proportion))
+        gui_process.start()
+        return gui_process
 
 
 def calculate_neuron_address(x: int, y: int, c: int, feature_map_size: Tuple[int, int, int]) -> int:
