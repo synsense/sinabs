@@ -285,7 +285,12 @@ def close_device(device_id: str):
     samna.device.close_device(device_handle)
 
 
-def launch_visualizer(receiver_endpoint: str, width_proportion: float=0.6, height_proportion: float=0.6, disjoint_process: bool = True):
+def launch_visualizer(
+    receiver_endpoint: str,
+    width_proportion: float = 0.6,
+    height_proportion: float = 0.6,
+    disjoint_process: bool = True,
+):
     """
     Launch the samna visualizer in a separate process.
 
@@ -296,19 +301,26 @@ def launch_visualizer(receiver_endpoint: str, width_proportion: float=0.6, heigh
         width_proportion (bool): the rate between window width and workarea width of main monitor, default 0.75 which means this window has a width which equals to 3/4 width of main monitor’s workarea.
         height_proportion (bool): the rate between window height and workarea height of main monitor, default 0.75 which means this window has a height which equals to 3/4 height of main monitor’s workarea.
         disjoint_process (bool, optional): If true, will be launched in a disjoint shell process. Defaults to True. If false, this just runs the default samna command.
-    
+
     Returns:
         gui_process (Process): The gui sub-process handle if disjoint_process was False.
     """
     if disjoint_process:
-        os.system(f"samnagui -W {width_proportion} -H {height_proportion} {receiver_endpoint} &")
+        os.system(
+            f"samnagui -W {width_proportion} -H {height_proportion} {receiver_endpoint} &"
+        )
     else:
-        gui_process = Process(target=samnagui.runVisualizer, args=(receiver_endpoint, width_proportion, height_proportion))
+        gui_process = Process(
+            target=samnagui.run_visualizer,
+            args=(receiver_endpoint, width_proportion, height_proportion),
+        )
         gui_process.start()
         return gui_process
 
 
-def calculate_neuron_address(x: int, y: int, c: int, feature_map_size: Tuple[int, int, int]) -> int:
+def calculate_neuron_address(
+    x: int, y: int, c: int, feature_map_size: Tuple[int, int, int]
+) -> int:
     """
     Calculate the neuron address on the devkit. This function is designed for ReadNeuronValue event
     to help the user check the neuron value of the SNN on the devkit.
@@ -336,7 +348,9 @@ def calculate_neuron_address(x: int, y: int, c: int, feature_map_size: Tuple[int
     x_bits = math.ceil(math.log2(width))
     y_bits = math.ceil(math.log2(height))
     channel_bits = math.ceil(math.log2(channel))
-    assert x_bits + y_bits + channel_bits <= 18, "Bits overflow! Check if your input arguments are correct!"
+    assert (
+        x_bits + y_bits + channel_bits <= 18
+    ), "Bits overflow! Check if your input arguments are correct!"
 
     x_shift_bits = channel_bits
     y_shift_bits = channel_bits + y_bits
@@ -349,8 +363,9 @@ def calculate_neuron_address(x: int, y: int, c: int, feature_map_size: Tuple[int
     return neuron_address
 
 
-def neuron_address_to_cxy(address: int, feature_map_size: Tuple[int, int, int]) -> Tuple:
-
+def neuron_address_to_cxy(
+    address: int, feature_map_size: Tuple[int, int, int]
+) -> Tuple:
     """
     Calculate the c, x, y, coordinate of a neuron when the address of the NeuronValue event is given
     Args
@@ -373,13 +388,15 @@ def neuron_address_to_cxy(address: int, feature_map_size: Tuple[int, int, int]) 
     x_bits = math.ceil(math.log2(width))
     y_bits = math.ceil(math.log2(height))
     channel_bits = math.ceil(math.log2(channel))
-    assert x_bits + y_bits + channel_bits <= 18, "Bits overflow! Check if your input arguments are correct!"
+    assert (
+        x_bits + y_bits + channel_bits <= 18
+    ), "Bits overflow! Check if your input arguments are correct!"
 
     x_shift_bits = channel_bits
     y_shift_bits = channel_bits + y_bits
 
     y = address >> y_shift_bits
-    x = (address >> x_shift_bits) & (2 ** x_bits - 1)
-    c = address & (2 ** channel_bits - 1)
+    x = (address >> x_shift_bits) & (2**x_bits - 1)
+    c = address & (2**channel_bits - 1)
 
     return c, x, y
