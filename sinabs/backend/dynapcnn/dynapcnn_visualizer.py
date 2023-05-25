@@ -566,32 +566,25 @@ class DynapcnnVisualizer:
             f"tcp://0.0.0.0:{self.samna_visualizer_port}"
         )
 
-        # Connect the visualizer components
-        .set_receiver_endpoint(
-            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
-        )
-        remote_visualizer_node.receiver.add_destination(
-            remote_visualizer_node.splitter.get_input_channel()
-        )
         ## Connect Dvs visualizer to its plot
-        remote_visualizer_node.splitter.add_destination(
-            "dvs_event", remote_visualizer_node.plots.get_plot_input(dvs_plot[1])
+        visualizer_config_node.splitter.add_destination(
+            "dvs_event", visualizer_config_node.plots.get_plot_input(dvs_plot[1])
         )
         ## Connect Spike count visualizer to its plot
-        remote_visualizer_node.splitter.add_destination(
+        visualizer_config_node.splitter.add_destination(
             "spike_count",
-            remote_visualizer_node.plots.get_plot_input(spike_count_plot[1]),
+            visualizer_config_node.plots.get_plot_input(spike_count_plot[1]),
         )
         ## Connect Readout visualizer to its plot
         if "r" in self.gui_type:
-            remote_visualizer_node.splitter.add_destination(
-                "readout", remote_visualizer_node.plots.get_plot_input(readout_plot[1])
+            visualizer_config_node.splitter.add_destination(
+                "readout", visualizer_config_node.plots.get_plot_input(readout_plot[1])
             )
         ## Connect power monitor visualizer to its plot
         if "p" in self.gui_type:
-            remote_visualizer_node.splitter.add_destination(
+            visualizer_config_node.splitter.add_destination(
                 "measurement",
-                remote_visualizer_node.plots.get_plot_input(power_plot[1]),
+                visualizer_config_node.plots.get_plot_input(power_plot[1]),
             )
 
         self.start()
