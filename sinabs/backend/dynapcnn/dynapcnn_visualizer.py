@@ -225,7 +225,9 @@ class DynapcnnVisualizer:
         )
         return activity_plot_configuration
 
-    def add_readout_plot(self, layout: Tuple[float, float, float, float], **kwargs):
+    def add_readout_plot(
+        self, layout: Tuple[float, float, float, float], **kwargs
+    ):
         """Add a readout plot (image showing the predicted class) to the visualizer
 
         Args:
@@ -373,21 +375,25 @@ class DynapcnnVisualizer:
 
         plots = []
 
-        plots.append(self.add_dvs_plot(shape=self.dvs_shape, layout=layout[0]))
+        plots.append(self.add_dvs_plot(
+            shape=self.dvs_shape, layout=layout[0]
+        ))
         if self.extra_arguments and "spike_count" in self.extra_argument.keys():
             spike_count_plot_args = self.extra_arguments["spike_count"]
         else:
             spike_count_plot_args = {}
-        plots.append(
-            self.add_spike_count_plot(layout=layout[1], **spike_count_plot_args)
-        )
+        plots.append(self.add_spike_count_plot(
+            layout=layout[1], **spike_count_plot_args
+        ))
         if "r" in self.gui_type:
             try:
                 if self.extra_arguments and "readout" in self.extra_arguments.keys():
                     readout_args = self.extra_arguments["readout"]
                 else:
                     readout_args = {}
-                plots.append(self.add_readout_plot(layout=layout[2], **readout_args))
+                plots.append(self.add_readout_plot(
+                    layout=layout[2], **readout_args
+                ))
             except Exception as e:
                 print(
                     f"Either the layout or the images are missing in the readout plot. "
@@ -403,11 +409,9 @@ class DynapcnnVisualizer:
                     power_measurement_kwargs = self.extra_arguments["power_measurement"]
                 else:
                     power_measurement_kwargs = {}
-                plots.append(
-                    self.add_power_monitor_plot(
-                        layout=layout[3], **power_measurement_kwargs
-                    )
-                )
+                plots.append(self.add_power_monitor_plot(
+                    layout=layout[3], **power_measurement_kwargs
+                ))
             except:
                 print(f"Layout missing the power monitor plot. ")
 
@@ -552,7 +556,9 @@ class DynapcnnVisualizer:
         )
 
         # Apply plot configuration
-        visualizer_config_node.write([samna.ui.VisualizerConfiguration(plots=plots)])
+        visualizer_config_node.write([
+            samna.ui.VisualizerConfiguration(plots=plots)
+        ])
 
         self.start()
         print("Set up completed!")
