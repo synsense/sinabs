@@ -475,6 +475,10 @@ class DynapcnnVisualizer:
                 "VizEventStreamer",
             ]
         )
+        streamer_node.set_streamer_endpoint(
+            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
+        )
+
         dvs_member_filter.set_white_list([13], "layer")
 
         # Visualizer configuration branch of the graph.
@@ -551,16 +555,13 @@ class DynapcnnVisualizer:
         if "o" in self.gui_type:
             raise NotImplementedError("Work in progress!")
 
-        streamer_node.set_streamer_endpoint(
-            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
-        )
+        self.start()
 
         # Apply plot configuration
         visualizer_config_node.write([
             samna.ui.VisualizerConfiguration(plots=plots)
         ])
 
-        self.start()
         print("Set up completed!")
 
     def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
