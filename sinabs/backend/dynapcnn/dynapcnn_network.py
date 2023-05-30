@@ -75,7 +75,7 @@ class DynapcnnNetwork(nn.Module):
         # This attribute stores the location/core-id of each of the DynapcnnLayers upon placement on chip
         self.chip_layers_ordering = []
 
-        self.input_shape = input_shape        # Convert models  to sequential
+        self.input_shape = input_shape  # Convert models  to sequential
         layers = convert_model_to_layer_list(model=snn)
         # Check if dvs input is expected
         if dvs_input:
@@ -88,7 +88,10 @@ class DynapcnnNetwork(nn.Module):
 
         # Build model from layers
         self.sequence = build_from_list(
-            layers, in_shape=input_shape, discretize=discretize, dvs_input=self.dvs_input
+            layers,
+            in_shape=input_shape,
+            discretize=discretize,
+            dvs_input=self.dvs_input,
         )
 
     def to(
@@ -97,12 +100,12 @@ class DynapcnnNetwork(nn.Module):
         chip_layers_ordering="auto",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
-        slow_clk_frequency:int = None,
+        slow_clk_frequency: int = None,
     ):
         """
-        Note that the model parameters are only ever transferred to the device on the 
-        `to` call, so changing a threshold or weight of a model that is deployed will 
-        have no effect on the model on chip until `to` is called again. 
+        Note that the model parameters are only ever transferred to the device on the
+        `to` call, so changing a threshold or weight of a model that is deployed will
+        have no effect on the model on chip until `to` is called again.
 
         Parameters
         ----------
@@ -191,6 +194,97 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise Exception("Unknown device description.")
 
+    def _make_config(
+        self,
+        chip_layers_ordering: Union[Sequence[int], str] = "auto",
+        device="dynapcnndevkit:0",
+        monitor_layers: Optional[Union[List, str]] = None,
+        config_modifier=None,
+    ) -> Tuple["SamnaConfiguration", bool]:
+        """
+        Prepare and output the `samna` configuration for this network.
+
+        Parameters
+        ----------
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+
+        device: String
+            dynapcnndevkit, speck2b or speck2devkit
+
+        monitor_layers: None/List/Str
+            A list of all chip-layers that you want to monitor.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+            If this value is left as None, by default the last layer of the model is monitored.
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+
+        Returns
+        -------
+        Configuration object
+            Object defining the configuration for the device
+        Bool
+            True if the configuration is valid for the given device.
+
+        Raises
+        ------
+            ImportError
+                If samna is not available.
+        """
+        config_builder = ChipFactory(device).get_config_builder()
+
+        # Figure out layer ordering
+        if chip_layers_ordering == "auto":
+            chip_layers_ordering = config_builder.get_valid_mapping(self)
+        else:
+            # Truncate chip_layers_ordering just in case a longer list is passed
+            if self.dvs_input:
+                chip_layers_ordering = chip_layers_ordering[: len(self.sequence) - 1]
+            chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
+
+        # Save the chip layers
+        self.chip_layers_ordering = chip_layers_ordering
+        # Update config
+        config = config_builder.build_config(self, chip_layers_ordering)
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
+        # Check if any monitoring is enabled and if not, enable monitoring for the last layer
+        if monitor_layers is None:
+            monitor_layers = [-1]
+        elif monitor_layers == "all":
+            monitor_layers = list(range(len(self.sequence)))
+
+        # Enable monitors on the specified layers
+        # Find layers corresponding to the chip
+        monitor_chip_layers = [
+            self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"
+        ]
+        if "dvs" in monitor_layers:
+            monitor_chip_layers.append("dvs")
+        config_builder.monitor_layers(config, monitor_chip_layers)
+
+        # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
+        # config.factory_settings.monitor_input_enable = False
+
+        # Apply user config modifier
+        if config_modifier is not None:
+            config = config_modifier(config)
+
+        # Validate config
+        return config, config_builder.validate_configuration(config)
+
     def make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
@@ -237,55 +331,33 @@ class DynapcnnNetwork(nn.Module):
         ------
             ImportError
                 If samna is not available.
+            ValueError
+                If the generated configuration is not valid for the specified device.
         """
-
-        config_builder = ChipFactory(device).get_config_builder()
-
-        # Figure out layer ordering
-        if chip_layers_ordering == "auto":
-            chip_layers_ordering = config_builder.get_valid_mapping(self)
-        else:
-            # Truncate chip_layers_ordering just in case a longer list is passed
-            if self.dvs_input:
-                chip_layers_ordering = chip_layers_ordering[
-                    : len(self.sequence) - 1
-                ]
-            chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
-
-        # Save the chip layers
-        self.chip_layers_ordering = chip_layers_ordering
-        # Update config
-        config = config_builder.build_config(self, chip_layers_ordering)
-        if self.input_shape and self.input_shape[0] == 1:
-            config.dvs_layer.merge = True
-        # Check if any monitoring is enabled and if not, enable monitoring for the last layer
-        if monitor_layers is None:
-            monitor_layers = [-1]
-        elif monitor_layers == "all":
-            monitor_layers = list(range(len(self.sequence)))
-
-        # Enable monitors on the specified layers
-        # Find layers corresponding to the chip
-        monitor_chip_layers = [
-            self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"
-        ]
-        if "dvs" in monitor_layers:
-            monitor_chip_layers.append("dvs")
-        config_builder.monitor_layers(config, monitor_chip_layers)
-
-        # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
-        # config.factory_settings.monitor_input_enable = False
-
-        # Apply user config modifier
-        if config_modifier is not None:
-            config = config_modifier(config)
-
+        config, is_compatible = self._make_config(
+            chip_layers_ordering=chip_layers_ordering,
+            device=device,
+            monitor_layers=monitor_layers,
+            config_modifier=config_modifier,
+        )
         # Validate config
-        if config_builder.validate_configuration(config):
+        if is_compatible:
             print("Network is valid")
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
+
+    def is_compatible_with(self, device_type: str) -> bool:
+        """Check if the current model is compatible with a given device.
+
+        Args:
+            device_type (str): Device type ie speck2b, speck2fmodule
+
+        Returns:
+            bool: True if compatible
+        """
+        _, is_compatible = self._make_config(device=device_type)
+        return is_compatible
 
     def reset_states(self, randomize=False):
         """
@@ -384,7 +456,9 @@ class DynapcnnNetwork(nn.Module):
         """
         summary = {}
 
-        dynapcnn_layers = [lyr for lyr in self.sequence if isinstance(lyr, DynapcnnLayer)]
+        dynapcnn_layers = [
+            lyr for lyr in self.sequence if isinstance(lyr, DynapcnnLayer)
+        ]
         summary.update({k: list() for k in dynapcnn_layers[0].memory_summary().keys()})
         for lyr in dynapcnn_layers:
             lyr_summary = lyr.memory_summary()
