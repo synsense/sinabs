@@ -1,19 +1,13 @@
 CHANGES
 =======
 
+* Add unit test for DynapcnnNetwork.is\_compatible\_with
+* Bugfix in DynapcnnNetwork.is\_compatible\_with where it would raise a ValueError instead of returning False
 * Added documentaion in FAQ
 * added is\_compatible\_with method; blackened
-* complete the neuron-leak example notebook
-* add leak-neuron link in the FAQs
-* merge develop to 76-add-leak-neruon-option
-* Make sure DVSLayer is added to DynapcnnNetwork if and only if necessary. Fix unit test about single neuron on hardware
-* Turn off DVS sensor when DynapcnnNetwork has no DVSLayer
-* Restructure unit tests
-* Fix: Allow input shape to DVS layer to have 2 channels
-* More flexible DVSLayer generation
-* Remove 'compatible\_layers' attribute from DynapcnnNetwork and use 'sequence' instead
-* documentation improvement
-* replace curl with wget
+* updated DynapcnnVisualizer connect method
+* moved configuration settings order
+* blacked and updaetd test
 * updated dynapcnn visualizer with latest samna api
 * wip, dynapcnn visualizer refractoring
 * wip updating dynapcnn visualizer
