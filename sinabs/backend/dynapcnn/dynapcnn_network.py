@@ -356,7 +356,14 @@ class DynapcnnNetwork(nn.Module):
         Returns:
             bool: True if compatible
         """
-        _, is_compatible = self._make_config(device=device_type)
+        try:
+            _, is_compatible = self._make_config(device=device_type)
+        except ValueError as e:
+            # Catch "No valid mapping found" error
+            if e.args[0] == ("No valid mapping found"):
+                return False
+            else:
+                raise e
         return is_compatible
 
     def reset_states(self, randomize=False):
