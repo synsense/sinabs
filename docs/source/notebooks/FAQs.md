@@ -80,3 +80,22 @@ A: we introduced the neuron memory and kernel memory constraints in the design. 
 ## 6. How to use the leak-neuron
 
 A: Please check this [notebook:](./leak_neuron.ipynb)
+
+
+## 7. Is my network compatible with my dev-kit/chip?
+A: Once you have a network you can follow the below steps to check if it is compatible with your device;
+
+```
+...
+# If you are starting from an ANN definition
+my_ann = nn.Sequential(...)
+my_snn = sinabs.from_model(my_network, input_shape)
+
+# Restructure your SNN into a Dynapcnncnn Core structure
+my_dynapcnn_network = DynapcnnNetwork(my_snn, input_shape)
+
+# Check if your netowrk is compatible with a given chip
+assert my_dynapcnn_network.is_compatible_with("speck2fmodule")
+
+...
+```
