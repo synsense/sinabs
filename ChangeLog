@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Added documentaion in FAQ
+* added is\_compatible\_with method; blackened
 * complete the neuron-leak example notebook
 * add leak-neuron link in the FAQs
 * merge develop to 76-add-leak-neruon-option
