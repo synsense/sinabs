@@ -417,7 +417,19 @@ class DynapcnnVisualizer:
 
         return plots
 
-    def connect(self, dynapcnn_network: DynapcnnNetwork):
+    def connect(self, dynapcnn_network: DynapcnnNetwork, disjoint_process: bool = False):
+        """The method does the bulk of the work of creating the graphs and launching the visualizer
+
+        Args:
+            dynapcnn_network (DynapcnnNetwork): The network that needs to be deployed and visualized
+            disjoint_process (bool, optional): If true, the GUI is launched as a separate disjoint process. Useful for MacOS users. Defaults to False.
+
+        Raises:
+            ConnectionError: _description_
+            ValueError: _description_
+            ValueError: _description_
+            NotImplementedError: _description_
+        """
         # Checks for the visualizer to work correctly.
         if not hasattr(dynapcnn_network, "samna_device"):
             raise ConnectionError(
@@ -462,7 +474,8 @@ class DynapcnnVisualizer:
 
         ## Start visualizer and create plots based on parameters.
         gui_process = self.create_visualizer_process(
-            visualizer_endpoint=f"tcp://0.0.0.0:{self.samna_visualizer_port}"
+            visualizer_endpoint=f"tcp://0.0.0.0:{self.samna_visualizer_port}",
+            disjoint_process=disjoint_process
         )
 
         # Streamer graph
