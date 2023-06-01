@@ -39,6 +39,10 @@ class DynapcnnNetwork(nn.Module):
     * linear layers are turned into convolutional layers
     * dropout layers are ignored
     * weights, biases and thresholds are discretized according to dynapcnn requirements
+
+    Note that the model parameters are only ever transferred to the device 
+    on the `to` call, so changing a threshold or weight of a model that 
+    is deployed will have no effect on the model on chip until `to` is called again. 
     """
 
     def __init__(
@@ -121,6 +125,10 @@ class DynapcnnNetwork(nn.Module):
         config_modifier=None,
     ):
         """
+        Note that the model parameters are only ever transferred to the device on the 
+        `to` call, so changing a threshold or weight of a model that is deployed will 
+        have no effect on the model on chip until `to` is called again. 
+
         Parameters
         ----------
 

@@ -1,4 +1,4 @@
-Tutorials
+Getting Started With Speck/DynapCNN
 =========
 
 .. toctree::
@@ -8,3 +8,5 @@ Tutorials
     notebooks/power_monitoring
     notebooks/using_readout_layer
     notebooks/visualize_spike_count
+    notebooks/visualizer
+    notebooks/FAQs
