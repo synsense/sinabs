@@ -84,10 +84,12 @@ def convert_cropping2dlayer_to_crop2d(
 
 
 def construct_dvs_layer(
-    layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start=0
+    layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start: int=0, dvs_input: bool=False,
 ) -> Tuple[Optional[DVSLayer], int, float]:
     """
-    Generate a DVSLayer given a list of layers
+    Generate a DVSLayer given a list of layers. If `layers` does not start
+    with a pooling, cropping or flipping layer and `dvs_input` is False,
+    will return `None` instead of a DVSLayer.
     NOTE: The number of channels is implicitly assumed to be 2 because of DVS
 
     Parameters
@@ -108,6 +110,8 @@ def construct_dvs_layer(
     rescale_factor: float
         Rescaling factor needed when turning AvgPool to SumPool. May
         differ from the pooling kernel in certain cases.
+    dvs_input: bool
+        Whether DVSLayer should have pixel array activated.
     """
     # Start with defaults
     layer_idx_next = idx_start
@@ -129,7 +133,7 @@ def construct_dvs_layer(
     )
 
     # Find next layer (check twice for two layers)
-    for i in range(2):
+    for __ in range(2):
         # Go to the next layer
         if layer_idx_next < len(layers):
             layer = layers[layer_idx_next]
@@ -152,13 +156,14 @@ def construct_dvs_layer(
 
         layer_idx_next += 1
 
-    # If any parameters have been found
-    if layer_idx_next > 0:
+    # If any parameters have been found or dvs_input is True
+    if (layer_idx_next > 0) or dvs_input:
         dvs_layer = DVSLayer.from_layers(
             pool_layer=pool_lyr,
             crop_layer=crop_lyr,
             flip_layer=flip_lyr,
             input_shape=input_shape,
+            disable_pixel_array=not dvs_input,
         )
         return dvs_layer, layer_idx_next, rescale_factor
     else:
@@ -358,7 +363,7 @@ def construct_next_dynapcnn_layer(
 
 
 def build_from_list(
-    layers: List[nn.Module], in_shape, discretize=True
+    layers: List[nn.Module], in_shape, discretize=True, dvs_input=False,
 ) -> nn.Sequential:
     """
     Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
@@ -372,6 +377,11 @@ def build_from_list(
             (channels, height, width)
         discretize: bool
             Discretize weights and thresholds if True
+        dvs_input: bool
+            Whether model should receive DVS input. If `True`, the returned model
+            will begin with a DVSLayer with `disable_pixel_array` set to False.
+            Otherwise, the model starts with a DVSLayer only if the first element
+            in `layers` is a pooling, cropping or flipping layer.
 
     Returns
     -------
@@ -381,7 +391,7 @@ def build_from_list(
     lyr_indx_next = 0
     # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
     dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
-        layers, input_shape=in_shape, idx_start=lyr_indx_next
+        layers, input_shape=in_shape, idx_start=lyr_indx_next, dvs_input=dvs_input
     )
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)

@@ -230,4 +230,4 @@ def test_no_conv_layers():
 
     net = DynapcnnNetwork(snn=seq, input_shape=(2, 10, 10), dvs_input=True)
 
-    assert isinstance(net.compatible_layers[0], DVSLayer)
+    assert isinstance(net.sequence[0], DVSLayer)
