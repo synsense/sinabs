@@ -281,12 +281,12 @@ class DynapcnnVisualizer:
             layout,
             25,
             2.5,
-            "Unit",  # TODO: Should be replaced to something meaningful
+            "",
             1.2,
             True,
             10,
-            "x label",  # TODO: SHould be replaced to something meaningful
             "Spike Count",
+            "Time (s)",
         )
         return spikecount_plot_configuration
 
@@ -316,11 +316,12 @@ class DynapcnnVisualizer:
                 layout,
                 10,
                 2,
-                "Unit",  # TODO: Should be replaced to something meaningful
+                "",
                 1.5,
                 False,
                 1,
-                "x label",  # TODO: SHould be replaced to something meaningful
+                "Power Measurement",
+                "Time (s)",
                 "Power (mW)",
             )
         )
