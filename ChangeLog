@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* updated files
 * Add unit test for DynapcnnNetwork.is\_compatible\_with
 * Bugfix in DynapcnnNetwork.is\_compatible\_with where it would raise a ValueError instead of returning False
 * Added documentaion in FAQ
@@ -30,6 +31,7 @@ CHANGES
 * Implemented resetting the boards before running the test
 * add getting started with speck section
 * skip visualizer test
+* warn if layer with pooling is monitored
 * add speck image at the doc homepage
 * Add notes in docstrings and in the documentation about the fact that attribute modifications after the  call have no effects
 * specify inline math latex for Overview tutorial
