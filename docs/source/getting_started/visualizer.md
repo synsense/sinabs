@@ -169,3 +169,7 @@ visualizer.connect(hardware_compatible_model)
 
 ### Try it yourself
 The example script that runs the visualizer can be found under `/examples/gesture_viz.py` .
+
+
+#### MacOS users
+Due to the difference in the behaviour of python's multiprocessing library on MacOS, you should run the `examples/gesture_viz.py` script with `-i` flag. `python -i /examples/gesture_viz.py` .
