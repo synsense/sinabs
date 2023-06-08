@@ -1,15 +1,12 @@
-import os
 import socket
-import time
 import warnings
-from functools import partial
-from multiprocessing import Process
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple
 
 import samna
-import samnagui
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+
+from .io import launch_visualizer
 
 
 class DynapcnnVisualizer:
@@ -144,9 +141,6 @@ class DynapcnnVisualizer:
         self.power_monitor_number_of_items = power_monitor_number_of_items
 
         # Samna TCP communication ports
-        ## Default samna ports
-        self.samna_receiver_port = "33335"
-        self.samna_sender_port = "33336"
         ## Visualizer port
         self.samna_visualizer_port = get_free_tcp_port()
 
@@ -155,13 +149,6 @@ class DynapcnnVisualizer:
 
         # Extra plot arguments:
         self.extra_arguments = extra_arguments
-
-        # Initialize samna node for visualization
-        self.samna_node = samna.init_samna(
-            f"tcp://0.0.0.0:{self.samna_receiver_port}",
-            f"tcp://0.0.0.0:{self.samna_sender_port}",
-        )
-        time.sleep(1)
 
     @staticmethod
     def parse_feature_names_from_image_names(readout_image_paths: List[str]):
@@ -182,51 +169,43 @@ class DynapcnnVisualizer:
         else:
             return None
 
-    def create_visualizer_process(self, visualizer_id: int = 3):
+    def create_visualizer_process(
+        self, visualizer_endpoint: str, disjoint_process: bool = False
+    ):
         """Create a samnagui visualizer process
 
         Args:
-            sender_endpoint (str):
-                Samna node sender endpoint
-            receiver_endpoint (str):
-                Samna node receiver endpoint
-            visualizer_id (int, optional):
-                Id of the visualizer node to be created.
-                Defaults to 3. -- samna default
+            visualizer_endpoint (str):
+                TCP url with the port for the visualizer. eg. `tcp://0.0.0.0:40000`
+            disjoint_process (bool):
+                If True, the visualizer is launched with a terminal command and is run as an independent process (Useful for MacOS users).
+                Else, it is run as a subprocess by default.
 
         Returns:
-            samna.submodule:
-                Samna remote visualizer node.
+            subprocess( Optional[Process]):
+                Returns a process in case the GUI is not launched as a disjoint process.
         """
         height_proportion = 1 / 9 * self.window_scale[0]
         width_proportion = 1 / 16 * self.window_scale[1]
 
-        receiver_endpoint = self.samna_node.get_receiver_endpoint()
-        sender_endpoint = self.samna_node.get_sender_endpoint()
-
         # Create and start the process
-        os.system(
-            f'python -c \'import samna, samnagui; samnagui.runVisualizer({width_proportion}, {height_proportion}, "{receiver_endpoint}", "{sender_endpoint}", {visualizer_id}); \' &'
+        gui_process = launch_visualizer(
+            receiver_endpoint=visualizer_endpoint,
+            width_proportion=width_proportion,
+            height_proportion=height_proportion,
+            disjoint_process=disjoint_process,
         )
 
-        # Wait until the process is properly initialized
-        time.sleep(2)
-
-        # Create a remote samna node and return it.
-        samna.open_remote_node(visualizer_id, f"visualizer_{visualizer_id}")
-        return getattr(samna, f"visualizer_{visualizer_id}")
+        return gui_process
 
     def add_dvs_plot(
         self,
-        visualizer,
         shape: Tuple[int, int],
         layout: Tuple[float, float, float, float],
     ):
         """Add an activity plot (dvs plot) to a visualizer
 
         Args:
-            visualizer (samna.submodule):
-                Remote samnagui node.
             shape (Tuple(int, int)):
                 Shape of the plot in (height, width)
             layout (Tuple[float, float, float, float]):
@@ -237,19 +216,15 @@ class DynapcnnVisualizer:
             Tuple[samna.ui.ActivityPlot, int]:
                 A tuple of the plot object and its id.
         """
-        plot_id = visualizer.plots.add_activity_plot(shape[1], shape[0], "Dvs Plot")
-        plot = getattr(visualizer, f"plot_{plot_id}")
-        plot.set_layout(*layout)
-        return (plot, plot_id)
+        activity_plot_configuration = samna.ui.ActivityPlotConfiguration(
+            shape[1], shape[0], "Dvs Plot", layout
+        )
+        return activity_plot_configuration
 
-    def add_readout_plot(
-        self, visualizer, layout: Tuple[float, float, float, float], **kwargs
-    ):
+    def add_readout_plot(self, layout: Tuple[float, float, float, float]):
         """Add a readout plot (image showing the predicted class) to the visualizer
 
         Args:
-            visualizer (samna.submodule):
-                Remote samnagui node.
             layout (Tuple[float, float, float, float]):
                 Layout to position the plot on the samnagui visualizer in
                 (top-left-x, top-left-y, bottom-right-x, bottom-right-y)
@@ -262,18 +237,10 @@ class DynapcnnVisualizer:
             Tuple[samna.ui.ReadoutPlot, int]:
                 A tuple of the plot object and its id.
         """
-        plot_id = visualizer.plots.add_readout_plot("Readout Plot", self.readout_images)
-        plot = getattr(visualizer, f"plot_{plot_id}")
-        plot.set_layout(*layout)
-        for k, v in kwargs.items():
-            try:
-                method = getattr(plot, k)
-                method(v)
-            except:
-                warnings.warn(
-                    f"The passed keyword does not exist in `Readout plot`: {k}"
-                )
-        return (plot, plot_id)
+        readout_plot_configuration = samna.ui.ReadoutPlotConfiguration(
+            "Readout Plot", self.readout_images, layout
+        )
+        return readout_plot_configuration
 
     def add_output_prediction_layer_plot():
         """
@@ -294,58 +261,41 @@ class DynapcnnVisualizer:
         """
         raise NotImplementedError("Waiting for samna support!")
 
-    def add_spike_count_plot(
-        self, visualizer, layout: Tuple[float, float, float, float], **kwargs
-    ):
+    def add_spike_count_plot(self, layout: Tuple[float, float, float, float]):
         """Add a spike count plot (line plot showing recent predicitons from network
             for each class)
 
         Args:
-            visualizer (samna.submodule):
-                Remote samnagui node.
             layout (Tuple[float, float, float, float]):
                 Layout to position the plot on the samnagui visualizer in
                 (top-left-x, top-left-y, bottom-right-x, bottom-right-y)
-            kwargs:
-                TODO: Support all kwargs
 
         Returns:
             Tuple[samna.ui.SpikeCountPlot, int]:
                 A tuple of the plot object and its id.
         """
-        plot_id = visualizer.plots.add_spike_count_plot(
-            "Spike Count Plot", self.feature_count, self.feature_names
+        spikecount_plot_configuration = samna.ui.SpikeCountPlotConfiguration(
+            "Spike Count Plot",
+            self.feature_count,
+            self.feature_names,
+            layout,
+            25,
+            2.5,
+            "",
+            1.2,
+            True,
+            10,
+            "Spike Count",
+            "Time (s)",
         )
-        spike_count_plot = getattr(visualizer, f"plot_{plot_id}")
-        spike_count_plot.set_layout(*layout)
-        spike_count_plot.set_show_x_span(25)
-        spike_count_plot.set_label_interval(2.5)
-        spike_count_plot.set_max_y_rate(1.2)
-        spike_count_plot.set_show_point_circle(True)
-        spike_count_plot.set_default_y_max(10)
-        # Check if the method name and value are in kwargs
-        for k, v in kwargs.items():
-            try:
-                method = getattr(spike_count_plot, k)
-                method(v)
-            except:
-                warnings.warn(
-                    f"The passed keyword does not exist in `Spike Count Plot`: {k}"
-                )
-        return (spike_count_plot, plot_id)
+        return spikecount_plot_configuration
 
-    def add_power_monitor_plot(
-        self, visualizer, layout: Tuple[int, int, int, int], **kwargs
-    ):
+    def add_power_monitor_plot(self, layout: Tuple[int, int, int, int]):
         """
         Args:
-            visualizer (samna.submodule):
-                Remote samnagui node.
             layout (Tuple[float, float, float, float]):
                 Layout to position the plot on the samnagui visualizer in
                 (top-left-x, top-left-y, bottom-right-x, bottom-right-y)
-            kwargs:
-                TODO: Support all kwargs
 
         Returns:
             Tuple[samna.ui.PowerMeasurementPlot, int]:
@@ -357,36 +307,30 @@ class DynapcnnVisualizer:
             item_names = ["io", "ram", "logic"]
         elif self.power_monitor_number_of_items == 5:
             item_names = ["io", "ram", "logic", "vdd", "vda"]
-        power_measurement_plot_id = visualizer.plots.add_power_measurement_plot(
-            "Power monitor plot", self.power_monitor_number_of_items, item_names
-        )
-        power_measurement_plot = getattr(
-            visualizer, f"plot_{power_measurement_plot_id}"
-        )
-        power_measurement_plot.set_layout(*layout)
-        power_measurement_plot.set_show_x_span(10)
-        power_measurement_plot.set_label_interval(2)
-        power_measurement_plot.set_max_y_rate(1.5)
-        power_measurement_plot.set_show_point_circle(False)
-        power_measurement_plot.set_default_y_max(1)
-        power_measurement_plot.set_y_label_name("power (mW)")
-        # Check if the method name and value are in kwargs
-        for k, v in kwargs.items():
-            try:
-                method = getattr(power_measurement_plot, k)
-                method(v)
-            except:
-                warnings.warn(
-                    f"The passed keyword does not exist in `Power Monitor Plot`: {k}"
-                )
-        return (power_measurement_plot, power_measurement_plot_id)
 
-    def create_plots(self, visualizer_node):
+        powermeasurement_plot_configuration = (
+            samna.ui.PowerMeasurementPlotConfiguration(
+                "Power Measurement Plot",
+                self.power_monitor_number_of_items,
+                item_names,
+                layout,
+                10,
+                2,
+                "",
+                1.5,
+                False,
+                1,
+                "Power Measurement",
+                "Time (s)",
+                "Power (mW)",
+            )
+        )
+        return powermeasurement_plot_configuration
+
+    def create_plots(self):
         """Utility function to create a Cluster visualizer
 
         Args:
-            visualizer (samna.submodule):
-                Remote samnagui node.
 
         Returns:
             Tuple[Tuple[samna.ui.Plot, int]]:
@@ -394,15 +338,15 @@ class DynapcnnVisualizer:
         """
         layout = self.LAYOUTS_DICT[self.gui_type]
 
-        dvs_plot = self.add_dvs_plot(
-            visualizer_node, shape=self.dvs_shape, layout=layout[0]
-        )
+        plots = []
+
+        plots.append(self.add_dvs_plot(shape=self.dvs_shape, layout=layout[0]))
         if self.extra_arguments and "spike_count" in self.extra_argument.keys():
             spike_count_plot_args = self.extra_arguments["spike_count"]
         else:
             spike_count_plot_args = {}
-        spike_count_plot = self.add_spike_count_plot(
-            visualizer_node, layout=layout[1], **spike_count_plot_args
+        plots.append(
+            self.add_spike_count_plot(layout=layout[1], **spike_count_plot_args)
         )
         if "r" in self.gui_type:
             try:
@@ -410,17 +354,12 @@ class DynapcnnVisualizer:
                     readout_args = self.extra_arguments["readout"]
                 else:
                     readout_args = {}
-                readout_plot = self.add_readout_plot(
-                    visualizer_node, layout=layout[2], **readout_args
-                )
+                plots.append(self.add_readout_plot(layout=layout[2], **readout_args))
             except Exception as e:
-                readout_plot = None
                 print(
                     f"Either the layout or the images are missing in the readout plot. "
                 )
                 print(e)
-        else:
-            readout_plot = None
 
         if "p" in self.gui_type:
             try:
@@ -431,18 +370,31 @@ class DynapcnnVisualizer:
                     power_measurement_kwargs = self.extra_arguments["power_measurement"]
                 else:
                     power_measurement_kwargs = {}
-                power_monitor_plot = self.add_power_monitor_plot(
-                    visualizer_node, layout=layout[3], **power_measurement_kwargs
+                plots.append(
+                    self.add_power_monitor_plot(
+                        layout=layout[3], **power_measurement_kwargs
+                    )
                 )
             except:
-                power_monitor_plot = None
                 print(f"Layout missing the power monitor plot. ")
-        else:
-            power_monitor_plot = None
 
-        return dvs_plot, spike_count_plot, readout_plot, power_monitor_plot
+        return plots
 
-    def connect(self, dynapcnn_network: DynapcnnNetwork):
+    def connect(
+        self, dynapcnn_network: DynapcnnNetwork, disjoint_process: bool = False
+    ):
+        """The method does the bulk of the work of creating the graphs and launching the visualizer
+
+        Args:
+            dynapcnn_network (DynapcnnNetwork): The network that needs to be deployed and visualized
+            disjoint_process (bool, optional): If true, the GUI is launched as a separate disjoint process. Useful for MacOS users. Defaults to False.
+
+        Raises:
+            ConnectionError: _description_
+            ValueError: _description_
+            ValueError: _description_
+            NotImplementedError: _description_
+        """
         # Checks for the visualizer to work correctly.
         if not hasattr(dynapcnn_network, "samna_device"):
             raise ConnectionError(
@@ -486,10 +438,9 @@ class DynapcnnVisualizer:
         self.streamer_graph = samna.graph.EventFilterGraph()
 
         ## Start visualizer and create plots based on parameters.
-        remote_visualizer_node = self.create_visualizer_process(visualizer_id=3)
-
-        (dvs_plot, spike_count_plot, readout_plot, power_plot) = self.create_plots(
-            visualizer_node=remote_visualizer_node
+        gui_process = self.create_visualizer_process(
+            visualizer_endpoint=f"tcp://0.0.0.0:{self.samna_visualizer_port}",
+            disjoint_process=disjoint_process,
         )
 
         # Streamer graph
@@ -502,7 +453,22 @@ class DynapcnnVisualizer:
                 "VizEventStreamer",
             ]
         )
+        streamer_node.set_streamer_endpoint(
+            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
+        )
+
         dvs_member_filter.set_white_list([13], "layer")
+
+        # Visualizer configuration branch of the graph.
+        visualizer_config_node, _ = self.streamer_graph.sequential(
+            [
+                samna.BasicSourceNode_ui_event(),  # For generating UI commands
+                streamer_node,
+            ]
+        )
+
+        # Create plots
+        plots = self.create_plots()
 
         ## Spike count node
 
@@ -567,39 +533,11 @@ class DynapcnnVisualizer:
         if "o" in self.gui_type:
             raise NotImplementedError("Work in progress!")
 
-        streamer_node.set_streamer_endpoint(
-            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
-        )
-
-        # Connect the visualizer components
-        remote_visualizer_node.receiver.set_receiver_endpoint(
-            f"tcp://0.0.0.0:{self.samna_visualizer_port}"
-        )
-        remote_visualizer_node.receiver.add_destination(
-            remote_visualizer_node.splitter.get_input_channel()
-        )
-        ## Connect Dvs visualizer to its plot
-        remote_visualizer_node.splitter.add_destination(
-            "dvs_event", remote_visualizer_node.plots.get_plot_input(dvs_plot[1])
-        )
-        ## Connect Spike count visualizer to its plot
-        remote_visualizer_node.splitter.add_destination(
-            "spike_count",
-            remote_visualizer_node.plots.get_plot_input(spike_count_plot[1]),
-        )
-        ## Connect Readout visualizer to its plot
-        if "r" in self.gui_type:
-            remote_visualizer_node.splitter.add_destination(
-                "readout", remote_visualizer_node.plots.get_plot_input(readout_plot[1])
-            )
-        ## Connect power monitor visualizer to its plot
-        if "p" in self.gui_type:
-            remote_visualizer_node.splitter.add_destination(
-                "measurement",
-                remote_visualizer_node.plots.get_plot_input(power_plot[1]),
-            )
-
         self.start()
+
+        # Apply plot configuration
+        visualizer_config_node.write([samna.ui.VisualizerConfiguration(plots=plots)])
+
         print("Set up completed!")
 
     def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
