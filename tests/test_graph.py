@@ -1,8 +1,5 @@
-import torchinfo
-import torch.nn as nn
 import torch
-from torchview import draw_graph
-from sinabs.graph import extract_graph, process_input
+import torch.nn as nn
 
 
 # Branched model
@@ -30,47 +27,40 @@ data = torch.ones((batch_size, *input_shape))
 
 mymodel = MyBranchedModel()
 
-torchinfo.summary(mymodel, input_data=data)
-
-
-def test_process_input():
-    out = process_input(input_data=data)
-    print(out)
-
-
-
-def test_extract_graph():
-    
-    model_graph = extract_graph(mymodel, input_data=data)
-    model_graph.visual_graph.save("branched_graph.dot")
-
-    for id, node in model_graph.id_dict.items():
-        print(type(id), type(node))
-
 
 def test_named_modules_map():
     from sinabs.graph import named_modules_map
+
     mod_map = named_modules_map(mymodel)
     print(mod_map)
 
 
-#def test_module_forward_wrapper():
-mymodel = MyBranchedModel()
+def test_module_forward_wrapper():
+    mymodel = MyBranchedModel()
 
-orig_call = nn.Module.__call__
+    orig_call = nn.Module.__call__
 
-from sinabs.graph import Graph, module_forward_wrapper
+    from sinabs.graph import Graph, module_forward_wrapper
 
-model_graph = Graph(mymodel)
-new_call = module_forward_wrapper(model_graph)
+    model_graph = Graph(mymodel)
+    new_call = module_forward_wrapper(model_graph)
 
-# Override call to the new wrapped call 
-nn.Module.__call__ = new_call
+    # Override call to the new wrapped call
+    nn.Module.__call__ = new_call
 
-with torch.no_grad():
-    out = mymodel(data)
+    with torch.no_grad():
+        out = mymodel(data)
 
-# Restore normal behavior
-nn.Module.__call__ = orig_call
+    # Restore normal behavior
+    nn.Module.__call__ = orig_call
 
-print(model_graph.to_md())
+    print(model_graph.to_md())
+
+
+def test_graph_tracer():
+    from sinabs.graph import GraphTracer
+
+    with GraphTracer(mymodel) as tracer, torch.no_grad():
+        out = mymodel(data)
+
+    print(tracer.graph.to_md())
