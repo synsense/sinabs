@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Fix plot axes labels
+* Removed commented kwargs from methods
 * updated files
 * Add unit test for DynapcnnNetwork.is\_compatible\_with
 * Bugfix in DynapcnnNetwork.is\_compatible\_with where it would raise a ValueError instead of returning False
@@ -14,9 +16,15 @@ CHANGES
 * wip updating dynapcnn visualizer
 * blackened; updated to use run\_vusualizer method
 * Added method for launching samna visualizer
+* Updated notebook to the new samna graph api
 * complete the neuron-leak example notebook
 * add leak-neuron link in the FAQs
 * merge develop to 76-add-leak-neruon-option
+* fixed links to static images in notebooks
+* fixed links
+* shuffled the order of documentation
+* setup file params use \_ instead of - now
+* Fixed link to samna
 * Make sure DVSLayer is added to DynapcnnNetwork if and only if necessary. Fix unit test about single neuron on hardware
 * Turn off DVS sensor when DynapcnnNetwork has no DVSLayer
 * Restructure unit tests

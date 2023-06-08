@@ -1,12 +1,12 @@
 # FAQs
 
 ## 1. What network structure can I define?
-A: sinabs and sinabs-dynapcnn now only accepts auto converts the *nn.Sequential* structure. The skip and recurrent structure between DYNAPCNN layers are also support now by manually configuration.
+A: Auto-converison from a sinabs model to `DynapcnnNetwork` model is only supported for the *nn.Sequential* model structure. The skip and recurrent structure between DYNAPCNN cores are supported through low level-api ie. manually updating the configuration object.
 
 ## 2. What kinds of neural network operation I can use in Speck/DYNAP-CNN?
-A: Currently we only support Conv2d, Avgpool, Sumpool, Linear, Flatten, as well as the IAF activation
+A: Currently we only support Conv2d, Avgpool, Sumpool, Linear, Flatten, and the IAF activation
 
-## 3. What execution order should I notice when I am implementing a sequential structure?
+## 3. What execution order should I be aware of when I am implementing a sequential structure?
 A: You should be aware with the internal layer order. DYNAP-CNN techonology defines serveral layers that can be communicates each other. In a layer, the Convolution and Neuron activation must be implemented with **Conv-->IAF order-->pool(optional)** order. The cascaded convolution and neuron activation in a DYNAPCNN layer is not allowed.
 
 ![dataflow](_static/Overview/dataflow_layers.png)
@@ -74,12 +74,12 @@ A: we introduced the neuron memory and kernel memory constraints in the design. 
 
 ## 5. Known dev-kit bugs
 
-* Channel index mapping error between the output DYNAP-CNN layer and readout block(on Speck2e/2f), for details see [here](https://synsense.gitlab.io/sinabs-dynapcnn/notebooks/using_readout_layer.html)
+A. Channel index mapping error between the output DYNAP-CNN layer and readout block(on Speck2e/2f), for details see [here](https://synsense.gitlab.io/sinabs-dynapcnn/notebooks/using_readout_layer.html)
 
 
 ## 6. How to use the leak-neuron
 
-A: Please check this [notebook:](./leak_neuron.ipynb)
+A: This [tutorial:](getting_started/notebooks/leak_neuron) explains the steps involved in using leak on the SCNN cores.
 
 
 ## 7. Is my network compatible with my dev-kit/chip?
