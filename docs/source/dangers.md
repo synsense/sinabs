@@ -1,12 +1,11 @@
 Dangers
 =======
 
-Biases are a NO-NO
-------------------
+Biases/Leak are not encouraged
+-------------------------
 
-Do not use biases. They deploy a lot of overhead on the chip in terms of computation and consequently power.
-At the moment, we do not support deploying models with biases BUT *there are no warnings to tell you when you do use biases*.
-So watch out!
+We suggest to stay away from the use of biases, especially on layers with a large number of neurons. 
+They introduce a lot of overhead on the chip as it is not a sparse operation and therefore increase the amount of computation and consequently power.
 
 Event driven vs time-step based evaluation
 ------------------------------------------
