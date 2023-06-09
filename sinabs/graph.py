@@ -59,22 +59,21 @@ class Node:
 
 class Graph:
     def __init__(self, module_names: Dict[nn.Module, str]) -> None:
+        self.module_names = module_names
         self.elem_list = []
         self.node_list: List[Node] = []
-        self.module_names = module_names
-        self.tensor_id_list = []
+        self._last_used_tensor_id = None
 
     @property
     def node_map_by_id(self):
         return {n.name: n for n in self.node_list}
 
     def get_unique_tensor_id(self)->str:
-        if not self.tensor_id_list:
-            self.tensor_id_list.append(0)
-            return str(0)
+        if self._last_used_tensor_id is None:
+            self._last_used_tensor_id = 0
         else:
-            self.tensor_id_list.append(self.tensor_id_list[-1] + 1)
-            return str(self.tensor_id_list[-1] + 1)
+            self._last_used_tensor_id += 1
+        return str(self._last_used_tensor_id)
 
     def __contains__(self, elem: Union[torch.Tensor, nn.Module])->bool:
         for elem_in_list in self.elem_list:
