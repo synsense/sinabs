@@ -30,30 +30,20 @@ class Node:
         self,
         elem: Any,
         name: str,
-        incoming_nodes: Optional[List["Node"]] = None,
         outgoing_nodes: Optional[List["Node"]] = None,
     ) -> None:
         self.elem = elem
         self.name = name
-        # Initialize if None
-        if not incoming_nodes:
-            self.incoming_nodes = []
-        else:
-            self.incoming_nodes = incoming_nodes
-        # Initialize if None
         if not outgoing_nodes:
             self.outgoing_nodes = []
         else:
             self.outgoing_nodes = outgoing_nodes
 
-    def add_incoming(self, node: "Node"):
-        self.incoming_nodes.append(node)
-
     def add_outgoing(self, node: "Node"):
         self.outgoing_nodes.append(node)
 
     def __str__(self) -> str:
-        return f"Node: {self.name}, I: {len(self.incoming_nodes)}, O: {len(self.outgoing_nodes)}"
+        return f"Node: {self.name}, Out: {len(self.outgoing_nodes)}"
 
     def __eq__(self, other: Any) -> bool:
         # Two nodes are meant to be the same if they refer to the same element
@@ -130,7 +120,6 @@ class Graph:
         source_node = self.add_or_get_node_for_elem(source)
         destination_node = self.add_or_get_node_for_elem(destination)
         source_node.add_outgoing(destination_node)
-        destination_node.add_incoming(source_node)
         return source_node, destination_node
 
     def __str__(self) -> str:
@@ -148,8 +137,6 @@ graph TD;
 ```
 """
         return mermaid_md + end
-
-
 
 
 _torch_module_call = torch.nn.Module.__call__
@@ -187,14 +174,15 @@ class GraphTracer:
     with GraphTracer(mymodel) as tracer, torch.no_grad():
         out = mymodel(data)
 
-    print(tracer.graph.to_md()) 
+    print(tracer.graph.to_md())
     ```
     """
+
     def __init__(self, mod: nn.Module) -> None:
         self.original_torch_call = nn.Module.__call__
         self.graph = Graph(mod)
 
-    def __enter__(self)->"GraphTracer":
+    def __enter__(self) -> "GraphTracer":
         # Override the torch call method
         nn.Module.__call__ = module_forward_wrapper(self.graph)
         return self
