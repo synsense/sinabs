@@ -58,10 +58,10 @@ class Node:
 
 
 class Graph:
-    def __init__(self, mod: nn.Module) -> None:
+    def __init__(self, module_names: Dict[nn.Module, str]) -> None:
         self.elem_list = []
         self.node_map: Dict[Node, str] = {}
-        self.modules_map = named_modules_map(mod)
+        self.module_names = module_names
         self.tensor_id_list = []
 
     @property
@@ -97,8 +97,8 @@ class Graph:
             return self.find_node(elem)
         else:
             # Generate a name
-            if elem in self.modules_map:
-                name = self.modules_map[elem]
+            if elem in self.module_names:
+                name = self.module_names[elem]
             else:
                 assert isinstance(elem, torch.Tensor)
                 name = f"Tensor_{self.get_unique_tensor_id()}"
@@ -137,6 +137,7 @@ graph TD;
 ```
 """
         return mermaid_md + end
+
 
 
 _torch_module_call = torch.nn.Module.__call__

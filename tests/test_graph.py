@@ -40,9 +40,9 @@ def test_module_forward_wrapper():
 
     orig_call = nn.Module.__call__
 
-    from sinabs.graph import Graph, module_forward_wrapper
+    from sinabs.graph import Graph, module_forward_wrapper, named_modules_map
 
-    model_graph = Graph(mymodel)
+    model_graph = Graph(named_modules_map(mymodel))
     new_call = module_forward_wrapper(model_graph)
 
     # Override call to the new wrapped call
@@ -58,9 +58,9 @@ def test_module_forward_wrapper():
 
 
 def test_graph_tracer():
-    from sinabs.graph import GraphTracer
+    from sinabs.graph import GraphTracer, named_modules_map
 
-    with GraphTracer(mymodel) as tracer, torch.no_grad():
+    with GraphTracer(named_modules_map(mymodel)) as tracer, torch.no_grad():
         out = mymodel(data)
 
     print(tracer.graph.to_md())
