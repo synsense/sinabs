@@ -2,6 +2,13 @@ import torch
 import torch.nn as nn
 
 
+class Add(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+    
+    def forward(self, data1, data2):
+        return data1 + data2
+
 # Branched model
 class MyBranchedModel(nn.Module):
     def __init__(self) -> None:
@@ -9,15 +16,16 @@ class MyBranchedModel(nn.Module):
         self.relu1 = nn.ReLU()
         self.relu2_1 = nn.ReLU()
         self.relu2_2 = nn.ReLU()
+        self.add_mod = Add()
         self.relu3 = nn.ReLU()
 
     def forward(self, data):
         out1 = self.relu1(data)
         out2_1 = self.relu2_1(out1)
         out2_2 = self.relu2_2(out1)
-        out3 = self.relu3(out2_1 + out2_2)
-        out3.foo = "foo"
-        return out3
+        out3 = self.add_mod(out2_1, out2_2)
+        out4 = self.relu3(out3)
+        return out4
 
 
 input_shape = (2, 28, 28)
@@ -27,6 +35,18 @@ data = torch.ones((batch_size, *input_shape))
 
 mymodel = MyBranchedModel()
 
+class DeepModel(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.block1 = MyBranchedModel()
+        self.block2 = MyBranchedModel()
+    
+    def forward(self, data):
+        out = self.block1(data)
+        out2 = self.block2(out)
+        return out2
+
+mydeepmodel = DeepModel()
 
 def test_named_modules_map():
     from sinabs.graph import named_modules_map
@@ -54,7 +74,7 @@ def test_module_forward_wrapper():
     # Restore normal behavior
     nn.Module.__call__ = orig_call
 
-    print(model_graph.to_md())
+    print(model_graph)
 
 
 def test_graph_tracer():
@@ -63,4 +83,29 @@ def test_graph_tracer():
     with GraphTracer(named_modules_map(mymodel)) as tracer, torch.no_grad():
         out = mymodel(data)
 
-    print(tracer.graph.to_md())
+    print(tracer.graph)
+
+
+def test_leaf_only_graph():
+    from sinabs.graph import GraphTracer, named_modules_map
+
+    with GraphTracer(named_modules_map(mydeepmodel)) as tracer, torch.no_grad():
+        out = mydeepmodel(data)
+
+
+    print(tracer.graph)
+
+    # Get graph with just the leaf nodes
+    leaf_graph = tracer.graph.leaf_only()
+    print(leaf_graph)
+    
+
+def test_ignore_submodules_of():
+    from sinabs.graph import GraphTracer, named_modules_map
+
+    with GraphTracer(named_modules_map(mydeepmodel)) as tracer, torch.no_grad():
+        out = mydeepmodel(data)
+
+    top_overview_graph = tracer.graph.ignore_submodules_of([MyBranchedModel]).leaf_only()
+    print(top_overview_graph)
+    

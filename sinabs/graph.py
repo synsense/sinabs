@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from typing import Union, Tuple, List, Callable, Any, Dict, Optional
+from typing import Union, Tuple, List, Callable, Any, Dict, Optional, Type
 from torchview import ComputationGraph
 from torchview import RecorderTensor
 from torchview.recorder_tensor import Recorder
@@ -60,36 +60,36 @@ class Node:
 class Graph:
     def __init__(self, module_names: Dict[nn.Module, str]) -> None:
         self.elem_list = []
-        self.node_map: Dict[Node, str] = {}
+        self.node_list: List[Node] = []
         self.module_names = module_names
         self.tensor_id_list = []
 
     @property
     def node_map_by_id(self):
-        return {v: k for k, v in self.node_map.items()}
+        return {n.name: n for n in self.node_list}
 
-    def get_unique_tensor_id(self):
+    def get_unique_tensor_id(self)->str:
         if not self.tensor_id_list:
             self.tensor_id_list.append(0)
-            return 0
+            return str(0)
         else:
             self.tensor_id_list.append(self.tensor_id_list[-1] + 1)
             return str(self.tensor_id_list[-1] + 1)
 
-    def __contains__(self, elem: Union[torch.Tensor, nn.Module]):
+    def __contains__(self, elem: Union[torch.Tensor, nn.Module])->bool:
         for elem_in_list in self.elem_list:
             if elem is elem_in_list:
                 return True
         return False
 
-    def add_elem(self, elem, name: str):
+    def add_elem(self, elem, name: str)->Node:
         if elem in self:
             warnings.warn(f"{name}: Node already exists for this element ")
             return self.find_node(elem)
         else:
             node = Node(elem, name)
             self.elem_list.append(elem)
-            self.node_map[node] = name
+            self.node_list.append(node)
             return node
 
     def add_or_get_node_for_elem(self, elem: Union[torch.Tensor, nn.Module]):
@@ -107,7 +107,7 @@ class Graph:
             return new_node
 
     def find_node(self, elem: Union[torch.Tensor, nn.Module]):
-        for node in self.node_map.keys():
+        for node in self.node_list:
             if elem is node.elem:
                 return node
         raise ValueError("elem not found")
@@ -122,21 +122,97 @@ class Graph:
         source_node.add_outgoing(destination_node)
         return source_node, destination_node
 
+    def get_leaf_modules(self) -> Dict[nn.Module, str]:
+        filtered_module_names = {}
+
+        for mod, _ in self.module_names.items():
+            # Add module to dict
+            filtered_module_names[mod] = self.module_names[mod]
+            child_in_graph = False
+            for _, submod in mod.named_children():
+                if submod in self:
+                    child_in_graph = True
+                    break
+            if child_in_graph:
+                del filtered_module_names[mod]
+        return filtered_module_names
+
+
+    def populate_from(self, other_graph: "Graph"):
+
+        def is_mod_and_not_in_module_names(node: Node)->bool:
+            """Check if a node is a module and is included in the module_names of this graph
+
+            Args:
+                node (Node): Node to verify
+
+            Returns:
+                bool
+            """
+            if isinstance(node.elem, nn.Module) and node.elem not in self.module_names:
+                return True
+            else: 
+                return False
+
+        for node in other_graph.node_list:
+            if is_mod_and_not_in_module_names(node):
+                # Skip if not included in the module names
+                continue
+            for outgoing_node in node.outgoing_nodes:
+                if is_mod_and_not_in_module_names(outgoing_node):
+                    # Skip if not included in the module names
+                    continue
+                else:
+                    self.add_edge(node.elem, outgoing_node.elem)
+
     def __str__(self) -> str:
-        return "\n".join([f"{n}" for n in self.node_map.keys()])
+        return self.to_md()
 
     def to_md(self) -> str:
         mermaid_md = """
 ```mermaid
 graph TD;
 """
-        for node, _ in self.node_map.items():
+        for node in self.node_list:
             for outgoing in node.outgoing_nodes:
                 mermaid_md += f"{node.name} --> {outgoing.name};\n"
         end = """
 ```
 """
         return mermaid_md + end
+
+    def leaf_only(self) -> "Graph":
+        leaf_modules = self.get_leaf_modules()
+        filtered_graph = Graph(leaf_modules)
+        # Populate edges
+        filtered_graph.populate_from(self)
+        return filtered_graph
+
+
+    def ignore_submodules_of(self, classes: List[Type])->"Graph":
+        new_named_modules = {}
+
+        # Gather a list of all top level modules, whose submodules are to be ignored
+        top_level_modules: List[nn.Module] = []
+        for mod in self.module_names.keys():
+            if mod.__class__ in classes:
+                top_level_modules.append(mod)
+
+        # List all the submodules of the above module list
+        sub_modules_to_ignore: List[nn.Module] = []
+        for top_mod in top_level_modules:
+            for sub_mod in top_mod.modules():
+                if sub_mod is not top_mod:
+                    sub_modules_to_ignore.append(sub_mod)
+
+        # Iterate over all modules and check if they are submodules of the above list
+        for mod, name in self.module_names.items():
+            if mod not in sub_modules_to_ignore:
+                new_named_modules[mod] = name
+        # Create a new graph with the allowed modules
+        new_graph = Graph(new_named_modules)
+        new_graph.populate_from(self)
+        return new_graph
 
 
 
