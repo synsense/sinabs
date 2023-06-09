@@ -68,20 +68,26 @@ class Graph:
     def node_map_by_id(self):
         return {n.name: n for n in self.node_list}
 
-    def get_unique_tensor_id(self)->str:
+    def num_edges(self) -> int:
+        count = 0
+        for node in self.node_list:
+            count += node.outgoing_nodes
+        return count
+
+    def get_unique_tensor_id(self) -> str:
         if self._last_used_tensor_id is None:
             self._last_used_tensor_id = 0
         else:
             self._last_used_tensor_id += 1
         return str(self._last_used_tensor_id)
 
-    def __contains__(self, elem: Union[torch.Tensor, nn.Module])->bool:
+    def __contains__(self, elem: Union[torch.Tensor, nn.Module]) -> bool:
         for elem_in_list in self.elem_list:
             if elem is elem_in_list:
                 return True
         return False
 
-    def add_elem(self, elem, name: str)->Node:
+    def add_elem(self, elem, name: str) -> Node:
         if elem in self:
             warnings.warn(f"{name}: Node already exists for this element ")
             return self.find_node(elem)
@@ -136,10 +142,8 @@ class Graph:
                 del filtered_module_names[mod]
         return filtered_module_names
 
-
     def populate_from(self, other_graph: "Graph"):
-
-        def is_mod_and_not_in_module_names(node: Node)->bool:
+        def is_mod_and_not_in_module_names(node: Node) -> bool:
             """Check if a node is a module and is included in the module_names of this graph
 
             Args:
@@ -150,7 +154,7 @@ class Graph:
             """
             if isinstance(node.elem, nn.Module) and node.elem not in self.module_names:
                 return True
-            else: 
+            else:
                 return False
 
         for node in other_graph.node_list:
@@ -187,8 +191,7 @@ graph TD;
         filtered_graph.populate_from(self)
         return filtered_graph
 
-
-    def ignore_submodules_of(self, classes: List[Type])->"Graph":
+    def ignore_submodules_of(self, classes: List[Type]) -> "Graph":
         new_named_modules = {}
 
         # Gather a list of all top level modules, whose submodules are to be ignored
@@ -212,7 +215,6 @@ graph TD;
         new_graph = Graph(new_named_modules)
         new_graph.populate_from(self)
         return new_graph
-
 
 
 _torch_module_call = torch.nn.Module.__call__
