@@ -273,6 +273,20 @@ class GraphTracer:
 def extract_graph(
     model: nn.Module, sample_data: Any, model_name: Optional[str] = "model"
 ) -> Graph:
+    """Extract computational graph between various modules in the model
+    NOTE: This method is not capable of any compute happening outside of module definitions.
+
+    Args:
+        model (nn.Module): The module to be analysed
+        sample_data (Any): Sample data to be used to run by the model
+        model_name (Optional[str], optional): Name of the top level module.
+          If specified, it will be included in the graph. 
+          If set to None, only its submodules will be listed in the graph. 
+          Defaults to "model".
+
+    Returns:
+        Graph: A graph object representing the computational graph of the given model
+    """
     with GraphTracer(
         named_modules_map(model, model_name=model_name)
     ) as tracer, torch.no_grad():
