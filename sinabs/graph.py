@@ -1,10 +1,8 @@
+import warnings
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
+
 import torch
 import torch.nn as nn
-from typing import Union, Tuple, List, Callable, Any, Dict, Optional, Type
-from torchview import ComputationGraph
-from torchview import RecorderTensor
-from torchview.recorder_tensor import Recorder
-import warnings
 
 
 def named_modules_map(
