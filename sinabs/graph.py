@@ -104,7 +104,7 @@ class Graph:
                 name = self.module_names[elem]
             else:
                 assert isinstance(elem, torch.Tensor)
-                name = f"Tensor_{self.get_unique_tensor_id()}"
+                name = f"Tensor_{self.get_unique_tensor_id()}{tuple(elem.shape)}"
             # add and return the node
             new_node = self.add_elem(elem, name)
             return new_node
@@ -266,3 +266,11 @@ class GraphTracer:
     def __exit__(self, exc_type, exc_value, exc_tb):
         # Restore normal behavior
         nn.Module.__call__ = self.original_torch_call
+
+
+
+def extract_graph(model: nn.Module, sample_data: Any)->Graph:
+    with GraphTracer(named_modules_map(model)) as tracer, torch.no_grad():
+        out = model(sample_data)
+
+    return tracer.graph
