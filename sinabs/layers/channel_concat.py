@@ -7,4 +7,4 @@ class ConcatenateChannel(nn.Module):
         self.channel_axis = -3
 
     def forward(self, x, y):
-        return torch.concat((x, y), self.channel_axis)
+        return torch.cat((x, y), self.channel_axis)
