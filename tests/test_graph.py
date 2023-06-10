@@ -1,13 +1,7 @@
 import torch
 import torch.nn as nn
 
-
-class Add(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-    def forward(self, data1, data2):
-        return data1 + data2
+from sinabs.layers import Add
 
 
 # Branched model
@@ -126,3 +120,52 @@ def test_ignore_submodules_of():
     ).leaf_only()
     print(top_overview_graph)
     assert len(top_overview_graph.node_list) == 2 + 2 + 1
+
+
+
+def test_snn_branched():
+    from sinabs.layers import IAFSqueeze, ConcatenateChannel, SumPool2d
+    from torch.nn import Conv2d
+    from sinabs.graph import extract_graph
+
+
+    class MySNN(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conv1 = Conv2d(2, 8, 3, bias=False)
+            self.iaf1 = IAFSqueeze(batch_size=1)
+            self.pool1 = SumPool2d(2)
+            self.conv2_1 = Conv2d(8, 16, 3, stride=1, padding=1, bias=False)
+            self.iaf2_1 = IAFSqueeze(batch_size=1)
+            self.pool2_1 = SumPool2d(2)
+            self.conv2_2 = Conv2d(8, 16, 5, stride=1, padding=2, bias=False)
+            self.iaf2_2 = IAFSqueeze(batch_size=1)
+            self.pool2_2 = SumPool2d(2)
+            self.concat = ConcatenateChannel()
+            self.conv3 = Conv2d(32, 10, 3, stride=3, bias=False)
+            self.iaf3 = IAFSqueeze(batch_size=1)
+        
+        def forward(self, spikes):
+            out = self.conv1(spikes)
+            out = self.iaf1(out)
+            out = self.pool1(out)
+
+            out1 = self.conv2_1(out)
+            out1 = self.iaf2_1(out1)
+            out1 = self.pool2_1(out1)
+            
+            out2 = self.conv2_2(out)
+            out2 = self.iaf2_2(out2)
+            out2 = self.pool2_2(out2)
+
+            out = self.concat(out1, out2)
+            out = self.conv3(out)
+            out = self.iaf3(out)
+            return out
+
+    my_snn = MySNN()
+    graph = extract_graph(my_snn, sample_data=torch.rand((100, 2, 14, 14)))
+
+    print(graph)
+
+
