@@ -167,3 +167,4 @@ def test_snn_branched():
     )
 
     print(graph)
+    assert len(graph.elem_list) == 25  # 2*12 + 1
