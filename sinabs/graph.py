@@ -124,8 +124,10 @@ class Graph:
         source: Union[torch.Tensor, nn.Module],
         destination: Union[torch.Tensor, nn.Module],
     ):
-        if self._is_mod_and_not_in_module_names(source): return
-        if self._is_mod_and_not_in_module_names(destination): return
+        if self._is_mod_and_not_in_module_names(source):
+            return
+        if self._is_mod_and_not_in_module_names(destination):
+            return
 
         source_node = self.add_or_get_node_for_elem(source)
         destination_node = self.add_or_get_node_for_elem(destination)
@@ -268,9 +270,12 @@ class GraphTracer:
         nn.Module.__call__ = self.original_torch_call
 
 
-
-def extract_graph(model: nn.Module, sample_data: Any, model_name: Optional[str] = "model")->Graph:
-    with GraphTracer(named_modules_map(model, model_name=model_name)) as tracer, torch.no_grad():
+def extract_graph(
+    model: nn.Module, sample_data: Any, model_name: Optional[str] = "model"
+) -> Graph:
+    with GraphTracer(
+        named_modules_map(model, model_name=model_name)
+    ) as tracer, torch.no_grad():
         out = model(sample_data)
 
     return tracer.graph
