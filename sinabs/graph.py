@@ -6,12 +6,13 @@ import torch.nn as nn
 
 
 def named_modules_map(
-    model: nn.Module, model_name: str = "model"
+    model: nn.Module, model_name: Optional[str] = "model"
 ) -> Dict[str, nn.Module]:
     """Inverse of named modules dictionary
 
     Args:
         model (nn.Module): The module to be hashed
+        model_name (str | None): Name of the top level module. If this doesn't need to be include, this option can be set to None
 
     Returns:
         Dict[str, nn.Module]: A dictionary with modules as keys, and names as values
@@ -19,7 +20,10 @@ def named_modules_map(
     modules_map = {}
     for name, mod in model.named_modules():
         modules_map[mod] = name
-    modules_map[model] = model_name
+    if model_name is None:
+        del modules_map[model]
+    else:
+        modules_map[model] = model_name
     return modules_map
 
 
@@ -120,6 +124,9 @@ class Graph:
         source: Union[torch.Tensor, nn.Module],
         destination: Union[torch.Tensor, nn.Module],
     ):
+        if self._is_mod_and_not_in_module_names(source): return
+        if self._is_mod_and_not_in_module_names(destination): return
+
         source_node = self.add_or_get_node_for_elem(source)
         destination_node = self.add_or_get_node_for_elem(destination)
         source_node.add_outgoing(destination_node)
@@ -140,31 +147,24 @@ class Graph:
                 del filtered_module_names[mod]
         return filtered_module_names
 
+    def _is_mod_and_not_in_module_names(self, elem: Any) -> bool:
+        """Check if a node is a module and is included in the module_names of this graph
+
+        Args:
+            node (Node): Node to verify
+
+        Returns:
+            bool
+        """
+        if isinstance(elem, nn.Module) and elem not in self.module_names:
+            return True
+        else:
+            return False
+
     def populate_from(self, other_graph: "Graph"):
-        def is_mod_and_not_in_module_names(node: Node) -> bool:
-            """Check if a node is a module and is included in the module_names of this graph
-
-            Args:
-                node (Node): Node to verify
-
-            Returns:
-                bool
-            """
-            if isinstance(node.elem, nn.Module) and node.elem not in self.module_names:
-                return True
-            else:
-                return False
-
         for node in other_graph.node_list:
-            if is_mod_and_not_in_module_names(node):
-                # Skip if not included in the module names
-                continue
             for outgoing_node in node.outgoing_nodes:
-                if is_mod_and_not_in_module_names(outgoing_node):
-                    # Skip if not included in the module names
-                    continue
-                else:
-                    self.add_edge(node.elem, outgoing_node.elem)
+                self.add_edge(node.elem, outgoing_node.elem)
 
     def __str__(self) -> str:
         return self.to_md()
@@ -269,8 +269,8 @@ class GraphTracer:
 
 
 
-def extract_graph(model: nn.Module, sample_data: Any)->Graph:
-    with GraphTracer(named_modules_map(model)) as tracer, torch.no_grad():
+def extract_graph(model: nn.Module, sample_data: Any, model_name: Optional[str] = "model")->Graph:
+    with GraphTracer(named_modules_map(model, model_name=model_name)) as tracer, torch.no_grad():
         out = model(sample_data)
 
     return tracer.graph
