@@ -10,7 +10,7 @@ There are 4 different plots in `samnagui` that are available for use.
 - <b>Line Plot:</b> A plot that allows visualization of the events produced by the model running on the chip. Additionally this is used when we display power consumption measurements.
 - <b>Image Plot:</b> A plot that allows you to display an image. Internally we have used this plot to display an image denoting a predicted output class. 
 
-Documentation is available under the following link: [samna-viz-imgui documentation](`https://synsense-sys-int.gitlab.io/samna/reference/viz/imgui/index.html#samna-viz-imgui`)
+Documentation is available under the following link: [samna.ui documentation](https://synsense-sys-int.gitlab.io/samna/reference/ui/index.html)
 
 ## Useful `samna` nodes for visualizing and Just-In-Time (JIT) compiled nodes.
 ### Nodes
@@ -169,3 +169,7 @@ visualizer.connect(hardware_compatible_model)
 
 ### Try it yourself
 The example script that runs the visualizer can be found under `/examples/gesture_viz.py` .
+
+
+#### MacOS users
+Due to the difference in the behaviour of python's multiprocessing library on MacOS, you should run the `examples/gesture_viz.py` script with `-i` flag. `python -i /examples/gesture_viz.py` .
