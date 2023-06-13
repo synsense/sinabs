@@ -7,3 +7,4 @@ from .from_torch import from_model
 from .network import Network
 from .synopcounter import SNNAnalyzer, SynOpCounter
 from .utils import reset_states, zero_grad
+from .graph import extract_graph

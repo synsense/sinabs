@@ -65,6 +65,9 @@ class Graph:
         self.elem_list = []
         self.node_list: List[Node] = []
         self._last_used_tensor_id = None
+        # Add modules to node_list
+        for mod, name in self.module_names.items():
+            self.add_elem(mod, name)
 
     @property
     def node_map_by_id(self):
@@ -177,8 +180,12 @@ class Graph:
 graph TD;
 """
         for node in self.node_list:
-            for outgoing in node.outgoing_nodes:
-                mermaid_md += f"{node.name} --> {outgoing.name};\n"
+            if node.outgoing_nodes:
+                for outgoing in node.outgoing_nodes:
+                    mermaid_md += f"{node.name} --> {outgoing.name};\n"
+            else:
+                mermaid_md += f"{node.name};\n"
+
         end = """
 ```
 """
@@ -216,6 +223,53 @@ graph TD;
         new_graph.populate_from(self)
         return new_graph
 
+    def find_source_nodes_of(self, node: Node)->List[Node]:
+        """Find all the sources of a node in the graph
+
+        Args:
+            node (Node): Node of interest
+
+        Returns:
+            List[Node]: A list of all nodes that have this node as outgoing_node
+        """
+        source_node_list = []
+        for source_node in self.node_list:
+            for outnode in source_node.outgoing_nodes:
+                if node == outnode:
+                    source_node_list.append(source_node)
+        return source_node_list
+
+    def ignore_tensors(self)->"Graph":
+        """Simplify the graph by ignoring all the tensors in it
+
+        Returns:
+            Graph: Returns a simplified graph with only modules in it
+        """
+        graph = Graph(self.module_names)
+        # Iterate over all the nodes
+        for node in self.node_list:
+            if isinstance(node.elem, torch.Tensor):
+                # Get its source
+                source_node_list = self.find_source_nodes_of(node)
+                # If no source, this is probably origin node, just drop it
+                if len(source_node_list) == 0:
+                    continue
+                # Get all of its destinations
+                # If no destinations, it is a leaf node, just drop it.
+                if node.outgoing_nodes:
+                    for outgoing_node in node.outgoing_nodes:
+                        # Directly add an edge from source to destination
+                        for source_node in source_node_list:
+                            graph.add_edge(source_node.elem, outgoing_node.elem)
+                            # NOTE: Assuming that the destination is a module here
+            else:
+                # If it is a module, filter out all edges that have a tensor
+                # This is to preserve the graph if executed on a graph that is already filtered
+                for outnode in node.outgoing_nodes:
+                    if isinstance(outnode.elem, nn.Module):
+                        graph.add(node.elem, outnode.elem)
+        return graph
+
 
 _torch_module_call = torch.nn.Module.__call__
 
@@ -234,7 +288,7 @@ def module_forward_wrapper(model_graph: Graph) -> Callable[..., Any]:
         else:
             raise Exception("Unknown output format")
         # Iterate over all outputs and create nodes and edges
-        for i, output_data in enumerate(out_tuple):
+        for output_data in out_tuple:
             # Create nodes and edges
             model_graph.add_edge(mod, output_data)
         return out

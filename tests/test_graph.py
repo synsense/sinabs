@@ -168,3 +168,10 @@ def test_snn_branched():
 
     print(graph)
     assert len(graph.elem_list) == 25  # 2*12 + 1
+
+
+def test_ignore_tensors():
+    from sinabs import extract_graph
+    graph = extract_graph(mymodel, sample_data=data)
+    mod_only_graph = graph.ignore_tensors()
+    assert len(mod_only_graph.node_list) == 6
