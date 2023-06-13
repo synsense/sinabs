@@ -223,7 +223,7 @@ graph TD;
         new_graph.populate_from(self)
         return new_graph
 
-    def find_source_nodes_of(self, node: Node)->List[Node]:
+    def find_source_nodes_of(self, node: Node) -> List[Node]:
         """Find all the sources of a node in the graph
 
         Args:
@@ -239,7 +239,7 @@ graph TD;
                     source_node_list.append(source_node)
         return source_node_list
 
-    def ignore_tensors(self)->"Graph":
+    def ignore_tensors(self) -> "Graph":
         """Simplify the graph by ignoring all the tensors in it
 
         Returns:
@@ -334,8 +334,8 @@ def extract_graph(
         model (nn.Module): The module to be analysed
         sample_data (Any): Sample data to be used to run by the model
         model_name (Optional[str], optional): Name of the top level module.
-          If specified, it will be included in the graph. 
-          If set to None, only its submodules will be listed in the graph. 
+          If specified, it will be included in the graph.
+          If set to None, only its submodules will be listed in the graph.
           Defaults to "model".
 
     Returns:
