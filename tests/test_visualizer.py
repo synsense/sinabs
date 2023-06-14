@@ -21,9 +21,8 @@ def test_visualizer_initialization():
     visualizer = DynapcnnVisualizer(
         dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
     )
-    visualizer.create_visualizer_process(visualizer_id=visualizer_id)
+    visualizer.create_visualizer_process(f"tcp://0.0.0.0:{visualizer.samna_visualizer_port}")
 
-@pytest.mark.skipif(True, reason="A window needs to pop. Needs UI. Makes sense to check this test manually")
 def get_demo_dynapcnn_network():
     import sinabs
     import torch.nn as nn

@@ -1,7 +1,10 @@
+from copy import deepcopy
+import pytest
 import torch.nn as nn
 import torch
 from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 
 
 ann = nn.Sequential(
@@ -51,3 +54,43 @@ def test_zero_initial_states():
             zeros = torch.zeros(shape, dtype=torch.int)
 
             assert initial_value.all() == zeros.all(), f"Initial values of layer{idx} neuron states is not zeros!"
+
+
+small_ann = nn.Sequential(
+    nn.Conv2d(1, 3, 5, 1, bias=False),
+    nn.ReLU(),
+    nn.AvgPool2d(2, 2),
+
+    nn.Conv2d(3, 1, 5, 1, bias=False),
+    nn.ReLU(),
+    nn.AvgPool2d(2, 2),
+
+    nn.Flatten(),
+    nn.Linear(16, 2, bias=False)
+)
+
+small_hardware_compatible_model = DynapcnnNetwork(
+    from_model(small_ann, add_spiking_output=True, batch_size=1).cpu(),
+    discretize=True,
+    input_shape=input_shape,
+)
+
+@pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
+def test_verify_working_config(device):
+    assert small_hardware_compatible_model.is_compatible_with(device)
+
+
+# Model that is too big to fit on any of our architectures
+big_ann = deepcopy(ann)
+big_ann.append(nn.ReLU())
+big_ann.append(nn.Linear(10, 999999, bias=False))
+
+hardware_incompatible_model = DynapcnnNetwork(
+    from_model(big_ann, add_spiking_output=True, batch_size=1).cpu(),
+    discretize=True,
+    input_shape=input_shape,
+)
+
+@pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
+def test_verify_non_working_config(device):
+    assert not hardware_incompatible_model.is_compatible_with(device)

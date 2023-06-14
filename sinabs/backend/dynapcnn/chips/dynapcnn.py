@@ -1,5 +1,6 @@
 import copy
 from typing import List
+from warnings import warn
 
 import samna
 import torch
@@ -191,11 +192,13 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layers = model.sequence
         config = cls.get_default_config()
 
+        has_dvs_layer = False
         i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
         for i, chip_equivalent_layer in enumerate(layers):
             if isinstance(chip_equivalent_layer, DVSLayer):
                 chip_layer = config.dvs_layer
                 cls.write_dvs_layer_config(chip_equivalent_layer, chip_layer)
+                has_dvs_layer = True
             elif isinstance(chip_equivalent_layer, DynapcnnLayer):
                 chip_layer = config.cnn_layers[chip_layers[i_cnn_layer]]
                 cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
@@ -212,6 +215,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 # Set destination layer
                 chip_layer.destinations[0].layer = chip_layers[i_cnn_layer]
                 chip_layer.destinations[0].enable = True
+
+        if not has_dvs_layer:
+            config.dvs_layer.pass_sensor_events = False
 
         return config
 
@@ -269,9 +275,21 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         monitor_layers = layers.copy()
         if "dvs" in monitor_layers:
             config.dvs_layer.monitor_enable = True
+            if config.dvs_layer.pooling.x != 1 or config.dvs_layer.pooling.y != 1:
+                warn(
+                    f"DVS layer has pooling and is being monitored. "
+                    "Note that pooling will not be reflected in the monitored events."
+                )
             monitor_layers.remove("dvs")
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
+            if any(
+                dest.pooling != 1 for dest in config.cnn_layers[lyr_indx].destinations
+            ):
+                warn(
+                    f"Layer {lyr_indx} has pooling and is being monitored. "
+                    "Note that pooling will not be reflected in the monitored events."
+                )
         return config
 
     @classmethod

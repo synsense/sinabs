@@ -1,16 +1,59 @@
 CHANGES
 =======
 
+* Warning about running the script for MacOS users added to the documentation
+* minor changes and corrections
+* Updated info on biases/leak
+* added how to list connected devices
+* Fix plot axes labels
+* Removed commented kwargs from methods
+* updated files
+* Add unit test for DynapcnnNetwork.is\_compatible\_with
+* Bugfix in DynapcnnNetwork.is\_compatible\_with where it would raise a ValueError instead of returning False
+* Added documentaion in FAQ
+* added is\_compatible\_with method; blackened
+* updated DynapcnnVisualizer connect method
+* moved configuration settings order
+* blacked and updaetd test
+* updated dynapcnn visualizer with latest samna api
+* wip, dynapcnn visualizer refractoring
+* wip updating dynapcnn visualizer
+* blackened; updated to use run\_vusualizer method
+* Added method for launching samna visualizer
+* Updated notebook to the new samna graph api
+* complete the neuron-leak example notebook
+* add leak-neuron link in the FAQs
+* merge develop to 76-add-leak-neruon-option
+* fixed links to static images in notebooks
+* fixed links
+* shuffled the order of documentation
+* setup file params use \_ instead of - now
+* Fixed link to samna
+* Make sure DVSLayer is added to DynapcnnNetwork if and only if necessary. Fix unit test about single neuron on hardware
+* Turn off DVS sensor when DynapcnnNetwork has no DVSLayer
+* Restructure unit tests
+* Fix: Allow input shape to DVS layer to have 2 channels
+* More flexible DVSLayer generation
+* Remove 'compatible\_layers' attribute from DynapcnnNetwork and use 'sequence' instead
+* documentation improvement
+* replace curl with wget
+* update ChangeLog
 * replace all math equation
 * Added board resetting before second test. Note that the device will be opened already before the second test starts, so it is not actually necessary
 * Implemented resetting the boards before running the test
 * add getting started with speck section
 * skip visualizer test
+* warn if layer with pooling is monitored
 * add speck image at the doc homepage
 * Add notes in docstrings and in the documentation about the fact that attribute modifications after the  call have no effects
 * specify inline math latex for Overview tutorial
 * make tutorial notebook that contains latex a markdown documentsince it doesn't contain any code
 * add skipif condition for test-case that need hardware connected to the CI machine
+* update changelog
+* add neuron leak tutorial notebook
+* fix bug for neuron address mapping and add unit test case
+* update ChangeLog
+* add neruon leak option and related unit test
 * remove system package install cmd
 * fix add-apt-repository can't be found error
 * add apt repository for graphviz localization
