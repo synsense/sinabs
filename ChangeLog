@@ -1,6 +1,10 @@
 CHANGES
 =======
 
+* Warning about running the script for MacOS users added to the documentation
+* minor changes and corrections
+* Updated info on biases/leak
+* added how to list connected devices
 * Fix plot axes labels
 * Removed commented kwargs from methods
 * updated files
