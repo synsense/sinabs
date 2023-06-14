@@ -111,16 +111,20 @@ class PeriodicExponential:
     grad_scale: float = 1.0
 
     def __call__(self, v_mem, spike_threshold):
-        vmem_shifted = v_mem - spike_threshold / 2
-        vmem_periodic = vmem_shifted - torch.div(
-            vmem_shifted, spike_threshold, rounding_mode="floor"
-        )
-        vmem_below = vmem_shifted * (v_mem < spike_threshold)
+        # Normalize v_mem between -0.5 and 0.5
+        vmem_normalized = v_mem / spike_threshold - 0.5
+
+        # This is a periodic, stepwise linear function with discontinuities for
+        # vmem == (N + 0.5) * spike_threshold (limit from the left: -spike_threshold,
+        # limit from the right: +spike_threshold), 0 when vmem == N * spike_threshold
+        vmem_periodic = vmem_normalized - torch.floor(vmem_normalized)
+        vmem_periodic = spike_threshold * (2 * vmem_periodic - 1)
+
+        # Combine different curves for vmem below and above spike_threshold
+        vmem_below = (v_mem - spike_threshold) * (v_mem < spike_threshold)
         vmem_above = vmem_periodic * (v_mem >= spike_threshold)
         vmem_new = vmem_above + vmem_below
-        spikePdf = (
-            torch.exp(-torch.abs(vmem_new - spike_threshold / 2) / self.grad_width)
-            / spike_threshold
-        )
 
-        return self.grad_scale * spikePdf
+        surrogate = torch.exp(-torch.abs(vmem_new) / self.grad_width)
+
+        return self.grad_scale * surrogate
