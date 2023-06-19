@@ -247,10 +247,8 @@ class DynapcnnNetwork(nn.Module):
 
         # Figure out layer ordering
         if chip_layers_ordering == "auto":
-            self._is_chip_layers_ordering_auto = True
             chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
-            self._is_chip_layers_ordering_auto = False
             # Truncate chip_layers_ordering just in case a longer list is passed
             if self.dvs_input:
                 chip_layers_ordering = chip_layers_ordering[: len(self.sequence) - 1]
