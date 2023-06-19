@@ -1,9 +1,7 @@
 import samna
-from typing import List
 from samna.speck2e.configuration import SpeckConfiguration
 
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.utils import extend_readout_layer
 
 from .dynapcnn import DynapcnnConfigBuilder
 
