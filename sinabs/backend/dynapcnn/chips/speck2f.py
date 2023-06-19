@@ -38,7 +38,7 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
         if model._is_chip_layers_ordering_auto:
-            print(f"Extend readout layer for Speck2E")
+            print(f"Extend readout layer for Speck 2F")
             model = extend_readout_layer(
                 model
             )  # extend only if chip layers ordering is determined automatically
