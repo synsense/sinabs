@@ -34,13 +34,3 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
         config_dict.pop("biases_kill_bit")
         config_dict.pop("neurons_value_kill_bit")
         return config_dict
-
-    @classmethod
-    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
-        if model._is_chip_layers_ordering_auto:
-            print(f"Extend readout layer for Speck 2F")
-            model = extend_readout_layer(
-                model
-            )  # extend only if chip layers ordering is determined automatically
-            chip_layers = cls.get_valid_mapping(model=model)
-        return super().build_config(model, chip_layers)

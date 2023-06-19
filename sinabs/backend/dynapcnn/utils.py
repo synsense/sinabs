@@ -1,7 +1,7 @@
 import sinabs
 import torch
 import torch.nn as nn
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 from copy import deepcopy
 
 from .crop2d import Crop2d
@@ -10,6 +10,10 @@ from .dvs_layer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
 from .exceptions import *
 from .flipdims import FlipDims
+
+
+if TYPE_CHECKING:
+    from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 
 def infer_input_shape(
@@ -497,7 +501,7 @@ def standardize_device_id(device_id: str) -> str:
 
 def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
     """Return a copied and extended model with the readout layer extended to 4 times the number of output channels.
-    For Speck 2E and 2F, to get the correct output, we need to extend the readout layer to 4 times the number of output.
+    For Speck 2E and 2F, to get readout with correct output index, we need to extend the final layer to 4 times the number of output.
 
     Args:
         model (DynapcnnNetwork): the model to be extended
