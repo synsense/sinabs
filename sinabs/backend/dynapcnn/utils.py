@@ -525,8 +525,8 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
     og_readout_conv_layer.weight.data = ext_weight_data
     # build extended bias and replace if necessary
     if og_bias:
-        ext_bias_data = torch.zeros(ext_bias_shape, dtype=og_bias_data.dtype)
         ext_bias_shape = (new_out_channels,)
+        ext_bias_data = torch.zeros(ext_bias_shape, dtype=og_bias_data.dtype)
         for i in range(og_out_channels):
             ext_bias_data[i * 4] = og_bias_data[i]
         og_readout_conv_layer.bias.data = ext_bias_data
