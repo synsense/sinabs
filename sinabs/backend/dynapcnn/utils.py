@@ -1,6 +1,7 @@
 import sinabs
+import torch
 import torch.nn as nn
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, TYPE_CHECKING
 from copy import deepcopy
 
 from .crop2d import Crop2d
@@ -9,6 +10,10 @@ from .dvs_layer import DVSLayer, expand_to_pair
 import sinabs.layers as sl
 from .exceptions import *
 from .flipdims import FlipDims
+
+
+if TYPE_CHECKING:
+    from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 
 def infer_input_shape(
@@ -84,7 +89,10 @@ def convert_cropping2dlayer_to_crop2d(
 
 
 def construct_dvs_layer(
-    layers: List[nn.Module], input_shape: Tuple[int, int, int], idx_start: int=0, dvs_input: bool=False,
+    layers: List[nn.Module],
+    input_shape: Tuple[int, int, int],
+    idx_start: int = 0,
+    dvs_input: bool = False,
 ) -> Tuple[Optional[DVSLayer], int, float]:
     """
     Generate a DVSLayer given a list of layers. If `layers` does not start
@@ -363,7 +371,10 @@ def construct_next_dynapcnn_layer(
 
 
 def build_from_list(
-    layers: List[nn.Module], in_shape, discretize=True, dvs_input=False,
+    layers: List[nn.Module],
+    in_shape,
+    discretize=True,
+    dvs_input=False,
 ) -> nn.Sequential:
     """
     Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
@@ -486,3 +497,44 @@ def standardize_device_id(device_id: str) -> str:
     """
     device_type, index = parse_device_id(device_id=device_id)
     return get_device_id(device_type=device_type, index=index)
+
+
+def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
+    """Return a copied and extended model with the readout layer extended to 4 times the number of output channels.
+    For Speck 2E and 2F, to get readout with correct output index, we need to extend the final layer to 4 times the number of output.
+
+    Args:
+        model (DynapcnnNetwork): the model to be extended
+
+    Returns:
+        DynapcnnNetwork: the extended model
+    """
+    model = deepcopy(model)
+    input_shape = model.input_shape
+    og_readout_conv_layer = model.sequence[
+        -1
+    ].conv_layer  # extract the conv layer from dynapcnn network
+    og_weight_data = og_readout_conv_layer.weight.data
+    og_bias_data = og_readout_conv_layer.bias
+    og_bias = og_bias_data is not None
+    # modify the out channels
+    og_out_channels = og_readout_conv_layer.out_channels
+    new_out_channels = (og_out_channels - 1) * 4 + 1
+    og_readout_conv_layer.out_channels = new_out_channels
+    # build extended weight and replace the old one
+    ext_weight_shape = (new_out_channels, *og_weight_data.shape[1:])
+    ext_weight_data = torch.zeros(ext_weight_shape, dtype=og_weight_data.dtype)
+    for i in range(og_out_channels):
+        ext_weight_data[i * 4] = og_weight_data[i]
+    og_readout_conv_layer.weight.data = ext_weight_data
+    # build extended bias and replace if necessary
+    if og_bias:
+        ext_bias_shape = (new_out_channels,)
+        ext_bias_data = torch.zeros(ext_bias_shape, dtype=og_bias_data.dtype)
+        for i in range(og_out_channels):
+            ext_bias_data[i * 4] = og_bias_data[i]
+        og_readout_conv_layer.bias.data = ext_bias_data
+    _ = model(
+        torch.zeros(size=(1, *input_shape))
+    )  # run a forward pass to initialize the new weights and last IAF
+    return model
