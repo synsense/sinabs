@@ -239,16 +239,21 @@ graph TD;
                     source_node_list.append(source_node)
         return source_node_list
 
+
     def ignore_tensors(self) -> "Graph":
         """Simplify the graph by ignoring all the tensors in it
 
         Returns:
             Graph: Returns a simplified graph with only modules in it
         """
+        return self.ignore_nodes(torch.Tensor)
+
+
+    def ignore_nodes(self, class_type: Type)->"Graph":
         graph = Graph(self.module_names)
         # Iterate over all the nodes
         for node in self.node_list:
-            if isinstance(node.elem, torch.Tensor):
+            if isinstance(node.elem, class_type):
                 # Get its source
                 source_node_list = self.find_source_nodes_of(node)
                 # If no source, this is probably origin node, just drop it
@@ -261,13 +266,12 @@ graph TD;
                         # Directly add an edge from source to destination
                         for source_node in source_node_list:
                             graph.add_edge(source_node.elem, outgoing_node.elem)
-                            # NOTE: Assuming that the destination is a module here
+                            # NOTE: Assuming that the destination is not of the same type here
             else:
-                # If it is a module, filter out all edges that have a tensor
                 # This is to preserve the graph if executed on a graph that is already filtered
                 for outnode in node.outgoing_nodes:
-                    if isinstance(outnode.elem, nn.Module):
-                        graph.add(node.elem, outnode.elem)
+                    if not isinstance(outnode.elem, class_type):
+                        graph.add_edge(node.elem, outnode.elem)
         return graph
 
 
