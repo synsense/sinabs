@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from sinabs.layers import Add
+from sinabs.layers import Merge
 
 
 # Branched model
@@ -11,7 +11,7 @@ class MyBranchedModel(nn.Module):
         self.relu1 = nn.ReLU()
         self.relu2_1 = nn.ReLU()
         self.relu2_2 = nn.ReLU()
-        self.add_mod = Add()
+        self.add_mod = Merge()
         self.relu3 = nn.ReLU()
 
     def forward(self, data):
