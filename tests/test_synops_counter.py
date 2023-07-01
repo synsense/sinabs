@@ -182,6 +182,26 @@ def test_spiking_layer_firing_rate():
     assert layer_stats["firing_rate_per_neuron"].mean() == 0.25
 
 
+def test_nonspiking_stateful_layer():
+    model = nn.Sequential(sl.IAF(), sl.ExpLeak(tau_mem=10))
+    input_ = torch.eye(4).unsqueeze(0).unsqueeze(0)
+
+    analyzer = sinabs.SNNAnalyzer(model)
+    output = model(input_)
+    model_stats = analyzer.get_model_statistics(average=True)
+    assert model_stats["firing_rate"] == 0.25
+    
+    layer_stats = analyzer.get_layer_statistics(average=True)
+    # ExpLeak layer should not show up in spiking or parameter stats
+    assert "1" not in layer_stats["spiking"]
+    assert "1" not in layer_stats["parameter"]
+    
+    spiking_layer_stats = layer_stats["spiking"]["0"]
+    assert spiking_layer_stats["firing_rate"] == 0.25
+    assert spiking_layer_stats["firing_rate_per_neuron"].shape == (4, 4)
+    assert spiking_layer_stats["firing_rate_per_neuron"].mean() == 0.25
+
+
 def test_spiking_layer_firing_rate_across_batches():
     layer = sl.IAF()
     input1 = torch.eye(4).unsqueeze(0).unsqueeze(0)

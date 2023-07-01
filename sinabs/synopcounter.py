@@ -118,7 +118,7 @@ class SNNAnalyzer:
                 unflattened_shape = (layer.batch_size, layer.num_timesteps)
 
         for layer in self.model.modules():
-            if isinstance(layer, sl.StatefulLayer):
+            if isinstance(layer, sl.StatefulLayer) and layer.does_spike:
                 layer.acc_output = torch.tensor(0)
                 layer.n_batches = 0
                 handle = layer.register_forward_hook(spiking_hook)
