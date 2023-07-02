@@ -10,44 +10,45 @@ from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 from sinabs.conversion import replace_module
 
 
-class ScalarFactor(nn.Module):
-    def __init__(self, scale):
-        super().__init__()
-        # Make sure scale is a scalar
-        self.scale = scale.item()
-    def forward(self, x):
-        return self.scale * x
+unit_conversion_functions = {
+    nir.LeakyIntegrator: expleak_from_nir,
+    nir.LeakyIntegrateAndFire: lif_from_nir,
+    nir.Linear: linear_from_nir,
+    nir.Conv1d: conv1d_from_nir,
+    nir.Conv2d: conv2d_from_nir,
+}
 
-def from_nir_leaky(unit: nir.LeakyIntegrator, batch_size: int):
+def from_nir_leaky(
+    unit: nir.LeakyIntegrator,
+    batch_size: Optional[int]=None,
+    num_timesteps: Optional[int]=None
+):
     if v_leak != 0:
         raise ValueError("`v_leak` must be 0")
-    
-    scalar = ScalarFactor(unit.beta / unit.alpha)
-   
-   if unit.theta is None:
-        leaky_element = from_nir_leaky_to_expleak(unit, batch_size=batch_size)
+
+    parameters = dict(
+        tau_mem=torch.from_numpy(unit.tau),
+        min_v_mem=None,
+        num_timesteps=num_timesteps,
+        batch_size=batch_size,
+    )
+
+    if unit.alpha == unit.tau:
+        parameters["norm_input"] = False
+    elif unit.alpha == unit.tau - 1:
+        parameters["norm_input"] = True
     else:
-        leaky_element = from_nir_leaky_to_if(unit, batch_size=batch_size)
+        raise ValueError("`alpha` must be either `tau` or `tau-1`")
 
+    if unit.theta is None:
+        return sl.ExpLeakSqueeze(**parameters)
+    else:
+        return sl.LIFSqueeze(
+            **parameters,
+            spike_threshold=unit.threshold,
+            tau_syn=None,
+        )
     return nn.Sequential(scalar, leaky_element)
-
-def from_nir_leaky_to_expleak(unit: nir.LeakyIntegrator, batch_size: int):
-    return sl.ExpLeakSqueeze(
-        tau_mem = torch.from_numpy(unit.tau / unit.alpha),
-        min_v_mem = None,
-        norm_input = False,
-    )
-
-def from_nir_leaky_to_if(unit: nir.LeakyIntegrator, batch_size: int):
-    return sl.LIFSqueeze(
-        tau_mem = torch.from_numpy(unit.tau / unit.alpha),
-        spike_threshold = unit.threshold,
-        min_v_mem = None,
-        norm_input = False,
-        tau_syn = None,
-    )
-
-        
 
 def from_nir(
     source: Union[Path, str, NIR], batch_size: int 
