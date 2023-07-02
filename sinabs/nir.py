@@ -10,7 +10,7 @@ from sinabs.activation import MembraneSubtract, MultiSpike, SingleExponential
 from sinabs.conversion import replace_module
 
 
-unit_conversion_functions = {
+node_conversion_functions = {
     nir.LeakyIntegrator: expleak_from_nir,
     nir.LeakyIntegrateAndFire: lif_from_nir,
     nir.Linear: linear_from_nir,
@@ -18,8 +18,8 @@ unit_conversion_functions = {
     nir.Conv2d: conv2d_from_nir,
 }
 
-def from_nir_leaky(
-    unit: nir.LeakyIntegrator,
+def lif_from_nir(
+    unit: nir.LIF,
     batch_size: Optional[int]=None,
     num_timesteps: Optional[int]=None
 ):
@@ -40,18 +40,16 @@ def from_nir_leaky(
     else:
         raise ValueError("`alpha` must be either `tau` or `tau-1`")
 
-    if unit.theta is None:
-        return sl.ExpLeakSqueeze(**parameters)
-    else:
-        return sl.LIFSqueeze(
-            **parameters,
-            spike_threshold=unit.threshold,
-            tau_syn=None,
-        )
-    return nn.Sequential(scalar, leaky_element)
+    return sl.LIFSqueeze(
+        **parameters,
+        spike_threshold=unit.threshold,
+        tau_syn=None,
+    )
 
 def from_nir(
     source: Union[Path, str, NIR], batch_size: int 
+    batch_size: Optional[int]=None,
+    num_timesteps: Optional[int]=None
 ):
     """
     Generates a sinabs model from a NIR representation
@@ -60,4 +58,11 @@ def from_nir(
         source: If string or Path will try to load from file. Otherwise should be NIR object
     """
 
-    # Convert units to sinabs layers
+    # Convert nodes to sinabs layers
+    layers = [
+        node_conversion_functions[type(node)](node)
+        for node in source.nodes
+    ]
+
+
+    
