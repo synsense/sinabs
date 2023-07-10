@@ -12,47 +12,39 @@ import sinabs.layers as sl
 def expleak_from_nir(
     node: nir.LI, batch_size: Optional[int] = None, num_timesteps: Optional[int] = None
 ):
-    if v_leak != 0:
+    if node.v_leak != 0:
         raise ValueError("`v_leak` must be 0")
 
-    if node.alpha == node.tau:
-        norm_input = False
-    elif node.alpha == node.tau - 1:
-        norm_input = True
-    else:
-        raise ValueError("`alpha` must be either `tau` or `tau-1`")
+    if node.r != 1:
+        raise ValueError("`r` must be 1")
 
-    return sl.LIFSqueeze(
-        tau_mem=torch.from_numpy(node.tau),
+    # TODO check for norm_input
+
+    return sl.ExpLeakSqueeze(
+        tau_mem=node.tau,
         min_v_mem=None,
         num_timesteps=num_timesteps,
         batch_size=batch_size,
-        tau_syn=None,
-        norm_input=norm_input,
+        norm_input=False,
     )
 
 
 def lif_from_nir(
     node: nir.LIF, batch_size: Optional[int] = None, num_timesteps: Optional[int] = None
 ):
-    if v_leak != 0:
+    if node.v_leak != 0:
         raise ValueError("`v_leak` must be 0")
 
-    if node.alpha == node.tau:
-        norm_input = False
-    elif node.alpha == node.tau - 1:
-        norm_input = True
-    else:
-        raise ValueError("`alpha` must be either `tau` or `tau-1`")
+    # TODO check for norm_input
 
     return sl.LIFSqueeze(
-        tau_mem=torch.from_numpy(node.tau),
+        tau_mem=node.tau,
         min_v_mem=None,
         num_timesteps=num_timesteps,
         batch_size=batch_size,
-        spike_threshold=node.threshold,
+        spike_threshold=node.v_threshold,
         tau_syn=None,
-        norm_input=norm_input,
+        norm_input=False,
     )
 
 
@@ -64,8 +56,8 @@ def linear_from_nir(
         out_features=node.weights.shape[0],
         bias=True,
     )
-    linear.weight.data = torch.from_numpy(node.weights).float()
-    linear.bias.data = torch.from_numpy(node.bias).float()
+    linear.weight.data = node.weights
+    linear.bias.data = node.bias
     return linear
 
 
@@ -78,10 +70,10 @@ def conv1d_from_nir(
         in_channels=node.weights.shape[1],
         out_channels=node.weights.shape[0],
         kernel_size=node.weights.shape[2:],
-        stride=stride,
-        padding=padding,
-        dilation=dilation,
-        groups=groups,
+        stride=node.stride,
+        padding=node.padding,
+        dilation=node.dilation,
+        groups=node.groups,
         bias=True,
     )
     conv.weight.data = torch.from_numpy(node.weights).float()
@@ -98,10 +90,10 @@ def conv2d_from_nir(
         in_channels=node.weights.shape[1],
         out_channels=node.weights.shape[0],
         kernel_size=node.weights.shape[2:],
-        stride=stride,
-        padding=padding,
-        dilation=dilation,
-        groups=groups,
+        stride=node.stride,
+        padding=node.padding,
+        dilation=node.dilation,
+        groups=node.groups,
         bias=True,
     )
     conv.weight.data = torch.from_numpy(node.weights).float()
@@ -130,20 +122,29 @@ def from_nir(
     """
 
     # Convert nodes to sinabs layers
-    layers = [node_conversion_functions[type(node)](node) for node in source.nodes]
+    layers = [
+        node_conversion_functions[type(node)](node, batch_size, num_timesteps)
+        for node in source.nodes
+    ]
 
-    # TODO: Map NIRTorch graph to torch module
+    edge_array = torch.tensor(source.edges)
+    # subtract source edges and check if all edges are sequential
+    edge_array = edge_array - edge_array[:, :1]
+    if edge_array[:, 0].sum() == 0 and edge_array[:, 1].sum() == edge_array.shape[0]:
+        return nn.Sequential(*layers)
+    else:
+        raise NotImplementedError("Only sequential models are supported at the moment")
 
 
 def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
-    if type(module) == sl.LIF:
+    if type(module) == sl.LIF or type(module) == sl.LIFSqueeze:
         return nir.LIF(
             tau=module.tau_mem.detach(),
             v_threshold=module.spike_threshold.detach(),
             v_leak=torch.zeros_like(module.tau_mem.detach()),
             r=torch.ones_like(module.tau_mem.detach()),
         )
-    if type(module) == sl.ExpLeak:
+    elif type(module) == sl.ExpLeak or type(module) == sl.ExpLeakSqueeze:
         return nir.LI(
             tau=module.tau_mem.detach(),
             v_leak=torch.zeros_like(module.tau_mem.detach()),

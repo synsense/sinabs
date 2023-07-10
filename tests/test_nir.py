@@ -34,16 +34,22 @@ def test_from_linear_to_nir():
 
 
 def test_from_nir_to_sequential():
-    m = nn.Sequential(
+    batch_size = 4
+
+    orig_model = nn.Sequential(
         torch.nn.Linear(10, 2),
-        sl.ExpLeak(tau_mem=10.0),
-        sl.LIF(tau_mem=10.0),
+        sl.ExpLeakSqueeze(tau_mem=10.0, batch_size=batch_size),
+        sl.LIFSqueeze(tau_mem=10.0, batch_size=batch_size),
         torch.nn.Linear(2, 1),
     )
-    nir_graph = to_nir(m, torch.randn(1, 10))
+    nir_graph = to_nir(orig_model, torch.randn(batch_size, 10))
 
-    import ipdb
+    convert_model = from_nir(nir_graph, batch_size=batch_size)
 
-    ipdb.set_trace()
-
-    sinabs_model = from_nir(nir_graph)
+    assert len(orig_model) == len(convert_model)
+    torch.testing.assert_allclose(orig_model[0].weight, convert_model[0].weight)
+    torch.testing.assert_allclose(orig_model[0].bias, convert_model[0].bias)
+    assert type(orig_model[1]) == type(convert_model[1])
+    assert type(orig_model[2]) == type(convert_model[2])
+    torch.testing.assert_allclose(orig_model[3].weight, convert_model[3].weight)
+    torch.testing.assert_allclose(orig_model[3].bias, convert_model[3].bias)
