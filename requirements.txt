@@ -1,3 +1,5 @@
 pbr
 numpy
 torch>=1.8
+nir
+nirtorch
