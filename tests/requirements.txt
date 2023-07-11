@@ -3,5 +3,4 @@ pytest-cov
 onnx
 onnxruntime
 torch>=1.8
-torchvision
 matplotlib

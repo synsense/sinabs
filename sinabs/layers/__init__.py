@@ -9,3 +9,5 @@ from .quantize import QuantizeLayer
 from .reshape import FlattenTime, Repeat, SqueezeMixin, UnflattenTime
 from .stateful_layer import StatefulLayer
 from .to_spike import Img2SpikeLayer, Sig2SpikeLayer
+from .merge import Merge
+from .channel_shift import ChannelShift
