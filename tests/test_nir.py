@@ -14,12 +14,12 @@ def test_from_sequential_to_nir():
         torch.nn.Linear(2, 1),
     )
     graph = to_nir(m, torch.randn(1, 10))
-    assert len(graph.nodes) == 4
-    assert isinstance(graph.nodes[0], nir.Linear)
-    assert isinstance(graph.nodes[1], nir.LI)
-    assert isinstance(graph.nodes[2], nir.LIF)
-    assert isinstance(graph.nodes[3], nir.Linear)
-    assert len(graph.edges) == 3
+    assert len(graph.nodes) == 4 + 2
+    assert isinstance(graph.nodes[0 + 1], nir.Affine)
+    assert isinstance(graph.nodes[1 + 1], nir.LI)
+    assert isinstance(graph.nodes[2 + 1], nir.LIF)
+    assert isinstance(graph.nodes[3 + 1], nir.Affine)
+    assert len(graph.edges) == 3 + 2
 
 
 def test_from_linear_to_nir():
@@ -28,9 +28,9 @@ def test_from_linear_to_nir():
     m = torch.nn.Linear(in_features, out_features, bias=False)
     m2 = torch.nn.Linear(in_features, out_features, bias=True)
     graph = to_nir(m, torch.randn(1, in_features))
-    assert len(graph.nodes) == 1
-    assert graph.nodes[0].weights.shape == (out_features, in_features)
-    assert graph.nodes[0].bias.shape == m2.bias.shape
+    assert len(graph.nodes) == 1 + 2
+    assert graph.nodes[1].weight.shape == (out_features, in_features)
+    assert graph.nodes[1].bias.shape == m2.bias.shape
 
 
 def test_from_nir_to_sequential():
@@ -47,9 +47,9 @@ def test_from_nir_to_sequential():
     convert_model = from_nir(nir_graph, batch_size=batch_size)
 
     assert len(orig_model) == len(convert_model)
-    torch.testing.assert_allclose(orig_model[0].weight, convert_model[0].weight)
-    torch.testing.assert_allclose(orig_model[0].bias, convert_model[0].bias)
+    torch.testing.assert_close(orig_model[0].weight, convert_model[0].weight)
+    torch.testing.assert_close(orig_model[0].bias, convert_model[0].bias)
     assert type(orig_model[1]) == type(convert_model[1])
     assert type(orig_model[2]) == type(convert_model[2])
-    torch.testing.assert_allclose(orig_model[3].weight, convert_model[3].weight)
-    torch.testing.assert_allclose(orig_model[3].bias, convert_model[3].bias)
+    torch.testing.assert_close(orig_model[3].weight, convert_model[3].weight)
+    torch.testing.assert_close(orig_model[3].bias, convert_model[3].bias)
