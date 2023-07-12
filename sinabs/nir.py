@@ -112,11 +112,7 @@ def conv2d_from_nir(
     return conv
 
 
-from collections import defaultdict
-
 node_conversion_functions = {
-    # nir.Input: lambda x, y, z: nn.Identity(),
-    # nir.Output: lambda x, y, z: nn.Identity(),
     nir.IF: iaf_from_nir,
     nir.LI: expleak_from_nir,
     nir.LIF: lif_from_nir,
@@ -137,7 +133,6 @@ def from_nir(
         source: If string or Path will try to load from file. Otherwise should be NIR object
     """
 
-    # Convert nodes to sinabs layers
     layers = [
         node_conversion_functions[type(node)](node, batch_size, num_timesteps)
         for node in source.nodes
@@ -184,7 +179,7 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
 
 
 def to_nir(
-    module: torch.nn.Module, sample_data: torch.Tensor, model_name: str = "norse"
+    module: torch.nn.Module, sample_data: torch.Tensor, model_name: str = "model"
 ) -> nir.NIRNode:
     return extract_nir_graph(
         module, _extract_sinabs_module, sample_data, model_name=model_name
