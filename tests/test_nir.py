@@ -6,6 +6,18 @@ import sinabs.layers as sl
 from sinabs import from_nir, to_nir
 
 
+def test_iaf():
+    batch_size = 2
+    iaf = sl.IAFSqueeze(batch_size=batch_size)
+    graph = to_nir(iaf, torch.randn(batch_size, 10))
+    converted = from_nir(graph, batch_size=batch_size)
+
+    assert len(graph.nodes) == 1 + 2
+    assert isinstance(graph.nodes[1], nir.IF)
+    assert len(graph.edges) == 0 + 2
+    assert iaf.batch_size == converted[0].batch_size
+
+
 def test_from_sequential_to_nir():
     m = nn.Sequential(
         torch.nn.Linear(10, 2),

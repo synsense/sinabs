@@ -9,6 +9,17 @@ from torch import nn
 import sinabs.layers as sl
 
 
+def iaf_from_nir(
+    node: nir.IF, batch_size: Optional[int] = None, num_timesteps: Optional[int] = None
+):
+    return sl.IAFSqueeze(
+        min_v_mem=None,
+        num_timesteps=num_timesteps,
+        batch_size=batch_size,
+        spike_threshold=node.v_threshold,
+    )
+
+
 def expleak_from_nir(
     node: nir.LI, batch_size: Optional[int] = None, num_timesteps: Optional[int] = None
 ):
@@ -106,6 +117,7 @@ from collections import defaultdict
 node_conversion_functions = {
     # nir.Input: lambda x, y, z: nn.Identity(),
     # nir.Output: lambda x, y, z: nn.Identity(),
+    nir.IF: iaf_from_nir,
     nir.LI: expleak_from_nir,
     nir.LIF: lif_from_nir,
     nir.Affine: linear_from_nir,
@@ -142,14 +154,19 @@ def from_nir(
 
 
 def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
-    if type(module) == sl.LIF or type(module) == sl.LIFSqueeze:
+    if type(module) in [sl.IAF, sl.IAFSqueeze]:
+        return nir.IF(
+            r=torch.ones_like(module.v_mem.detach()),
+            v_threshold=module.spike_threshold.detach(),
+        )
+    elif type(module) in [sl.LIF, sl.LIFSqueeze]:
         return nir.LIF(
             tau=module.tau_mem.detach(),
             v_threshold=module.spike_threshold.detach(),
             v_leak=torch.zeros_like(module.tau_mem.detach()),
             r=torch.ones_like(module.tau_mem.detach()),
         )
-    elif type(module) == sl.ExpLeak or type(module) == sl.ExpLeakSqueeze:
+    elif type(module) in [sl.ExpLeak, sl.ExpLeakSqueeze]:
         return nir.LI(
             tau=module.tau_mem.detach(),
             v_leak=torch.zeros_like(module.tau_mem.detach()),
