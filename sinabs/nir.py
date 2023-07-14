@@ -78,17 +78,17 @@ def conv1d_from_nir(
     num_timesteps: Optional[int] = None,
 ):
     conv = nn.Conv1d(
-        in_channels=node.weights.shape[1],
-        out_channels=node.weights.shape[0],
-        kernel_size=node.weights.shape[2:],
+        in_channels=node.weight.shape[1],
+        out_channels=node.weight.shape[0],
+        kernel_size=node.weight.shape[2:],
         stride=node.stride,
         padding=node.padding,
         dilation=node.dilation,
         groups=node.groups,
         bias=True,
     )
-    conv.weight.data = torch.from_numpy(node.weights).float()
-    conv.bias.data = torch.from_numpy(node.bias).float()
+    conv.weight.data = node.weight.float()
+    conv.bias.data = node.bias.float()
     return conv
 
 
@@ -98,17 +98,17 @@ def conv2d_from_nir(
     num_timesteps: Optional[int] = None,
 ):
     conv = nn.Conv2d(
-        in_channels=node.weights.shape[1],
-        out_channels=node.weights.shape[0],
-        kernel_size=node.weights.shape[2:],
+        in_channels=node.weight.shape[1],
+        out_channels=node.weight.shape[0],
+        kernel_size=node.weight.shape[2:],
         stride=node.stride,
         padding=node.padding,
         dilation=node.dilation,
         groups=node.groups,
         bias=True,
     )
-    conv.weight.data = torch.from_numpy(node.weights).float()
-    conv.bias.data = torch.from_numpy(node.bias).float()
+    conv.weight.data = node.weight.float()
+    conv.bias.data = node.bias.float()
     return conv
 
 
@@ -174,8 +174,25 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             )
         else:
             return nir.Affine(module.weight.detach(), module.bias.detach())
-
-    return None
+    elif isinstance(module, torch.nn.Conv1d):
+        return nir.Conv1d(
+            weight=module.weight.detach(),
+            stride=module.stride,
+            padding=module.padding,
+            dilation=module.dilation,
+            groups=module.groups,
+            bias=module.bias.detach(),
+        )
+    elif isinstance(module, torch.nn.Conv2d):
+        return nir.Conv2d(
+            weight=module.weight.detach(),
+            stride=module.stride,
+            padding=module.padding,
+            dilation=module.dilation,
+            groups=module.groups,
+            bias=module.bias.detach(),
+        )
+    raise NotImplementedError(f"Module {type(module)} not supported")
 
 
 def to_nir(
