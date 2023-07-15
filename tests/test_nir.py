@@ -13,9 +13,9 @@ def test_iaf():
     converted = from_nir(graph, batch_size=batch_size)
 
     assert len(graph.nodes) == 1 + 2
-    assert isinstance(graph.nodes[1], nir.IF)
+    assert isinstance(graph.nodes["model"], nir.IF)
     assert len(graph.edges) == 0 + 2
-    assert iaf.batch_size == converted[0].batch_size
+    assert iaf.batch_size == converted.model.batch_size
 
 
 def test_conv2d():
@@ -25,12 +25,12 @@ def test_conv2d():
     converted = from_nir(graph, batch_size=batch_size)
 
     assert len(graph.nodes) == 1 + 2
-    assert isinstance(graph.nodes[1], nir.Conv2d)
+    assert isinstance(graph.nodes["model"], nir.Conv2d)
     assert len(graph.edges) == 0 + 2
-    assert conv2d.kernel_size == converted[0].kernel_size
-    assert conv2d.stride == converted[0].stride
-    assert conv2d.padding == converted[0].padding
-    assert conv2d.dilation == converted[0].dilation
+    assert conv2d.kernel_size == converted.model.kernel_size
+    assert conv2d.stride == converted.model.stride
+    assert conv2d.padding == converted.model.padding
+    assert conv2d.dilation == converted.model.dilation
 
 
 def test_from_sequential_to_nir():
@@ -42,10 +42,10 @@ def test_from_sequential_to_nir():
     )
     graph = to_nir(m, torch.randn(1, 10))
     assert len(graph.nodes) == 4 + 2
-    assert isinstance(graph.nodes[0 + 1], nir.Affine)
-    assert isinstance(graph.nodes[1 + 1], nir.LI)
-    assert isinstance(graph.nodes[2 + 1], nir.LIF)
-    assert isinstance(graph.nodes[3 + 1], nir.Affine)
+    assert isinstance(graph.nodes["0"], nir.Affine)
+    assert isinstance(graph.nodes["1"], nir.LI)
+    assert isinstance(graph.nodes["2"], nir.LIF)
+    assert isinstance(graph.nodes["3"], nir.Affine)
     assert len(graph.edges) == 3 + 2
 
 
@@ -56,8 +56,8 @@ def test_from_linear_to_nir():
     m2 = torch.nn.Linear(in_features, out_features, bias=True)
     graph = to_nir(m, torch.randn(1, in_features))
     assert len(graph.nodes) == 1 + 2
-    assert graph.nodes[1].weight.shape == (out_features, in_features)
-    assert graph.nodes[1].bias.shape == m2.bias.shape
+    assert graph.nodes["model"].weight.shape == (out_features, in_features)
+    assert graph.nodes["model"].bias.shape == m2.bias.shape
 
 
 def test_from_nir_to_sequential():
@@ -71,12 +71,12 @@ def test_from_nir_to_sequential():
     )
     nir_graph = to_nir(orig_model, torch.randn(batch_size, 10))
 
-    convert_model = from_nir(nir_graph, batch_size=batch_size)
-
-    assert len(orig_model) == len(convert_model)
-    torch.testing.assert_allclose(orig_model[0].weight, convert_model[0].weight)
-    torch.testing.assert_allclose(orig_model[0].bias, convert_model[0].bias)
-    assert type(orig_model[1]) == type(convert_model[1])
-    assert type(orig_model[2]) == type(convert_model[2])
-    torch.testing.assert_allclose(orig_model[3].weight, convert_model[3].weight)
-    torch.testing.assert_allclose(orig_model[3].bias, convert_model[3].bias)
+    converted_model = from_nir(nir_graph, batch_size=batch_size)
+    converted_modules = list(converted_model.children())
+    assert len(orig_model) == len(converted_modules)
+    torch.testing.assert_allclose(orig_model[0].weight, converted_modules[0].weight)
+    torch.testing.assert_allclose(orig_model[0].bias, converted_modules[0].bias)
+    assert type(orig_model[1]) == type(converted_modules[1])
+    assert type(orig_model[2]) == type(converted_modules[2])
+    torch.testing.assert_allclose(orig_model[3].weight, converted_modules[3].weight)
+    torch.testing.assert_allclose(orig_model[3].bias, converted_modules[3].bias)
