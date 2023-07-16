@@ -53,10 +53,13 @@ def _import_sinabs_module(
         return conv
 
     elif isinstance(node, nir.LI):
-        if node.v_leak != 0:
+        if node.v_leak.shape == torch.Size([]):
+            node.v_leak = node.v_leak.unsqueeze(0)
+        if node.r.shape == torch.Size([]):
+            node.r = node.r.unsqueeze(0)
+        if any(node.v_leak != 0):
             raise ValueError("`v_leak` must be 0")
-
-        if node.r != 1:
+        if any(node.r != 1):
             raise ValueError("`r` must be 1")
         # TODO check for norm_input
         return sl.ExpLeakSqueeze(
@@ -76,7 +79,9 @@ def _import_sinabs_module(
         )
 
     elif isinstance(node, nir.LIF):
-        if node.v_leak != 0:
+        if node.v_leak.shape == torch.Size([]):
+            node.v_leak = node.v_leak.unsqueeze(0)
+        if any(node.v_leak) != 0:
             raise ValueError("`v_leak` must be 0")
         # TODO check for norm_input
         return sl.LIFSqueeze(
