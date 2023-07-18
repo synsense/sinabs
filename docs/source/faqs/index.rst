@@ -8,4 +8,5 @@ FAQs
     available_network_arch
     available_algorithmic_operation
     device_management
+    output_monitoring
 
