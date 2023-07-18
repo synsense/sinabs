@@ -53,6 +53,92 @@ familiar with the `samna-configuration`. Otherwise,let's wait for a while after 
 completed.
 
 
+## What If I Really Want to Use "Residual Connection"!
+
+Alright! Here I will give an example of achieving the "Residual Connection" by manually modify the `samna-configuration`.
+
+Let's say you want an architecture like below:
+
+```python
+from torch import nn
+from sinabs.layers import IAFSqueeze
+
+
+class ResidualBlock(nn.Module):
+
+    def __init__(self):
+
+        super(ResidualBlock, self).__init__()
+        self.conv1 = nn.Conv2d(1, 2, kernel_size=(1, 1), bias=False)
+        self.iaf1 = IAFSqueeze(batch_size=1, min_v_mem=-1.0)
+
+        self.conv2 = nn.Conv2d(2, 2, kernel_size=(1, 1), bias=False)
+        self.iaf2 = IAFSqueeze(batch_size=1, min_v_mem=-1.0)
+
+        self.conv3 = nn.Conv2d(2, 4, kernel_size=(1, 1), bias=False)
+        self.iaf3 = IAFSqueeze(batch_size=1, min_v_mem=-1.0)
+
+    def forward(self, x):
+
+        tmp = self.conv1(x)
+        tmp = self.iaf1(tmp)
+        out = self.conv2(tmp)
+        out = self.iaf2(tmp)
+        # residual connection
+        out += tmp
+        out = self.conv3(out)
+        out = self.iaf3(out)
+
+        return out
+
+```
+
+Since currently sinabs-dynapcnn can only parse Sequential like network, we need to some tedious work like below:
+
+```python
+# define a Sequential first
+SNN = nn.Sequential(
+
+    nn.Conv2d(1, 2, kernel_size=(1, 1), bias=False),
+    IAFSqueeze(batch_size=1, min_v_mem=-1.0),
+
+    nn.Conv2d(2, 2, kernel_size=(1, 1), bias=False),
+    IAFSqueeze(batch_size=1, min_v_mem=-1.0),
+
+    nn.Conv2d(2, 4, kernel_size=(1, 1), bias=False),
+    IAFSqueeze(batch_size=1, min_v_mem=-1.0),
+)
+
+# make samna configuration
+dynapcnn = DynapcnnNetwork(snn=SNN, input_shape=(1, 16, 16), dvs_input=False)
+samna_cfg = dynapcnn.make_config(device="speck2fmodule")
+
+# samna_cfg.cnn_layers[layer].destinations[0] stores each core's first destination layers configuration
+# check the default layer ordering
+for layer in [0, 1, 2]:
+    print(f"Is layer {layer} output turned on: {samna_cfg.cnn_layers[layer].destinations[0].enable}")
+    print(f"The destination layer of layer {layer} is layer {samna_cfg.cnn_layers[layer].destinations[0].layer}")
+
+# manually modify the samna config
+# since 1 DYNAP-CNN core can have 2 destination layer
+# we need to enable the core#0's 2nd output destination and target it to core#2
+# so we need to modify samna_cfg.cnn_layers[0].destinations[1]
+
+samna_cfg.cnn_layers[0].destinations[1].enable = True
+samna_cfg.cnn_layers[0].destinations[1].layer = 2
+
+# by applying the modification above, we not only send the output of core#0 to core#1 but also to core#2.
+# which means we achieve the residual block!
+
+# finally we just need to apply the samna configuration to the devkit, we finish the deployment.
+devkit = samna.device.open_device("Speck2fModuleDevKit")
+devkit.get_model().apply_configuration(samna_cfg)
+
+```
+
+I have to say it is not an elegant solution though, it should help you to achieve an initial Residual Block. We will
+improve this part after sinabs-dynapcnn has the ability for extracting model's graph.
+
 ## What execution order should I be aware of when I am implementing a sequential structure?
 You should be aware with the internal layer order.
 DYNAP-CNN techonology defines serveral layers that can be communicates each other.
@@ -64,7 +150,7 @@ The cascaded convolution and neuron activation in a DYNAPCNN layer is not allowe
 
 ![dataflow](../_static/Overview/dataflow_layers.png)
 
-### Ex1. Bad Case: Cascaded convlution
+### Ex1. Bad Case: Cascaded convolution
 ```
 
 network = nn.sequential([
