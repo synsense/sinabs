@@ -14,7 +14,7 @@ def test_specksim_conv_layer():
         shape=weight_shape
     ).tolist()
     
-    conv_layer = samna.specksim.convolution.Convolution2d(
+    conv_layer = samna.specksim.Convolution2d(
         weight_shape[1], # in channels
         weight_shape[0], # out channels
         (weight_shape[2], weight_shape[3]), # kernel size (y, x)
@@ -76,7 +76,7 @@ def test_specksim_iaf_layer():
         0.2 # weight
     )] * 5
     
-    iaf_layer = samna.specksim.spiking.IntegrateAndFire(
+    iaf_layer = samna.specksim.IntegrateAndFire(
         2, # in channels
         (5, 5), # input shape y, x
         1.0, # spike threshold
@@ -121,7 +121,7 @@ def test_specksim_sum_pooling_layer():
     import samna
     y, x = 4, 4
     pool_y, pool_x = 2, 2
-    pool_layer = samna.specksim.pooling.SumPooling(
+    pool_layer = samna.specksim.SumPooling(
         (pool_y, pool_x),
         (8, 8)
     )
