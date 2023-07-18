@@ -1,4 +1,4 @@
-The basics
+The Basics
 ==========
 
 Deploying a SNN on devices based on DYNAP-CNN technology involves several steps such as model architecture conversion, placement and parameter quantization.
