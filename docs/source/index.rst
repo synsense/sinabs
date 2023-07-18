@@ -38,12 +38,13 @@ Table of contents
 .. toctree::
    :maxdepth: 2
 
+   installation
    overview
    getting_started/index
    the_basics
    advanced_concepts
    dangers
-   FAQs
+   faqs/index
    api/api.rst
    development
    contact_us
