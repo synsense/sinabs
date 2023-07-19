@@ -67,9 +67,9 @@ def convert_convolutional_layer(
     in_channels = int(layer.in_channels)
     out_channels = int(layer.out_channels)
     in_shape = (input_shape[1], input_shape[2]) 
-    kernel_size = to_tuple(kernel_size) 
-    stride = to_tuple(stride) 
-    padding = to_tuple(padding) 
+    kernel_size = to_tuple(layer.kernel_size) 
+    stride = to_tuple(layer.stride) 
+    padding = to_tuple(layer.padding) 
     
     # Set the filter parameters
     conv_filter.set_parameters(
@@ -159,7 +159,10 @@ def from_sinabs(
     """
     graph = samna.graph.EventFilterGraph()
     filters = []
-    current_shape = list(*input_shape)
+    current_shape = list(input_shape)
+
+    # Add an input node
+    filters.append(samna.BasicSourceNode_specksim_events_spike())
     
     for layer in network:
         if isinstance(layer, nn.Conv2d):
@@ -171,16 +174,16 @@ def from_sinabs(
         elif isinstance(layer, nn.Linear):
             conv_layer = convert_linear_to_convolutional(layer, current_shape)
             samna_filter, current_shape = convert_convolutional_layer(conv_layer, current_shape)
+        elif isinstance(layer, nn.Flatten):
+            continue 
         else:
-            raise TypeError("Only Conv2d, SumPool2d and IAF layers are supported.")
+            raise TypeError(f"Only Conv2d, SumPool2d and IAF layers are supported: {layer}")
 
         filters.append(samna_filter)
     
-    members = graph.sequential([
-        samna.BasicSourceNode_specksim_events_spike(), 
-        *filters,
-        samna.BasicSinkNode_specksim_events_spike() 
-    ])
+    # Add an output node
+    filters.append(samna.BasicSinkNode_specksim_events_spike())
+    members = graph.sequential(filters)
     
     return SpecksimNetwork(graph, members) 
 
@@ -233,7 +236,6 @@ class SpecksimNetwork:
                 break
         # stop the streaming graph at the end 
         self.network.stop()
-        # return
         return self.specksim_spikes_to_xytp(output_spikes, xytp.dtype)
     
     def __call__(self, xytp: np.record) -> np.record:
