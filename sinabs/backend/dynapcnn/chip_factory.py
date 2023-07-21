@@ -163,6 +163,7 @@ class ChipFactory:
     ) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
+        Note: Timestamp of first event will be considered as start time.
 
         Parameters
         ----------
@@ -200,15 +201,14 @@ class ChipFactory:
             raster = torch.zeros(
                 num_timebins,
                 max(features) + 1,
-                max(xs) + 1,
                 max(ys) + 1,
+                max(xs) + 1,
             )
-
         for event in events:
             raster[
                 int((event.timestamp - start_timestamp) / dt_us),
                 event.feature,
-                event.x,
                 event.y,
+                event.x,
             ] += 1
         return raster
