@@ -68,13 +68,15 @@ def test_specksim_conv_filter():
 
 def test_specksim_iaf_layer():
     import samna
+    import numpy as np
+
     events = [samna.specksim.events.WeightedEvent(
         0,  # channel
         2,  # y
         2,  # x
         10, # timestamp
         0.2 # weight
-    )] * 5
+    )] * 6
     
     iaf_layer = samna.specksim.IntegrateAndFire(
         2, # in channels
@@ -84,6 +86,12 @@ def test_specksim_iaf_layer():
     ) 
     out = iaf_layer.forward(events)
     assert len(out) == 1
+
+    # test resetting the states
+    states_after_inference = np.array(iaf_layer.get_v_mem()) # sum: 0.2
+    iaf_layer.reset_states()
+    states_after_reset = np.array(iaf_layer.get_v_mem()) # sum: 0.0
+    assert states_after_reset.sum() < states_after_inference.sum()
 
 def test_specksim_iaf_filter():
     import time

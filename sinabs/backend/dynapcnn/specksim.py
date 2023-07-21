@@ -4,7 +4,7 @@ import samna
 import numpy as np
 import torch.nn as nn
 import sinabs.layers as sl
-from typing import List, Tuple, Union
+from typing import List, Tuple, Union, Dict
 
 from samna.specksim.nodes import SpecksimConvolutionalFilterNode as ConvFilter
 from samna.specksim.nodes import SpecksimIAFFilterNode as IAFFilter
@@ -63,7 +63,7 @@ def convert_convolutional_layer(
         Tuple[ConvFilter, Tuple[int, int, int]]: Returns the samna filter and the output shape
         of the layer 
     """
-    if layer.bias:
+    if layer.bias is not None:
         raise ValueError("Biases are not supported!")
 
     # Create the filter node
@@ -184,8 +184,6 @@ def calculate_weight_scale(layer: nn.AvgPool2d):
     weight_scale = float(kernel_size[0] * kernel_size[1])
     return weight_scale 
     
-
-
 def from_sequential(
     network: nn.Sequential, 
     input_shape: Tuple[int, int, int]
@@ -256,6 +254,9 @@ class SpecksimNetwork:
         """
         self.network: samna.graph.EventFilterGraph = graph 
         self.members = graph_members
+
+        # Monitor mechanics
+        self.monitors: Dict[int, Dict[str, List]] = {}
     
     def forward(self, xytp: np.record) -> np.record:
         """Applies the network forward pass given events. 
@@ -272,15 +273,117 @@ class SpecksimNetwork:
         spikes = self.xytp_to_specksim_spikes(xytp)
         # start the network graph 
         self.network.start()
+        
+        # start the monitor graph(s)
+        for monitor in self.monitors.values():
+            # flush the monitor buffers.
+            _ = monitor["sink"].get_events()
+            monitor["graph"].start()
+        
         # do the forward pass
         self.members[0].write(spikes) # write
         output_spikes = self.members[-1].get_events_blocking() # read
+
+        # stop the monitor graph(s)
+        for monitor in self.monitors.values():
+            monitor["graph"].stop()
+        
         # stop the streaming graph at the end 
         self.network.stop()
+
         return self.specksim_spikes_to_xytp(output_spikes, self.output_dtype)
     
     def __call__(self, xytp: np.record) -> np.record:
         return self.forward(xytp)
+    
+    def reset_states(self):
+        """Reset the states of every spiking layer in the network to 0.
+        """
+        for member in self.members:
+            if isinstance(member, IAFFilter):
+                member.get_layer().reset_states()
+    
+    def get_nth_spiking_layer(self, spike_layer_number: int) -> IAFFilter:
+        """Get nth spiking layer for reading
+        
+            Args:
+                spike_layer_number (int): `spike_layer_number`th IAFFilter
+            
+            Returns:
+                IAFFilter: `spike_layer_number`th IAFFilter
+        """
+        spike_layer_idx = 0
+        for member in self.members:
+            if isinstance(member, IAFFilter):
+                if spike_layer_idx == spike_layer_number:
+                    return member
+                spike_layer_idx += 1
+
+        raise ValueError(f"{spike_layer_number}th monitor does not exist!")
+    
+    def add_monitor(self, spike_layer_number: int):
+        """Add a monitor to the `spike_layer_number`th IAF layer.
+        
+            Args:
+                spike_layer_number (int): `spike_layer_number`th IAF layer to monitor
+        """
+        iaf_filter = self.get_nth_spiking_layer(spike_layer_number)
+        graph = samna.graph.EventFilterGraph()
+        _, sink = graph.sequential([
+            iaf_filter,
+            samna.BasicSinkNode_specksim_events_spike()
+        ])
+        self.monitors.update({
+            spike_layer_number: {
+                "graph": graph,
+                "sink": sink
+            } 
+        })
+    
+    def add_monitors(self, spike_layer_numbers: List[int]):
+        """Convenience function to add monitor to multiple spike layers.
+        
+            Args:
+                spike_layer_numbers (List[int]): Numbers of the spike spike layers to monitor.
+        """
+        for number in spike_layer_numbers:
+            self.add_monitor(number)
+    
+    def read_monitor(self, spike_layer_number: int) -> np.record:
+        """Read the events from the `spike_layer_number`th hidden spiking layer
+        
+            Args:
+                spike_layer_number (int): `spike_layer_number`th spiking layer to monitor.
+            
+            Returns:
+                np.record: Events from `spike_layer_number`th spiking layer as a numpy 
+                    record array.
+        """
+        if spike_layer_number not in self.monitors.keys():
+            raise ValueError(f"Spike layer: {spike_layer_number} is not ")
+        return self.specksim_spikes_to_xytp(
+            self.monitors[spike_layer_number]["sink"].get_events_blocking(),
+            self.output_dtype
+        )
+    
+    def read_monitors(self, spike_layer_numbers: List[int]) -> Dict[int, np.record]:
+        """Convenience method to read from multiple monitors"""
+        spike_dict: Dict[int, np.record] = {}
+        for number in spike_layer_numbers:
+            spike_dict.update({number: self.read_monitor(number)})
+        return spike_dict
+    
+    def read_all_monitors(self):
+        """Convenience method to read all the monitors"""
+        spike_dict: Dict[int, np.record] = {}
+        for number in self.monitors.keys():
+            spike_dict.update({number: self.read_monitor(number)})
+        return spike_dict
+    
+    def clear_monitors(self):
+        """Clear all monitors"""
+        self.monitors = {}
+        
     
     @staticmethod
     def xytp_to_specksim_spikes(xytp: np.record) -> List[samna.specksim.events.Spike]:
