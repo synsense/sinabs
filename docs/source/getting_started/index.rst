@@ -4,7 +4,7 @@ Getting Started With Speck/DynapCNN
 .. toctree::
     :maxdepth: 2
 
-    installation
+    overview
     notebooks/cnn_to_dynapcnn
     notebooks/leak_neuron
     notebooks/visualize_speck_dvs_input
