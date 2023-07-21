@@ -1,13 +1,16 @@
+from warnings import warn
+
 import samna
 import numpy as np
 import torch.nn as nn
 import sinabs.layers as sl
-import time
 from typing import List, Tuple, Union
 
 from samna.specksim.nodes import SpecksimConvolutionalFilterNode as ConvFilter
 from samna.specksim.nodes import SpecksimIAFFilterNode as IAFFilter
 from samna.specksim.nodes import SpecksimSumPoolingFilterNode as SumPoolFilter
+from sinabs.backend.dynapcnn import DynapcnnNetwork, DynapcnnCompatibleNetwork
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 to_tuple = lambda x: (x, x) if isinstance(x, int) else x  
 
@@ -45,13 +48,16 @@ def convert_linear_to_convolutional(layer: nn.Linear, input_shape: Tuple[int, in
 
 def convert_convolutional_layer(
     layer: nn.Conv2d,
-    input_shape: Tuple[int, int, int]
+    input_shape: Tuple[int, int, int],
+    weight_scale: float = 1.0
 ) -> Tuple[ConvFilter, Tuple[int, int, int]]:
     """Convert a convolutional layer to samna filter
 
     Args:
         layer (nn.Conv2d): A PyTorch Convolutional Layer. The biases has to be disabled. 
         input_shape (Tuple[int, int, int]): Input shape of the layer in (channel, y, x)
+        weight_scale (float): Multiply the layer weights. This is often necessary when converting
+        models with AvgPool2d
 
     Returns:
         Tuple[ConvFilter, Tuple[int, int, int]]: Returns the samna filter and the output shape
@@ -82,7 +88,9 @@ def convert_convolutional_layer(
     ) 
     
     # Set the layer weights
-    conv_filter.set_weights(layer.weight.cpu().detach().tolist())
+    weights = layer.weight.cpu().detach().clone()
+    weights /= weight_scale
+    conv_filter.set_weights(weights.tolist())
 
     # Get the output image shape
     output_shape = [out_channels, *conv_filter.get_layer().get_output_shape()]
@@ -93,9 +101,22 @@ def convert_pooling_layer(
     layer: Union[nn.AvgPool2d, sl.SumPool2d],
     input_shape: Tuple[int, int, int]
 ) -> Tuple[SumPoolFilter, Tuple[int, int, int]]:
+    """Converts a pooling layer to a samna filter.
 
-    if to_tuple(layer.kernel_size) != to_tuple(layer.stride):
-        raise ValueError("For pooling layers kernel size has to be the same as the stride")
+    Args:
+        layer (Union[nn.AvgPool2d, sinabs.layers.SumPool2d]): A pooling layer.
+        input_shape (Tuple[int, int, int]): Input shape to the pooling layer in (channel, y, x)
+    
+    Returns:
+        Tuple[SumPoolFilter, Tuple[int, int, int]]: Returns a tuple of sum pooling filter and 
+        the output shape in (channel, y, x) 
+    
+    """
+
+    ## Keeping this commented out due to missing support to DynapcnnLayer conversion. However,
+    ## this check is the correct one.
+    # if to_tuple(layer.kernel_size) != to_tuple(layer.stride):
+    #     raise ValueError("For pooling layers kernel size has to be the same as the stride")
     
     # initialize filter
     pooling_filter = SumPoolFilter()
@@ -142,8 +163,30 @@ def convert_iaf_layer(
     )
     return iaf_filter, input_shape
 
+def calculate_weight_scale(layer: nn.AvgPool2d):
+    """Calculate the weight scale for the next weight layer given an AvgPool layer. This is necessary,
+    because only real supported pooling layer is SumPooling for the simulator.
+    
+    Args:
+        layer (nn.AvgPool2d): torch Average pooling layer.
 
-def from_sinabs(
+    """
+    kernel_size = to_tuple(layer.kernel_size)
+
+    # # Keeping this commented out due to missing support to DynapcnnLayer conversion. However,
+    # # this check is the correct one.
+    # stride = to_tuple(layer.kernel_size)
+    # if kernel_size != stride:
+    #     raise ValueError("Kernel size and stride of the Average pooling layer should be the same.")
+    
+    # calculate and return the weight scale based on kernel size 
+    # this effectively converts an average pooling layer to a sum pooling
+    weight_scale = float(kernel_size[0] * kernel_size[1])
+    return weight_scale 
+    
+
+
+def from_sequential(
     network: nn.Sequential, 
     input_shape: Tuple[int, int, int]
 ) -> "SpecksimNetwork":
@@ -160,24 +203,34 @@ def from_sinabs(
     graph = samna.graph.EventFilterGraph()
     filters = []
     current_shape = list(input_shape)
+    current_weight_scale: float = 1.0
 
     # Add an input node
     filters.append(samna.BasicSourceNode_specksim_events_spike())
     
-    for layer in network:
-        if isinstance(layer, nn.Conv2d):
-            samna_filter, current_shape = convert_convolutional_layer(layer, current_shape)
+    for name, layer in network.named_modules():
+        if isinstance(layer, (nn.Conv2d, nn.Linear)):
+            if isinstance(layer, nn.Linear):
+                layer = convert_linear_to_convolutional(layer, current_shape)
+            samna_filter, current_shape = convert_convolutional_layer(layer, current_shape, current_weight_scale)
+            current_weight_scale = 1.0 # set the weight scale back to normal
         elif isinstance(layer, (sl.SumPool2d, nn.AvgPool2d)):
             samna_filter, current_shape = convert_pooling_layer(layer, current_shape)
+            if isinstance(layer, nn.AvgPool2d):
+                current_weight_scale = calculate_weight_scale(layer)
         elif isinstance(layer, (sl.IAF, sl.IAFSqueeze)):
-            samna_filter, current_shape = convert_iaf_layer(layer, current_shape) 
-        elif isinstance(layer, nn.Linear):
-            conv_layer = convert_linear_to_convolutional(layer, current_shape)
-            samna_filter, current_shape = convert_convolutional_layer(conv_layer, current_shape)
+            samna_filter, current_shape = convert_iaf_layer(layer, current_shape)
         elif isinstance(layer, nn.Flatten):
             continue 
+        elif isinstance(layer, (nn.Sequential, DynapcnnLayer, DynapcnnNetwork, DynapcnnCompatibleNetwork)):
+            continue # Do not issue errors for these classes.
+        elif isinstance(layer, nn.ReLU):
+            raise TypeError(f"ReLU layer with name: {name} found!" 
+                 + "Please convert your model to a spiking model before converting to specksim.")
         else:
-            raise TypeError(f"Only Conv2d, SumPool2d and IAF layers are supported: {layer}")
+            warn(f"Layer with name: {name} of type: {type(layer)} is ignored" 
+                 + f"and will not be included. Your network may not be properly simulated.")
+            continue
 
         filters.append(samna_filter)
     
@@ -188,24 +241,21 @@ def from_sinabs(
     return SpecksimNetwork(graph, members) 
 
 class SpecksimNetwork:
+    output_dtype = np.dtype([("x", np.uint32), ("y", np.uint32), ("t", np.uint32), ("p", np.uint32)])
+    
     def __init__(
         self,
         graph: samna.graph.EventFilterGraph, 
-        graph_members: List["SamnaFilterNode"],
-        sleep_duration: float = 0.1
+        graph_members: List["SamnaFilterNode"]
     ):
         """Specksim simulation container object.
 
         Args:
             graph (samna.graph.EventFilterGraph): A samna graph that contains the network layers as samna filters.
             graph_members (List["SamnaFilterNode"]): A list of samna filters.
-            sleep_duration (float): Duration between each read from the graph in seconds. Defaults to 0.1.
         """
         self.network: samna.graph.EventFilterGraph = graph 
         self.members = graph_members
-        self.sleep_duration = sleep_duration
-        self.xytp_dtype = None
-    
     
     def forward(self, xytp: np.record) -> np.record:
         """Applies the network forward pass given events. 
@@ -223,20 +273,11 @@ class SpecksimNetwork:
         # start the network graph 
         self.network.start()
         # do the forward pass
-        self.members[0].write(spikes)
-
-        # continuously read from the stream until there are no new
-        # events left in the stream
-        while True:
-            time.sleep(self.sleep_duration)
-            previous_length = len(output_spikes)
-            output_spikes.extend(self.members[-1].get_events())
-            current_length = len(output_spikes)
-            if current_length == previous_length:
-                break
+        self.members[0].write(spikes) # write
+        output_spikes = self.members[-1].get_events_blocking() # read
         # stop the streaming graph at the end 
         self.network.stop()
-        return self.specksim_spikes_to_xytp(output_spikes, xytp.dtype)
+        return self.specksim_spikes_to_xytp(output_spikes, self.output_dtype)
     
     def __call__(self, xytp: np.record) -> np.record:
         return self.forward(xytp)
@@ -260,12 +301,12 @@ class SpecksimNetwork:
     
     @staticmethod
     def specksim_spikes_to_xytp(spikes: List[samna.specksim.events.Spike], output_dtype: np.dtype) -> np.record:
-        """Takes in specksim spikes and converts them to xytp of the same type as input
+        """Takes in specksim spikes and converts them to record array of with keys "x", "y", "t" and "p"
 
         Args:
             spikes (List[samna.specksim.events.Spike]): A list of specksim spikes coming from the output
             of the network. 
-            output_dtype (np.dtype): A numpy dtype with keys ("x", "y", "t", "p") in this order.
+            output_dtype: type of the output spikes. This is defined in the class implementation.
 
         Returns:
             np.record: A record array of the given output type 
@@ -273,6 +314,6 @@ class SpecksimNetwork:
         output_events = []
         for spike in spikes:
             x, y, t, p = spike.x, spike.y, spike.timestamp, spike.feature
-            output_event = np.array([x, y, t, p], dtype=output_dtype)
+            output_event = (x, y, t, p)
             output_events.append(output_event)
         return np.array(output_events, dtype=output_dtype)
