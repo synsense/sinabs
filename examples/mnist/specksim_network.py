@@ -1,4 +1,5 @@
 import time
+from pathlib import Path
 
 import numpy as np
 import torch
@@ -9,6 +10,9 @@ from sinabs.backend.dynapcnn.specksim import from_sequential
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
+
+# Define the path to pre-trained MNIST weights.
+weights_path = Path( __file__ ).absolute().parent / "mnist_params.pt"
 
 # Define custom dataset for spiking input data
 class MNIST_Dataset(datasets.MNIST):
@@ -61,7 +65,7 @@ ann = nn.Sequential(
 
 device = "cpu"
 ann.to(device)
-ann.load_state_dict(torch.load("./tests/mnist_params.pt"))
+ann.load_state_dict(torch.load(weights_path))
 
 ## Initialize the dataset
 t_window = 100
@@ -100,7 +104,7 @@ dynapcnn_network = DynapcnnNetwork(snn=snn, input_shape=(1, 28, 28), dvs_input=F
 specksim_network_dynapcnn = from_sequential(dynapcnn_network, input_shape=(1, 28, 28))
 
 # Do the inference
-print("Dynapcnn Network")
+print("Dynapcnn Network - Quantized")
 begin_t = time.time()
 output_spikes = specksim_network_dynapcnn(first_sample)
 end_t = time.time()
