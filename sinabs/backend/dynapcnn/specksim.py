@@ -1,11 +1,12 @@
 from warnings import warn
+import time
 
-import samna
 import numpy as np
 import torch.nn as nn
 import sinabs.layers as sl
 from typing import List, Tuple, Union, Dict
 
+import samna
 from samna.specksim.nodes import SpecksimConvolutionalFilterNode as ConvFilter
 from samna.specksim.nodes import SpecksimIAFFilterNode as IAFFilter
 from samna.specksim.nodes import SpecksimSumPoolingFilterNode as SumPoolFilter
@@ -244,16 +245,20 @@ class SpecksimNetwork:
     def __init__(
         self,
         graph: samna.graph.EventFilterGraph, 
-        graph_members: List["SamnaFilterNode"]
+        graph_members: List["SamnaFilterNode"],
+        sleep_duration: float = 0.5
     ):
         """Specksim simulation container object.
 
         Args:
             graph (samna.graph.EventFilterGraph): A samna graph that contains the network layers as samna filters.
             graph_members (List["SamnaFilterNode"]): A list of samna filters.
+            sleep_duration (float): Sleep between writing and reading from the samna graph structure. This is 
+            needed because the graph runs on a separate thread.
         """
         self.network: samna.graph.EventFilterGraph = graph 
         self.members = graph_members
+        self.sleep_duration = sleep_duration
 
         # Monitor mechanics
         self.monitors: Dict[int, Dict[str, List]] = {}
@@ -282,7 +287,8 @@ class SpecksimNetwork:
         
         # do the forward pass
         self.members[0].write(spikes) # write
-        output_spikes = self.members[-1].get_events_blocking() # read
+        time.sleep(self.sleep_duration) 
+        output_spikes = self.members[-1].get_events() # read
 
         # stop the monitor graph(s)
         for monitor in self.monitors.values():
