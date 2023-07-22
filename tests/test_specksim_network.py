@@ -50,12 +50,14 @@ def util_create_all_ones_snn(spike_threshold: float = 1.0):
     
 def test_specksim_network_conversion():
     from sinabs.backend.dynapcnn.specksim import from_sequential
+
     snn, input_shape = util_create_all_ones_snn()
     specksim_network = from_sequential(snn, input_shape=input_shape)
     assert specksim_network is not None
 
 def test_add_monitor():
     from sinabs.backend.dynapcnn.specksim import from_sequential
+
     snn, input_shape = util_create_all_ones_snn()
     specksim_network = from_sequential(snn, input_shape=input_shape)
     specksim_network.add_monitor(1)
@@ -65,6 +67,7 @@ def test_add_monitor():
 
 def test_add_monitors():
     from sinabs.backend.dynapcnn.specksim import from_sequential
+
     snn, input_shape = util_create_all_ones_snn()
     specksim_network = from_sequential(snn, input_shape=input_shape)
     specksim_network.add_monitors([0, 1])
@@ -77,6 +80,7 @@ def test_add_monitors():
 def test_specksim_network_forward_pass():
     import numpy as np
     from sinabs.backend.dynapcnn.specksim import from_sequential
+
     snn, input_shape = util_create_all_ones_snn()
     specksim_network = from_sequential(snn, input_shape=input_shape)
     input_event = np.array([0,0,0,0], dtype=specksim_network.output_dtype)
@@ -87,6 +91,7 @@ def test_specksim_network_forward_pass():
 def test_specksim_network_forward_pass_with_monitor():
     import numpy as np
     from sinabs.backend.dynapcnn.specksim import from_sequential
+
     snn, input_shape = util_create_all_ones_snn()
     specksim_network = from_sequential(snn, input_shape=input_shape)
     specksim_network.add_monitor(0)
@@ -95,3 +100,61 @@ def test_specksim_network_forward_pass_with_monitor():
     monitored_events = specksim_network.read_monitor(0)
     assert len(output_event) > 0
     assert len(monitored_events) > 0
+
+def test_specksim_network_read_monitors():
+    import numpy as np
+    from sinabs.backend.dynapcnn.specksim import from_sequential
+    
+    snn, input_shape = util_create_all_ones_snn()
+    specksim_network = from_sequential(snn, input_shape=input_shape)
+    specksim_network.add_monitors([0, 1])
+    input_event = np.array([0,0,0,0], dtype=specksim_network.output_dtype)
+    output_event = specksim_network(input_event)
+    monitored_events = specksim_network.read_monitors([0, 1])
+    assert len(output_event) > 0
+    for monitor_result in monitored_events.values():
+        assert len(monitor_result) > 0
+
+def test_specksim_network_read_all_monitors():
+    import numpy as np
+    from sinabs.backend.dynapcnn.specksim import from_sequential
+
+    snn, input_shape = util_create_all_ones_snn()
+    specksim_network = from_sequential(snn, input_shape=input_shape)
+    specksim_network.add_monitors([0, 1])
+    input_event = np.array([0,0,0,0], dtype=specksim_network.output_dtype)
+    output_event = specksim_network(input_event)
+    monitored_events = specksim_network.read_all_monitors()
+    assert len(output_event) > 0
+    for monitor_result in monitored_events.values():
+        assert len(monitor_result) > 0
+
+def test_specksim_network_reset_states():
+    import numpy as np
+    from sinabs.backend.dynapcnn.specksim import from_sequential
+    from samna.specksim.nodes import SpecksimIAFFilterNode as IAFFilter
+
+    snn, input_shape = util_create_all_ones_snn(spike_threshold=100.0)
+    specksim_network = from_sequential(snn, input_shape=input_shape)
+
+    input_event = np.array([0,0,0,0], dtype=specksim_network.output_dtype)
+    output_event = specksim_network(input_event)
+
+    prev_state_sums = 0
+    for member in specksim_network.members:
+        if isinstance(member, IAFFilter):
+            prev_state_sums += np.array(member.get_layer().get_v_mem()).sum()
+            print(prev_state_sums)
+
+    specksim_network.reset_states()
+
+    after_state_sums = 0 
+    for member in specksim_network.members:
+        if isinstance(member, IAFFilter):
+            member.get_layer().reset_states()
+            after_state_sums += np.array(member.get_layer().get_v_mem()).sum()
+            print(after_state_sums)
+
+    assert prev_state_sums != 0.0
+    assert after_state_sums == 0.0
+
