@@ -6,8 +6,9 @@ Once your devices are connected, you can use the `get_device_map` method to insp
 
 ```python
 from sinabs.backend.dynapcnn.io import get_device_map
+from typing import Dict
 
-device_map: Dict[str, `DeviceInfo`] = get_device_map()
+device_map: Dict[str, 'DeviceInfo'] = get_device_map()
 
 print(device_map)
 ```

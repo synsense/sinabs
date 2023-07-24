@@ -148,7 +148,7 @@ In a layer, the Convolution and Neuron activation must be implemented with an or
 
 The cascaded convolution and neuron activation in a DYNAPCNN layer is not allowed.
 
-![dataflow](../_static/Overview/dataflow_layers.png)
+![dataflow](/_static/Overview/dataflow_layers.png)
 
 ### Ex1. Bad Case: Cascaded convolution
 ```

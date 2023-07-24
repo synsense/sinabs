@@ -14,7 +14,7 @@ This `sinabs` plugin enables porting sinabs models to chips and dev-kits with DY
 DYNAP-CNN/Speck DevKits
 -----------------------
 
-- :doc:`Overview of the devkits<overview>`.
+- :doc:`Overview of the devkits<getting_started/overview>`.
 
 .. image:: ./_static/devkits_images/dynapcnn_devkit.png
    :width: 366
@@ -39,7 +39,6 @@ Table of contents
    :maxdepth: 2
 
    installation
-   overview
    getting_started/index
    the_basics
    advanced_concepts

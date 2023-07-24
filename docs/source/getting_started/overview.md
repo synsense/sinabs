@@ -4,7 +4,7 @@
 
 DYNAP-CNN/SPECK are a family of spiking neural network ASICs family, which is designed to focusing on convolution spiking neural network(SCNN) based vision processing tasks. DYNAP-CNN is a fully scalable, event-driven neuromorphic processor with up to 0.32M configurable spiking neurons and direct interface with external DVS. Speck™ is the world first neuromorphic device which integrates the DYNAP-CNN neuromorphic processor and a dynamic vision sensor(DVS) into a single SoC.
 
-![image.png](_static/Overview/speck_dynapcnn.png)
+![image.png](/_static/Overview/speck_dynapcnn.png)
 
 
 Currently, __sinabs-dynapcnn__ library provides the interface to serveral available versions of hardwares for DYNAPCNN/SPECK family:
@@ -21,7 +21,7 @@ __note__: * stands for the correspond software identifier we assigned to the dif
 
 The general top level diagram of the DYNAP-CNN/SPECK chip is shown as follows:
 
-![top_diagram](_static/Overview/speck_top_level.png)
+![top_diagram](/_static/Overview/speck_top_level.png)
 
 
 For DYNAP-CNN dev-kits, it allows the user to interact with the chip using external DVS sensors or pre-defined event data. Speck seriers devkit based on above, it additionally allows the user to use its embeded internal DVS for development.
@@ -38,7 +38,7 @@ Currently, Speck/Dynapcnn supports following External DVS sensor with the samna 
 To interact with these developmentkit, sinabs-dynapcnn needs [samna](https://pypi.org/project/samna/) dependency to enables the chip configuration and network setting. As is shown in the figure below, sinabs-dynapcnn provides a simple way to convert the network structure and parameters to the _SammnaConfiguration_ that can be used by samna to setup the chip. 
 
 
-![sinab-dynapcnn](_static/Overview/sinabs-dynapcnn-role.png)
+![sinab-dynapcnn](/_static/Overview/sinabs-dynapcnn-role.png)
 
 # Chip Resources
 
@@ -69,7 +69,7 @@ The event pre-processing layer receives the input events coming from dvs or an e
 
 An Event noise filter is also included in the pre-processing layer, the filter can be enabled upon users setting. A general pre-processing pipeline for the preprocessing pipe line is shown as follow:
 
-![image.png](_static/Overview/event_preprocessing_pipeline.png)
+![image.png](/_static/Overview/event_preprocessing_pipeline.png)
 
 ### DYNAP-CNN Layer
 
@@ -100,7 +100,7 @@ information communication with layers are only in "Event based" format, the laye
 #### Memory Constraints and Network Sizing
 Each layer has different memory constraints that split into kernel memory(for weight parameters) and neuron memory(spiking neuron states) as is shown below.  __Note:__ For the entire series of chips, dynapcnn/speck support precision of **8bit** int for kernel parameters and **16bit** int for neuron state precisions.
 
-![memoryconstrains](_static/Overview/memory_constraints.png)
+![memoryconstrains](/_static/Overview/memory_constraints.png)
 
 <br />
 
