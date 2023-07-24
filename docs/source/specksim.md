@@ -10,6 +10,8 @@ Specksim is a high performance Spiking-Convolutional Neural Network simulator wh
 ## Supported architecture
 The `specksim` simulator only supports sequential models. Typically the container module we use is `torch.nn.Sequential`, however nested modules are also supported.
 
+Each weight layer, `torch.nn.Conv2d`, `torch.nn.Linear` should be followed by a spiking layer `sinabs.layers.IAF`, `sinabs.layers.IAFSqueeze`.
+
 The output layer of the network has to be a `spiking layer`.
 
 ## Supported layers
@@ -139,6 +141,9 @@ specksim_network.reset_states()
 
 ### No training
 This simulator is inference only and it does not support training.
+
+### No biases
+Biases for weight layers, namely `torch.nn.Conv2d` and `torch.nn.Linear` are not supported. The biases should be set to `False` explicitly in the network before conversion.
 
 ### Breadth-first vs Depth-first
 Our `DYNAP-CNN` architecture is completely asynchronous. This means that for a sequential model, each event comes after the event that created it from the previous layer. That means the hardware processes the events in a `depth-first` manner. This simulation however processes events layer-by-layer. If there are multiple events received by a layer. That layer first finishes processing these events and then adds them to a queue, so the next layer can start their processing. This is done to make the simulation more efficient and faster. Furthermore, for models that were trained in a rate-based manner, the change in the processing scheme does not create too big of a difference.
