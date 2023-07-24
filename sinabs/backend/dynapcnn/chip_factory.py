@@ -163,6 +163,7 @@ class ChipFactory:
     ) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
+        Note: Timestamp of first event will be considered as start time.
 
         Parameters
         ----------
@@ -170,7 +171,7 @@ class ChipFactory:
         events: List[Spike]
             A list of events that will be streamed to the device
         dt: float
-            Length of each time step for rasterization
+            Length of each time step for rasterization (in seconds)
         shape: Optional[Tuple]
             Shape of the raster to be produced, excluding the time dimension. (Channel, Height, Width)
             If this is not specified, the shape is inferred based on the max values found in the events.
@@ -180,6 +181,7 @@ class ChipFactory:
         raster: torch.Tensor
             A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
         """
+        # Timestamps are in microseconds
         timestamps = [event.timestamp for event in events]
         start_timestamp = min(timestamps)
         timestamps = [ts - start_timestamp for ts in timestamps]
@@ -187,23 +189,26 @@ class ChipFactory:
         ys = [event.y for event in events]
         features = [event.feature for event in events]
 
+        # dt in microseconds (same unit as event timestamps)
+        dt_us = 1e6 * dt
+
         # Initialize an empty raster
+        num_timebins = int(max(timestamps) / dt_us) + 1
         if shape:
-            shape = (int(max(timestamps) * dt) + 1, *shape)
+            shape = (num_timebins, *shape)
             raster = torch.zeros(shape)
         else:
             raster = torch.zeros(
-                int(max(timestamps) * dt) + 1,
+                num_timebins,
                 max(features) + 1,
-                max(xs) + 1,
                 max(ys) + 1,
+                max(xs) + 1,
             )
-
         for event in events:
             raster[
-                int((event.timestamp - start_timestamp) * dt),
+                int((event.timestamp - start_timestamp) / dt_us),
                 event.feature,
-                event.x,
                 event.y,
+                event.x,
             ] += 1
         return raster
