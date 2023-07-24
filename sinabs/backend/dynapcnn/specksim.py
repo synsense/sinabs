@@ -246,19 +246,22 @@ class SpecksimNetwork:
         self,
         graph: samna.graph.EventFilterGraph, 
         graph_members: List["SamnaFilterNode"],
-        sleep_duration: float = 0.5
+        initial_sleep_duration: float = 0.2,
+        subsequent_sleep_duration: float = 0.1
     ):
         """Specksim simulation container object.
 
         Args:
             graph (samna.graph.EventFilterGraph): A samna graph that contains the network layers as samna filters.
             graph_members (List["SamnaFilterNode"]): A list of samna filters.
-            sleep_duration (float): Sleep between writing and reading from the samna graph structure. This is 
+            initial_sleep_duration (float): Sleep between writing and reading from the samna graph structure. This is 
             needed because the graph runs on a separate thread.
+            subsequent_sleep_duration (float): In order to not drop any events, we can sleep for more time.
         """
         self.network: samna.graph.EventFilterGraph = graph 
         self.members = graph_members
-        self.sleep_duration = sleep_duration
+        self.initial_sleep_duration = initial_sleep_duration
+        self.subsequent_sleep_duration = subsequent_sleep_duration
 
         # Monitor mechanics
         self.monitors: Dict[int, Dict[str, List]] = {}
@@ -287,8 +290,17 @@ class SpecksimNetwork:
         
         # do the forward pass
         self.members[0].write(spikes) # write
-        time.sleep(self.sleep_duration) 
+        time.sleep(self.initial_sleep_duration) 
         output_spikes = self.members[-1].get_events() # read
+
+        # check if any events are produced after reading
+        while True:
+            time.sleep(self.subsequent_sleep_duration)
+            previous_spike_count = len(output_spikes)
+            output_spikes.extend(self.members[-1].get_events())
+            current_spike_count = len(output_spikes)
+            if current_spike_count == previous_spike_count:
+                break
 
         # stop the monitor graph(s)
         for monitor in self.monitors.values():
@@ -373,7 +385,15 @@ class SpecksimNetwork:
         )
     
     def read_monitors(self, spike_layer_numbers: List[int]) -> Dict[int, np.record]:
-        """Convenience method to read from multiple monitors"""
+        """Convenience method to read from multiple monitors
+        
+            Args:
+                spike_layer_numbers (List[int]): a list of spike layer numbers. 
+            
+            Returns:
+                Dict[int, np.record]: Dict with keys of spike_layer_numbers and events in np.record
+                    format with 4 keys `x`, `y`, `p`, `t` 
+        """
         spike_dict: Dict[int, np.record] = {}
         for number in spike_layer_numbers:
             spike_dict.update({number: self.read_monitor(number)})
@@ -385,6 +405,19 @@ class SpecksimNetwork:
         for number in self.monitors.keys():
             spike_dict.update({number: self.read_monitor(number)})
         return spike_dict
+    
+    def read_spiking_layer_states(self, spike_layer_number: int) -> List[List[List[int]]]:
+        """Read the states of the `spike_layer_number`th spiking layer. 
+
+            Args:
+                spike_layer_number (int): `spike_layer_number`th spiking layer to read states from.
+            
+            Returns:
+                List[List[List[int]]]: 3-dimensional list of states in (channel, y, x)  
+                
+        """
+        iaf_filter = self.get_nth_spiking_layer(spike_layer_number)
+        return iaf_filter.get_layer().get_v_mem()
     
     def clear_monitors(self):
         """Clear all monitors"""

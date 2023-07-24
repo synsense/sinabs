@@ -119,7 +119,6 @@ print(intermediate_layer_events)
 
 Please note that after each forward pass the monitors are flushed.
 
-
 ### Resetting states
 `Specksim` is mainly designed for benchmarking network performances in an event-driven way. In benchmarking we typically reset the spiking layer states. This can be achived by the following.
 
