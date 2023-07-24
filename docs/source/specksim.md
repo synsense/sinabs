@@ -119,6 +119,15 @@ print(intermediate_layer_events)
 
 Please note that after each forward pass the monitors are flushed.
 
+### Monitoring hidden layer states.
+
+Due to the event-based nature of the hardware and simulation, the state updates cannot be stored as there are too many changes to store in the memory. However, the states can be read at the end of each call with `read_spiking_layer_states(int)` method. If the argument is `N` then the states of `N`th spiking layer will be received.
+
+```
+states: List[List[List[int]]] = specksim_network.read_spiking_layer_states(0)
+print(states)
+```
+
 ### Resetting states
 `Specksim` is mainly designed for benchmarking network performances in an event-driven way. In benchmarking we typically reset the spiking layer states. This can be achived by the following.
 
