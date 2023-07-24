@@ -246,7 +246,7 @@ class SpecksimNetwork:
         self,
         graph: samna.graph.EventFilterGraph, 
         graph_members: List["SamnaFilterNode"],
-        initial_sleep_duration: float = 0.2,
+        initial_sleep_duration: float = 1.0,
         subsequent_sleep_duration: float = 0.1
     ):
         """Specksim simulation container object.
