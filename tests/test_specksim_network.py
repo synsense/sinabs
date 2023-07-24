@@ -143,18 +143,29 @@ def test_specksim_network_reset_states():
     prev_state_sums = 0
     for member in specksim_network.members:
         if isinstance(member, IAFFilter):
-            prev_state_sums += np.array(member.get_layer().get_v_mem()).sum()
-            print(prev_state_sums)
+            iaf_layer = member.get_layer()
+            prev_state_sums += np.array(iaf_layer.get_v_mem()).sum()
 
     specksim_network.reset_states()
-
-    after_state_sums = 0 
     for member in specksim_network.members:
         if isinstance(member, IAFFilter):
             member.get_layer().reset_states()
-            after_state_sums += np.array(member.get_layer().get_v_mem()).sum()
-            print(after_state_sums)
+
+    after_states_sum = 0
+    for member in specksim_network.members:
+        if isinstance(member, IAFFilter):
+            iaf_layer = member.get_layer()
+            after_states_sum += np.array(iaf_layer.get_v_mem()).sum()
 
     assert prev_state_sums != 0.0
-    assert after_state_sums == 0.0
+    assert after_states_sum == 0.0
 
+def test_read_specksim_states():
+    import numpy as np
+    from sinabs.backend.dynapcnn.specksim import from_sequential
+    snn, input_shape = util_create_all_ones_snn(spike_threshold=100.0)
+
+    specksim_network = from_sequential(snn, input_shape=input_shape)
+    states = np.array(specksim_network.read_spiking_layer_states(0))
+    assert states.sum() == 0.0
+    
