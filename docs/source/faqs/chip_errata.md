@@ -15,4 +15,4 @@ weights is correctly mapped. In `sinabs-dynapcnn` we provide a utility function:
 `sinabs.backend.dynapcnn.utils.extend_readout_layer`
 
 to help you re-mapping the last convolutional layer's weights, for more details see 
-[here](https://synsense.gitlab.io/sinabs-dynapcnn/notebooks/using_readout_layer.html)
+["How to Use Readout Layer"](../getting_started/notebooks/using_readout_layer.ipynb)
