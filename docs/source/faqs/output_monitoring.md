@@ -2,7 +2,7 @@
 
 ## How to Read The Output from Hidden Layers.
 
-Basically, we can read all 9 layers output. `Samna configuration` object has a boolean attribute 
+Basically, we can read all 9 layers output. The `CnnLayerConfig` of the `Samna Configuration` object has a boolean attribute 
 called `monitor_enable`. If you want to read a specific layer's output, you must set the `monitor_enable` as `True` for
 that layer.
 
