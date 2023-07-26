@@ -11,7 +11,7 @@ Current we support:
 - nn.AvgPool2d(will be converted to `SumPool2d` when deployed to devkit)
   - pooling kernel size = [1, 2, 4, 8]
   
-- nn.Linear(will be converted to equivalent convolution when deployed to devkit)
+- nn.Linear(will be converted to equivalent convolution layer when deployed to devkit)
 - nn.Flatten
 
 ## Available `sinabs.layers` for Devkits
