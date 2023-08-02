@@ -5,7 +5,7 @@ Getting Started With Speck/DynapCNN
     :maxdepth: 2
 
     overview
-    notebooks/cnn_to_dynapcnn
+    notebooks/nmnist_quick_start
     notebooks/leak_neuron
     notebooks/visualize_speck_dvs_input
     notebooks/power_monitoring
