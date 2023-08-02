@@ -3,8 +3,7 @@
 ## Brief Introduction of the DynapCNN Core
 
 Our devkit has 9 `DynapCNN Core`s, each core can executes `Asynchronous Convolution`.
-Each core also have the following
-features:
+Each core also have the following features:
 
 1. Each core has an unique index number, the first core's index starts from 0. So the index is in range [0, 8).
 
@@ -207,8 +206,12 @@ Each core has a different "neuron memory" and "weight memory" constraints in the
 Please be careful about the memory limitations when you design your SNN.
 See detail in the [overview of devkit.](../getting_started/overview.md)
 
-## Limitation of Using ReadoutLayer
+## Feature Map Size Constrains
+The maximum output feature map size supported by each core is 64*64, while our maximum input shape is 128*128.
+So you need to at least down-sample the input into 64*64 by pooling or stride-convolution in the first layer of your
+model.
 
+## Limitation of Using ReadoutLayer
 If you are using readout layer, the number of output class should < **15**.
 See detail in the [readout layer introduction.](../getting_started/notebooks/using_readout_layer.ipynb)
 

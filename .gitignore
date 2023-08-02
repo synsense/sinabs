@@ -4,7 +4,7 @@ __pycache__
 .idea
 build
 .ipynb_checkpoints
-venv
+*venv
 .eggs
 htmlcov
 samna.log
@@ -13,3 +13,4 @@ data
 .venv
 .coverage
 imgui.ini
+NMNIST
