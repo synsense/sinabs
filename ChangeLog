@@ -1,6 +1,33 @@
 CHANGES
 =======
 
+* fix terminology for samna configuration obj
+* fix invalid urls in the docs
+
+v1.0.12
+-------
+
+* fix warnings related with overview.md can not be found when build doc
+* Add unit test for conversion from events to raster
+* Change order of dimensions in events\_to\_raster output to TxCxWxH
+* Fix rasterization time step
+* add output monitoring introction for FAQs
+* add example of implementing Residual Block
+* add example of implementing Residual Block
+* reform the FAQ section of the doc
+* back to previous version
+* back to previous code
+* refactor code, change the extended method from encrypted function to extra function
+* fixed variable assignment issue
+* modify the documentation for extend method
+* fixed some typo
+* remove unneeded package importing
+* add readout layer extend for Speck2E and 2F
+
+v1.0.11
+-------
+
+* update ChangeLog
 * Warning about running the script for MacOS users added to the documentation
 * minor changes and corrections
 * Updated info on biases/leak
@@ -65,6 +92,10 @@ CHANGES
 * added update keyring to gitlab-ci
 * renamed test
 * Speck2fDevKit support added
+
+v1.0.10
+-------
+
 * update samna version requirements
 * update ChangeLog
 * add speck2f module devkit support and remove speck2f characterization board support

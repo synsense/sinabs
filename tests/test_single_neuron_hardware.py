@@ -22,6 +22,7 @@ def test_deploy_dynapcnnnetwork():
     devices = find_open_devices()
     dtype = np.dtype([("x", np.uint16), ("y", np.uint16), ("t", np.uint64), ("p", bool),])
     single_event = recfunctions.unstructured_to_structured(np.array([[0,0,0,0]]), dtype)
+    two_events = recfunctions.unstructured_to_structured(np.array([[0,0,1000000,0]]), dtype)
     model = get_ones_network()
     
     sinabs.reset_states(model)
@@ -59,6 +60,15 @@ def test_deploy_dynapcnnnetwork():
             output = model(event)
             print(f"Num output events: {len(output)}")
             assert len(output) == 1
+
+            # Test whether sinabs waits for all events to be played back
+            model.reset_states()
+            events = factory.xytp_to_events(two_events, first_layer_idx, reset_timestamps=False)
+            t_start = time.time()
+            output = model(events)
+            t_end = time.time()
+            # Should have taken at least 1s
+            assert t_end - t_start >= 1
 
 @pytest.mark.skipif(not is_any_samna_device_connected(), reason="No samna device found!")
 def test_deploy_with_device_id():
