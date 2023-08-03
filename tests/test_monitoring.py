@@ -111,3 +111,7 @@ def test_model_level_monitoring_enable():
     with warnings.catch_warnings():
         warnings.simplefilter("error")
         config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers=[-1])
+
+    # Monitor all layers
+    config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers="all")
+    assert all(config.cnn_layers[i].monitor_enable == True for i in clo)
