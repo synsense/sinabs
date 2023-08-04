@@ -441,7 +441,10 @@ class DynapcnnNetwork(nn.Module):
             # Send input
             self.samna_input_buffer.write(x)
             received_evts = []
-            time.sleep(0.1)
+            # Record at least until the last event has been replayed
+            min_duration = max(event.timestamp for event in x) * 1e-6
+            time.sleep(min_duration)
+            # Keep recording if more events are being registered
             while True:
                 prev_length = len(received_evts)
                 time.sleep(0.1)
