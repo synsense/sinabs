@@ -10,4 +10,5 @@ FAQs
     available_algorithmic_operation
     device_management
     output_monitoring
+    save_hardware_config_as_binary
 

@@ -117,10 +117,11 @@ class DynapcnnNetwork(nn.Module):
             The order in which the dynapcnn layers will be used. If `auto`,
             an automated procedure will be used to find a valid ordering.
             A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
             Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         monitor_layers: None/List
-            A list of all chip-layers that you want to monitor.
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
             If you want to monitor the dvs layer for eg.
             ::
 
@@ -211,13 +212,14 @@ class DynapcnnNetwork(nn.Module):
             The order in which the dynapcnn layers will be used. If `auto`,
             an automated procedure will be used to find a valid ordering.
             A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
             Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         device: String
             dynapcnndevkit, speck2b or speck2devkit
 
         monitor_layers: None/List/Str
-            A list of all chip-layers that you want to monitor.
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
             If you want to monitor the dvs layer for eg.
             ::
 
@@ -245,12 +247,14 @@ class DynapcnnNetwork(nn.Module):
         """
         config_builder = ChipFactory(device).get_config_builder()
 
+        has_dvs_layer = isinstance(self.sequence[0], DVSLayer)
+
         # Figure out layer ordering
         if chip_layers_ordering == "auto":
             chip_layers_ordering = config_builder.get_valid_mapping(self)
         else:
             # Truncate chip_layers_ordering just in case a longer list is passed
-            if self.dvs_input:
+            if has_dvs_layer:
                 chip_layers_ordering = chip_layers_ordering[: len(self.sequence) - 1]
             chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
 
@@ -264,7 +268,8 @@ class DynapcnnNetwork(nn.Module):
         if monitor_layers is None:
             monitor_layers = [-1]
         elif monitor_layers == "all":
-            monitor_layers = list(range(len(self.sequence)))
+            num_cnn_layers = len(self.sequence) - int(has_dvs_layer)
+            monitor_layers = list(range(num_cnn_layers))
 
         # Enable monitors on the specified layers
         # Find layers corresponding to the chip
@@ -308,7 +313,7 @@ class DynapcnnNetwork(nn.Module):
             dynapcnndevkit, speck2b or speck2devkit
 
         monitor_layers: None/List/Str
-            A list of all chip-layers that you want to monitor.
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
             If you want to monitor the dvs layer for eg.
             ::
 
@@ -436,7 +441,10 @@ class DynapcnnNetwork(nn.Module):
             # Send input
             self.samna_input_buffer.write(x)
             received_evts = []
-            time.sleep(0.1)
+            # Record at least until the last event has been replayed
+            min_duration = max(event.timestamp for event in x) * 1e-6
+            time.sleep(min_duration)
+            # Keep recording if more events are being registered
             while True:
                 prev_length = len(received_evts)
                 time.sleep(0.1)

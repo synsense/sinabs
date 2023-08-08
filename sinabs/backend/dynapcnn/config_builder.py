@@ -76,7 +76,9 @@ class ConfigBuilder(ABC):
 
         Returns
         -------
-        List of layer indices corresponding to each layer of the model
+        List of core indices corresponding to each layer of the model:
+        The index of the core on chip to which the i-th layer in the
+        model is mapped is the value of the i-th entry in the list.
         """
         mapping = get_valid_mapping(model, cls.get_constraints())
         # turn the mapping into a dict

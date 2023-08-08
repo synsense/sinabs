@@ -207,8 +207,8 @@ Please be careful about the memory limitations when you design your SNN.
 See detail in the [overview of devkit.](../getting_started/overview.md)
 
 ## Feature Map Size Constrains
-The maximum output feature map size supported by each core is 64*64, while our maximum input shape is 128*128.
-So you need to at least down-sample the input into 64*64 by pooling or stride-convolution in the first layer of your
+The maximum output feature map size supported by each core is 64 x 64, while our maximum input shape is 128 x 128.
+So you need to at least down-sample the input into 64 x 64 by pooling or stride-convolution in the first layer of your
 model.
 
 ## Limitation of Using ReadoutLayer

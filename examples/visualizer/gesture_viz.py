@@ -1,9 +1,13 @@
 import os
+
 import torch
 import torch.nn as nn
+
 from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
+
+weights_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dvs_gesture_params.pt")
 
 ann = nn.Sequential(
     nn.Conv2d(2, 16, kernel_size=2, stride=2, bias=False),
@@ -40,7 +44,7 @@ ann = nn.Sequential(
     # core 8
     nn.Linear(128, 11, bias=False),
 )
-load_result = ann.load_state_dict(torch.load("dvs_gesture_params.pt", map_location=torch.device('cpu')), strict=False)
+load_result = ann.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu')), strict=False)
 print(load_result)
 sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 
@@ -53,7 +57,7 @@ hardware_compatible_model = DynapcnnNetwork(
 )
 
 hardware_compatible_model.to(
-    device="speck2edevkit",
+    device="speck2fmodule",
     monitor_layers=["dvs", -1],  # Last layer
     chip_layers_ordering="auto"
 )
