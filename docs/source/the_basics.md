@@ -165,7 +165,7 @@ After successfully mapping a model, the `chip_layers_ordering` can be inspected 
 Porting model to device
 -----------------------
 
-`DynapcnnCompatibleModel` class has an API similar to that of native `pytorch` and its `.to` method.
+`DynapcnnNetwork` class has an API similar to that of native `pytorch` and its `.to` method.
 Similar to porting a model to cpu with `model.to("cpu")` and GPU with `model.to("cuda:0")` you can also port your `DynapcnnCompatibleModel` to a chip with `model.to("dynapcnndevkit:0")`.
 
 You can also specify a few additional parameters as shown below.
