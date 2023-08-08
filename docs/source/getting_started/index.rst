@@ -13,3 +13,4 @@ Getting Started With Speck/DynapCNN
     notebooks/visualize_spike_count
     notebooks/using_readout_layer
     visualizer
+    specksim
