@@ -14,3 +14,5 @@ sinabs.backend.dynapcnn
     io
     mapping
     utils
+    dynapcnn_visualizer
+    specksim
