@@ -9,7 +9,7 @@ Current we support:
   - convolution channel number < **1024**
   
 - nn.AvgPool2d(will be converted to `SumPool2d` when deployed to devkit)
-  - pooling kernel size = [1, 2, 4, 8]
+  - pooling kernel size = [1, 2, 4]
   
 - nn.Linear(will be converted to equivalent convolution layer when deployed to devkit)
 - nn.Flatten
@@ -18,7 +18,7 @@ Current we support:
 
 - IAFSqueeze
 - SumPool2d
-  - pooling kernel size = [1, 2, 4, 8]
+  - pooling kernel size = [1, 2, 4]
 
 ## Neuron Leakage
 
