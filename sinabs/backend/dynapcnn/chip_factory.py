@@ -114,7 +114,7 @@ class ChipFactory:
         ----------
 
         xytp: torch.Tensor
-            A numpy structured array with columns x, y, timestamp, polarity
+            A numpy structured array with columns x, y, t(timestamp), p(polarity)
 
         layer: int
             The index of the layer to route the events to
