@@ -22,6 +22,12 @@ from sinabs.activation import (
         ),
         (
             SingleSpike,
+            MembraneSubtract(subtract_value=torch.tensor([0.9, 1.1])),
+            torch.tensor([1.0, 0.0]),
+            torch.tensor([1.6, 0.3]),
+        ),
+        (
+            SingleSpike,
             MembraneReset(),
             torch.tensor([1.0, 0.0]),
             torch.tensor([0.0, 0.3]),
