@@ -1,12 +1,25 @@
 from functools import partial
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 import nir
 import nirtorch
+import numpy as np
 import torch
 from torch import nn
 
 import sinabs.layers as sl
+
+
+def _as_pair(x) -> Tuple[int, int]:
+    try:
+        if len(x) == 1:
+            return (x[0], x[0])
+        elif len(x) >= 2:
+            return tuple(x)
+        else:
+            raise ValueError()
+    except TypeError:
+        return x, x
 
 
 def _import_sinabs_module(
@@ -93,6 +106,10 @@ def _import_sinabs_module(
             tau_syn=None,
             norm_input=False,
         )
+    elif isinstance(node, nir.SumPool2d):
+        return sl.SumPool2d(kernel_size=node.kernel_size, stride=node.stride)
+    elif isinstance(node, nir.Flatten):
+        return nn.Flatten(start_dim=node.start_dim, end_dim=node.end_dim)
 
 
 def from_nir(
@@ -106,11 +123,22 @@ def from_nir(
     )
 
 
+def _extend_to_shape(x: Union[torch.Tensor, float], shape: Tuple) -> torch.Tensor:
+    if x.shape == shape:
+        return x
+    elif x.shape == (1,) or x.dim() == 0:
+        return torch.ones(*shape) * x
+    else:
+        raise ValueError(f"Not sure how to extend {x} to shape {shape}")
+
+
 def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
     if type(module) in [sl.IAF, sl.IAFSqueeze]:
         return nir.IF(
             r=torch.ones_like(module.v_mem.detach()),
-            v_threshold=module.spike_threshold.detach(),
+            v_threshold=_extend_to_shape(
+                module.spike_threshold.detach(), module.v_mem.shape
+            ),
         )
     elif type(module) in [sl.LIF, sl.LIFSqueeze]:
         return nir.LIF(
@@ -139,7 +167,9 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
-            bias=module.bias.detach(),
+            bias=module.bias.detach()
+            if module.bias
+            else torch.zeros((module.weight.shape[0])),
         )
     elif isinstance(module, torch.nn.Conv2d):
         return nir.Conv2d(
@@ -148,7 +178,21 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
-            bias=module.bias.detach(),
+            bias=module.bias.detach()
+            if module.bias
+            else torch.zeros((module.weight.shape[0])),
+        )
+    elif isinstance(module, sl.SumPool2d):
+        return nir.SumPool2d(
+            kernel_size=_as_pair(module.kernel_size),  # (Height, Width)
+            stride=_as_pair(module.stride),  # (Height, width)
+            padding=(0, 0),  # (Height, width)
+        )
+    elif isinstance(module, nn.Flatten):
+        return nir.Flatten(
+            input_type={"input": np.array([0, 0, 0, 0])},
+            start_dim=module.start_dim,
+            end_dim=module.end_dim,
         )
     raise NotImplementedError(f"Module {type(module)} not supported")
 
