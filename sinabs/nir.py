@@ -185,7 +185,9 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
     elif isinstance(module, sl.SumPool2d):
         return nir.SumPool2d(
             kernel_size=_as_pair(module.kernel_size),  # (Height, Width)
-            stride=_as_pair(module.stride),  # (Height, width)
+            stride=_as_pair(
+                1 if module.stride is None else module.stride
+            ),  # (Height, width)
             padding=(0, 0),  # (Height, width)
         )
     elif isinstance(module, nn.Flatten):
