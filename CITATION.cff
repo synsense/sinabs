@@ -1,0 +1,43 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  SINABS: A simple Pytorch based SNN library specialised for
+  Speck
+message: >-
+  Sinabs (Sinabs Is Not A Brain Simulator) is a python
+  library for the development and implementation of Spiking
+  Convolutional Neural Networks (SCNNs). The library
+  implements several layers that are spiking equivalents of
+  CNN layers. In addition it provides support to import CNN
+  models implemented in torch conveniently to test their
+  spiking equivalent implementation  The project is hosted
+  at https://github.com/synsense/sinabs
+type: software
+authors:
+  - given-names: Sadique
+    family-names: Sheik
+    email: sadique.sheik@synsense.ai
+    affiliation: SynSense AI
+    orcid: 'https://orcid.org/0000-0003-0302-8511'
+  - given-names: 'Gregor '
+    family-names: Lenz
+    affiliation: 'SynSense AG, Neurobus'
+  - given-names: Felix
+    family-names: Bauer
+    email: felix.bauer@synsense.ai
+    affiliation: SynSense AG
+  - given-names: 'Nogay '
+    family-names: Kuepelioglu
+    affiliation: SynSense AG
+keywords:
+  - spiking Neural Networks
+  - pytorch
+  - Bapckpropagation Through Time
+  - Neuromorphic Engineering
+  - Computational Efficiency
+  - Speck
+license: AGPL-3.0
+doi: 10.5281/zenodo.8385545
+url: https://github.com/synsense/sinabs
