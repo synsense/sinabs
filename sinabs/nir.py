@@ -84,6 +84,7 @@ def _import_sinabs_module(
         )
 
     elif isinstance(node, nir.IF):
+        print("loading from nir: ", node.r.shape, node.v_threshold.shape)
         return sl.IAFSqueeze(
             min_v_mem=None,
             num_timesteps=num_timesteps,
@@ -134,12 +135,14 @@ def _extend_to_shape(x: Union[torch.Tensor, float], shape: Tuple) -> torch.Tenso
 
 def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
     if type(module) in [sl.IAF, sl.IAFSqueeze]:
-        return nir.IF(
+        nir_node = nir.IF(
             r=torch.ones_like(module.v_mem.detach()),
             v_threshold=_extend_to_shape(
                 module.spike_threshold.detach(), module.v_mem.shape
             ),
         )
+        print(nir_node.v_threshold.shape, nir_node.r.shape)
+        return nir_node
     elif type(module) in [sl.LIF, sl.LIFSqueeze]:
         return nir.LIF(
             tau=module.tau_mem.detach(),
@@ -186,7 +189,7 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
         return nir.SumPool2d(
             kernel_size=_as_pair(module.kernel_size),  # (Height, Width)
             stride=_as_pair(
-                1 if module.stride is None else module.stride
+                module.kernel_size if module.stride is None else module.stride
             ),  # (Height, width)
             padding=(0, 0),  # (Height, width)
         )
