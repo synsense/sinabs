@@ -84,7 +84,6 @@ def _import_sinabs_module(
         )
 
     elif isinstance(node, nir.IF):
-        print("loading from nir: ", node.r.shape, node.v_threshold.shape)
         return sl.IAFSqueeze(
             min_v_mem=None,
             num_timesteps=num_timesteps,
@@ -141,7 +140,6 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
                 module.spike_threshold.detach(), module.v_mem.shape
             ),
         )
-        print(nir_node.v_threshold.shape, nir_node.r.shape)
         return nir_node
     elif type(module) in [sl.LIF, sl.LIFSqueeze]:
         return nir.LIF(
