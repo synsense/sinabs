@@ -110,6 +110,10 @@ def _import_sinabs_module(
         return sl.SumPool2d(kernel_size=node.kernel_size, stride=node.stride)
     elif isinstance(node, nir.Flatten):
         return nn.Flatten(start_dim=node.start_dim, end_dim=node.end_dim)
+    elif isinstance(node, nir.Input):
+        return nn.Identity()
+    elif isinstance(node, nir.Output):
+        return nn.Identity()
 
 
 def from_nir(
