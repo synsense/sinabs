@@ -85,7 +85,7 @@ def _import_sinabs_module(
 
     elif isinstance(node, nir.IF):
         return sl.IAFSqueeze(
-            min_v_mem=None,
+            min_v_mem=-node.v_threshold,
             num_timesteps=num_timesteps,
             batch_size=batch_size,
             spike_threshold=node.v_threshold,
