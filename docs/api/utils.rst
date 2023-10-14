@@ -8,3 +8,4 @@ utils
 .. autofunction:: sinabs.utils.get_activations
 .. autofunction:: sinabs.utils.get_network_activations
 .. autofunction:: sinabs.utils.normalize_weights
+.. autofunction:: sinabs.utils.set_batch_size
