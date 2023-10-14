@@ -7,4 +7,4 @@ from .from_torch import from_model
 from .network import Network
 from .nir import *
 from .synopcounter import SNNAnalyzer, SynOpCounter
-from .utils import reset_states, zero_grad
+from .utils import reset_states, set_batch_size, zero_grad

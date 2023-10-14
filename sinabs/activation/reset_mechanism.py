@@ -39,7 +39,7 @@ class MembraneSubtract:
 
     def __call__(self, spikes, state, threshold):
         new_state = state.copy()
-        if self.subtract_value:
+        if self.subtract_value is not None:
             new_state["v_mem"] = new_state["v_mem"] - spikes * self.subtract_value
         else:
             new_state["v_mem"] = new_state["v_mem"] - spikes * threshold

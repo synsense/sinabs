@@ -45,3 +45,19 @@ Sinabs is published under AGPL v3.0. See the LICENSE file for details.
 Contributing to Sinabs
 ------------------------
 Checkout the [contributing](https://sinabs.readthedocs.io/en/develop/about/contributing.html) page for more info.
+
+
+Citation
+--------
+
+In case you find this software library useful for your work please consider citing it as follows:
+
+```
+@software{sinabs,
+author = {Sheik, Sadique and Lenz, Gregor  and Bauer, Felix and Kuepelioglu, Nogay },
+doi = {10.5281/zenodo.8385545},
+license = {AGPL-3.0},
+title = {{SINABS: A simple Pytorch based SNN library specialised for Speck}},
+url = {https://github.com/synsense/sinabs}
+}
+```

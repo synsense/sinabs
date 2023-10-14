@@ -166,3 +166,16 @@ def normalize_weights(
         output_data.clear()
         # Deregister hook
         handle.remove()
+
+
+def set_batch_size(model: nn.Module, batch_size: int):
+    """Update any model with sinabs squeeze layers to a given batch size.
+
+    Args:
+        model (nn.Module): pytorch model with sinabs Squeeze layers
+        batch_size (int): The new batch size
+    """
+    for mod in model.modules():
+        if isinstance(mod, sinabs.layers.SqueezeMixin):
+            mod.batch_size = batch_size
+            # reset_states(mod)
