@@ -109,7 +109,9 @@ def _import_sinabs_module(
     elif isinstance(node, nir.SumPool2d):
         return sl.SumPool2d(kernel_size=node.kernel_size, stride=node.stride)
     elif isinstance(node, nir.Flatten):
-        return nn.Flatten(start_dim=node.start_dim, end_dim=node.end_dim)
+        start_dim = node.start_dim + 1 if node.start_dim >= 0 else node.start_dim
+        end_dim = node.end_dim + 1 if node.end_dim >= 0 else node.end_dim
+        return nn.Flatten(start_dim=start_dim, end_dim=end_dim)
     elif isinstance(node, nir.Input):
         return nn.Identity()
     elif isinstance(node, nir.Output):
@@ -197,10 +199,13 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             padding=(0, 0),  # (Height, width)
         )
     elif isinstance(module, nn.Flatten):
+        # Getting rid of the batch dimension for NIR
+        start_dim = module.start_dim - 1 if module.start_dim > 0 else module.start_dim
+        end_dim = module.end_dim - 1 if module.end_dim > 0 else module.end_dim
         return nir.Flatten(
-            input_type={"input": np.array([0, 0, 0, 0])},
-            start_dim=module.start_dim,
-            end_dim=module.end_dim,
+            input_type=None,
+            start_dim=start_dim,
+            end_dim=end_dim,
         )
     raise NotImplementedError(f"Module {type(module)} not supported")
 
