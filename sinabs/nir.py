@@ -138,14 +138,14 @@ def _extend_to_shape(x: Union[torch.Tensor, float], shape: Tuple) -> torch.Tenso
 
 def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
     if type(module) in [sl.IAF, sl.IAFSqueeze]:
+        layer_shape = module.v_mem.shape[1:]
         nir_node = nir.IF(
-            r=torch.ones_like(module.v_mem.detach()),
-            v_threshold=_extend_to_shape(
-                module.spike_threshold.detach(), module.v_mem.shape
-            ),
+            r=torch.ones(*layer_shape),  # Discard batch dim
+            v_threshold=_extend_to_shape(module.spike_threshold.detach(), layer_shape),
         )
         return nir_node
     elif type(module) in [sl.LIF, sl.LIFSqueeze]:
+        layer_shape = module.v_mem.shape[0]
         return nir.LIF(
             tau=module.tau_mem.detach(),
             v_threshold=module.spike_threshold.detach(),
@@ -178,13 +178,14 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
         )
     elif isinstance(module, torch.nn.Conv2d):
         return nir.Conv2d(
+            input_shape=None,
             weight=module.weight.detach(),
             stride=module.stride,
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
             bias=module.bias.detach()
-            if module.bias
+            if isinstance(module.bias, torch.Tensor)
             else torch.zeros((module.weight.shape[0])),
         )
     elif isinstance(module, sl.SumPool2d):

@@ -73,10 +73,12 @@ def test_from_nir_to_sequential():
 
     converted_model = from_nir(nir_graph, batch_size=batch_size)
     converted_modules = list(converted_model.children())
-    assert len(orig_model) == len(converted_modules)
-    torch.testing.assert_allclose(orig_model[0].weight, converted_modules[0].weight)
-    torch.testing.assert_allclose(orig_model[0].bias, converted_modules[0].bias)
-    assert type(orig_model[1]) == type(converted_modules[1])
-    assert type(orig_model[2]) == type(converted_modules[2])
-    torch.testing.assert_allclose(orig_model[3].weight, converted_modules[3].weight)
-    torch.testing.assert_allclose(orig_model[3].bias, converted_modules[3].bias)
+    assert len(orig_model) + 2 == len(
+        converted_modules
+    )  # Addition of input and output modules
+    torch.testing.assert_allclose(orig_model[0].weight, converted_modules[1].weight)
+    torch.testing.assert_allclose(orig_model[0].bias, converted_modules[1].bias)
+    assert type(orig_model[1]) == type(converted_modules[2])
+    assert type(orig_model[2]) == type(converted_modules[3])
+    torch.testing.assert_allclose(orig_model[3].weight, converted_modules[4].weight)
+    torch.testing.assert_allclose(orig_model[3].bias, converted_modules[4].bias)
