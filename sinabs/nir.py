@@ -214,5 +214,9 @@ def to_nir(
     module: torch.nn.Module, sample_data: torch.Tensor, model_name: str = "model"
 ) -> nir.NIRNode:
     return nirtorch.extract_nir_graph(
-        module, _extract_sinabs_module, sample_data, model_name=model_name
+        module,
+        _extract_sinabs_module,
+        sample_data,
+        model_name=model_name,
+        ignore_dims=[0],
     )
