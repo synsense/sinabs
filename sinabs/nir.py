@@ -31,8 +31,8 @@ def _import_sinabs_module(
             out_features=node.weight.shape[0],
             bias=True,
         )
-        linear.weight.data = node.weight
-        linear.bias.data = node.bias
+        linear.weight.data = torch.tensor(node.weight).float()
+        linear.bias.data = torch.tensor(node.bias).float()
         return linear
 
     elif isinstance(node, nir.Conv1d):
@@ -46,8 +46,8 @@ def _import_sinabs_module(
             groups=node.groups,
             bias=True,
         )
-        conv.weight.data = node.weight.float()
-        conv.bias.data = node.bias.float()
+        conv.weight.data = torch.tensor(node.weight).float()
+        conv.bias.data = torch.tensor(node.bias).float()
         return conv
 
     elif isinstance(node, nir.Conv2d):
@@ -61,8 +61,8 @@ def _import_sinabs_module(
             groups=node.groups,
             bias=True,
         )
-        conv.weight.data = node.weight.float()
-        conv.bias.data = node.bias.float()
+        conv.weight.data = torch.tensor(node.weight).float()
+        conv.bias.data = torch.tensor(node.bias).float()
         return conv
 
     elif isinstance(node, nir.LI):
@@ -107,7 +107,9 @@ def _import_sinabs_module(
             norm_input=False,
         )
     elif isinstance(node, nir.SumPool2d):
-        return sl.SumPool2d(kernel_size=node.kernel_size, stride=node.stride)
+        return sl.SumPool2d(
+            kernel_size=tuple(node.kernel_size), stride=tuple(node.stride)
+        )
     elif isinstance(node, nir.Flatten):
         start_dim = node.start_dim + 1 if node.start_dim >= 0 else node.start_dim
         end_dim = node.end_dim + 1 if node.end_dim >= 0 else node.end_dim
