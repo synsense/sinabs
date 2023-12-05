@@ -54,6 +54,7 @@ test coverage:
   dependencies:
    - unittests
   script:
+    - pip install pytest
     - pip install pytest-cov
     - pytest --cov
 
@@ -83,7 +84,6 @@ doc_tests:
     - aiCTX
   stage: test
   script:
-    - pip install pytest
     - python setup.py build_sphinx
 
 unittests:
@@ -92,6 +92,7 @@ unittests:
     - aiCTX
   stage: test
   script:
+    - pip install pytest
     - pytest
 
 pypi_deploy:
