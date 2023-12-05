@@ -1,4 +1,4 @@
-image: "registry.gitlab.com/synsense/rockpool/test:latest"
+image: "registry.gitlab.com/synsense/rockpool/clean:latest"
 
 stages:
     - build
@@ -54,6 +54,7 @@ test coverage:
   dependencies:
    - unittests
   script:
+    - pip install pytest
     - pip install pytest-cov
     - pytest --cov
 
@@ -68,6 +69,7 @@ test coverage deplop:
     refs:
       - master
   script:
+    - pip install pytest
     - pip install pytest-cov
     - pytest --cov
     - coverage report
@@ -90,6 +92,7 @@ unittests:
     - aiCTX
   stage: test
   script:
+    - pip install pytest
     - pytest
 
 pypi_deploy:
