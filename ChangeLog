@@ -1,23 +1,68 @@
 CHANGES
 =======
 
+* add figure for input data flow
+* fix confusion doc string of func ChipFactory.xytp\_to\_events about the key of the structured array
+* update error in available pooling size
+
+v1.0.13
+-------
+
+* add api indexing for specksim and visualizer
+* add indexing for specksim
+* fix typos and invalid url links
+* add play with dvs on speck notebook
+* Update requirements.txt
+* Update ChangeLog to resolve conflict
+* Unit test for correct duration of forward pass
+* Record for at least the duration of the input
+* fix typo in the quick start notebook
+* commit jupyter notebook change
+* add description for dvs visualization
+* add N-MNIST quick start tutorial notebook
 * complete contents for training tips section
 * add items for device management
 * device management
 * fix terminology for samna configuration obj
 * fix invalid urls in the docs
+* Additional information on the architecture restrictions in the documentation
+* sinabs/backend/dynapcnn/specksim.py
+* Update the markdown with state monitoring
+* Fixed the reset states test
+* Changed the forward pass to make sure we receive all the events as fast as possible
 
 v1.0.12
 -------
 
 * fix warnings related with overview.md can not be found when build doc
+* Specksim documentation added
+* Add tests to the monitoring
+* Change readout and add a delay. (WIP: This will be reworked.)
+* Several bugfixes, inclusion of the ability to reset network states and ability to monitor internal events
 * Add unit test for conversion from events to raster
 * Change order of dimensions in events\_to\_raster output to TxCxWxH
+* Rename cpp binding functionality test
+* Update gesture\_viz to work with the new structure
+* Change the MNIST example to work with the new structure
 * Fix rasterization time step
+* Add unit test for monitor='all'
+* change name from examples/dynapcnn\_visualizer to examples/visualizer update the visualizer documentation
+* examples/mnist/specksim\_network.py
+* Restructure the MNIST example
+* Restructure examples
+* Move the test specksim network under examples
+* Divide examples into subfolders
+* Support DynapcnnNetwork conversion. Fix the bugs related to AvgPool2d conversion
+* Fix bug when monitor=all and dvs layer is present. Clarify some docstrings
+* Bugfixes based on the MNIST script. Still not seeing any output
+* Implementation and API is complete. Not tested yet
+* Initial commit on the structure
+* Namespace change on the tests
 * add output monitoring introction for FAQs
 * add example of implementing Residual Block
 * add example of implementing Residual Block
 * reform the FAQ section of the doc
+* Tests related to specksim cpp bindings are implemented and added
 * back to previous version
 * back to previous code
 * refactor code, change the extended method from encrypted function to extra function
@@ -72,6 +117,7 @@ v1.0.11
 * Added board resetting before second test. Note that the device will be opened already before the second test starts, so it is not actually necessary
 * Implemented resetting the boards before running the test
 * add getting started with speck section
+* Updated dangers.md with suggestion of using MultiSpike for training models to be deployed to chip
 * skip visualizer test
 * warn if layer with pooling is monitored
 * add speck image at the doc homepage
