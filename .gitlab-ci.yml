@@ -100,8 +100,9 @@ pypi_deploy:
   only:
     refs:
       - master
-    variables:
-      - $TWINE_USERNAME == "sheiksadique"
+  variables:
+    TWINE_USERNAME: "__token__"
+    TWINE_PASSWORD: $PYPI_PASSWORD
   dependencies:
     - dist_build
   before_script:
