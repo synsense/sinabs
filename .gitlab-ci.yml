@@ -105,7 +105,7 @@ pypi_deploy:
       - master
   variables:
     TWINE_USERNAME: "__token__"
-    TWINE_PASSWORD: $PYPI_PASSWORD
+    TWINE_PASSWORD: $TWINE_PASSWORD
   dependencies:
     - dist_build
   before_script:
