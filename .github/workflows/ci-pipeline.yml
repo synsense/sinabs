@@ -58,7 +58,7 @@ jobs:
           coverage run -m pytest tests
           coverage xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         
   documentation:
     needs: multitest
