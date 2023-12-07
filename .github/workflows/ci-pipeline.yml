@@ -58,7 +58,24 @@ jobs:
           coverage run -m pytest tests
           coverage xml
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v2
+        uses: insightsengineering/coverage-action@v2
+        with:
+          # Path to the Cobertura XML report.
+          path: ./coverage.xml
+          # Minimum total coverage, if you want the workflow to enforce it as a standard.
+          # This has no effect if the `fail` arg is set to `false`.
+          threshold: 60.00
+          fail: true
+          # Publish the rendered output as a PR comment
+          publish: true
+          # Create a coverage diff report.
+          diff: true
+          # Branch to diff against.
+          # Compare the current coverage to the coverage determined on this branch.
+          diff-branch: main
+          # This is where the coverage reports for the `diff-branch` are stored.
+          # Branch is created if it doesn't already exist'.
+          diff-storage: _xml_coverage_reports
         
   documentation:
     needs: multitest
