@@ -59,8 +59,12 @@ jobs:
           coverage xml
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
-        with:
-          threshold: 60%
+    status:
+      project:
+        default:
+          # basic
+          target: 60%
+          threshold: 0%
         
   documentation:
     needs: multitest
