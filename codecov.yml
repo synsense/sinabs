@@ -5,3 +5,8 @@ coverage:
         # basic
         target: 60%
         threshold: 0%
+    patch:
+      default:
+        # basic
+        target: 60%
+        threshold: 0%
