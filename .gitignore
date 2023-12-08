@@ -13,10 +13,16 @@ __pycache__
 dist
 auto_examples
 generated
-AUTHORS
-ChangeLog
 data
 cache
+.coverage
+htmlcov
+*venv
+samna.log
+.vscode
+.venv
+imgui.ini
+NMNIST
 
 # Data heavy files
 *.json
@@ -24,12 +30,10 @@ cache
 *.npy
 *.npz
 *.onnx
+
 docs/tutorials/data/
 *.log
 
 # mac os
 .DS_Store
 
-# test coverage stuff
-.coverage
-htmlcov

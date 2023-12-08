@@ -10,6 +10,9 @@ The library implements several layers that are `spiking` equivalents of CNN laye
 In addition it provides support to import CNN models implemented in torch conveniently to test their `spiking` equivalent implementation.
 This project is managed by SynSense (former aiCTX AG).
 
+The `sinabs-dynapcnn` was incorporated to this project, and it enables porting sinabs models to chips and dev-kits with DYNAP-CNN technology.
+
+
 Installation
 ------------
 For the stable release on the main branch:
@@ -37,6 +40,8 @@ Questions? Feedback?
 --------------------
 Please join us on the [#sinabs Discord channel](https://discord.gg/V6FHBZURkg)!
 
+- If you would like to report bugs or push any changes, you can do this on our [github repository](https://github.com/synsense/sinabs/issues).
+
 License
 -------
 Sinabs is published under AGPL v3.0. See the LICENSE file for details.
@@ -61,3 +66,5 @@ title = {{SINABS: A simple Pytorch based SNN library specialised for Speck}},
 url = {https://github.com/synsense/sinabs}
 }
 ```
+
+

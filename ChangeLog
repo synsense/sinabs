@@ -1,0 +1,645 @@
+CHANGES
+=======
+
+* add figure for input data flow
+* fix confusion doc string of func ChipFactory.xytp\_to\_events about the key of the structured array
+* update error in available pooling size
+
+v1.0.13
+-------
+
+* add api indexing for specksim and visualizer
+* add indexing for specksim
+* fix typos and invalid url links
+* add play with dvs on speck notebook
+* Update requirements.txt
+* Update ChangeLog to resolve conflict
+* Unit test for correct duration of forward pass
+* Record for at least the duration of the input
+* fix typo in the quick start notebook
+* commit jupyter notebook change
+* add description for dvs visualization
+* add N-MNIST quick start tutorial notebook
+* complete contents for training tips section
+* add items for device management
+* device management
+* fix terminology for samna configuration obj
+* fix invalid urls in the docs
+* Additional information on the architecture restrictions in the documentation
+* sinabs/backend/dynapcnn/specksim.py
+* Update the markdown with state monitoring
+* Fixed the reset states test
+* Changed the forward pass to make sure we receive all the events as fast as possible
+
+v1.0.12
+-------
+
+* fix warnings related with overview.md can not be found when build doc
+* Specksim documentation added
+* Add tests to the monitoring
+* Change readout and add a delay. (WIP: This will be reworked.)
+* Several bugfixes, inclusion of the ability to reset network states and ability to monitor internal events
+* Add unit test for conversion from events to raster
+* Change order of dimensions in events\_to\_raster output to TxCxWxH
+* Rename cpp binding functionality test
+* Update gesture\_viz to work with the new structure
+* Change the MNIST example to work with the new structure
+* Fix rasterization time step
+* Add unit test for monitor='all'
+* change name from examples/dynapcnn\_visualizer to examples/visualizer update the visualizer documentation
+* examples/mnist/specksim\_network.py
+* Restructure the MNIST example
+* Restructure examples
+* Move the test specksim network under examples
+* Divide examples into subfolders
+* Support DynapcnnNetwork conversion. Fix the bugs related to AvgPool2d conversion
+* Fix bug when monitor=all and dvs layer is present. Clarify some docstrings
+* Bugfixes based on the MNIST script. Still not seeing any output
+* Implementation and API is complete. Not tested yet
+* Initial commit on the structure
+* Namespace change on the tests
+* add output monitoring introction for FAQs
+* add example of implementing Residual Block
+* add example of implementing Residual Block
+* reform the FAQ section of the doc
+* Tests related to specksim cpp bindings are implemented and added
+* back to previous version
+* back to previous code
+* refactor code, change the extended method from encrypted function to extra function
+* fixed variable assignment issue
+* modify the documentation for extend method
+* fixed some typo
+* remove unneeded package importing
+* add readout layer extend for Speck2E and 2F
+
+v1.0.11
+-------
+
+* update ChangeLog
+* Warning about running the script for MacOS users added to the documentation
+* minor changes and corrections
+* Updated info on biases/leak
+* added how to list connected devices
+* Fix plot axes labels
+* Removed commented kwargs from methods
+* updated files
+* Add unit test for DynapcnnNetwork.is\_compatible\_with
+* Bugfix in DynapcnnNetwork.is\_compatible\_with where it would raise a ValueError instead of returning False
+* Added documentaion in FAQ
+* added is\_compatible\_with method; blackened
+* updated DynapcnnVisualizer connect method
+* moved configuration settings order
+* blacked and updaetd test
+* updated dynapcnn visualizer with latest samna api
+* wip, dynapcnn visualizer refractoring
+* wip updating dynapcnn visualizer
+* blackened; updated to use run\_vusualizer method
+* Added method for launching samna visualizer
+* Updated notebook to the new samna graph api
+* complete the neuron-leak example notebook
+* add leak-neuron link in the FAQs
+* merge develop to 76-add-leak-neruon-option
+* fixed links to static images in notebooks
+* fixed links
+* shuffled the order of documentation
+* setup file params use \_ instead of - now
+* Fixed link to samna
+* Make sure DVSLayer is added to DynapcnnNetwork if and only if necessary. Fix unit test about single neuron on hardware
+* Turn off DVS sensor when DynapcnnNetwork has no DVSLayer
+* Restructure unit tests
+* Fix: Allow input shape to DVS layer to have 2 channels
+* More flexible DVSLayer generation
+* Remove 'compatible\_layers' attribute from DynapcnnNetwork and use 'sequence' instead
+* documentation improvement
+* replace curl with wget
+* update ChangeLog
+* replace all math equation
+* Added board resetting before second test. Note that the device will be opened already before the second test starts, so it is not actually necessary
+* Implemented resetting the boards before running the test
+* add getting started with speck section
+* Updated dangers.md with suggestion of using MultiSpike for training models to be deployed to chip
+* skip visualizer test
+* warn if layer with pooling is monitored
+* add speck image at the doc homepage
+* Add notes in docstrings and in the documentation about the fact that attribute modifications after the  call have no effects
+* specify inline math latex for Overview tutorial
+* make tutorial notebook that contains latex a markdown documentsince it doesn't contain any code
+* add skipif condition for test-case that need hardware connected to the CI machine
+* update changelog
+* add neuron leak tutorial notebook
+* fix bug for neuron address mapping and add unit test case
+* update ChangeLog
+* add neruon leak option and related unit test
+* remove system package install cmd
+* fix add-apt-repository can't be found error
+* add apt repository for graphviz localization
+* try another way install graphviz
+* fix CI pipeline failure
+* checked tests pass on mac
+* added test
+* added noconfirm
+* added update keyring to gitlab-ci
+* renamed test
+* Speck2fDevKit support added
+
+v1.0.10
+-------
+
+* update samna version requirements
+* update ChangeLog
+* add speck2f module devkit support and remove speck2f characterization board support
+* Implementation a test that will create a single neuron on a single core, that receives a single event and outputs a single event
+* edit visualizer.md
+* Added the visualizer documentation to the index.rst
+* Replacing the notebook which cannot spawn a samnagui window with a markdown file
+* Visualizer example updated with the window scale parameter
+* Window scale parameter is now passed to the constructor
+* load model onto CPU and change warning message for JIT compilation
+* exclude Samna visualiser generated file
+* Samna version requirement incremented to cover the latest changes
+* Notebook forgotten connect method added. Readout visualizer only supports .png images. Information regarding to this has been added to the documentation
+* Example notebook with explanations added
+* Minor bugfixes in readout layout and feature name automatic setting to numbers
+* A fully working model
+* (WIP) Apart from one issue on not getting any output from the chip it works
+* (WIP) blocked by problems in samna. Turns out  and  were not tested in samna prior to release. Sys-Int team will be fixing it, then I can fix  in samna. Then all the features, but plotting the readoutpins will function
+* fix errors in using\_radout\_layer.ipynb
+* merge conflicts
+* update ChangeLog
+* modify config making tests can cover different types of devkits
+* add speck2f characterization board support
+* Waiting for sys-int team to provide a JitDvsToViz template directly into samna itself. I implement it myself if it is not ready on monday. Anything related to readout has been removed, as well as the JitReadoutNode. This functionality already exists in  under . The API that uses strings in the front end to create plots have been changed with one that uses boolean flags to create readout and power monitor plots
+* fix errors in tests after init DVSLayer in any case
+* make DVSLayer can be initnitialized in anycase
+* (WIP) For readout we have been using something that has been out of performance, this should be replaced with a proper functionality. In order to support all the chips and cameras ToViz converter filters should be Jitted, for which there is no template in  right now
+* (WIP) Dynapcnn Visualizer initial implementation
+* black formatted
+* renamed test
+
+v1.0.9
+------
+
+* update ChangeLog
+* update figure
+* add a time.sleep statement after dynapcnn network reset-states to wait the config take effect
+* modify speck2e test to deploy dummy network
+* added test for killbit
+* test updated to check for type
+* added checks if the network is empty
+* add spike count visualization notebook into tutorials.rst
+* fix typo in the notebook of visualize spike count
+* delete chip top level figure
+* change the speck top level figure path
+* change top level figure
+* add notebooks into docs/source/tutorials.rst
+* update the noteboob
+* Update requirements.txt
+* notebook and image for spike counts visualization
+* modify the parent folder name identical to the notebook
+* modify the image load path
+* make spike\_threshold and min\_v\_mem a parameter
+* fix test which seems to have relied on older version of PyTorch
+* fix wrong calculation formula in remapping neruon index function
+* fix conflict when merge develop into 34-add-readout-layer-usage-instruction-notebook
+* add samna graph plot for power monitor notebook
+* add notebook for power monitoring
+* update the readout-layer intro notebook
+* add FAQ and known dev kit bugs
+* rm change in tutorials.rst to avoid merge conflict
+* add figures for overview notebook
+* add overview tutorial notebook for speck/dynapcnn
+* removed all samna checks from imports
+* imports fixed and type annotation for Tuple corrected
+* add notebook about dvs input visualization
+* added standardize\_device\_id before all IO methods
+* add codecov badges
+* pytest command fixed for coverage
+* added path to installation for coverage
+* try hard-coded path for coverage
+* added conditional deplopment
+* rerunning test in deploy stage
+* custom stage added
+* added dependenct to unitttests
+* two stage coverage deployment
+* changed command for acquiring code coverage
+* coverage path fixed
+* remove gallery from docs as not needed at the moment
+* added galary template, updated config -> sinabs
+* add coverage config file that specifies the folder to include in the coverage, excluding the test folder
+* remove some whitespace in the gitlab ci config
+* use codecov token so that hopefully CI is pushed via gitlab.com
+* update gitlab CI to produce html coverage report for pages
+* try using gitlab pages for coverage report
+* adding test coverage job to CI pipeline according to Python template from gitlab.com
+* remove gallery from docs as not needed at the moment
+* add figures for the readout layer intro notebook
+* add readout layer usage example notebook
+* added galary template, updated config -> sinabs
+* init tutorial file
+* Fix to the issue
+* Change last uint
+* Remove comment
+* Uint64 to int
+* Check the timestamp and delay factor for negative values
+* Casting to int after conversion
+* Do not sleep while resetting the states when the function is called. Stop the input graph, while the neuron values are written. Sleep for a bit and then start the graph again
+* Fix to the bug
+* update ChangeLog after add support of speck2e
+* add speck2e devkit and testboard support
+* remove redundant comment code
+* Device input graph stopped on destruction of the DynapcnnNetwork object
+* Writing all v mem to zeros changed. -> Now when you call this method it creates a temporary buffer and a temporary graph, starts the graph, writes the events, stops the graph then it is destroyed
+* Implement an input buffer for all devices: -> In the config\_builder there is now a function called get\_input\_buffer which gives a source node. -> For each chip this is implemented to get the appropriate source node. -> To method changed to construct the input buffer. -> Forward method changed to write the events to this source node
+* Name added to io
+* naive copy of config generation
+* moved kill bits to a separate method
+
+v1.0.8
+------
+
+* Type definition updated to Tuple
+* compatibility with torch 1.13
+* Name added to io
+* Failing unit test
+* Requirements for samna version updated
+* Change to get the same functionality in 'to()' method in samna Version: 0.21.2.0
+* moved kill bits to a separate method
+
+v1.0.7
+------
+
+* requirement bumped to 1.0.7
+* using torch.equal instead of np equal
+* tests fixed
+* fixing test
+* wip enable learning
+* added zero\_grad function
+
+v1.0.5
+------
+
+* updates to latest sinabs requirements
+* add speck2e config builder
+
+v1.0.0
+------
+
+* re-naming from BufferSinkNode to BasicSinkNode
+* add unit test for speckmini chips config building
+* override get\_default\_config method for speck2dmini config builder
+* add config builder for speck2dmini
+* override get constraints method for speck2cmini device
+* added speck2cmini to the chipfactory
+* added speck2cmini configbuilder
+* moved config dict generation to builder
+* Requirements updated to samna version 0.14.19
+* Get rid of get\_opened\_device and its uses
+
+v0.3.0
+------
+
+* marked test skip
+* reuse get\_opened\_device in open\_device
+* make sure that moving a network to an opened device doesn't cause an error
+* test without re-opening
+* update samna install instructions
+* also pass randomize arg to spiking layer reset\_states()
+* change test device to speck2b in large\_net test
+* update tutorial notebook with reset\_states() and fix small bug in config builder
+* event constructor modified
+* typo in event name
+* added sleep time after reset
+* Theme updated
+* added set\_all\_v\_mem\_to\_zeros method to erase all of vmem memory
+* docs updated
+* chip\_layer\_ordering only accepts cnn core layers and not the dvs layer
+* changed default flag to false
+* add output normalisation to chip deployment tutorial to make it work much better
+* moved parse\_device\_string into utils. No need of samna to run other modules
+* added speck2b tiny support
+* Update .gitlab-ci.yml
+* Update jupyterlab-requirements.txt
+* Notebook updated for the new version
+* rasterize method accumulates multiple spikes within a time step
+* bug fix
+* added optional size parameter to events\_to\_raster
+* Updated to changes in sinabs 0.3
+* Notebook updated with the outputs
+* added samna.log files to git ignore
+* Notebook with new API verified. Still needs to be rendered with dev-kit
+* Moved requirements for sphinx
+* Removed InputLayer
+* Implemented reset states method
+* bumped min version for bug fixes
+* minimum samna version updated in requirements file
+* removed extra-index-url
+* Minor: -> Efficiency improvement
+* Standardize API for all io functions
+* Modules completed
+* Samna 0.11 support initial commit: -> This version is tested and works, however there are still improvements that can be done
+* wip, moved reset\_states to config builder
+* remove changes introduced by git rebase
+* fix bug for reset\_state does not set neuron states to zeros
+* add support for auto merge polarity according to inputshape in make\_config
+* removed activation state from dynapcnn layer
+* Remove debugging print statement
+* Fix discretization unit test
+* checking tol offset, wip
+* updated state->v\_mem and threshold->activation\_fn.spike\_threshold
+* add support for auto merge polarity according to inputshape in make\_config
+* Minor bugfix on events. Int was not propagated when converting dvs events to samna events
+* Added a delay factor in seconds so that the first events timestamp is larger than 0
+* fixed tests
+* replacing instances of SpikingLayer to IAF
+* replacing instances of SpikingLayer to IAF
+* added monitor layers documentation to the to method as well
+* Raster to events without limiting
+* Documentation added
+* reset states method refractored
+* solve timestamp reset
+* Forward pass safer implementation
+* Macro for easily monitoring all layers
+* remove dvs\_layer.monitor\_sensor\_enable = True
+* fix ci
+* bug fix and method renated to reset\_states
+* Added partial reset method
+* remove a wrong condition expression
+* add chip\_layers\_ordering checking in make\_config method
+* inelegant solution by adjusting the list comprehension in line#252
+* Typos and discord community url fix
+* Added samna requirements to gitlab ci script
+* add a few more lines on the cosmetic name change in release history
+* add change log to documentation
+* inelegant solution by adjusting the list comprehension in line#252
+* update gitignore to exclude MNIST dataset
+* update documentation and remnant methods to update DynapcnnCompatibleNetwork to DynapcnnNetwork
+* update tutorial notebook
+* add DynapcnnCompatibleNetwork to be backwards compatible
+* add dt to events\_to\_raster
+* change output format of DynapcnnNetwork to tensors
+* update filenames and module paths for dynapcnn\_network and dvs\_layer
+* Typos and discord community url fix
+
+v0.2.1
+------
+
+* Added discord and documentation urls
+* tutorial notebook updated
+* added tests for monitoring
+* test for cropping fixed + samna requirement bump
+* DVSLayer.from\_layers take an input of len 3 Added checks for input\_shape
+* ci updated to not wait for confirmation
+* replaced swapaxes with transpose for backward compatibility with pytorch 1.7
+* gitlab ci updated to install latest version of samna
+* added doc strings
+* Added instructions for how to add support for a new chip
+* api docs nested
+* wip
+* deleted mnist\_speck2b example script as dynapcnn\_devkit works by just replacing the device name
+* update API doc
+* Default monitor enabled for last layer is nothing is specified
+* merged changes
+* Removed redundant/legacy code
+* rename API doc headings
+* Update unit tests according to recent commits
+* clean up API documentation by not displaying module names
+* Minor fixes and adaptations. More specific exception type. Can pass network with dvs layer to dynapcnn compatible network
+* Smaller fixes in config dicts
+* Refactored dvs unit tests
+* fixed typos in documentation
+* Bug fix in crop2d layer handling
+* Added Crop2d layer
+* installation instructions and minor documentation changes
+* added some folders to gitignore
+* moved event generation methods to ChipFactory
+* depricated methods deleted from source
+* supported\_devices in ChipFactory and get\_output\_buffer in ChipBuilder
+* added support for time-stamp management
+* enable pixel array on dvs\_input true
+* adding speck2b device names + mnist example script
+* speck2b bug fix in builder
+* removed factory setting line
+* added speck2b to the condition
+* added speck2b to the condition
+* added parameter file for example
+* Added config builders for speck and speck2b
+* Refractored to add ConfigBuilder
+* Support for InputLayer. Still does not pass \`test\_dvs\_input\` tests
+* added index for samna
+* Cut dimensions update in the configuration dict
+* Minor api corrections
+* dynapcnn layers populaiton works. Bug in dvs layer still to be sorted out
+* wip: build full network
+* construct dvs layer construction works
+* Added tests for DVSLayer
+* Added custom exceptions and tests
+* method to build network fo dynapcnn layers added
+* added start layer index to construction methods
+* Added tests for layer builders
+* Added function to create dynapcnn layers
+* DVSLayer, FlipDims functional code added
+* Suggestion: DVSLayer. Still to be completed
+* WIP
+* Added handling of sumpool layers at the start of the model
+* Updated MNIST example notebook in the documentaion
+* added speck2\_constraints
+* make\_config default for chip\_layers\_ordering changed to "auto"
+* unhide chip\_layers\_ordering
+* Breaking change: monitor\_layers now takes model index instead of chip layer index
+* wip
+* Added API docs for new files
+* Added the basic documentation
+* doc skeleton added for the fundamentals
+* mapping logic updated to edmond algorithm
+* bug fix in make\_config effecting auto-mapping
+* Layer dimensions infereed from dimensions dict
+* updated memory summary to take chip constraints
+* samna warning message raised
+* open device checks if the device is already open
+* moved monitor to make\_config
+* added xytp conversion methods
+* added warning for discretization
+* added test for auto in make\_config
+* Added timestamping and memory\_summary methods
+* Bug fix: Padding and stride x, y swapped
+* Events to raster marked as NotImplemented
+* Time stamped events generated
+* Forward method defined on events
+* Bug fix: config invalid when network uninitialized (no data passed)
+* added bug fix for str 'speck2devkit'
+* Added option to specify which layers to monitor in to method
+* to device method implemented
+* samna device discovery memory errors fixed
+* get\_opened\_devices also returns device\_info object
+* added get\_device\_map
+* Added device\_list
+* Added method to discover connected devices
+* wip: find/move model to device when to() is called
+* Config object conditionally created based on device type
+* added further test
+* Correct error now raised if spiking layer missing at end of network
+* Added io file
+* Raise warning when discretize is True and there is an avgpooling layer
+* Revert "need to test if samna is there"
+* membrane reset now implemented properly
+* pypi deploy new line added
+* sphinx requirements added
+* typo in conf.py fixed
+* docs folder relocated
+* setuptools based setup file
+* pbr based project versioning and gitlab ci added
+* Samna requirement updated
+* Method parameter in test corrected
+* changed speck to dynapcnn
+* fixed mapping problem in auto layer order
+* Replace all references to speck as DYNAPCNN, including internal variables
+* Type annotation fixed
+* Refractored code to dynapcnn from speck
+* fixed bug in discretization of membrane\_subtract (double multiplication)
+* updated tests to reflect changes in sinabs network
+
+v0.2.0
+------
+
+* fixed docs, removed commented-out areas
+* removed dependency on samna for validation, and on SpikingLayerBPTT
+* Changed 'input\_layer' management for sinabs changes'
+* fixed tests, one not passing
+* started changing dvs\_input default
+* added dropout
+* Roll back changes from last commit and only make sure that meaningful error is produced when last layer is not spiking. Handling of last layer done in sinabs from\_model
+* wip: handle networks that end with linear or conv layer
+* fixed true\_divide torch fussiness
+* removed print statement
+* merged commit with sumpool support
+* implemented support for sumpool in input network
+* Disable default monitor and support one dvs input channel
+* In-code docs for test\_discretized
+* Smaller fixes in discretize
+* Tests for discretization module
+* Added leak management, and test
+* individual\_tests made deterministic
+* fixed input tests
+* valid\_mapping complies with variable naming convention. Extended in-code documentation
+* Minor fix in test\_dvs\_input
+* Ignore jupyter checkpoints
+* Placeholder in tutorial for validation and upload to Speck
+* Fixes in test\_dvs\_input
+* Rename test\_dvs to test\_dvs\_input
+* test\_dvs: Tests with input\_layers
+* Warn if both input\_shape and input layer are provided and shapes don't match
+* test\_dvs: make sure that missing input specifications are detected
+* test made deterministic
+* Removed requirement of samna, particularly for tests
+* added skip tests with no samna
+* doorbell test fixed
+* updated large net test to an actual test
+* added tests; added support for 3d states
+* fixed bug DVS input size
+* extended tests to config
+* deal with missing neuron states
+* automatic choice of layer ordering
+* add handling swapping layers while searching for a solution
+* removed prints, fixed test
+* Many fixes needed for the configuration to be valid. Now works
+* Documentation for discretize
+* Cannot change conv and spk layers, but access them through property. Pool can be changed
+* Cannot change conv and spk layers, but access them through property. Pool can be changed
+* getting closer
+* improvements
+* working check on real samna
+* validation thing to be compared across machines
+* Specklayer correctly handles changing layers. Todo: Update unit tests
+* wip: specklayer: make sure that when changing layers, config dict gets updated. TODO: unit test fails
+* Property-like behavior for conv/pool/spk layers
+* Comparison with original snn only when not discretizing
+* Ensure no overwrite of the conv layer during batchnorm merging
+* Making sure discretization happens after scaling
+* Tutorial for converting from torch model to speck config
+* Update documentation
+* WIP: Documentation for specklayer. Numpy style docstrings
+* WIP: Sphinx documentation
+* Minor fixes. Still to do: Discretization of snn (discretize\_sl) does not work)
+* Minor fixes in tests
+* fixed bug in sumpool config
+* Fixed SumPool
+* Completed name change and move of files
+* Fix module naming
+* deleted references to sumpool2dlayer, loaded sinabs sumpool
+* removed unused imports
+* uses SumPool from sinabs
+* moved test
+* updated tests to new locations; new constructor in SpeckNetwork
+* moved tests to folder
+* deleted scratch folder
+* Tests related to dvs
+* Fixes wrt to handling dvs and pooling, completed type hints
+* wrote docstrings
+* should now be safe to commit init
+* some minor changes
+* added test, changed var names
+* small correction to previous commit
+* added support for a specific case of batchnorm
+* Use deepcopy for copying layers
+* merge bc of black
+* Avg pooling now turned to sum pooling and weights rescaling (1 failing test)
+* Test to verify that all layers are copy and not references
+* Make sure all layers in SpeckCompatibleNetwork are copies of the original
+* (WIP) started implementing transfer to sumpool
+* Workaround for copying spiking layers in discretize\_conv\_spike
+* updated and added tests
+* fixed several issues that arose with testing
+* correct way of ignoring neurons states
+* discretization now optional (for testing)
+* input shape removed where not needed; more cleanup
+* Minor
+* separated make\_config from the rest
+* a little cleanup and commenting
+* seemingly working class-based version
+* somewhat working version of class-based
+* Handle Linear layers and Flatten, ignore Dropout2d
+* started transformation into class
+* added gitignore
+* updated new api of samna
+* added smartdoor test
+* Doorbell test
+* Un-comment speck related lines
+* minor
+* samna independent test-mode for fixing some bugs
+* Fixing bugs
+* Wip: update for sinabs 0.2 - discretization
+* Wip: update tospeck for compatibility for sinabs 0.2
+* Wip: update tospeck for compatibility for sinabs 0.2
+* removed content from init file, since it breaks for people who do not have dependencies
+* introduced test of discretization in simulation
+* Made necessary changes to actually simulate the discretized network
+* added bias check in descretize sc2d
+* merged changes from features/separate\_discretization
+* bugfixes
+* fix import
+* misc
+* Fix bias shapes and handling of 'None'-states
+* merge updates from feature/spiking\_model\_to\_speck
+* Fix biases shape
+* wip
+* Fixes in neuron states and weight shapes. Updated test
+* Undo reverting commit 5af49846 and fix dimensions for neuron states
+* Fix weight dimensions
+* Use speckdemo module and handle models without biases
+* Small fix in plotting in test
+* Improved in-code documentation of tospeck.py
+* Test script for porting a simple spiking model to a speck config
+* Quantization of weights, biases and thresholds
+* Bugfixes in tospeck.py
+* can handle sequential models of SpikingConv2dLayers and SumPooling2dLayers
+* Remove tests that should be handled by ctxctl
+* wip: handling of pooling layers
+* For compatibility issues that result in not matching dimensions raise exceptions instead of warnings
+* WIP: Method for converting Spiking Model to speck configurations
+* WIP: Method for converting SpikingConv2DLayer to speck configurations
+
+0.1.dev7
+--------
+
+* initial mock code
+* Initial commit
