@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 
 import sinabs
-from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+from .chip_factory import ChipFactory
 
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer

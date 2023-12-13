@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 import samna
 
-from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+from .dynapcnn_network import DynapcnnNetwork
 
 from .io import launch_visualizer
 
