@@ -1,5 +1,5 @@
 import pytest
-#from sinabs.backend.dynapcnn import DynapcnnVisualizer
+from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
 import samna
 from hw_utils import is_any_samna_device_connected, find_open_devices
 
