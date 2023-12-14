@@ -44,6 +44,7 @@ jobs:
           python-version: 3.8
       - name: Generate coverage report
         run: |
+          sudo apt-get update && sudo apt-get -y install libglu1-mesa
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -r tests/requirements.txt
           pip install .
@@ -65,6 +66,7 @@ jobs:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          sudo apt-get update && sudo apt-get -y install libglu1-mesa
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r docs/requirements.txt
