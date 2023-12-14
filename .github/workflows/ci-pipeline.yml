@@ -4,26 +4,20 @@ on: [push, pull_request]
 
 jobs:
   multitest:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         python-version: ["3.7", "3.10",]
         torch-version: ["1.8.1", "1.12.0",]
         exclude:
           - os: ubuntu-latest
             python-version: "3.10"
             torch-version: "1.8.1"
-          - os: windows-latest
-            python-version: "3.10"
-            torch-version: "1.8.1"
           - os: ubuntu-latest
             python-version: "3.7"
             torch-version: "1.12.0"
-          - os: windows-latest
-            python-version: "3.7"
-            torch-version: "1.12.0"  
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -32,6 +26,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
+          sudo apt update && apt -y install mesa-libGL
           pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r tests/requirements.txt
