@@ -71,12 +71,12 @@ def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output
     ):
         module.connection_map = conv_connection_map(module, input_.shape, output.shape)
     # Mean is across batches and timesteps
-    module.synops_raw = (input_ * module.connection_map).mean(0).sum()
+    module.layer_synops_per_timestep = (input_ * module.connection_map).mean(0).sum()
 
 def linear_layer_synops_hook(module: nn.Linear, input_: List[torch.Tensor], output: torch.Tensor):
     input_ = _extract_single_input(input_)
     # Mean is across batches and timesteps
-    module.synops_raw = input_.mean(0).sum() * module.out_features
+    module.layer_synops_per_timestep = input_.mean(0).sum() * module.out_features
 
 
 @dataclass
@@ -100,13 +100,22 @@ class ModelSynopsHook:
                 scaling = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
                 scale_factors.append(scaling)
             if hasattr(module, "weight"):
-                if hasattr(module, "synops_raw"):
+                if hasattr(module, "layer_synops_per_timestep"):
                     # Multiply all scale factors (or use 1 if empty)
                     scaling = reduce(lambda x, y: x*y, scale_factors, 1)
-                    module.synops_hook = module.synops_raw * scaling
+                    module.synops_per_timestep = module.layer_synops_per_timestep * scaling
                     if self.dt is not None:
-                        module.synops_per_second = module.synops_hook / self.dt
+                        module.synops_per_second = module.synops_per_timestep / self.dt
 
                 # For any module with weight: Reset `scale_factors` even if it doesn't count synops
                 scale_factors = []
 
+
+def register_synops_hooks(module: nn.Sequential, dt: Optional[float]=None):
+    for lyr in module:
+        if isinstance(lyr, nn.Conv2d):
+            lyr.register_forward_hook(conv_layer_synops_hook)
+        elif isinstance(lyr, nn.Linear):
+            lyr.register_forward_hook(linear_layer_synops_hook)
+    model_hook = ModelSynopsHook(dt)
+    module.register_forward_hook(model_hook)
