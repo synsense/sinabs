@@ -1,7 +1,7 @@
 import sinabs
 import torch
 import torch.nn as nn
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import List, Optional, Tuple, Type, TYPE_CHECKING, Union
 from copy import deepcopy
 
 from .crop2d import Crop2d
@@ -15,6 +15,7 @@ from .flipdims import FlipDims
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
+DEFAULT_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)
 
 def infer_input_shape(
     layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
@@ -409,8 +410,8 @@ def build_from_list(
         in_shape = dvs_layer.get_output_shape()
     # Find and populate dynapcnn layers
     while lyr_indx_next < len(layers):
-        if isinstance(layers[lyr_indx_next], (nn.Dropout, nn.Dropout2d, nn.Flatten)):
-            # - Ignore dropout and flatten layers
+        if isinstance(layers[lyr_indx_next], (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)):
+            # - Ignore identity, dropout and flatten layers
             lyr_indx_next += 1
             continue
         dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
@@ -427,7 +428,8 @@ def build_from_list(
 
 
 def convert_model_to_layer_list(
-    model: Union[nn.Sequential, sinabs.Network]
+    model: Union[nn.Sequential, sinabs.Network],
+    ignore: Union[Type, Tuple[Type, ...]] = (),
 ) -> List[nn.Module]:
     """
     Convert a model to a list of layers.
@@ -435,6 +437,7 @@ def convert_model_to_layer_list(
     Parameters
     ----------
     model: nn.Sequential or sinabs.Network
+    ignore: type or tuple of types of modules to be ignored
 
     Returns
     -------
@@ -443,7 +446,7 @@ def convert_model_to_layer_list(
     if isinstance(model, sinabs.Network):
         return convert_model_to_layer_list(model.spiking_model)
     elif isinstance(model, nn.Sequential):
-        layers = [*model]
+        layers = [layer for layer in model if not isinstance(layer, ignore)]
     else:
         raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
     return layers

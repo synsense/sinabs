@@ -7,8 +7,8 @@ import torch
 import torch.nn as nn
 
 import sinabs
-from .chip_factory import ChipFactory
 
+from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InputConfigurationError
@@ -16,6 +16,7 @@ from .io import disable_timestamps, enable_timestamps, open_device, reset_timest
 from .utils import (
     build_from_list,
     convert_model_to_layer_list,
+    DEFAULT_IGNORED_LAYER_TYPES,
     infer_input_shape,
     parse_device_id,
 )
@@ -76,7 +77,7 @@ class DynapcnnNetwork(nn.Module):
         self.chip_layers_ordering = []
 
         self.input_shape = input_shape  # Convert models  to sequential
-        layers = convert_model_to_layer_list(model=snn)
+        layers = convert_model_to_layer_list(model=snn, ignore=DEFAULT_IGNORED_LAYER_TYPES)
         # Check if dvs input is expected
         if dvs_input:
             self.dvs_input = True
