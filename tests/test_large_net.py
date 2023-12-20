@@ -22,6 +22,7 @@ class DynapCnnNetA(nn.Module):
             # core 0
             nn.Conv2d(2, 16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False),
             NeuromorphicReLU(quantize=quantize, fanout=144),
+            nn.Identity(),
             # core 1
             nn.Conv2d(16, 16, kernel_size=(3, 3), padding=(1, 1), bias=False),
             NeuromorphicReLU(quantize=quantize, fanout=288),
