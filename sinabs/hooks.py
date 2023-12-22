@@ -26,8 +26,9 @@ def conv_connection_map(
     )
     deconvolve.weight.data.fill_(1)
     deconvolve.weight.requires_grad = False
-    output_ones = torch.ones(output_shape)
-    connection_map = deconvolve(output_ones, output_size=input_shape).detach()
+    # Set batch/time dimension to 1
+    output_ones = torch.ones((1, *output_shape))
+    connection_map = deconvolve(output_ones, output_size=(1 , *input_shape)).detach()
     connection_map.requires_grad = False
     connection_map = connection_map.to(layer.weight.device)
     return connection_map
@@ -67,9 +68,10 @@ def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output
     input_ = _extract_single_input(input_)
     if (
         not hasattr(module, "connection_map")
-        or module.connection_map.shape != input_.shape
+        # Ignore batch/time dimension when checking connectivity
+        or module.connection_map.shape[1:] != input_.shape[1:]
     ):
-        module.connection_map = conv_connection_map(module, input_.shape, output.shape)
+        module.connection_map = conv_connection_map(module, input_.shape[1:], output.shape[1:])
     # Mean is across batches and timesteps
     module.layer_synops_per_timestep = (input_ * module.connection_map).mean(0).sum()
 
