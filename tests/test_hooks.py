@@ -23,7 +23,7 @@ def test_linear_layer_synops_hook():
     model(inp)
 
     # (3 + 5) spikes * 5 channels, over 2 samples
-    assert model.layer_synops_per_timestep == 20
+    assert model.hook_data["layer_synops_per_timestep"] == 20
 
 kernel_sizes = (2, 3, 5)
 strides = (1, 2)
@@ -38,7 +38,8 @@ def test_conv_layer_synops_hook(kernel_size, stride, padding):
     model.register_forward_hook(hooks.conv_layer_synops_hook)
     model(inp)
 
-    assert model.layer_synops_per_timestep == correct_synops[(kernel_size, stride, padding)]
+    correct = correct_synops[(kernel_size, stride, padding)]
+    assert model.hook_data["layer_synops_per_timestep"] == correct
 
 @pytest.mark.parametrize("dt", (None, 1, 0.1, 2))
 def test_model_synops_hook(dt):
@@ -49,9 +50,9 @@ def test_model_synops_hook(dt):
 
     model(inp)
     for idx, synops in correct_synops.items():
-        assert model[idx].synops_per_timestep == synops
+        assert model[idx].hook_data["synops_per_timestep"] == synops
         if dt is not None:
-            assert model[idx].synops_per_second == synops / dt
+            assert model[idx].hook_data["synops_per_second"] == synops / dt
 
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
@@ -64,7 +65,7 @@ def test_firing_rate_hook():
             layer.register_forward_hook(hooks.firing_rate_hook)
     model(inp)
     for idx, firing_rate in correct_firing_rates.items():
-        assert model[idx].firing_rate == firing_rate
+        assert model[idx].hook_data["firing_rate"] == firing_rate
 
 def test_firing_rate_per_neuron_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
@@ -77,7 +78,9 @@ def test_firing_rate_per_neuron_hook():
             layer.register_forward_hook(hooks.firing_rate_per_neuron_hook)
     model(inp)
     for idx, firing_rate in correct_firing_rates.items():
-        assert (model[idx].firing_rate_per_neuron == firing_rate).all()
+        assert (
+            model[idx].hook_data["firing_rate_per_neuron"] == firing_rate
+        ).all()
 
 def test_input_diff_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
@@ -90,4 +93,4 @@ def test_input_diff_hook():
             layer.register_forward_hook(hooks.input_diff_hook)
     model(inp)
     for idx, correct in correct_values.items():
-        assert (model[idx].diff_output == correct).all()
+        assert (model[idx].hook_data["diff_output"] == correct).all()

@@ -33,7 +33,13 @@ def conv_connection_map(
     connection_map = connection_map.to(layer.weight.device)
     return connection_map
 
+def get_hook_data_dict(module):
+    if not hasattr(module, "hook_data"):
+        module.hook_data = dict()
+    return module.hook_data
+
 def input_diff_hook(module: Union[nn.Conv2d, nn.Linear], input_: List, output: Any):
+    data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
 
     # Difference between absolute output and output with absolute weights
@@ -50,35 +56,41 @@ def input_diff_hook(module: Union[nn.Conv2d, nn.Linear], input_: List, output: A
             input=input_,
             weight=torch.abs(module.weight),
         )
-    module.diff_output = abs_weight_output - torch.abs(output)
+    data["diff_output"] = abs_weight_output - torch.abs(output)
 
 
 def firing_rate_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
-    module.firing_rate = output.mean()
+    data = get_hook_data_dict(module)
+    data["firing_rate"] = output.mean()
 
 def firing_rate_per_neuron_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
+    data = get_hook_data_dict(module)
     if isinstance(module, SqueezeMixin):
         # Common dimension for batch and time
-        module.firing_rate_per_neuron = output.mean(0)
+        data["firing_rate_per_neuron"] = output.mean(0)
     else:
         # Output is of shape (N, T, ...)
-        module.firing_rate_per_neuron = output.mean((0,1))
+        data["firing_rate_per_neuron"] = output.mean((0,1))
 
 def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output: torch.Tensor):
+    data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
     if (
-        not hasattr(module, "connection_map")
+        "connection_map" not in data
         # Ignore batch/time dimension when checking connectivity
-        or module.connection_map.shape[1:] != input_.shape[1:]
+        or data["connection_map"].shape[1:] != input_.shape[1:]
     ):
-        module.connection_map = conv_connection_map(module, input_.shape[1:], output.shape[1:])
+        new_connection_map = conv_connection_map(module, input_.shape[1:], output.shape[1:])
+        data["connection_map"] = new_connection_map
     # Mean is across batches and timesteps
-    module.layer_synops_per_timestep = (input_ * module.connection_map).mean(0).sum()
+    data["layer_synops_per_timestep"] = (input_ * data["connection_map"]).mean(0).sum()
 
 def linear_layer_synops_hook(module: nn.Linear, input_: List[torch.Tensor], output: torch.Tensor):
+    data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
     # Mean is across batches and timesteps
-    module.layer_synops_per_timestep = input_.mean(0).sum() * module.out_features
+    synops = input_.mean(0).sum() * module.out_features
+    data["layer_synops_per_timestep"] = synops
 
 
 @dataclass
@@ -102,12 +114,16 @@ class ModelSynopsHook:
                 scaling = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
                 scale_factors.append(scaling)
             if hasattr(module, "weight"):
-                if hasattr(module, "layer_synops_per_timestep"):
+                if (
+                    hasattr(module, "hook_data")
+                    and "layer_synops_per_timestep" in module.hook_data
+                ):
+                    data = module.hook_data
                     # Multiply all scale factors (or use 1 if empty)
                     scaling = reduce(lambda x, y: x*y, scale_factors, 1)
-                    module.synops_per_timestep = module.layer_synops_per_timestep * scaling
+                    data["synops_per_timestep"] = data["layer_synops_per_timestep"] * scaling
                     if self.dt is not None:
-                        module.synops_per_second = module.synops_per_timestep / self.dt
+                        data["synops_per_second"] = data["synops_per_timestep"] / self.dt
 
                 # For any module with weight: Reset `scale_factors` even if it doesn't count synops
                 scale_factors = []
