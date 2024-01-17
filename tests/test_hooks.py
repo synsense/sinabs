@@ -53,6 +53,10 @@ def test_model_synops_hook(dt):
         assert model[idx].hook_data["synops_per_timestep"] == synops
         if dt is not None:
             assert model[idx].hook_data["synops_per_second"] == synops / dt
+    synops_total = sum(correct_synops.values())
+    assert model.hook_data["total_synops_per_timestep"] == synops_total
+    if dt is not None:
+        assert model.hook_data["total_synops_per_second"] == synops_total / dt
 
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")

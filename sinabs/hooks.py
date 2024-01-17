@@ -98,36 +98,44 @@ class ModelSynopsHook:
     dt: Optional[float] = None
 
     def __call__(self, module: nn.Sequential, input_: Any, output: Any):
+        module_data = get_hook_data_dict(module)
+        module_data["total_synops_per_timestep"] = 0.
+        if self.dt is not None:
+            module_data["total_synops_per_second"] = 0.
+            
         scale_factors = []
-        for module in module:
-            if isinstance(module, nn.AvgPool2d):
+        for lyr_idx, lyr in enumerate(module):
+            if isinstance(lyr, nn.AvgPool2d):
                 # Average pooling scales down the number of counted synops due to the averaging.
                 # We need to correct for that by accumulating the scaling factors and multiplying
                 # them to the counted Synops in the next conv or linear layer
-                if module.kernel_size != module.stride:
+                if lyr.kernel_size != lyr.stride:
                     warnings.warn(
                         f"In order for the Synops counter to work accurately the pooling "
                         f"layers kernel size should match their strides. At the moment at layer {name}, "
-                        f"the kernel_size = {module.kernel_size}, the stride = {module.stride}."
+                        f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
                     )
-                ks = module.kernel_size
+                ks = lyr.kernel_size
                 scaling = ks**2 if isinstance(ks, int) else ks[0] * ks[1]
                 scale_factors.append(scaling)
-            if hasattr(module, "weight"):
+            if hasattr(lyr, "weight"):
                 if (
-                    hasattr(module, "hook_data")
-                    and "layer_synops_per_timestep" in module.hook_data
+                    hasattr(lyr, "hook_data")
+                    and "layer_synops_per_timestep" in lyr.hook_data
                 ):
-                    data = module.hook_data
+                    data = lyr.hook_data
                     # Multiply all scale factors (or use 1 if empty)
                     scaling = reduce(lambda x, y: x*y, scale_factors, 1)
-                    data["synops_per_timestep"] = data["layer_synops_per_timestep"] * scaling
+                    synops = data["layer_synops_per_timestep"] * scaling
+                    data["synops_per_timestep"] = synops
+                    module_data["total_synops_per_timestep"] += synops
                     if self.dt is not None:
-                        data["synops_per_second"] = data["synops_per_timestep"] / self.dt
+                        synops_per_sec = data["synops_per_timestep"] / self.dt
+                        data["synops_per_second"] = synops_per_sec
+                        module_data["total_synops_per_second"] += synops_per_sec
 
                 # For any module with weight: Reset `scale_factors` even if it doesn't count synops
                 scale_factors = []
-
 
 def register_synops_hooks(module: nn.Sequential, dt: Optional[float]=None):
     for lyr in module:
