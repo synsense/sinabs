@@ -41,11 +41,32 @@ def test_conv_layer_synops_hook(kernel_size, stride, padding):
     correct = correct_synops[(kernel_size, stride, padding)]
     assert model.hook_data["layer_synops_per_timestep"] == correct
 
-@pytest.mark.parametrize("dt", (None, 1, 0.1, 2))
+dts = (None, 1, 0.1, 2)
+@pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook(dt):
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     correct_synops = torch.load(INPUT_RESULT_DIR / "model_synops.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    hooks.register_synops_hooks(model, dt=dt)
+
+    model(inp)
+    for idx, synops in correct_synops.items():
+        assert model[idx].hook_data["synops_per_timestep"] == synops
+        if dt is not None:
+            assert model[idx].hook_data["synops_per_second"] == synops / dt
+    synops_total = sum(correct_synops.values())
+    assert model.hook_data["total_synops_per_timestep"] == synops_total
+    if dt is not None:
+        assert model.hook_data["total_synops_per_second"] == synops_total / dt
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+@pytest.mark.parametrize("dt", dts)
+def test_model_synops_hook_cuda(dt):
+    inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth").cuda()
+    correct_synops = torch.load(
+        INPUT_RESULT_DIR / "model_synops.pth", map_location="cuda"
+    )
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth").cuda()
     hooks.register_synops_hooks(model, dt=dt)
 
     model(inp)
