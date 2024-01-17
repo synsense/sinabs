@@ -12,7 +12,10 @@ def _extract_single_input(input_: List[Any]) -> Any:
     return input_[0]
 
 def conv_connection_map(
-    layer: nn.Conv2d, input_shape: torch.Size, output_shape: torch.Size
+    layer: nn.Conv2d,
+    input_shape: torch.Size,
+    output_shape: torch.Size,
+    device: Union[None, torch.device, str] = None,
 ) -> torch.Tensor:
     deconvolve = nn.ConvTranspose2d(
         layer.out_channels,
@@ -30,7 +33,12 @@ def conv_connection_map(
     output_ones = torch.ones((1, *output_shape))
     connection_map = deconvolve(output_ones, output_size=(1 , *input_shape)).detach()
     connection_map.requires_grad = False
-    connection_map = connection_map.to(layer.weight.device)
+    if device is None:
+        # If device is not specified, map to weight device
+        connection_map = connection_map.to(layer.weight.device)
+    else:
+        connection_map = connection_map.to(torch.device(device))
+
     return connection_map
 
 def get_hook_data_dict(module):
@@ -79,8 +87,11 @@ def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output
         "connection_map" not in data
         # Ignore batch/time dimension when checking connectivity
         or data["connection_map"].shape[1:] != input_.shape[1:]
+        or data["connection_map"].device != input_.device
     ):
-        new_connection_map = conv_connection_map(module, input_.shape[1:], output.shape[1:])
+        new_connection_map = conv_connection_map(
+            module, input_.shape[1:], output.shape[1:], input_.device
+        )
         data["connection_map"] = new_connection_map
     # Mean is across batches and timesteps
     data["layer_synops_per_timestep"] = (input_ * data["connection_map"]).mean(0).sum()
