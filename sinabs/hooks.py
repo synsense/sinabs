@@ -111,8 +111,10 @@ class ModelSynopsHook:
     def __call__(self, module: nn.Sequential, input_: Any, output: Any):
         module_data = get_hook_data_dict(module)
         module_data["total_synops_per_timestep"] = 0.
+        module_data["synops_per_timestep"] = dict()
         if self.dt is not None:
             module_data["total_synops_per_second"] = 0.
+            module_data["synops_per_second"] = dict()
             
         scale_factors = []
         for lyr_idx, lyr in enumerate(module):
@@ -134,15 +136,17 @@ class ModelSynopsHook:
                     hasattr(lyr, "hook_data")
                     and "layer_synops_per_timestep" in lyr.hook_data
                 ):
-                    data = lyr.hook_data
+                    layer_data = lyr.hook_data
                     # Multiply all scale factors (or use 1 if empty)
                     scaling = reduce(lambda x, y: x*y, scale_factors, 1)
-                    synops = data["layer_synops_per_timestep"] * scaling
-                    data["synops_per_timestep"] = synops
+                    synops = layer_data["layer_synops_per_timestep"] * scaling
+                    layer_data["synops_per_timestep"] = synops
+                    module_data["synops_per_timestep"][lyr_idx] = synops
                     module_data["total_synops_per_timestep"] += synops
                     if self.dt is not None:
-                        synops_per_sec = data["synops_per_timestep"] / self.dt
-                        data["synops_per_second"] = synops_per_sec
+                        synops_per_sec = layer_data["synops_per_timestep"] / self.dt
+                        layer_data["synops_per_second"] = synops_per_sec
+                        module_data["synops_per_second"][lyr_idx] = synops_per_sec
                         module_data["total_synops_per_second"] += synops_per_sec
 
                 # For any module with weight: Reset `scale_factors` even if it doesn't count synops

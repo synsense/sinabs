@@ -52,8 +52,10 @@ def test_model_synops_hook(dt):
     model(inp)
     for idx, synops in correct_synops.items():
         assert model[idx].hook_data["synops_per_timestep"] == synops
+        assert model.hook_data["synops_per_timestep"][idx] == synops
         if dt is not None:
             assert model[idx].hook_data["synops_per_second"] == synops / dt
+            assert model.hook_data["synops_per_second"][idx] == synops / dt
     synops_total = sum(correct_synops.values())
     assert model.hook_data["total_synops_per_timestep"] == synops_total
     if dt is not None:
