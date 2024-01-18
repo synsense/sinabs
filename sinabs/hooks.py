@@ -7,6 +7,16 @@ from sinabs.layers import SqueezeMixin, StatefulLayer
 
 
 def _extract_single_input(input_: List[Any]) -> Any:
+    """ Extract single element of a list
+    
+    Parameters:
+        input_: List that should have only one element
+    Returns:
+        The only element from the list
+    Raises:
+        ValueError if input_ does not have exactly
+        one element.
+    """
     if len(input_) != 1:
         raise ValueError("Multiple inputs not supported for `input_diff_hook`")
     return input_[0]
@@ -17,6 +27,23 @@ def conv_connection_map(
     output_shape: torch.Size,
     device: Union[None, torch.device, str] = None,
 ) -> torch.Tensor:
+    """ Generate connectivity map for a convolutional layer
+    The map indicates for each element in the layer input to how many 
+    postsynaptic neurons it connects (i.e. the fanout)
+
+    Parameters
+        layer: Convolutional layer for which connectivity map is to be
+               generated
+        input_shape: Shape of the input data (N, C, Y, X)
+        output_shape: Shape of layer output given `input_shape`
+        device: Device on which the connectivity map should reside.
+                Should be the same as that of the input to `layer`.
+                If None, will select device of the weight of `layer`.
+
+    Returns
+        torch.Tensor: Connectivity map indicating the fanout for each
+                      element in the input
+    """
     deconvolve = nn.ConvTranspose2d(
         layer.out_channels,
         layer.in_channels,
@@ -41,12 +68,48 @@ def conv_connection_map(
 
     return connection_map
 
-def get_hook_data_dict(module):
+def get_hook_data_dict(module: nn.Module) -> Dict:
+    """ Convenience function to get `hook_data` attribute of a module
+    if it has one and create it otherwise.
+
+    Parameters
+        module: The module whose `hook_data` dict is to be fetched.
+                If it does not have an attribute of that name, it
+                will add an empty dict.
+    Returns
+        The `hook_data` attribute of `module`. Should be a Dict.
+    """
     if not hasattr(module, "hook_data"):
         module.hook_data = dict()
     return module.hook_data
 
-def input_diff_hook(module: Union[nn.Conv2d, nn.Linear], input_: List, output: Any):
+def input_diff_hook(
+    module: Union[nn.Conv2d, nn.Linear],
+    input_: List[torch.Tensor],
+    output: torch.Tensor,
+):
+    """ Forwared hook to be registered with a Conv2d or Linear layer.
+
+    Calculate the difference between the output if all weights were
+    positive and the absolute of the actual output. Regularizing this
+    value during training of an SNN can help reducing discrepancies
+    between simulation and deployment on asynchronous processors.
+
+    The hook should be registered with the layer using
+    `torch.register_forward_hook`. It will be called automatically
+    at each forward pass. Afterwards the data can be accessed with
+    `module.hook_data["diff_output"]
+
+    Parameters
+        module: Either a torch.nn.Conv2d or Linear layer
+        input_: List of inputs to the layer. Should hold a single tensor.
+        output: The layer's output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and the difference value described above  will be
+        stored under the key 'diff_output'. It is a tensor of the same
+        shape as `output`.
+    """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
 
@@ -68,10 +131,47 @@ def input_diff_hook(module: Union[nn.Conv2d, nn.Linear], input_: List, output: A
 
 
 def firing_rate_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
+    """ Forwared hook to be registered with a spiking sinabs layer
+
+    Calculate the mean firing rate per neuron per timestep.
+    
+    The hook should be registered with the layer using
+    `torch.register_forward_hook`. It will be called automatically
+    at each forward pass. Afterwards the data can be accessed with
+    `module.hook_data["firing_rate"]
+
+    Parameters
+        module: A spiking sinabs layer, such as `IAF` or `LIF`.
+        input_: List of inputs to the layer. Ignored here.
+        output: The layer's output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and the mean firing rate will be stored under the
+        key 'firing_rate'. It is a scalar value.
+    """
     data = get_hook_data_dict(module)
     data["firing_rate"] = output.mean()
 
 def firing_rate_per_neuron_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
+    """ Forwared hook to be registered with a spiking sinabs layer
+
+    Calculate the mean firing rate per timestep for each neuron.
+    
+    The hook should be registered with the layer using
+    `torch.register_forward_hook`. It will be called automatically
+    at each forward pass. Afterwards the data can be accessed with
+    `module.hook_data["firing_rate_per_neuron"]
+
+    Parameters
+        module: A spiking sinabs layer, such as `IAF` or `LIF`.
+        input_: List of inputs to the layer. Ignored here.
+        output: The layer's output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and the mean firing rate will be stored under the
+        key 'firing_rate_per_neuron'. It is a tensor of the same
+        shape as neurons of the spiking layer.
+    """
     data = get_hook_data_dict(module)
     if isinstance(module, SqueezeMixin):
         # Common dimension for batch and time
@@ -81,6 +181,31 @@ def firing_rate_per_neuron_hook(module: StatefulLayer, input_: Any, output: torc
         data["firing_rate_per_neuron"] = output.mean((0,1))
 
 def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output: torch.Tensor):
+    """ Forwared hook to be registered with a Conv2d layer.
+
+    Calculate the mean synaptic operations per timestep.
+    To be clear: Synaptic operations are summed over neurons, but
+    averaged across batches / timesteps.
+    Note that the hook assumes spike counts as inputs.
+    Preceeding average pooling layers, which scale the data, might
+    lead to false results and should be accounted for externally.
+    
+    The hook should be registered with the layer using
+    `torch.register_forward_hook`. It will be called automatically
+    at each forward pass. Afterwards the data can be accessed with
+    `module.hook_data["layer_synops_per_timestep"]
+
+    Parameters
+        module: A torch.nn.Conv2d layer
+        input_: List of inputs to the layer. Must contain exactly one tensor
+        output: The layer's output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and the mean firing rate will be stored under the
+        key 'layer_synops_per_timestep'. It is a scalar value.
+        It will also store a connectivity map under the key 'connection_map',
+        which holds the fanout for each input neuron.
+    """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
     if (
@@ -97,6 +222,29 @@ def conv_layer_synops_hook(module: nn.Conv2d, input_: List[torch.Tensor], output
     data["layer_synops_per_timestep"] = (input_ * data["connection_map"]).mean(0).sum()
 
 def linear_layer_synops_hook(module: nn.Linear, input_: List[torch.Tensor], output: torch.Tensor):
+    """ Forwared hook to be registered with a Linear layer.
+
+    Calculate the mean synaptic operations per timestep.
+    To be clear: Synaptic operations are summed over neurons, but
+    averaged across batches / timesteps.
+    Note that the hook assumes spike counts as inputs.
+    Preceeding average pooling layers, which scale the data, might
+    lead to false results and should be accounted for externally.
+    
+    The hook should be registered with the layer using
+    `torch.register_forward_hook`. It will be called automatically
+    at each forward pass. Afterwards the data can be accessed with
+    `module.hook_data["layer_synops_per_timestep"]
+
+    Parameters
+        module: A torch.nn.Linear layer.
+        input_: List of inputs to the layer. Must contain exactly one tensor
+        output: The layer's output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and the mean firing rate will be stored under the
+        key 'layer_synops_per_timestep'.
+    """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
     # Mean is across batches and timesteps
@@ -106,9 +254,61 @@ def linear_layer_synops_hook(module: nn.Linear, input_: List[torch.Tensor], outp
 
 @dataclass
 class ModelSynopsHook:
+    """ Forwared hook to be registered with a Sequential.
+
+    Calculate the mean synaptic operations per timestep for the
+    Conv2d and Linear layers inside the Sequential.
+    Synaptic operations are summed over neurons, but averaged across
+    batches / timesteps.
+    Other than the layer-wise synops hook, this hook accounts for 
+    preceeding average pooling layers, which scale the data.
+    
+    To use this hook, the `conv_layer_synops_hook`s and
+    `linear_layer_synops_hook`s need to be registered with the layers
+    inside the Sequential first.  The hook should then be instantiated
+    with or without a `dt` and registered with the Sequential using
+    `torch.register_forward_hook`.
+    Alternatively, refer to the function `register_synops_hooks` for
+    a more convenient way of setting up the hooks.
+    
+    The hook will be called automatically at each forward pass. Afterwards
+    the data can be accessed in several ways:
+    - each layer that has a synops hook registered, will have an entry
+      'synops_per_timestep' in its `hook_data`. Other than the
+      `layer_synops_per_timestep`, this entry takes preceding average
+      pooling layers into account.
+    - The same values can be accessed through a dict inside the `hook_data`
+      of the Sequential, under the key `synops_per_timestep`. The keys
+      inside this dict correspond to the layer indices within the Sequencial,
+      e.g.: `sequential.hook_data['synops_per_timestep'][1]
+    - The `hook_data` of the sequential also contains a scalar entry
+      'total_synops_per_timestep` which sums the synops over all layers.
+    - If `dt` is not None, for each of the entries listed above, there
+      will be a corresponding `(total_)synops_per_second` entry, indicating
+      the synaptic operations per second, under the assumption that `dt`
+      is the time step in seconds.
+
+    Parameters
+      dt: If not None, should be a float that indicates the simulation
+          time step in seconds. The synaptic operations will be also 
+          provided in terms of synops per second.
+    """
     dt: Optional[float] = None
 
     def __call__(self, module: nn.Sequential, input_: Any, output: Any):
+    """ Forward call of the synops model hook.
+    Should not be called manually but only by PyTorch during a forward
+    pass.
+    
+    Parameters
+        module: A torch.nn.Sequential
+        input_: List of inputs to the module.
+        output: The module output.
+    Effect
+        If `module` does not already have a `hook_data` attribute, it
+        will be added and synaptic operations will be calculated and logged
+        for all layers that have a layer-level synops hook registered.
+    """
         module_data = get_hook_data_dict(module)
         module_data["total_synops_per_timestep"] = 0.
         module_data["synops_per_timestep"] = dict()
@@ -153,6 +353,17 @@ class ModelSynopsHook:
                 scale_factors = []
 
 def register_synops_hooks(module: nn.Sequential, dt: Optional[float]=None):
+    """ Convenience function to register all the necessary hooks
+    to collect synops statistics in a sequential model.
+
+    This can be used instead of calling the torch function
+    `register_forward_hook` on all layers.
+
+    Parameters
+        module: Sequential model for which the hooks should be registered.
+        dt: If not None, should be a float indicating the simulation
+            time step in seconds. Will also calculate synaptic operations per second.
+    """
     for lyr in module:
         if isinstance(lyr, nn.Conv2d):
             lyr.register_forward_hook(conv_layer_synops_hook)
