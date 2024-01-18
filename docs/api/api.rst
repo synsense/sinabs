@@ -8,3 +8,4 @@
    from_torch
    synopcounter
    utils
+   ../speck/api/dynapcnn/dynapcnn

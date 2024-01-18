@@ -1,4 +1,4 @@
-# Training Tips
+# Troubleshooting and Tips
 
 To train an SNN which aimed to deployed to Speck, we share the following tips for the users. Hope to make the deployment
 process smoother.

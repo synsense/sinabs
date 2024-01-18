@@ -33,9 +33,9 @@ Currently, Speck/Dynapcnn supports following External DVS sensor with the samna 
 * Inivation DVXplorer
 * Prophesee EVK3-Gen 3.1VGA
 
-# Role of sinabs-dynapcnn Library
+# Backend: dynapcnn
 
-To interact with these developmentkit, sinabs-dynapcnn needs [samna](https://pypi.org/project/samna/) dependency to enables the chip configuration and network setting. As is shown in the figure below, sinabs-dynapcnn provides a simple way to convert the network structure and parameters to the _SammnaConfiguration_ that can be used by samna to setup the chip. 
+To interact with these developmentkit, sinabs needs [samna](https://pypi.org/project/samna/) dependency to enables the chip configuration and network setting. As is shown in the figure below, dynapcnn backend provides a simple way to convert the network structure and parameters to the _SammnaConfiguration_ that can be used by samna to setup the chip. 
 
 
 ![sinab-dynapcnn](/_static/Overview/sinabs-dynapcnn-role.png)
