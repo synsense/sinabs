@@ -410,7 +410,7 @@ def build_from_list(
         in_shape = dvs_layer.get_output_shape()
     # Find and populate dynapcnn layers
     while lyr_indx_next < len(layers):
-        if isinstance(layers[lyr_indx_next], (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)):
+        if isinstance(layers[lyr_indx_next], DEFAULT_IGNORED_LAYER_TYPES):
             # - Ignore identity, dropout and flatten layers
             lyr_indx_next += 1
             continue
