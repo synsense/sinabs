@@ -13,12 +13,20 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 * **{doc}`Install Sinabs<getting_started/install>`** and potentially some plugins.
 * **{doc}`Dive right into the syntax<getting_started/quickstart>`** if you know your way around SNN simulators.
 
+### Speck/Dynap-CNN DevKits
+* **{doc}`Overview of the development kits<speck/overview>`**.
+
+<a href="./speck/index.html"><img src="./_static/devkits_images/dynapcnn_devkit.png" width=366 height=312/></a>
+<a href="./speck/index.html"><img src="./_static/devkits_images/speck_devkit.png" width=366 height=312/></a>
+<a href="./speck/index.html"><img src="./_static/devkits_images/speck_module.png" width=366 height=312/></a>
+<a href="./speck/index.html"><img src="./_static/devkits_images/speck_module_devkit.png" width=366 height=312/></a>
+
 ### Tutorials
 * **{doc}`Convert an existin ANN<tutorials/weight_transfer_mnist>`** if you want to get started quickly.
 * **{doc}`Run a first example using BPTT<tutorials/bptt>`** with this neuromorphic version of the MNIST dataset.
 
+
 ### Plugins
-* Deploying models to neuromorphic hardware: [Sinabs-DynapCNN](https://synsense.gitlab.io/sinabs-dynapcnn/).
 * Training feed-forward models 10x faster: [EXODUS](https://github.com/synsense/sinabs-exodus).
 
 ### API reference
@@ -37,6 +45,7 @@ It's a deep learning library based on PyTorch for spiking neural networks, with 
 ```{toctree}
 :hidden:
 getting_started/getting_started
+speck/index
 auto_examples/index
 tutorials/tutorials
 how_tos/how_tos

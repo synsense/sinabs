@@ -5,7 +5,7 @@
 Specksim is a high performance Spiking-Convolutional Neural Network simulator which is written in C++ and bound to our backend library `samna`. It simulates the SNN completely event-based and is a good representation of how our `DYNAP-CNN` architecture hardware processes events. It is designed to help users who do not have access to our chips to test their networks to see how they would perform if they were deployed on the chip. Furthermore, the network architectures that normally could not have been deployed to our hardware due to memory constrains can be tested in `specksim`. Specksim package is completely bound to Python, which means that any and all of its features can be used easily from Python.
 
 ## Setup
-`Specksim` is implemented partly in `sinabs-dynapcnn` and partly in `samna`. If this library is installed via `pip` both of these libraries will be present. Therefore, no additional packages are necessary. 
+`Specksim` is implemented partly in `sinabs` and partly in `samna`. If this library is installed via `pip` both of these libraries will be present. Therefore, no additional packages are necessary. 
 
 ## Supported architecture
 The `specksim` simulator only supports sequential models. Typically the container module we use is `torch.nn.Sequential`, however nested modules are also supported.
