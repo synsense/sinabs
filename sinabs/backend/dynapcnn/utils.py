@@ -1,27 +1,29 @@
-import sinabs
+from copy import deepcopy
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union
+
 import torch
 import torch.nn as nn
-from typing import List, Optional, Tuple, Union, TYPE_CHECKING
-from copy import deepcopy
+
+import sinabs
+import sinabs.layers as sl
 
 from .crop2d import Crop2d
-from .dynapcnn_layer import DynapcnnLayer
 from .dvs_layer import DVSLayer, expand_to_pair
-import sinabs.layers as sl
-from .exceptions import *
+from .dynapcnn_layer import DynapcnnLayer
+from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer
 from .flipdims import FlipDims
-
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+
+DEFAULT_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)
 
 
 def infer_input_shape(
     layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
 ) -> Tuple[int, int, int]:
-    """
-    Checks if the input_shape is specified.
-    If either of them are specified, then it checks if the information is consistent and returns the input shape.
+    """Checks if the input_shape is specified. If either of them are specified, then it checks if
+    the information is consistent and returns the input shape.
 
     Parameters
     ----------
@@ -65,8 +67,7 @@ def infer_input_shape(
 def convert_cropping2dlayer_to_crop2d(
     layer: sl.Cropping2dLayer, input_shape: Tuple[int, int]
 ) -> Crop2d:
-    """
-    Convert a sinabs layer of type Cropping2dLayer to Crop2d layer
+    """Convert a sinabs layer of type Cropping2dLayer to Crop2d layer.
 
     Parameters
     ----------
@@ -180,8 +181,7 @@ def construct_dvs_layer(
 
 
 def merge_conv_bn(conv, bn):
-    """
-    Merge a convolutional layer with subsequent batch normalization
+    """Merge a convolutional layer with subsequent batch normalization.
 
     Parameters
     ----------
@@ -218,8 +218,8 @@ def merge_conv_bn(conv, bn):
 def construct_next_pooling_layer(
     layers: List[nn.Module], idx_start: int
 ) -> Tuple[Optional[sl.SumPool2d], int, float]:
-    """
-    Consolidate the first `AvgPool2d` objects in `layers` until the first object of different type.
+    """Consolidate the first `AvgPool2d` objects in `layers` until the first object of different
+    type.
 
     Parameters
     ----------
@@ -287,9 +287,7 @@ def construct_next_dynapcnn_layer(
     discretize: bool,
     rescale_factor: float = 1,
 ) -> Tuple[DynapcnnLayer, int, float]:
-    """
-    Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and
-    pooling layers.
+    """Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and pooling layers.
 
     Parameters
     ----------
@@ -318,7 +316,6 @@ def construct_next_dynapcnn_layer(
             Index of the next layer after this layer is constructed
         rescale_factor: float
             rescaling factor to account for average pooling
-
     """
     layer_idx_next = idx_start  # Keep track of layer indices
 
@@ -376,8 +373,8 @@ def build_from_list(
     discretize=True,
     dvs_input=False,
 ) -> nn.Sequential:
-    """
-    Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising a spiking CNN.
+    """Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising
+    a spiking CNN.
 
     Parameters
     ----------
@@ -409,8 +406,8 @@ def build_from_list(
         in_shape = dvs_layer.get_output_shape()
     # Find and populate dynapcnn layers
     while lyr_indx_next < len(layers):
-        if isinstance(layers[lyr_indx_next], (nn.Dropout, nn.Dropout2d, nn.Flatten)):
-            # - Ignore dropout and flatten layers
+        if isinstance(layers[lyr_indx_next], DEFAULT_IGNORED_LAYER_TYPES):
+            # - Ignore identity, dropout and flatten layers
             lyr_indx_next += 1
             continue
         dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
@@ -427,14 +424,15 @@ def build_from_list(
 
 
 def convert_model_to_layer_list(
-    model: Union[nn.Sequential, sinabs.Network]
+    model: Union[nn.Sequential, sinabs.Network],
+    ignore: Union[Type, Tuple[Type, ...]] = (),
 ) -> List[nn.Module]:
-    """
-    Convert a model to a list of layers.
+    """Convert a model to a list of layers.
 
     Parameters
     ----------
     model: nn.Sequential or sinabs.Network
+    ignore: type or tuple of types of modules to be ignored
 
     Returns
     -------
@@ -443,14 +441,14 @@ def convert_model_to_layer_list(
     if isinstance(model, sinabs.Network):
         return convert_model_to_layer_list(model.spiking_model)
     elif isinstance(model, nn.Sequential):
-        layers = [*model]
+        layers = [layer for layer in model if not isinstance(layer, ignore)]
     else:
         raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
     return layers
 
 
 def parse_device_id(device_id: str) -> Tuple[str, int]:
-    """Parse device id into device type and device index
+    """Parse device id into device type and device index.
 
     Args:
         device_id (str): Device id typically of the form `device_type:index`.
@@ -474,7 +472,7 @@ def parse_device_id(device_id: str) -> Tuple[str, int]:
 
 
 def get_device_id(device_type: str, index: int) -> str:
-    """Generate a device id string given a device type and its index
+    """Generate a device id string given a device type and its index.
 
     Args:
         device_type (str): Device type
@@ -487,7 +485,7 @@ def get_device_id(device_type: str, index: int) -> str:
 
 
 def standardize_device_id(device_id: str) -> str:
-    """Standardize device id string
+    """Standardize device id string.
 
     Args:
         device_id (str): Device id string. Could be of the form `device_type` or `device_type:index`
@@ -500,8 +498,9 @@ def standardize_device_id(device_id: str) -> str:
 
 
 def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
-    """Return a copied and extended model with the readout layer extended to 4 times the number of output channels.
-    For Speck 2E and 2F, to get readout with correct output index, we need to extend the final layer to 4 times the number of output.
+    """Return a copied and extended model with the readout layer extended to 4 times the number of
+    output channels. For Speck 2E and 2F, to get readout with correct output index, we need to
+    extend the final layer to 4 times the number of output.
 
     Args:
         model (DynapcnnNetwork): the model to be extended

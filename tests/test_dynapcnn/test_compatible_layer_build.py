@@ -172,3 +172,31 @@ def test_incorrect_model_start():
             layers, 0, in_shape=in_shape, discretize=True, rescale_factor=1
         )
 
+def test_conversion_to_layer_list():
+    from sinabs.backend.dynapcnn.utils import (
+        DEFAULT_IGNORED_LAYER_TYPES as DEF_IGNORE,
+        convert_model_to_layer_list,
+    )
+    
+    model = nn.Sequential(
+        nn.Conv2d(2, 8, 3),
+        sl.IAF(),
+        nn.Conv2d(8, 16, 3),
+        nn.Identity(),
+        nn.AvgPool2d(2),
+        nn.Dropout(0.5),
+        nn.Conv2d(16,16,3),
+        sl.IAF(),
+        nn.Flatten(),
+        nn.Linear(64, 4),
+        sl.IAF(),
+    )
+
+    layer_list = convert_model_to_layer_list(model, ignore=DEF_IGNORE)
+
+    # Should contain all layers except identity, dropbout, and flatten
+    assert len(layer_list) == len(model) - 3
+    model_indices = (0, 1, 2, 4, 6, 7, 9, 10)
+    for layer, idx_model in zip(layer_list, model_indices):
+        assert layer is model[idx_model]
+
