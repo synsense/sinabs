@@ -11,23 +11,20 @@ import sinabs
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
-from .exceptions import InputConfigurationError
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .utils import (
+    DEFAULT_IGNORED_LAYER_TYPES,
     build_from_list,
     convert_model_to_layer_list,
-    DEFAULT_IGNORED_LAYER_TYPES,
     infer_input_shape,
     parse_device_id,
 )
 
 
 class DynapcnnNetwork(nn.Module):
-    """
-    Given a sinabs spiking network, prepare a dynapcnn-compatible network.
-    This can be used to test the network will be equivalent once on DYNAPCNN.
-    This class also provides utilities to make the dynapcnn configuration and
-    upload it to DYNAPCNN.
+    """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
+    test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
+    make the dynapcnn configuration and upload it to DYNAPCNN.
 
     The following operations are done when converting to dynapcnn-compatible:
 
@@ -41,9 +38,9 @@ class DynapcnnNetwork(nn.Module):
     * dropout layers are ignored
     * weights, biases and thresholds are discretized according to dynapcnn requirements
 
-    Note that the model parameters are only ever transferred to the device 
-    on the `to` call, so changing a threshold or weight of a model that 
-    is deployed will have no effect on the model on chip until `to` is called again. 
+    Note that the model parameters are only ever transferred to the device
+    on the `to` call, so changing a threshold or weight of a model that
+    is deployed will have no effect on the model on chip until `to` is called again.
     """
 
     def __init__(
@@ -77,7 +74,9 @@ class DynapcnnNetwork(nn.Module):
         self.chip_layers_ordering = []
 
         self.input_shape = input_shape  # Convert models  to sequential
-        layers = convert_model_to_layer_list(model=snn, ignore=DEFAULT_IGNORED_LAYER_TYPES)
+        layers = convert_model_to_layer_list(
+            model=snn, ignore=DEFAULT_IGNORED_LAYER_TYPES
+        )
         # Check if dvs input is expected
         if dvs_input:
             self.dvs_input = True
@@ -103,10 +102,9 @@ class DynapcnnNetwork(nn.Module):
         config_modifier=None,
         slow_clk_frequency: int = None,
     ):
-        """
-        Note that the model parameters are only ever transferred to the device on the
-        `to` call, so changing a threshold or weight of a model that is deployed will
-        have no effect on the model on chip until `to` is called again.
+        """Note that the model parameters are only ever transferred to the device on the `to` call,
+        so changing a threshold or weight of a model that is deployed will have no effect on the
+        model on chip until `to` is called again.
 
         Parameters
         ----------
@@ -203,8 +201,7 @@ class DynapcnnNetwork(nn.Module):
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ) -> Tuple["SamnaConfiguration", bool]:
-        """
-        Prepare and output the `samna` configuration for this network.
+        """Prepare and output the `samna` configuration for this network.
 
         Parameters
         ----------
@@ -298,8 +295,7 @@ class DynapcnnNetwork(nn.Module):
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
-        """
-        Prepare and output the `samna` DYNAPCNN configuration for this network.
+        """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
         ----------
@@ -373,9 +369,7 @@ class DynapcnnNetwork(nn.Module):
         return is_compatible
 
     def reset_states(self, randomize=False):
-        """
-        Reset the states of the network.
-        """
+        """Reset the states of the network."""
         if hasattr(self, "device") and isinstance(self.device, str):
             device_name, _ = parse_device_id(self.device)
             if device_name in ChipFactory.supported_devices:
@@ -402,8 +396,8 @@ class DynapcnnNetwork(nn.Module):
                 layer.spk_layer.reset_states(randomize=randomize)
 
     def find_chip_layer(self, layer_idx):
-        """
-        Given an index of a layer in the model, find the corresponding cnn core id where it is placed
+        """Given an index of a layer in the model, find the corresponding cnn core id where it is
+        placed.
 
         > Note that the layer index does not include the DVSLayer.
         > For instance your model comprises two layers [DVSLayer, DynapcnnLayer],
@@ -460,15 +454,13 @@ class DynapcnnNetwork(nn.Module):
             return self.sequence(x)
 
     def memory_summary(self):
-        """
-        Get a summary of the network's memory requirements
+        """Get a summary of the network's memory requirements.
 
         Returns
         -------
         dict:
             A dictionary with keys kernel, neuron, bias.
             The values are a list of the corresponding number per layer in the same order as the model
-
         """
         summary = {}
 

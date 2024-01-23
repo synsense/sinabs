@@ -1,13 +1,21 @@
-import torch
+from typing import List, Optional, Tuple
+
 import numpy as np
-from typing import List, Tuple, Optional
-from .utils import parse_device_id
+import torch
+
+from .chips import (
+    DynapcnnConfigBuilder,
+    Speck2BConfigBuilder,
+    Speck2CMiniConfigBuilder,
+    Speck2DMiniConfigBuilder,
+    Speck2EConfigBuilder,
+    Speck2FConfigBuilder,
+)
 from .config_builder import ConfigBuilder
-from .chips import *
+from .utils import parse_device_id
 
 
 class ChipFactory:
-
     supported_devices = {
         "dynapcnndevkit": DynapcnnConfigBuilder,
         "speck2b": Speck2BConfigBuilder,
@@ -17,15 +25,14 @@ class ChipFactory:
         "speck2e": Speck2EConfigBuilder,
         "speck2edevkit": Speck2EConfigBuilder,
         "speck2fmodule": Speck2FConfigBuilder,  # Speck2fModuleDevKit
-        "speck2fdevkit": Speck2FConfigBuilder # Speck2fDevKit
+        "speck2fdevkit": Speck2FConfigBuilder,  # Speck2fDevKit
     }
 
     device_name: str
     device_id: int
 
     def __init__(self, device_str: str):
-        """
-        Factory class to access config builder and other device specific methods
+        """Factory class to access config builder and other device specific methods.
 
         Parameters
         ----------
@@ -46,8 +53,7 @@ class ChipFactory:
         truncate: bool = False,
         delay_factor: float = 0,
     ) -> List:
-        """
-        Convert spike raster to events for DynapcnnNetworks
+        """Convert spike raster to events for DynapcnnNetworks.
 
         Parameters
         ----------
@@ -107,8 +113,8 @@ class ChipFactory:
     def xytp_to_events(
         self, xytp: np.ndarray, layer, reset_timestamps, delay_factor: float = 0
     ) -> List:
-        """
-        Convert series of spikes in a structured array (eg. from aermanager) to events for DynaapcnnDevKit
+        """Convert series of spikes in a structured array (eg. from aermanager) to events for
+        DynaapcnnDevKit.
 
         Parameters
         ----------

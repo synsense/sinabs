@@ -1,11 +1,12 @@
 import pytest
+
 from sinabs.backend.dynapcnn.chip_factory import ChipFactory
 
 devices = ChipFactory.supported_devices
 
+
 def generate_event_list(chip_factory):
     Spike = chip_factory.get_config_builder().get_samna_module().event.Spike
-    
 
     # Note that timestamps are in us, chip factory dt in s
     return [
@@ -17,14 +18,14 @@ def generate_event_list(chip_factory):
         Spike(timestamp=19000, layer=2, x=2, y=1, feature=0),
     ]
 
+
 @pytest.mark.parametrize("device", devices)
 def test_events_to_raster(device):
-
     import torch
 
     factory = ChipFactory(device)
     events = generate_event_list(factory)
-    
+
     dt = 1e-3
     raster = factory.events_to_raster(events, dt=dt)
     expected_raster = torch.zeros((20, 3, 5, 4))
@@ -44,8 +45,8 @@ def test_events_to_raster(device):
     expected_raster[1, 1, 4, 0] = 1
     expected_raster[1, 0, 1, 2] = 1
     assert (raster == expected_raster).all()
-    
-    shape = (4, 6, 6)  
+
+    shape = (4, 6, 6)
     dt = 1e-3
     raster = factory.events_to_raster(events, dt=dt, shape=shape)
     expected_raster = torch.zeros((20, *shape))
@@ -65,3 +66,15 @@ def test_events_to_raster(device):
     expected_raster[1, 1, 4, 0] = 1
     expected_raster[1, 0, 1, 2] = 1
     assert (raster == expected_raster).all()
+
+
+@pytest.mark.parametrize("device", devices)
+def test_raster_to_events(device):
+    import torch
+
+    factory = ChipFactory(device)
+
+    raster = (torch.rand((10, 2, 28, 28)) / 0.25).int()
+    events = factory.raster_to_events(raster, layer=2)
+
+    assert len(events) == raster.sum()
