@@ -1,4 +1,11 @@
 [run]
 source_pkgs = sinabs
-omit = */deprecated/*
+omit = 
+    # Omit any deprecated implementations
+    */deprecated/*
+    # Omit GUI Components
+    sinabs/backend/dynapcnn/dynapcnn_visualizer.py
+    # Omit components that require physical device connectivity
+    sinabs/backend/dynapcnn/io.py
+
 command_line = -m pytest tests/
