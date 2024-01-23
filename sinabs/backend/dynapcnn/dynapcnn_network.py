@@ -142,7 +142,7 @@ class DynapcnnNetwork(nn.Module):
             return super().to(device)
         elif isinstance(device, str):
             device_name, _ = parse_device_id(device)
-            if device_name in ChipFactory.supported_devices:
+            if device_name in ChipFactory.supported_devices:  # pragma: no cover
                 # Generate config
                 config = self.make_config(
                     chip_layers_ordering=chip_layers_ordering,
@@ -370,7 +370,7 @@ class DynapcnnNetwork(nn.Module):
 
     def reset_states(self, randomize=False):
         """Reset the states of the network."""
-        if hasattr(self, "device") and isinstance(self.device, str):
+        if hasattr(self, "device") and isinstance(self.device, str):  # pragma: no cover
             device_name, _ = parse_device_id(self.device)
             if device_name in ChipFactory.supported_devices:
                 config_builder = ChipFactory(self.device).get_config_builder()
@@ -428,7 +428,7 @@ class DynapcnnNetwork(nn.Module):
         if (
             hasattr(self, "device")
             and parse_device_id(self.device)[0] in ChipFactory.supported_devices
-        ):
+        ):  # pragma: no cover
             _ = self.samna_output_buffer.get_events()  # Flush buffer
             # NOTE: The code to start and stop time stamping is device specific
             reset_timestamps(self.device)
