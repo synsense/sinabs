@@ -1,17 +1,18 @@
-"""
-This module is meant to test a real use case. It will include testing of
-the network equivalence, and of the correct output configuration.
+"""This module is meant to test a real use case.
+
+It will include testing of the network equivalence, and of the correct output configuration.
 """
 # import samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
 
-from torch import nn
-import torch
-from sinabs.layers import NeuromorphicReLU
-from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 import pytest
+import torch
+from torch import nn
+
+from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+from sinabs.from_torch import from_model
+from sinabs.layers import NeuromorphicReLU
 
 
 class DynapCnnNetA(nn.Module):
@@ -20,7 +21,9 @@ class DynapCnnNetA(nn.Module):
 
         self.seq = [
             # core 0
-            nn.Conv2d(2, 16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False),
+            nn.Conv2d(
+                2, 16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False
+            ),
             NeuromorphicReLU(quantize=quantize, fanout=144),
             nn.Identity(),
             # core 1
@@ -73,7 +76,9 @@ snn_out = snn(input_data)  # forward pass
 
 snn.reset_states()
 # NOTE: Test top_level_collect fails on dvs_input=False, but works if dvs_input=True
-dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+dynapcnn_net = DynapcnnNetwork(
+    snn, input_shape=input_shape, discretize=False, dvs_input=False
+)
 dynapcnn_out = dynapcnn_net(input_data)
 
 
@@ -100,31 +105,62 @@ def test_was_copied():
 
 
 def test_make_config():
-    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(
+        snn, input_shape=input_shape, discretize=False, dvs_input=False
+    )
     dynapcnn_out = dynapcnn_net(input_data)
 
-    config = dynapcnn_net.make_config(device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
-    config = dynapcnn_net.make_config(device="dynapcnndevkit:0", chip_layers_ordering="auto")
-
+    config = dynapcnn_net.make_config(
+        device="dynapcnndevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
+    )
+    config = dynapcnn_net.make_config(
+        device="dynapcnndevkit:0", chip_layers_ordering="auto"
+    )
 
 
 @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
-    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(
+        snn, input_shape=input_shape, discretize=False, dvs_input=False
+    )
     dynapcnn_out = dynapcnn_net(input_data)
 
-
-    dynapcnn_net.to(device="speck2b:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8])
+    dynapcnn_net.to(
+        device="speck2b:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
+    )
 
     # Close device for safe exit
     from sinabs.backend.dynapcnn import io
+
     io.close_device("speck2b:0")
 
     dynapcnn_net.to(device="speck2b:0")
 
+
 def test_memory_summary():
-    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(
+        snn, input_shape=input_shape, discretize=False, dvs_input=False
+    )
     summary = dynapcnn_net.memory_summary()
 
     print(summary)
 
+
+@pytest.mark.parametrize("out_channels", [1, 2, 12])
+def test_extended_readout_layer(out_channels: int):
+    from sinabs.backend.dynapcnn.utils import extend_readout_layer
+
+    sdc = DynapCnnNetA(n_out=out_channels)
+    snn = from_model(sdc.seq, batch_size=1)
+
+    input_shape = (2, 128, 128)
+
+    # NOTE: Test top_level_collect fails on dvs_input=False, but works if dvs_input=True
+    dynapcnn_net = DynapcnnNetwork(
+        snn, input_shape=input_shape, discretize=False, dvs_input=False
+    )
+    extended_net = extend_readout_layer(dynapcnn_net)
+
+    converted_channels = extended_net.sequence[-1].conv_layer.out_channels
+
+    assert (out_channels - 1) * 4 + 1 == converted_channels
