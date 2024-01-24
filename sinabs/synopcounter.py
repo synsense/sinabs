@@ -102,6 +102,10 @@ class SNNAnalyzer:
     """
 
     def __init__(self, model: torch.nn.Module, dt: float = 1.0):
+        warnings.warn(
+            "SNNAnalyzer is deprecated. Please use `sinabs.hooks` instead",
+            DeprecationWarning,
+        )
         self.model = model
         self.dt = dt
         self.handles = []
@@ -264,6 +268,10 @@ class SynOpCounter:
     """
 
     def __init__(self, modules, sum_activations=True):
+        warnings.warn(
+            "SNNAnalyzer is deprecated. Please use `sinabs.hooks` instead",
+            DeprecationWarning,
+        )
         self.modules = []
         for module in modules:
             if isinstance(module, NeuromorphicReLU) and module.fanout > 0:
