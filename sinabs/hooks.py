@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import reduce
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from torch import nn
 import torch
 from sinabs.layers import SqueezeMixin, StatefulLayer
