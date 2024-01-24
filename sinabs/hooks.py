@@ -296,19 +296,19 @@ class ModelSynopsHook:
     dt: Optional[float] = None
 
     def __call__(self, module: nn.Sequential, input_: Any, output: Any):
-    """ Forward call of the synops model hook.
-    Should not be called manually but only by PyTorch during a forward
-    pass.
-    
-    Parameters
-        module: A torch.nn.Sequential
-        input_: List of inputs to the module.
-        output: The module output.
-    Effect
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and synaptic operations will be calculated and logged
-        for all layers that have a layer-level synops hook registered.
-    """
+        """ Forward call of the synops model hook.
+        Should not be called manually but only by PyTorch during a forward
+        pass.
+        
+        Parameters
+            module: A torch.nn.Sequential
+            input_: List of inputs to the module.
+            output: The module output.
+        Effect
+            If `module` does not already have a `hook_data` attribute, it
+            will be added and synaptic operations will be calculated and logged
+            for all layers that have a layer-level synops hook registered.
+        """
         module_data = get_hook_data_dict(module)
         module_data["total_synops_per_timestep"] = 0.
         module_data["synops_per_timestep"] = dict()
