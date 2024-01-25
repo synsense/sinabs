@@ -11,4 +11,4 @@ FAQs
     device_management
     output_monitoring
     save_hardware_config_as_binary
-
+    ../notebooks/leak_neuron

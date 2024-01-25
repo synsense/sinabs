@@ -43,6 +43,12 @@ nb_execution_excludepatterns = [
     "synops_loss_ann.ipynb",
     "nmnist.ipynb",
     "nmnist_quick_start.ipynb",
+    "leak_neuron.ipynb",
+    "nir_to_speck.ipynb",
+    "visualize_speck_dvs_input.ipynb",
+    "power_monitoring.ipynb",
+    "visualize_spike_count.ipynb",
+    "using_readout_layer.ipynb",
 ]
 # nb_execution_mode = "off"
 

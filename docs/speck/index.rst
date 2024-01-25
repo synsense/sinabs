@@ -1,5 +1,5 @@
-**Getting Started With Speck/DynapCNN**
-=======================================
+**Speck/DynapCNN**
+==================
 
 .. toctree::
     :maxdepth: 2
