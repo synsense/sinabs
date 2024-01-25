@@ -1,5 +1,5 @@
-import os
 import math
+import os
 from itertools import groupby
 from multiprocessing import Process
 from typing import Dict, List, Tuple
@@ -38,8 +38,7 @@ device_map = {}
 def enable_timestamps(
     device_id: str,
 ) -> None:
-    """
-    Disable timestamps of the samna node
+    """Disable timestamps of the samna node.
 
     Args
     ----
@@ -60,8 +59,7 @@ def enable_timestamps(
 def disable_timestamps(
     device_id: str,
 ) -> None:
-    """
-    Disable timestamps of the samna node
+    """Disable timestamps of the samna node.
 
     Args
     ----
@@ -83,8 +81,7 @@ def disable_timestamps(
 def reset_timestamps(
     device_id: str,
 ) -> None:
-    """
-    Disable timestamps of the samna node
+    """Disable timestamps of the samna node.
 
     Args
     ----
@@ -102,36 +99,36 @@ def reset_timestamps(
         device_handle.get_stop_watch().reset()
 
 
-def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
-    """
-    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`.
-
-    Parameters
-    ----------
-
-    event_list: List
-        A list comprising of events from samna API
-
-    layer: int
-        The index of layer for which the data needs to be converted
-
-    Returns
-    -------
-
-    raster: torch.Tensor
-    """
-    evs_filtered = filter(
-        lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list
-    )
-    evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
-    raise NotImplementedError
-    raster = map(rasterize, evs_filtered)
-    return raster
+# def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
+#    """
+#    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`.
+#
+#    Parameters
+#    ----------
+#
+#    event_list: List
+#        A list comprising of events from samna API
+#
+#    layer: int
+#        The index of layer for which the data needs to be converted
+#
+#    Returns
+#    -------
+#
+#    raster: torch.Tensor
+#    """
+#    evs_filtered = filter(
+#        lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list
+#    )
+#    evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
+#    raise NotImplementedError
+#    raster = map(rasterize, evs_filtered)
+#    return raster
 
 
 def events_to_xytp(event_list: List, layer: int) -> np.array:
-    """
-    Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`, `channel`.
+    """Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
+    `channel`.
 
     Parameters
     ----------
@@ -201,8 +198,7 @@ def get_device_map() -> Dict:
 
 
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
-    """
-    Check if a DeviceInfo object is of a given device type `dev_type`
+    """Check if a DeviceInfo object is of a given device type `dev_type`
 
     Args
     ----
@@ -220,8 +216,7 @@ def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
 
 
 def discover_device(device_id: str):
-    """
-    Discover a samna device by device_name:device_id pair
+    """Discover a samna device by device_name:device_id pair.
 
     Args
     ----
@@ -241,8 +236,7 @@ def discover_device(device_id: str):
 
 
 def open_device(device_id: str):
-    """
-    Open device function.
+    """Open device function.
 
     Args
     ----
@@ -268,8 +262,7 @@ def open_device(device_id: str):
 
 
 def close_device(device_id: str):
-    """
-    Close a device by device identifier
+    """Close a device by device identifier.
 
     Args
     ----
@@ -291,8 +284,7 @@ def launch_visualizer(
     height_proportion: float = 0.6,
     disjoint_process: bool = True,
 ):
-    """
-    Launch the samna visualizer in a separate process.
+    """Launch the samna visualizer in a separate process.
 
     NOTE: MacOS users will want to use disjoint_process as True as a GUI process cannot be launched as a subprocess.
 
@@ -321,9 +313,8 @@ def launch_visualizer(
 def calculate_neuron_address(
     x: int, y: int, c: int, feature_map_size: Tuple[int, int, int]
 ) -> int:
-    """
-    Calculate the neuron address on the devkit. This function is designed for ReadNeuronValue event
-    to help the user check the neuron value of the SNN on the devkit.
+    """Calculate the neuron address on the devkit. This function is designed for ReadNeuronValue
+    event to help the user check the neuron value of the SNN on the devkit.
 
     Args
     ----
@@ -341,7 +332,6 @@ def calculate_neuron_address(
     ----
 
     neuron_address: int
-
     """
     # calculate how many bits it takes based on the feature map size
     channel, height, width = feature_map_size
