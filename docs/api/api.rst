@@ -6,5 +6,6 @@
    layers
    activation
    from_torch
+   hooks
    synopcounter
    utils
