@@ -4,6 +4,20 @@ import torch
 import sinabs.layers as sl
 
 
+def test_img2spk():
+    lyr = sl.Img2SpikeLayer(
+        image_shape=(2, 64, 64),
+        tw=10,
+        max_rate=1000,
+    )
+
+    img = torch.rand(2, 64, 64)
+
+    spks = lyr(img)
+
+    assert spks.shape == (10, 2, 64, 64)
+
+
 def test_reconstruct_image():
     # generate random image
     img_shape = (3, 20, 20)

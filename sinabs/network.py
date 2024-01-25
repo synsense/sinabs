@@ -204,49 +204,50 @@ class Network(torch.nn.Module):
         return self.synops_counter.get_synops()
 
 
-def get_parent_module_by_name(
-    root: torch.nn.Module, name: str
-) -> Tuple[torch.nn.Module, str]:
-    """Find a nested Module of a given name inside a Module, and return its parent Module.
-
-    Args:
-        root: The Module inside which to look for the nested Module
-        name: Name of the Module that is being searched for within root. Must
-              contain all parent modules, separated by a `.` , e.g.
-              "root.nested_module1.nested_module2.desired_module"
-    Returns:
-        torch.nn.Module: The Module that contains the Module with the given name. In the example
-        above this would be `nested_module2`.
-        str: The name of the child, without parent modules, e.g. "desired_module"
-    """
-    if "." not in name:
-        if not hasattr(root, name):
-            raise KeyError(f"The requested module `{name}` could not be found.")
-
-        return root, name
-    else:
-        child_name, *rest = name.split(".")
-        child = getattr(root, child_name)
-        return get_parent_module_by_name(child, ".".join(rest))
-
-
-def infer_module_device(module: torch.nn.Module) -> Union[torch.device, None]:
-    """Infere on which device a module is operating by first looking at its parameters and then, if
-    no parameters are found, at its buffers.
-
-    Args:
-        module: The module whose device is to be inferred.
-
-    Returns:
-        torch.device: The device of 'module', or `None` if no device has been found.
-    """
-
-    try:
-        return next(module.parameters()).device
-    except StopIteration:
-        # No parameters, try buffers
-        try:
-            return next(module.buffers()).device
-        except StopIteration:
-            # No buffers, don't infer device
-            return None
+# def get_parent_module_by_name(
+#    root: torch.nn.Module, name: str
+# ) -> Tuple[torch.nn.Module, str]:
+#    """Find a nested Module of a given name inside a Module, and return its parent Module.
+#
+#    Args:
+#        root: The Module inside which to look for the nested Module
+#        name: Name of the Module that is being searched for within root. Must
+#              contain all parent modules, separated by a `.` , e.g.
+#              "root.nested_module1.nested_module2.desired_module"
+#    Returns:
+#        torch.nn.Module: The Module that contains the Module with the given name. In the example
+#        above this would be `nested_module2`.
+#        str: The name of the child, without parent modules, e.g. "desired_module"
+#    """
+#    if "." not in name:
+#        if not hasattr(root, name):
+#            raise KeyError(f"The requested module `{name}` could not be found.")
+#
+#        return root, name
+#    else:
+#        child_name, *rest = name.split(".")
+#        child = getattr(root, child_name)
+#        return get_parent_module_by_name(child, ".".join(rest))
+#
+#
+# def infer_module_device(module: torch.nn.Module) -> Union[torch.device, None]:
+#    """Infere on which device a module is operating by first looking at its parameters and then, if
+#    no parameters are found, at its buffers.
+#
+#    Args:
+#        module: The module whose device is to be inferred.
+#
+#    Returns:
+#        torch.device: The device of 'module', or `None` if no device has been found.
+#    """
+#
+#    try:
+#        return next(module.parameters()).device
+#    except StopIteration:
+#        # No parameters, try buffers
+#        try:
+#            return next(module.buffers()).device
+#        except StopIteration:
+#            # No buffers, don't infer device
+#            return None
+#

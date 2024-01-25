@@ -9,3 +9,5 @@
    hooks
    synopcounter
    utils
+   nir
+   ../speck/api/dynapcnn/dynapcnn

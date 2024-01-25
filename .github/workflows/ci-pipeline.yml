@@ -4,34 +4,26 @@ on: [push, pull_request]
 
 jobs:
   multitest:
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ["3.7", "3.10",]
-        torch-version: ["1.8.1", "1.12.0",]
+        os: [ubuntu-latest]
+        python-version: ["3.8", "3.10",]
+        torch-version: ["1.12.0",]
         exclude:
           - os: ubuntu-latest
             python-version: "3.10"
             torch-version: "1.8.1"
-          - os: windows-latest
-            python-version: "3.10"
-            torch-version: "1.8.1"
-          - os: ubuntu-latest
-            python-version: "3.7"
-            torch-version: "1.12.0"
-          - os: windows-latest
-            python-version: "3.7"
-            torch-version: "1.12.0"  
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install requirements
         run: |
+          sudo apt-get update && sudo apt-get -y install libglu1-mesa
           pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r tests/requirements.txt
@@ -45,13 +37,14 @@ jobs:
     needs: multitest
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Setup Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Generate coverage report
         run: |
+          sudo apt-get update && sudo apt-get -y install libglu1-mesa
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install -r tests/requirements.txt
           pip install .
@@ -68,11 +61,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Install dependencies
         run: |
+          sudo apt-get update && sudo apt-get -y install libglu1-mesa
           pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r docs/requirements.txt
@@ -89,7 +83,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Set up Python 3.8
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
       - name: Install build packages

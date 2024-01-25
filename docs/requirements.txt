@@ -8,3 +8,7 @@ torchvision
 ipywidgets
 matplotlib
 seaborn
+pandoc
+tqdm
+torchvision
+
