@@ -42,6 +42,7 @@ nb_execution_excludepatterns = [
     "weight_transfer_mnist.ipynb",
     "synops_loss_ann.ipynb",
     "nmnist.ipynb",
+    "nmnist_quick_start.ipynb",
 ]
 # nb_execution_mode = "off"
 
