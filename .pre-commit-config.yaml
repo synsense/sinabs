@@ -15,4 +15,4 @@ repos:
     rev: v1.5.1
     hooks:
       - id: docformatter
-        args: [--in-place, --wrap-summaries=99, --wrap-descriptions=99]
+        args: [--in-place, --black, --wrap-summaries=99, --wrap-descriptions=99]
