@@ -1,18 +1,18 @@
-import samna
 import time
-
 from abc import ABC, abstractmethod
 from typing import List
-from .mapping import LayerConstraints, get_valid_mapping
+
+import samna
+
 from .dvs_layer import DVSLayer
+from .mapping import LayerConstraints, get_valid_mapping
+
 
 class ConfigBuilder(ABC):
-
     @classmethod
     @abstractmethod
     def get_samna_module(self):
-        """
-        Get the saman parent module that hosts all the appropriate sub-modules and classes
+        """Get the saman parent module that hosts all the appropriate sub-modules and classes.
 
         Returns
         -------
@@ -31,8 +31,7 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
-        """
-        Build the configuration given a model
+        """Build the configuration given a model.
 
         Parameters
         ----------
@@ -49,8 +48,7 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def get_constraints(cls) -> List[LayerConstraints]:
-        """
-        Returns the layer constraints of a the given device.
+        """Returns the layer constraints of a the given device.
 
         Returns
         -------
@@ -60,14 +58,11 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def monitor_layers(cls, config, layers: List[int]):
-        """
-        Enable the monitor for a given set of layers in the config object
-        """
+        """Enable the monitor for a given set of layers in the config object."""
 
     @classmethod
     def get_valid_mapping(cls, model: "DynapcnnNetwork") -> List[int]:
-        """
-        Find a valid set of layers for a given model
+        """Find a valid set of layers for a given model.
 
         Parameters
         ----------
@@ -88,15 +83,12 @@ class ConfigBuilder(ABC):
         if isinstance(model.sequence[0], DVSLayer):
             num_dynapcnn_cores -= 1
         # apply the mapping
-        chip_layers_ordering = [
-            mapping[i] for i in range(num_dynapcnn_cores)
-        ]
+        chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
         return chip_layers_ordering
 
     @classmethod
     def validate_configuration(cls, config) -> bool:
-        """
-        Check if a given configuration is valid
+        """Check if a given configuration is valid.
 
         Parameters
         ----------
@@ -115,25 +107,26 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def get_input_buffer(cls):
-        """
-        Initialize and return the appropriate output buffer object
-        Note that this just the buffer object. This does not actually connect the buffer object to the graph.
-        (It is needed as of samna 0.21.0)
-        """
-    
-    @classmethod
-    @abstractmethod
-    def get_output_buffer(cls):
-        """
-        Initialize and return the appropriate output buffer object
-        Note that this just the buffer object. This does not actually connect the buffer object to the graph.
+        """Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph. (It is needed as of samna
+        0.21.0)
         """
 
     @classmethod
     @abstractmethod
-    def reset_states(cls, config,randomize=False):
+    def get_output_buffer(cls):
+        """Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph.
         """
-        Randomize or reset the neuron states
+
+    @classmethod
+    @abstractmethod
+    def reset_states(cls, config, randomize=False):
+        """Randomize or reset the neuron states.
 
         Parameters
         ----------
@@ -143,8 +136,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     def set_all_v_mem_to_zeros(cls, samna_device, layer_id: int) -> None:
-        """
-        Reset all memory states to zeros.
+        """Reset all memory states to zeros.
 
         Parameters
         ----------
@@ -162,12 +154,11 @@ class ConfigBuilder(ABC):
             event.layer = layer_id
             event.neuron_state = 0
             events.append(event)
-        
-        temporary_source_node = cls.get_input_buffer() 
-        temporary_graph = samna.graph.sequential([
-            temporary_source_node,
-            samna_device.get_model().get_sink_node()
-        ])
+
+        temporary_source_node = cls.get_input_buffer()
+        temporary_graph = samna.graph.sequential(
+            [temporary_source_node, samna_device.get_model().get_sink_node()]
+        )
         temporary_graph.start()
         temporary_source_node.write(events)
         temporary_graph.stop()

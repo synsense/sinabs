@@ -1,7 +1,8 @@
+import random
 from typing import Dict, List, Optional, Tuple
 
 import torch
-import random
+
 
 class StatefulLayer(torch.nn.Module):
     """A base class that instantiates buffers/states which update at every time step and provides
@@ -18,8 +19,8 @@ class StatefulLayer(torch.nn.Module):
             self.register_buffer(state_name, torch.zeros((0)))
 
     def zero_grad(self, set_to_none: bool = False) -> None:
-        r"""
-        Zero's the gradients for buffers/state along with the parameters.
+        r"""Zero's the gradients for buffers/state along with the parameters.
+
         See :meth:`torch.nn.Module.zero_grad` for details
         """
         # Zero grad parameters
@@ -53,21 +54,25 @@ class StatefulLayer(torch.nn.Module):
             if buff.shape != shape:
                 return False
         return True
-    
+
     def handle_state_batch_size_mismatch(self, new_batch_size: int):
-        """Handles the state mismatch based on the new batch size by randomly selecting 
+        """Handles the state mismatch based on the new batch size by randomly selecting
         `new_batch_size` number of states from the previous batch_size in a repated way.
+
         Args:
             new_batch_size: int
                 New batch size.
         """
         for name, buffer in self.named_buffers():
-            indices = torch.randint(low=0, high=buffer.shape[0], size=(new_batch_size,)).to(buffer.device)
-            new_buffer = torch.index_select(buffer, 0, indices) 
+            indices = torch.randint(
+                low=0, high=buffer.shape[0], size=(new_batch_size,)
+            ).to(buffer.device)
+            new_buffer = torch.index_select(buffer, 0, indices)
             self.register_buffer(name, new_buffer)
-    
+
     def has_trailing_dimension(self, trailing_dim: Tuple[int, int, int]) -> bool:
         """Checks if the trailing dimension (ch, y, x) matches the given.
+
         Args:
             trailing_dim: Tuple[int, int, int]
                 Three tuple in (channel, y, x) dimensions.

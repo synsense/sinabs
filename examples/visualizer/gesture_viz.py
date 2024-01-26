@@ -3,11 +3,13 @@ import os
 import torch
 import torch.nn as nn
 
-from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
+from sinabs.from_torch import from_model
 
-weights_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dvs_gesture_params.pt")
+weights_path = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "dvs_gesture_params.pt"
+)
 
 ann = nn.Sequential(
     nn.Conv2d(2, 16, kernel_size=2, stride=2, bias=False),
@@ -44,7 +46,9 @@ ann = nn.Sequential(
     # core 8
     nn.Linear(128, 11, bias=False),
 )
-load_result = ann.load_state_dict(torch.load(weights_path, map_location=torch.device('cpu')), strict=False)
+load_result = ann.load_state_dict(
+    torch.load(weights_path, map_location=torch.device("cpu")), strict=False
+)
 print(load_result)
 sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 
@@ -53,17 +57,17 @@ hardware_compatible_model = DynapcnnNetwork(
     sinabs_model.spiking_model.cpu(),
     dvs_input=True,
     discretize=True,
-    input_shape=input_shape
+    input_shape=input_shape,
 )
 
 hardware_compatible_model.to(
     device="speck2fmodule",
     monitor_layers=["dvs", -1],  # Last layer
-    chip_layers_ordering="auto"
+    chip_layers_ordering="auto",
 )
 
 icons_folder_path = str(os.path.abspath(__file__)).split("/")[:-1]
-icons_folder_path = os.path.join("/", os.path.join(*icons_folder_path),"icons")
+icons_folder_path = os.path.join("/", os.path.join(*icons_folder_path), "icons")
 
 visualizer = DynapcnnVisualizer(
     window_scale=(4, 8),
@@ -71,6 +75,8 @@ visualizer = DynapcnnVisualizer(
     add_power_monitor_plot=True,
     add_readout_plot=True,
     spike_collection_interval=500,
-    readout_images=sorted([os.path.join(icons_folder_path, f) for f in os.listdir(icons_folder_path)])
+    readout_images=sorted(
+        [os.path.join(icons_folder_path, f) for f in os.listdir(icons_folder_path)]
+    ),
 )
 visualizer.connect(hardware_compatible_model)

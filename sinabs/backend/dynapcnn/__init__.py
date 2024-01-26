@@ -1,2 +1,5 @@
-from .dynapcnn_network import DynapcnnNetwork, DynapcnnCompatibleNetwork # second one for compatibility purposes
+from .dynapcnn_network import (  # second one for compatibility purposes
+    DynapcnnCompatibleNetwork,
+    DynapcnnNetwork,
+)
 from .dynapcnn_visualizer import DynapcnnVisualizer
