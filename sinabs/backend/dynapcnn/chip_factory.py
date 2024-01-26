@@ -165,11 +165,15 @@ class ChipFactory:
         return events
 
     def events_to_raster(
-        self, events: List, dt: float = 1e-3, shape: Optional[Tuple] = None
+        self,
+        events: List,
+        dt: float = 1e-3,
+        shape: Optional[Tuple] = None,
+        align_time_with_first_event: bool = True,
     ) -> torch.Tensor:
         """
         Convert events from DynapcnnNetworks to spike raster
-        Note: Timestamp of first event will be considered as start time.
+        Note: By default, timestamp of first event will be considered as start time.
 
         Parameters
         ----------
@@ -181,6 +185,8 @@ class ChipFactory:
         shape: Optional[Tuple]
             Shape of the raster to be produced, excluding the time dimension. (Channel, Height, Width)
             If this is not specified, the shape is inferred based on the max values found in the events.
+        align_time_with_first_event: bool
+            If True (default), event timestamps will be shifted such that first event is at t=0.
 
         Returns
         -------
@@ -190,7 +196,8 @@ class ChipFactory:
         # Timestamps are in microseconds
         timestamps = [event.timestamp for event in events]
         start_timestamp = min(timestamps)
-        timestamps = [ts - start_timestamp for ts in timestamps]
+        if align_time_with_first_event:
+            timestamps = [ts - start_timestamp for ts in timestamps]
         xs = [event.x for event in events]
         ys = [event.y for event in events]
         features = [event.feature for event in events]
