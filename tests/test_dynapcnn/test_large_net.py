@@ -2,6 +2,7 @@
 
 It will include testing of the network equivalence, and of the correct output configuration.
 """
+
 # import samna
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch

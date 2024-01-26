@@ -85,9 +85,11 @@ class ALIF(StatefulLayer):
         record_states: bool = False,
     ):
         super().__init__(
-            state_names=["v_mem", "i_syn", "b", "spike_threshold"]
-            if tau_syn is not None
-            else ["v_mem", "b", "spike_threshold"]
+            state_names=(
+                ["v_mem", "i_syn", "b", "spike_threshold"]
+                if tau_syn is not None
+                else ["v_mem", "b", "spike_threshold"]
+            )
         )
         if train_alphas:
             self.alpha_mem = nn.Parameter(torch.exp(-1 / torch.as_tensor(tau_mem)))
@@ -187,15 +189,21 @@ class ALIF(StatefulLayer):
     def _param_dict(self) -> dict:
         param_dict = super()._param_dict
         param_dict.update(
-            tau_mem=-1 / torch.log(self.alpha_mem.detach_())
-            if self.train_alphas
-            else self.tau_mem,
-            tau_adapt=-1 / torch.log(self.alpha_adapt.detach_())
-            if self.train_alphas
-            else self.tau_adapt,
-            tau_syn=-1 / torch.log(self.alpha_syn.detach_())
-            if self.train_alphas
-            else self.tau_syn,
+            tau_mem=(
+                -1 / torch.log(self.alpha_mem.detach_())
+                if self.train_alphas
+                else self.tau_mem
+            ),
+            tau_adapt=(
+                -1 / torch.log(self.alpha_adapt.detach_())
+                if self.train_alphas
+                else self.tau_adapt
+            ),
+            tau_syn=(
+                -1 / torch.log(self.alpha_syn.detach_())
+                if self.train_alphas
+                else self.tau_syn
+            ),
             adapt_scale=self.adapt_scale,
             spike_threshold=self.b0,
             spike_fn=self.spike_fn,

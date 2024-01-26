@@ -189,9 +189,11 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
-            bias=module.bias.detach()
-            if module.bias
-            else torch.zeros((module.weight.shape[0])),
+            bias=(
+                module.bias.detach()
+                if module.bias
+                else torch.zeros((module.weight.shape[0]))
+            ),
         )
     elif isinstance(module, torch.nn.Conv2d):
         return nir.Conv2d(
@@ -201,9 +203,11 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             padding=module.padding,
             dilation=module.dilation,
             groups=module.groups,
-            bias=module.bias.detach()
-            if isinstance(module.bias, torch.Tensor)
-            else torch.zeros((module.weight.shape[0])),
+            bias=(
+                module.bias.detach()
+                if isinstance(module.bias, torch.Tensor)
+                else torch.zeros((module.weight.shape[0]))
+            ),
         )
     elif isinstance(module, sl.SumPool2d):
         return nir.SumPool2d(

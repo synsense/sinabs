@@ -1,4 +1,5 @@
 """This should test cases of dynapcnn compatible networks with dvs input."""
+
 from itertools import product
 from typing import Optional, Tuple
 

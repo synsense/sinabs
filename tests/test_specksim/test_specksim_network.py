@@ -29,7 +29,7 @@ def util_create_all_ones_snn(spike_threshold: float = 1.0):
         nn.AvgPool2d(kernel_size=(2, 2), stride=(2, 2)),
         # 2, 2
         nn.Flatten(),
-        nn.Linear(in_features=16, out_features=4, bias=False)
+        nn.Linear(in_features=16, out_features=4, bias=False),
         # 4
     )
     # set weights to 1

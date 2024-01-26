@@ -163,16 +163,21 @@ class SNNAnalyzer:
                 spike_dict["spiking"][name] = {
                     "n_neurons": module.n_neurons,
                     "input": module.input_,
-                    "output": module.acc_output / module.n_batches
-                    if average
-                    else module.output_,
-                    "firing_rate": module.acc_output.mean() / module.n_batches
-                    if average
-                    else module.output_.mean(),
-                    "firing_rate_per_neuron": module.acc_output.mean((0, 1))
-                    / module.n_batches
-                    if average
-                    else module.output_.mean((0, 1)),
+                    "output": (
+                        module.acc_output / module.n_batches
+                        if average
+                        else module.output_
+                    ),
+                    "firing_rate": (
+                        module.acc_output.mean() / module.n_batches
+                        if average
+                        else module.output_.mean()
+                    ),
+                    "firing_rate_per_neuron": (
+                        module.acc_output.mean((0, 1)) / module.n_batches
+                        if average
+                        else module.output_.mean((0, 1))
+                    ),
                 }
             if isinstance(module, torch.nn.AvgPool2d):
                 # Average pooling scales down the number of counted synops due to the averaging.

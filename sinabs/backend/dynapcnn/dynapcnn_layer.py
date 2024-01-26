@@ -157,9 +157,9 @@ class DynapcnnLayer(nn.Module):
 
     def summary(self) -> dict:
         return {
-            "pool": None
-            if self.pool_layer is None
-            else list(self.pool_layer.kernel_size),
+            "pool": (
+                None if self.pool_layer is None else list(self.pool_layer.kernel_size)
+            ),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self.get_neuron_shape(),
         }
