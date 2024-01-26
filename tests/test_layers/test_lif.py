@@ -291,6 +291,7 @@ def test_lif_firing_rate():
     assert layer.firing_rate > 0
     assert layer.firing_rate == spikes.sum() / (batch_size * time_steps * n_neurons)
 
+
 @pytest.mark.parametrize("tau_syn", [20.0, None])
 def test_lif_norm_input_with_synapse(tau_syn):
     batch_size, time_steps, n_neurons = 5, 10, 5

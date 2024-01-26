@@ -1,19 +1,20 @@
 import pytest
 import torch.nn as nn
-from sinabs.from_torch import from_model
+
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from sinabs.backend.dynapcnn.mapping import make_flow_graph, edmonds, recover_mapping
+from sinabs.backend.dynapcnn.mapping import edmonds, make_flow_graph, recover_mapping
+from sinabs.from_torch import from_model
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Conv2d(20, 32, 5, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Conv2d(32, 128, 3, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Flatten(),
     nn.Linear(128, 500, bias=False),
     nn.ReLU(),

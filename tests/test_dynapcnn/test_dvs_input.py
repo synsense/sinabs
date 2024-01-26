@@ -1,7 +1,12 @@
-"""
-This should test cases of dynapcnn compatible networks with dvs input
-"""
+"""This should test cases of dynapcnn compatible networks with dvs input."""
+from itertools import product
+from typing import Optional, Tuple
+
+import numpy as np
+import pytest
 import samna
+import torch
+from torch import nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
@@ -9,20 +14,13 @@ from sinabs.backend.dynapcnn.exceptions import *
 from sinabs.from_torch import from_model
 from sinabs.layers import IAF
 
-import torch
-from torch import nn
-import numpy as np
-
-from typing import Optional, Tuple
-import pytest
-from itertools import product
-
 INPUT_SHAPE = (2, 16, 16)
 input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
 
 
 def combine_n_binary_choices(n):
     return tuple(product(*[(True, False) for __ in range(n)]))
+
 
 def verify_dvs_config(
     config,
@@ -107,7 +105,7 @@ def test_dvs_no_pooling(dvs_input):
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
     # If there is no pooling, a DVSLayer should only be added if `dvs_input` is True
-    assert (isinstance(spn.sequence[0], DVSLayer) == dvs_input)
+    assert isinstance(spn.sequence[0], DVSLayer) == dvs_input
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
@@ -123,8 +121,8 @@ def test_dvs_no_pooling(dvs_input):
     target_layers = [5]
     config = spn.make_config(chip_layers_ordering=target_layers)
     verify_dvs_config(
-        config, 
-        input_shape=INPUT_SHAPE, 
+        config,
+        input_shape=INPUT_SHAPE,
         destination=target_layers[0] if dvs_input else None,
         dvs_input=dvs_input,
     )
@@ -161,7 +159,7 @@ def test_dvs_pooling_2d(dvs_input):
         input_shape=INPUT_SHAPE,
         destination=target_layers[0],
         dvs_input=dvs_input,
-        pooling=(2,4),
+        pooling=(2, 4),
     )
 
 
@@ -194,9 +192,9 @@ class DvsNet(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
-@pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
-def test_dvs_mirroring(flip_x, flip_y,   swap_xy, dvs_input):
 
+@pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
+def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
     # - DYNAP-CNN layer arrangement
     target_layers = [5]
 
@@ -229,7 +227,6 @@ def test_dvs_mirroring(flip_x, flip_y,   swap_xy, dvs_input):
 
 @pytest.mark.parametrize("dvs_input,merge_polarities", combine_n_binary_choices(2))
 def test_dvs_crop(dvs_input, merge_polarities):
-
     # - DYNAP-CNN layer arrangement
     target_layers = [5]
     crop = ((20, 62), (12, 32))
@@ -238,7 +235,13 @@ def test_dvs_crop(dvs_input, merge_polarities):
     shape = (1, 128, 128) if merge_polarities else (2, 128, 128)
     input_data = torch.rand(1, *shape, requires_grad=False) * 100.0
     # - ANN and SNN generation
-    ann = DvsNet(dvs_input=dvs_input, crop=crop, pool=pool, input_shape=shape, merge_polarities=merge_polarities)
+    ann = DvsNet(
+        dvs_input=dvs_input,
+        crop=crop,
+        pool=pool,
+        input_shape=shape,
+        merge_polarities=merge_polarities,
+    )
     snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
@@ -267,24 +270,29 @@ def test_dvs_crop(dvs_input, merge_polarities):
 
 @pytest.mark.parametrize("dvs_input,pool", combine_n_binary_choices(2))
 def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
-    from sinabs.layers import IAFSqueeze, SumPool2d
     from torch import nn
-    from sinabs.backend.dynapcnn import DynapcnnNetwork
 
-    layer_list = [SumPool2d(kernel_size=(1,1))] if pool else []
+    from sinabs.backend.dynapcnn import DynapcnnNetwork
+    from sinabs.layers import IAFSqueeze, SumPool2d
+
+    layer_list = [SumPool2d(kernel_size=(1, 1))] if pool else []
     layer_list += [
-        nn.Conv2d(in_channels=1,
-                  out_channels=2,
-                  kernel_size=(16, 16),
-                  stride=(2, 2),
-                  padding=(0, 0),
-                  bias=False),
+        nn.Conv2d(
+            in_channels=1,
+            out_channels=2,
+            kernel_size=(16, 16),
+            stride=(2, 2),
+            padding=(0, 0),
+            bias=False,
+        ),
         IAFSqueeze(min_v_mem=-1.0, batch_size=1),
     ]
 
     snn = nn.Sequential(*layer_list)
 
-    dynapcnn = DynapcnnNetwork(snn=snn, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True)
+    dynapcnn = DynapcnnNetwork(
+        snn=snn, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True
+    )
     samna_cfg = dynapcnn.make_config(device="speck2edevkit")
 
     assert samna_cfg.dvs_layer.pass_sensor_events == dvs_input

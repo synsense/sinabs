@@ -1,5 +1,6 @@
 import pytest
 import torch.nn as nn
+
 import sinabs.layers as sl
 
 
@@ -10,7 +11,7 @@ def test_construct_pooling_from_1_layer():
 
     pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, 0)
 
-    assert pool_lyr.kernel_size == (2,2)
+    assert pool_lyr.kernel_size == (2, 2)
     assert layer_idx_next == 1
     assert rescale_factor == 1
 
@@ -22,7 +23,7 @@ def test_construct_pooling_from_2_layers():
 
     pool_lyr, layer_idx_next, rescale_factor = construct_next_pooling_layer(layers, 0)
 
-    assert pool_lyr.kernel_size == (6,6)
+    assert pool_lyr.kernel_size == (6, 6)
     assert layer_idx_next == 2
     assert rescale_factor == 9
 
@@ -31,7 +32,7 @@ def test_non_square_pooling_kernel():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
         sl.IAF(),
-        sl.SumPool2d((2, 3))
+        sl.SumPool2d((2, 3)),
     ]
 
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
@@ -46,7 +47,7 @@ def test_construct_dynapcnn_layer_from_3_layers():
     layers = [
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
         sl.IAF(),
-        sl.SumPool2d(2)
+        sl.SumPool2d(2),
     ]
 
     from sinabs.backend.dynapcnn.utils import construct_next_dynapcnn_layer
@@ -117,14 +118,12 @@ def test_build_from_list_dynapcnn_layers_only():
         sl.IAF(),
         nn.Flatten(),
         nn.Linear(8, 5),
-        sl.IAF()
+        sl.IAF(),
     ]
 
     from sinabs.backend.dynapcnn.utils import build_from_list
 
-    chip_model = build_from_list(
-        layers, in_shape=in_shape, discretize=True
-    )
+    chip_model = build_from_list(layers, in_shape=in_shape, discretize=True)
 
     assert len(chip_model) == 4
     assert chip_model[0].get_output_shape() == (8, 6, 6)
@@ -152,9 +151,7 @@ def test_missing_spiking_layer():
     from sinabs.backend.dynapcnn.utils import build_from_list
 
     with pytest.raises(MissingLayer):
-        build_from_list(
-            layers, in_shape=in_shape, discretize=True
-        )
+        build_from_list(layers, in_shape=in_shape, discretize=True)
 
 
 def test_incorrect_model_start():
@@ -172,12 +169,11 @@ def test_incorrect_model_start():
             layers, 0, in_shape=in_shape, discretize=True, rescale_factor=1
         )
 
+
 def test_conversion_to_layer_list():
-    from sinabs.backend.dynapcnn.utils import (
-        DEFAULT_IGNORED_LAYER_TYPES as DEF_IGNORE,
-        convert_model_to_layer_list,
-    )
-    
+    from sinabs.backend.dynapcnn.utils import DEFAULT_IGNORED_LAYER_TYPES as DEF_IGNORE
+    from sinabs.backend.dynapcnn.utils import convert_model_to_layer_list
+
     model = nn.Sequential(
         nn.Conv2d(2, 8, 3),
         sl.IAF(),
@@ -185,7 +181,7 @@ def test_conversion_to_layer_list():
         nn.Identity(),
         nn.AvgPool2d(2),
         nn.Dropout(0.5),
-        nn.Conv2d(16,16,3),
+        nn.Conv2d(16, 16, 3),
         sl.IAF(),
         nn.Flatten(),
         nn.Linear(64, 4),
@@ -199,4 +195,3 @@ def test_conversion_to_layer_list():
     model_indices = (0, 1, 2, 4, 6, 7, 9, 10)
     for layer, idx_model in zip(layer_list, model_indices):
         assert layer is model[idx_model]
-

@@ -9,10 +9,10 @@ import sinabs.layers as sl
 from sinabs import hooks
 from sinabs.layers import IAFSqueeze
 
-
 TEST_DIR = Path(__file__).resolve().parent
 INPUT_RESULT_DIR = TEST_DIR / "inputs_and_results" / "hooks"
 MODEL_DIR = TEST_DIR / "models"
+
 
 def test_linear_layer_synops_hook():
     model = nn.Linear(3, 5)
@@ -25,10 +25,12 @@ def test_linear_layer_synops_hook():
     # (3 + 5) spikes * 5 channels, over 2 samples
     assert model.hook_data["layer_synops_per_timestep"] == 20
 
+
 kernel_sizes = (2, 3, 5)
 strides = (1, 2)
 paddings = (0, 1, 2)
 combinations = product(kernel_sizes, strides, paddings)
+
 
 @pytest.mark.parametrize("kernel_size,stride,padding", combinations)
 def test_conv_layer_synops_hook(kernel_size, stride, padding):
@@ -41,7 +43,10 @@ def test_conv_layer_synops_hook(kernel_size, stride, padding):
     correct = correct_synops[(kernel_size, stride, padding)]
     assert model.hook_data["layer_synops_per_timestep"] == correct
 
+
 dts = (None, 1, 0.1, 2)
+
+
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook(dt):
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
@@ -60,6 +65,7 @@ def test_model_synops_hook(dt):
     assert model.hook_data["total_synops_per_timestep"] == synops_total
     if dt is not None:
         assert model.hook_data["total_synops_per_second"] == synops_total / dt
+
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 @pytest.mark.parametrize("dt", dts)
@@ -81,12 +87,11 @@ def test_model_synops_hook_cuda(dt):
     if dt is not None:
         assert model.hook_data["total_synops_per_second"] == synops_total / dt
 
+
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth")
-    correct_firing_rates = torch.load(
-        INPUT_RESULT_DIR / "firing_rates.pth"
-    )
+    correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
             layer.register_forward_hook(hooks.firing_rate_hook)
@@ -94,27 +99,23 @@ def test_firing_rate_hook():
     for idx, firing_rate in correct_firing_rates.items():
         assert model[idx].hook_data["firing_rate"] == firing_rate
 
+
 def test_firing_rate_per_neuron_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth")
-    correct_firing_rates = torch.load(
-        INPUT_RESULT_DIR / "firing_rates_per_neuron.pth"
-    )
+    correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates_per_neuron.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
             layer.register_forward_hook(hooks.firing_rate_per_neuron_hook)
     model(inp)
     for idx, firing_rate in correct_firing_rates.items():
-        assert (
-            model[idx].hook_data["firing_rate_per_neuron"] == firing_rate
-        ).all()
+        assert (model[idx].hook_data["firing_rate_per_neuron"] == firing_rate).all()
+
 
 def test_input_diff_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth")
-    correct_values = torch.load(
-        INPUT_RESULT_DIR / "input_diffs.pth"
-    )
+    correct_values = torch.load(INPUT_RESULT_DIR / "input_diffs.pth")
     for layer in model:
         if isinstance(layer, (nn.Conv2d, nn.Linear)):
             layer.register_forward_hook(hooks.input_diff_hook)

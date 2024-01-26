@@ -1,16 +1,16 @@
+import pytest
 import samna
-
-from sinabs.backend.dynapcnn import DynapcnnNetwork
 import torch
 from torch import nn
+
+from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.from_torch import from_model
-from sinabs.layers.iaf import IAFSqueeze
 from sinabs.layers import SumPool2d
-import pytest
+from sinabs.layers.iaf import IAFSqueeze
 
 torch.manual_seed(0)
 input_shape = (2, 16, 16)
-input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
+input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.0
 
 
 # --- UTILITIES --- #
@@ -27,7 +27,9 @@ def networks_equal_output(input_data, snn):
     reset_states(snn)
 
     spn = DynapcnnNetwork(
-        snn, input_shape=input_data.shape[1:], discretize=False,
+        snn,
+        input_shape=input_data.shape[1:],
+        discretize=False,
         dvs_input=True,
     )
     print(spn)
@@ -62,9 +64,7 @@ def test_with_class():
     snn_out = snn(input_data).squeeze()  # forward pass
 
     snn.reset_states()
-    spn = DynapcnnNetwork(
-        snn, input_shape=input_data.shape[1:], discretize=False
-    )
+    spn = DynapcnnNetwork(snn, input_shape=input_data.shape[1:], discretize=False)
     spn_out = spn(input_data).squeeze()
 
     assert torch.equal(snn_out, spn_out)
@@ -111,7 +111,7 @@ def test_pooling_consolidation():
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.AvgPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        IAFSqueeze(batch_size=1)
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -124,7 +124,7 @@ def test_sumpooling_consolidation():
         SumPool2d(kernel_size=2, stride=2),
         SumPool2d(kernel_size=2, stride=2),
         nn.Conv2d(4, 2, kernel_size=1, stride=1),
-        IAFSqueeze(batch_size=1)
+        IAFSqueeze(batch_size=1),
     )
 
     networks_equal_output(input_data, seq)
@@ -134,7 +134,7 @@ def test_different_xy_input():
     torch.manual_seed(0)
 
     input_shape = (2, 16, 32)
-    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
+    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.0
 
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2),
@@ -151,7 +151,7 @@ def test_bias_nobias():
     torch.manual_seed(0)
 
     input_shape = (2, 16, 32)
-    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.
+    input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.0
 
     seq = nn.Sequential(
         nn.Conv2d(2, 4, kernel_size=2, stride=2, bias=True),
@@ -175,9 +175,9 @@ def test_batchnorm_after_conv():
     )
 
     # setting batchnorm parameters, otherwise it's just identity
-    seq[-2].running_mean.data = torch.tensor([.2, -.5])
+    seq[-2].running_mean.data = torch.tensor([0.2, -0.5])
     seq[-2].running_var.data = torch.tensor([1.1, 0.7])
-    seq[-2].weight.data = torch.tensor([-.02, -.5])
+    seq[-2].weight.data = torch.tensor([-0.02, -0.5])
     seq[-2].bias.data = torch.tensor([-0.2, 0.15])
 
     networks_equal_output(input_data, seq)
@@ -202,31 +202,25 @@ def test_no_spk_ending():
     )
 
     from sinabs.backend.dynapcnn.exceptions import MissingLayer
+
     with pytest.raises(MissingLayer):
-        DynapcnnNetwork(
-            seq, input_shape=input_data.shape[1:], discretize=False
-        )
+        DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 
 def test_no_spk_middle():
     seq = nn.Sequential(
-        nn.Flatten(),
-        nn.Linear(512, 10),
-        nn.Linear(10, 2),
-        IAFSqueeze(batch_size=1)
+        nn.Flatten(), nn.Linear(512, 10), nn.Linear(10, 2), IAFSqueeze(batch_size=1)
     )
 
     with pytest.raises(TypeError):
-        DynapcnnNetwork(
-            seq, input_shape=input_data.shape[1:], discretize=False
-        )
+        DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 
 def test_no_conv_layers():
     seq = nn.Sequential()
 
-    from sinabs.backend.dynapcnn.utils import infer_input_shape
     from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
+    from sinabs.backend.dynapcnn.utils import infer_input_shape
 
     net = DynapcnnNetwork(snn=seq, input_shape=(2, 10, 10), dvs_input=True)
 

@@ -1,19 +1,20 @@
 import pytest
 import torch.nn as nn
-from sinabs.from_torch import from_model
+
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from sinabs.backend.dynapcnn.mapping import make_flow_graph, edmonds, recover_mapping
+from sinabs.backend.dynapcnn.mapping import edmonds, make_flow_graph, recover_mapping
+from sinabs.from_torch import from_model
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Conv2d(20, 32, 5, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Conv2d(32, 128, 3, 1, bias=False),
     nn.ReLU(),
-    nn.AvgPool2d(2,2),
+    nn.AvgPool2d(2, 2),
     nn.Flatten(),
     nn.Linear(128, 500, bias=False),
     nn.ReLU(),
@@ -36,10 +37,8 @@ def test_auto_mapping():
         "speck2btiny",
         "speck2e",
         "speck2edevkit",
-        "speck2fmodule"
-
+        "speck2fmodule",
     ]:
-
         config = hardware_compatible_model.make_config("auto", device=devkit)
 
 
@@ -47,6 +46,6 @@ def test_auto_mapping_should_not_work():
     layer_mapping = [[1, 2], [1, 2], [1, 2]]
 
     graph = make_flow_graph(layer_mapping)
-    new_graph = edmonds(graph, 0, len(graph)-1)
+    new_graph = edmonds(graph, 0, len(graph) - 1)
     with pytest.raises(ValueError):
         mapping = recover_mapping(new_graph, layer_mapping)

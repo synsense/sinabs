@@ -1,9 +1,11 @@
 from copy import deepcopy
+
 import numpy as np
 import torch
+
+from sinabs.activation import MembraneSubtract
 from sinabs.backend.dynapcnn import discretize
 from sinabs.layers import IAF
-from sinabs.activation import MembraneSubtract
 
 # - Test tensor to be discretized
 float_tensor = torch.tensor(
@@ -48,10 +50,8 @@ spk_lyr = IAF(
 
 
 def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem):
-    """
-    Make sure that all discretized values are scaled by same factor and within
-    their allowed range.
-    """
+    """Make sure that all discretized values are scaled by same factor and within their allowed
+    range."""
 
     if thr is not None:
         # Guess scaling based on threshold
@@ -59,9 +59,7 @@ def validate_common_scaling(conv_lyr, spk_lyr, weight, bias, thr, thr_low, v_mem
         reference = spk_lyr.spike_threshold
 
         thrs = torch.tensor((thr, thr_low))
-        thrs_old = torch.tensor(
-            (spk_lyr.spike_threshold, spk_lyr.min_v_mem)
-        )
+        thrs_old = torch.tensor((spk_lyr.spike_threshold, spk_lyr.min_v_mem))
     else:
         with torch.no_grad():
             scale = torch.true_divide(torch.max(weight), torch.max(conv_lyr.weight))
@@ -133,7 +131,7 @@ def validate_discretization(conv_lyr, spk_lyr, inplace=False, to_int=True):
 
 
 def test_discretize_conv_spike():
-    """Test joint discretization of spiking and convolutional layers"""
+    """Test joint discretization of spiking and convolutional layers."""
 
     # - Make copies of original layers
     conv_copy = deepcopy(conv_lyr)
@@ -158,9 +156,7 @@ def test_discretize_conv_spike():
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_lyr.spike_threshold == spk_copy.spike_threshold
-    )
+    assert spk_lyr.spike_threshold == spk_copy.spike_threshold
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
     # Make sure that elements are integers
     for obj in (conv_discr.weight, conv_discr.bias, spk_discr.v_mem):
@@ -179,10 +175,7 @@ def test_discretize_conv_spike():
     assert (conv_discr.weight == conv_copy.weight).all()
     assert (conv_discr.bias == conv_copy.bias).all()
     assert (spk_discr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_discr.spike_threshold
-        == spk_copy.spike_threshold
-    )
+    assert spk_discr.spike_threshold == spk_copy.spike_threshold
     assert spk_discr.min_v_mem == spk_copy.min_v_mem
 
     # - No conversion to integers
@@ -195,9 +188,7 @@ def test_discretize_conv_spike():
     assert (conv_lyr.weight == conv_copy.weight).all()
     assert (conv_lyr.bias == conv_copy.bias).all()
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_lyr.spike_threshold == spk_copy.spike_threshold
-    )
+    assert spk_lyr.spike_threshold == spk_copy.spike_threshold
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
     # Make sure that elements are floats
@@ -206,7 +197,7 @@ def test_discretize_conv_spike():
 
 
 def test_discr_conv():
-    """Discretization of only convolutional layer"""
+    """Discretization of only convolutional layer."""
 
     # - Add biases and evolve to initialize layer state
     conv_lyr.bias = torch.nn.Parameter(bias)
@@ -250,14 +241,12 @@ def test_discr_conv():
 
     # - Make sure that spike layer elements did not get mutated
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_lyr.spike_threshold == spk_copy.spike_threshold
-    )
+    assert spk_lyr.spike_threshold == spk_copy.spike_threshold
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
 
 def test_discr_spk():
-    """Discretization of only spiking layer"""
+    """Discretization of only spiking layer."""
 
     # - Add biases and evolve to initialize layer state
     conv_lyr.bias = torch.nn.Parameter(bias)
@@ -286,9 +275,7 @@ def test_discr_spk():
 
     # Make sure that discretization did not happen in-place
     assert (spk_lyr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_lyr.spike_threshold == spk_copy.spike_threshold
-    )
+    assert spk_lyr.spike_threshold == spk_copy.spike_threshold
     assert spk_lyr.min_v_mem == spk_copy.min_v_mem
 
     # - In-place
@@ -305,10 +292,7 @@ def test_discr_spk():
 
     # Make sure that discretization did happen in-place
     assert (spk_discr.v_mem == spk_copy.v_mem).all()
-    assert (
-        spk_discr.spike_threshold
-        == spk_copy.spike_threshold
-    )
+    assert spk_discr.spike_threshold == spk_copy.spike_threshold
     assert spk_discr.min_v_mem == spk_copy.min_v_mem
 
     # - Make sure that conv layer elements did not get mutated
@@ -317,7 +301,7 @@ def test_discr_spk():
 
 
 def test_discr_tensor():
-    """Discretization of a tensor object by given scaling factor"""
+    """Discretization of a tensor object by given scaling factor."""
 
     scaling = 3.0917
 
@@ -335,7 +319,7 @@ def test_discr_tensor():
 
 
 def test_discr_scalar():
-    """Discretization of a scalar object by given scaling factor"""
+    """Discretization of a scalar object by given scaling factor."""
 
     scaling = 3.0917
 
@@ -349,7 +333,7 @@ def test_discr_scalar():
 
 
 def test_scaling():
-    """Choice of scaling factor"""
+    """Choice of scaling factor."""
 
     bit_precision = 8
 
