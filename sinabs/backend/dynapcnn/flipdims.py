@@ -1,6 +1,7 @@
+from typing import Tuple
+
 import torch
 import torch.nn as nn
-from typing import Tuple
 
 
 class FlipDims(nn.Module):
@@ -27,8 +28,7 @@ class FlipDims(nn.Module):
         return data
 
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
-        """
-        Retuns the output dimensions
+        """Retuns the output dimensions.
 
         :param input_shape: (channels, height, width)
         :return: (channels, height, width)

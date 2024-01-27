@@ -355,8 +355,8 @@ class LIFRecurrent(LIF):
 
 
 class LIFSqueeze(LIF, SqueezeMixin):
-    """
-    :class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    """:class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height,
+    Width).
 
     Same as parent :class:`~sinabs.layers.LIF` class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with

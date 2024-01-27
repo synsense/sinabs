@@ -14,6 +14,6 @@ class UnexpectedLayer(Exception):
 
 
 class InputConfigurationError(Exception):
-    """Is raised when input to dynapcnn is not configured correctly"""
+    """Is raised when input to dynapcnn is not configured correctly."""
 
     pass
