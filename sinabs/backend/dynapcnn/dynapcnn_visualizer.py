@@ -5,14 +5,11 @@ from typing import Dict, List, Optional, Tuple
 import samna
 
 from .dynapcnn_network import DynapcnnNetwork
-
 from .io import launch_visualizer
 
 
 class DynapcnnVisualizer:
-    """
-    (tlx, tly, brx, bry)
-    """
+    """(tlx, tly, brx, bry)"""
 
     # Default layouts
     # (tlx, tly, brx, bry)
@@ -99,7 +96,6 @@ class DynapcnnVisualizer:
                 - `spike_count`: Arguments that can be passed to `spike_count` plot.
                 - `readout`: Arguments that can be passed to `readout` plot.
                 - `power_measurement`: Arguments that can be passed `power_measurement` plot.
-
         """
         # Checks if the configuration passed is valid
         if add_readout_plot and not readout_images:
@@ -153,6 +149,7 @@ class DynapcnnVisualizer:
     @staticmethod
     def parse_feature_names_from_image_names(readout_image_paths: List[str]):
         """Method the parse the feature names directly from the names of the images.
+
         Args:
             readout_image_paths: List[str]
                 List of paths to all the feature images
@@ -172,7 +169,7 @@ class DynapcnnVisualizer:
     def create_visualizer_process(
         self, visualizer_endpoint: str, disjoint_process: bool = False
     ):
-        """Create a samnagui visualizer process
+        """Create a samnagui visualizer process.
 
         Args:
             visualizer_endpoint (str):
@@ -203,7 +200,7 @@ class DynapcnnVisualizer:
         shape: Tuple[int, int],
         layout: Tuple[float, float, float, float],
     ):
-        """Add an activity plot (dvs plot) to a visualizer
+        """Add an activity plot (dvs plot) to a visualizer.
 
         Args:
             shape (Tuple(int, int)):
@@ -222,7 +219,7 @@ class DynapcnnVisualizer:
         return activity_plot_configuration
 
     def add_readout_plot(self, layout: Tuple[float, float, float, float]):
-        """Add a readout plot (image showing the predicted class) to the visualizer
+        """Add a readout plot (image showing the predicted class) to the visualizer.
 
         Args:
             layout (Tuple[float, float, float, float]):
@@ -262,8 +259,8 @@ class DynapcnnVisualizer:
         raise NotImplementedError("Waiting for samna support!")
 
     def add_spike_count_plot(self, layout: Tuple[float, float, float, float]):
-        """Add a spike count plot (line plot showing recent predicitons from network
-            for each class)
+        """Add a spike count plot (line plot showing recent predicitons from network for each
+        class)
 
         Args:
             layout (Tuple[float, float, float, float]):
@@ -328,7 +325,7 @@ class DynapcnnVisualizer:
         return powermeasurement_plot_configuration
 
     def create_plots(self):
-        """Utility function to create a Cluster visualizer
+        """Utility function to create a Cluster visualizer.
 
         Args:
 
@@ -383,7 +380,8 @@ class DynapcnnVisualizer:
     def connect(
         self, dynapcnn_network: DynapcnnNetwork, disjoint_process: bool = False
     ):
-        """The method does the bulk of the work of creating the graphs and launching the visualizer
+        """The method does the bulk of the work of creating the graphs and launching the
+        visualizer.
 
         Args:
             dynapcnn_network (DynapcnnNetwork): The network that needs to be deployed and visualized
@@ -562,7 +560,7 @@ class DynapcnnVisualizer:
             self.feature_names = [f"{i}" for i in range(self.feature_count)]
 
     def update_default_readout_return_value(self):
-        """For now last class is the default"""
+        """For now last class is the default."""
         self.readout_default_return_value = self.feature_count - 1
 
     def start(self):
@@ -574,6 +572,7 @@ class DynapcnnVisualizer:
 
 def get_free_tcp_port():
     """Returns a free tcp port.
+
     Returns:
         str: A port which is free in the system
     """

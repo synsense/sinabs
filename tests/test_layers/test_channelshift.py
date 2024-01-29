@@ -1,4 +1,5 @@
 import torch
+
 from sinabs.layers.channel_shift import ChannelShift
 
 

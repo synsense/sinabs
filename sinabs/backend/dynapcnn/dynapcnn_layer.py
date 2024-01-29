@@ -1,18 +1,20 @@
-import sinabs.activation
+from copy import deepcopy
+from typing import Dict, Optional, Tuple, Union
+from warnings import warn
+
+import numpy as np
 import torch
 from torch import nn
-import numpy as np
-from typing import Dict, Tuple, Optional, Union
+
+import sinabs.activation
 import sinabs.layers as sl
-from warnings import warn
+
 from .discretize import discretize_conv_spike_
-from copy import deepcopy
 from .dvs_layer import expand_to_pair
 
 
 class DynapcnnLayer(nn.Module):
-    """
-    Create a DynapcnnLayer object representing a dynapcnn layer.
+    """Create a DynapcnnLayer object representing a dynapcnn layer.
 
     Requires a convolutional layer, a sinabs spiking layer and an optional
     pooling value. The layers are used in the order conv -> spike -> pool.
@@ -36,13 +38,13 @@ class DynapcnnLayer(nn.Module):
     """
 
     def __init__(
-            self,
-            conv: nn.Conv2d,
-            spk: sl.IAFSqueeze,
-            in_shape: Tuple[int, int, int],
-            pool: Optional[sl.SumPool2d] = None,
-            discretize: bool = True,
-            rescale_weights: int = 1,
+        self,
+        conv: nn.Conv2d,
+        spk: sl.IAFSqueeze,
+        in_shape: Tuple[int, int, int],
+        pool: Optional[sl.SumPool2d] = None,
+        discretize: bool = True,
+        rescale_weights: int = 1,
     ):
         super().__init__()
 
@@ -76,8 +78,7 @@ class DynapcnnLayer(nn.Module):
             self.pool_layer = None
 
     def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
-        """
-        Convert Linear layer to Conv2d.
+        """Convert Linear layer to Conv2d.
 
         Parameters
         ----------
@@ -108,15 +109,14 @@ class DynapcnnLayer(nn.Module):
 
         layer.weight.data = (
             lin.weight.data.clone()
-                .detach()
-                .reshape((lin.out_features, in_chan, in_h, in_w))
+            .detach()
+            .reshape((lin.out_features, in_chan, in_h, in_w))
         )
 
         return layer
 
     def get_neuron_shape(self) -> Tuple[int, int, int]:
-        """
-        Return the output shape of the neuron layer
+        """Return the output shape of the neuron layer.
 
         Returns
         -------
@@ -137,7 +137,9 @@ class DynapcnnLayer(nn.Module):
             ch_out = layer.out_channels
             return ch_out, out_h, out_w
 
-        conv_out_shape = get_shape_after_conv(self.conv_layer, input_shape=self.input_shape)
+        conv_out_shape = get_shape_after_conv(
+            self.conv_layer, input_shape=self.input_shape
+        )
         return conv_out_shape
 
     def get_output_shape(self) -> Tuple[int, int, int]:
@@ -155,28 +157,29 @@ class DynapcnnLayer(nn.Module):
 
     def summary(self) -> dict:
         return {
-            "pool": None if self.pool_layer is None else list(self.pool_layer.kernel_size),
+            "pool": (
+                None if self.pool_layer is None else list(self.pool_layer.kernel_size)
+            ),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self.get_neuron_shape(),
         }
 
     def memory_summary(self):
-        """
-        Computes the amount of memory required for each of the components.
-        Note that this is not necessarily the same as the number of parameters due to some architecture design constraints.
+        """Computes the amount of memory required for each of the components. Note that this is not
+        necessarily the same as the number of parameters due to some architecture design
+        constraints.
 
         .. math::
 
             K_{MT} = c \\cdot 2^{\\lceil \\log_2\\left(k_xk_y\\right) \\rceil + \\lceil \\log_2\\left(f\\right) \\rceil}
 
         .. math::
-             
+
             N_{MT} = f \\cdot 2^{ \\lceil \\log_2\\left(f_y\\right) \\rceil + \\lceil \\log_2\\left(f_x\\right) \\rceil }
 
         Returns
         -------
         A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
-
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
@@ -184,7 +187,8 @@ class DynapcnnLayer(nn.Module):
 
         return {
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
-            "neuron": f * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
+            "neuron": f
+            * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
 

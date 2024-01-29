@@ -166,15 +166,16 @@ class LIF(StatefulLayer):
         # Ensure the state is initialized.
         if not self.is_state_initialised():
             self.init_state_with_shape((batch_size, *trailing_dim))
-        
+
         if not self.state_has_shape((batch_size, *trailing_dim)):
             # If the trailing dim has changed, we reinitialize the states.
             if not self.has_trailing_dimension(trailing_dim):
                 self.init_state_with_shape((batch_size, *trailing_dim))
             # Otherwise only the batch size has changed.
-            else: 
-                self.handle_state_batch_size_mismatch(batch_size) # with the input batch size
-
+            else:
+                self.handle_state_batch_size_mismatch(
+                    batch_size
+                )  # with the input batch size
 
         alpha_mem = self.alpha_mem_calculated
         alpha_syn = self.alpha_syn_calculated
@@ -354,8 +355,8 @@ class LIFRecurrent(LIF):
 
 
 class LIFSqueeze(LIF, SqueezeMixin):
-    """
-    :class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height, Width).
+    """:class:`~sinabs.layers.LIF` layer with 4-dimensional input (Batch*Time, Channel, Height,
+    Width).
 
     Same as parent :class:`~sinabs.layers.LIF` class, only takes in squeezed 4D input (Batch*Time, Channel, Height, Width)
     instead of 5D input (Batch, Time, Channel, Height, Width) in order to be compatible with

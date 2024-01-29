@@ -1,8 +1,9 @@
-from sinabs.layers import NeuromorphicReLU
-from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
-import torch.nn as nn
 import torch
+import torch.nn as nn
+
+from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+from sinabs.from_torch import from_model
+from sinabs.layers import NeuromorphicReLU
 
 
 class DynapCnnNetA(nn.Module):
@@ -11,7 +12,9 @@ class DynapCnnNetA(nn.Module):
 
         seq = [
             # core 0
-            nn.Conv2d(2, 16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False),
+            nn.Conv2d(
+                2, 16, kernel_size=(2, 2), stride=(2, 2), padding=(0, 0), bias=False
+            ),
             nn.ReLU(),
             # core 1
             nn.Conv2d(16, 16, kernel_size=(3, 3), padding=(1, 1), bias=False),
@@ -52,13 +55,16 @@ class DynapCnnNetA(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
+
 def test_learning():
     sdc = DynapCnnNetA()
     snn = from_model(sdc.seq, batch_size=1)
     print(snn)
     input_shape = (2, 128, 128)
     input_data = torch.rand((10, *input_shape)) * 1000
-    dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False, dvs_input=False)
+    dynapcnn_net = DynapcnnNetwork(
+        snn, input_shape=input_shape, discretize=False, dvs_input=False
+    )
     print(dynapcnn_net)
 
     optim = torch.optim.Adam(dynapcnn_net.parameters())

@@ -1,13 +1,15 @@
+from typing import Optional, Tuple
+
 import torch.nn as nn
-from typing import Tuple, Optional
+
 from sinabs.layers import SumPool2d
-from .flipdims import FlipDims
+
 from .crop2d import Crop2d
+from .flipdims import FlipDims
 
 
 def expand_to_pair(value) -> (int, int):
-    """
-    Expand a given value to a pair (tuple) if an int is passed
+    """Expand a given value to a pair (tuple) if an int is passed.
 
     Parameters
     ----------
@@ -23,10 +25,8 @@ def expand_to_pair(value) -> (int, int):
 
 
 class DVSLayer(nn.Module):
-    """
-    DVSLayer representing the DVS pixel array on chip and/or the pre-processing.
-    The order of processing is as follows
-    MergePolarity -> Pool -> Cut -> Flip
+    """DVSLayer representing the DVS pixel array on chip and/or the pre-processing. The order of
+    processing is as follows MergePolarity -> Pool -> Cut -> Flip.
 
     Parameters
     ----------
@@ -49,17 +49,16 @@ class DVSLayer(nn.Module):
     """
 
     def __init__(
-            self,
-            input_shape: Tuple[int, int],
-            pool: Tuple[int, int] = (1, 1),
-            crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
-            merge_polarities: bool = False,
-            flip_x: bool = False,
-            flip_y: bool = False,
-            swap_xy: bool = False,
-            disable_pixel_array: bool = True,
+        self,
+        input_shape: Tuple[int, int],
+        pool: Tuple[int, int] = (1, 1),
+        crop: Optional[Tuple[Tuple[int, int], Tuple[int, int]]] = None,
+        merge_polarities: bool = False,
+        flip_x: bool = False,
+        flip_y: bool = False,
+        swap_xy: bool = False,
+        disable_pixel_array: bool = True,
     ):
-
         super().__init__()
 
         # DVS specific settings
@@ -67,7 +66,9 @@ class DVSLayer(nn.Module):
         self.disable_pixel_array = disable_pixel_array
 
         if len(input_shape) != 2:
-            raise ValueError(f"Input shape should be 2 dimensional but input_shape={input_shape} was given.")
+            raise ValueError(
+                f"Input shape should be 2 dimensional but input_shape={input_shape} was given."
+            )
         if merge_polarities:
             self.input_shape: Tuple[int, int, int] = (1, *input_shape)
         else:
@@ -87,16 +88,14 @@ class DVSLayer(nn.Module):
 
     @classmethod
     def from_layers(
-            cls,
-            input_shape: Tuple[int, int, int],
-            pool_layer: Optional[SumPool2d] = None,
-            crop_layer: Optional[Crop2d] = None,
-            flip_layer: Optional[FlipDims] = None,
-            disable_pixel_array: bool = True,
+        cls,
+        input_shape: Tuple[int, int, int],
+        pool_layer: Optional[SumPool2d] = None,
+        crop_layer: Optional[Crop2d] = None,
+        flip_layer: Optional[FlipDims] = None,
+        disable_pixel_array: bool = True,
     ) -> "DVSLayer":
-        """
-        Alternative factory method.
-        Generate a DVSLayer from a set of torch layers
+        """Alternative factory method. Generate a DVSLayer from a set of torch layers.
 
         Parameters
         ----------
@@ -114,7 +113,6 @@ class DVSLayer(nn.Module):
         Returns
         -------
         DVSLayer
-
         """
         pool = (1, 1)
         crop = None
@@ -123,9 +121,13 @@ class DVSLayer(nn.Module):
         swap_xy = None
 
         if len(input_shape) != 3:
-            raise ValueError(f"Input shape should be 3 dimensional but input_shape={input_shape} was given.")
+            raise ValueError(
+                f"Input shape should be 3 dimensional but input_shape={input_shape} was given."
+            )
         if not 0 < input_shape[0] <= 2:
-            raise ValueError(f"Only 1 and 2 channels are supported. Provided input_shape has {input_shape[0]}.")
+            raise ValueError(
+                f"Only 1 and 2 channels are supported. Provided input_shape has {input_shape[0]}."
+            )
 
         if pool_layer is not None:
             pool = expand_to_pair(pool_layer.kernel_size)
@@ -152,8 +154,7 @@ class DVSLayer(nn.Module):
 
     @property
     def input_shape_dict(self) -> dict:
-        """
-        The configuration dictionary for the input shape
+        """The configuration dictionary for the input shape.
 
         Returns
         -------
@@ -170,8 +171,7 @@ class DVSLayer(nn.Module):
         }
 
     def get_output_shape_after_pooling(self) -> Tuple[int, int, int]:
-        """
-        Get the shape of data just after the pooling layer.
+        """Get the shape of data just after the pooling layer.
 
         Returns
         -------
@@ -189,20 +189,25 @@ class DVSLayer(nn.Module):
         return channel_count, output_size_y, output_size_x
 
     def get_output_shape_dict(self) -> dict:
-        """
-        Configuration dictionary for output shape
+        """Configuration dictionary for output shape.
 
         Returns
         -------
         dict
         """
-        channel_count, output_size_y, output_size_x = (
-            self.get_output_shape_after_pooling()
-        )
+        (
+            channel_count,
+            output_size_y,
+            output_size_x,
+        ) = self.get_output_shape_after_pooling()
 
         # Compute dims after cropping
         if self.crop_layer is not None:
-            channel_count, output_size_y, output_size_x = self.crop_layer.get_output_shape(
+            (
+                channel_count,
+                output_size_y,
+                output_size_x,
+            ) = self.crop_layer.get_output_shape(
                 (channel_count, output_size_y, output_size_x)
             )
 
@@ -243,8 +248,7 @@ class DVSLayer(nn.Module):
         return out
 
     def get_pooling(self) -> Tuple[int, int]:
-        """
-        Pooling kernel shape
+        """Pooling kernel shape.
 
         Returns
         -------
@@ -253,9 +257,8 @@ class DVSLayer(nn.Module):
         return expand_to_pair(self.pool_layer.kernel_size)
 
     def get_roi(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
-        """
-        The coordinates for ROI.
-        Note that this is not the same as crop parameter passed during the object construction.
+        """The coordinates for ROI. Note that this is not the same as crop parameter passed during
+        the object construction.
 
         Returns
         -------
@@ -272,8 +275,7 @@ class DVSLayer(nn.Module):
             return (0, output_size_y), (0, output_size_x)
 
     def get_output_shape(self) -> Tuple[int, int, int]:
-        """
-        Output shape of the layer
+        """Output shape of the layer.
 
         Returns
         -------
@@ -291,15 +293,18 @@ class DVSLayer(nn.Module):
 
         # Compute dims after cropping
         if self.crop_layer is not None:
-            channel_count, output_size_y, output_size_x = self.crop_layer.get_output_shape(
+            (
+                channel_count,
+                output_size_y,
+                output_size_x,
+            ) = self.crop_layer.get_output_shape(
                 (channel_count, output_size_y, output_size_x)
             )
 
         return channel_count, output_size_y, output_size_x
 
     def get_flip_dict(self) -> dict:
-        """
-        Configuration dictionary for x, y flip
+        """Configuration dictionary for x, y flip.
 
         Returns
         -------
@@ -309,8 +314,7 @@ class DVSLayer(nn.Module):
         return {"x": self.flip_layer.flip_x, "y": self.flip_layer.flip_y}
 
     def get_swap_xy(self) -> bool:
-        """
-        True if XY has to be swapped.
+        """True if XY has to be swapped.
 
         Returns
         -------

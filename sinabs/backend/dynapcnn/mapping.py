@@ -1,7 +1,8 @@
-from typing import List, Tuple, Optional
-from dataclasses import dataclass
-from copy import deepcopy
 from collections import deque
+from copy import deepcopy
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 
@@ -15,15 +16,16 @@ class LayerConstraints:
     def fits(self, layer: DynapcnnLayer) -> bool:
         layer_summary = layer.memory_summary()
         return (
-                (0 <= layer_summary["kernel"] <= self.kernel_memory)
-                and (0 <= layer_summary["neuron"] <= self.neuron_memory)
-                and (0 <= layer_summary["bias"] <= self.bias_memory)
+            (0 <= layer_summary["kernel"] <= self.kernel_memory)
+            and (0 <= layer_summary["neuron"] <= self.neuron_memory)
+            and (0 <= layer_summary["bias"] <= self.bias_memory)
         )
 
 
-def find_chip_layers(layer: DynapcnnLayer, constraints: List[LayerConstraints]) -> List[int]:
-    """
-    Find all layers where a given layer configuration fits.
+def find_chip_layers(
+    layer: DynapcnnLayer, constraints: List[LayerConstraints]
+) -> List[int]:
+    """Find all layers where a given layer configuration fits.
 
     Parameters
     ----------
@@ -41,9 +43,11 @@ def find_chip_layers(layer: DynapcnnLayer, constraints: List[LayerConstraints]) 
     return idx
 
 
-def get_valid_mapping(model: "DynapcnnNetwork", constraints: List[LayerConstraints]) -> List[Tuple[int, int]]:
-    """
-    Given a model, find a valid layer ordering for its placement within the constraints provided.
+def get_valid_mapping(
+    model: "DynapcnnNetwork", constraints: List[LayerConstraints]
+) -> List[Tuple[int, int]]:
+    """Given a model, find a valid layer ordering for its placement within the constraints
+    provided.
 
     Parameters
     ----------
@@ -54,7 +58,6 @@ def get_valid_mapping(model: "DynapcnnNetwork", constraints: List[LayerConstrain
 
     Returns
     -------
-
     """
     layer_mapping = []
 
@@ -98,7 +101,7 @@ def edmonds(graph, source, sink, verbose: bool = False):
                     pred[edge.t] = edge
                     q.append(edge.t)
         if pred[sink] is not None:
-            delta_flow = float('inf')
+            delta_flow = float("inf")
             edge = pred[sink]
             while edge is not None:
                 prev_flow = delta_flow
@@ -117,11 +120,12 @@ def edmonds(graph, source, sink, verbose: bool = False):
     return graph
 
 
-def make_flow_graph(layer_mapping: List[List[int]], num_layers: int = 9) -> List[List[Edge]]:
-    """
-    Make a flow graph given all possible chip layers for each DynapcnnCompatibleLayer layer.
-    Note that the flows are not computed yet.
-    The flow for the graph generated here needs to be populated by calling the method `edmonds`
+def make_flow_graph(
+    layer_mapping: List[List[int]], num_layers: int = 9
+) -> List[List[Edge]]:
+    """Make a flow graph given all possible chip layers for each DynapcnnCompatibleLayer layer.
+    Note that the flows are not computed yet. The flow for the graph generated here needs to be
+    populated by calling the method `edmonds`
 
     Parameters
     ----------
@@ -160,7 +164,9 @@ def make_flow_graph(layer_mapping: List[List[int]], num_layers: int = 9) -> List
     for i, layer_targets in enumerate(layer_mapping):
         for target in layer_targets:
             graph[i + 1].append(Edge(s=i + 1, t=target + target_offset, cap=1, flow=0))
-            graph[target + target_offset].append(Edge(s=target + target_offset, t=i + 1, cap=0, flow=0))
+            graph[target + target_offset].append(
+                Edge(s=target + target_offset, t=i + 1, cap=0, flow=0)
+            )
             graph[i + 1][-1].rev = graph[target + target_offset][-1]
             graph[target + target_offset][-1].rev = graph[i + 1][-1]
     # print(graph)
@@ -184,10 +190,12 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
     if len(mapping) != len(layer_mapping):
         raise ValueError("No valid mapping found")
     return mapping
+
+
 #
 #
 ### Chip specific constraints
-#_WEIGHTS_MEMORY_SIZE = [
+# _WEIGHTS_MEMORY_SIZE = [
 #    16 * 1024,  # 0
 #    16 * 1024,  # 1
 #    16 * 1024,  # 2
@@ -197,9 +205,9 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
 #    64 * 1024,  # 6
 #    16 * 1024,  # 7
 #    16 * 1024,
-#]  # _WEIGHTS_MEMORY_SIZE
+# ]  # _WEIGHTS_MEMORY_SIZE
 #
-#_NEURONS_MEMORY_SIZE = [
+# _NEURONS_MEMORY_SIZE = [
 #    64 * 1024,  # 0
 #    64 * 1024,  # 1
 #    64 * 1024,  # 2
@@ -209,12 +217,12 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
 #    16 * 1024,  # 6
 #    16 * 1024,  # 7
 #    16 * 1024,
-#]  # 8
-#_BIAS_MEMORY_SIZE = [1024] * 9
+# ]  # 8
+# _BIAS_MEMORY_SIZE = [1024] * 9
 #
-#dynapcnndevkit_constraints = [
+# dynapcnndevkit_constraints = [
 #    LayerConstraints(km, nm, bm) for (km, nm, bm) in zip(_WEIGHTS_MEMORY_SIZE, _NEURONS_MEMORY_SIZE, _BIAS_MEMORY_SIZE)
-#]
+# ]
 #
-#speck2_constraints = dynapcnndevkit_constraints
+# speck2_constraints = dynapcnndevkit_constraints
 #

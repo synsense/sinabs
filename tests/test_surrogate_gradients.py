@@ -1,17 +1,18 @@
 from itertools import product
+
 import pytest
 
 periodic_exp_args = product((0.5, 1, 2), (0.5, 1, 2), (0.5, 1, 2))
-@pytest.mark.parametrize(
-    "grad_width,grad_scale,spike_threshold",
-    periodic_exp_args
-)
+
+
+@pytest.mark.parametrize("grad_width,grad_scale,spike_threshold", periodic_exp_args)
 def test_periodic_exponential(grad_width, grad_scale, spike_threshold):
-    from sinabs.activation import PeriodicExponential
     import torch
 
+    from sinabs.activation import PeriodicExponential
+
     grad_fn = PeriodicExponential(grad_width=grad_width, grad_scale=grad_scale)
-    
+
     # Test with random values
     vmem_rand = torch.rand(100)
     surrogate_gradient = grad_fn(vmem_rand, spike_threshold)

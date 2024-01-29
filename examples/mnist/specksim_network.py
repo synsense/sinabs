@@ -6,13 +6,14 @@ import torch
 import torch.nn as nn
 from torchvision import datasets
 
-from sinabs.backend.dynapcnn.specksim import from_sequential
-from sinabs.backend.dynapcnn.chip_factory import ChipFactory
-from sinabs.from_torch import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
+from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+from sinabs.backend.dynapcnn.specksim import from_sequential
+from sinabs.from_torch import from_model
 
 # Define the path to pre-trained MNIST weights.
-weights_path = Path( __file__ ).absolute().parent / "mnist_params.pt"
+weights_path = Path(__file__).absolute().parent / "mnist_params.pt"
+
 
 # Define custom dataset for spiking input data
 class MNIST_Dataset(datasets.MNIST):
@@ -25,7 +26,9 @@ class MNIST_Dataset(datasets.MNIST):
         img, target = self.data[index], self.targets[index]
 
         if self.spiking:
-            img = (np.random.rand(self.t_window, 1, *img.size()) < img.numpy() / 255.0).astype(float)
+            img = (
+                np.random.rand(self.t_window, 1, *img.size()) < img.numpy() / 255.0
+            ).astype(float)
             img = torch.from_numpy(img).float()
         else:
             # Convert image to tensor
@@ -33,6 +36,7 @@ class MNIST_Dataset(datasets.MNIST):
             img.unsqueeze_(0)
 
         return img, target
+
 
 def convert_raster_to_events(spike_train: torch.tensor):
     dtype = [("t", np.uint32), ("p", np.uint32), ("y", np.uint32), ("x", np.uint32)]
@@ -45,6 +49,7 @@ def convert_raster_to_events(spike_train: torch.tensor):
         event_list.extend(ev_data)
     ev_data = torch.stack(sorted(event_list, key=lambda event: event[0]), dim=0).numpy()
     return np.array([tuple(x) for x in ev_data], dtype=dtype)
+
 
 # Define ANN
 ann = nn.Sequential(
@@ -98,7 +103,9 @@ print(f"Prediction: {prediction}, target: {first_target}")
 # Dynapcnn network
 
 ## Convert SNN to Dynapcnn Network
-dynapcnn_network = DynapcnnNetwork(snn=snn, input_shape=(1, 28, 28), dvs_input=False, discretize=True)
+dynapcnn_network = DynapcnnNetwork(
+    snn=snn, input_shape=(1, 28, 28), dvs_input=False, discretize=True
+)
 
 ## Convert Dynapcnn Network to Specksim Network
 specksim_network_dynapcnn = from_sequential(dynapcnn_network, input_shape=(1, 28, 28))

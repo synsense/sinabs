@@ -10,8 +10,8 @@ from .dynapcnn import DynapcnnConfigBuilder
 
 # Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
-class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
 
+class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_samna_module(cls):
         return samna.speck2cMini
@@ -19,7 +19,7 @@ class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
-    
+
     @classmethod
     def get_input_buffer(cls):
         return samna.BasicSourceNode_speck2c_mini_event_input_event()
@@ -38,7 +38,6 @@ class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
 
     @classmethod
     def get_constraints(cls) -> List[LayerConstraints]:
-
         weights_memory_size = [
             16 * 1024,  # 0
             32 * 1024,  # 1
@@ -55,16 +54,12 @@ class Speck2CMiniConfigBuilder(DynapcnnConfigBuilder):
             16 * 1024,  # 4
         ]
 
-        bias_memory_size = [
-            0,     # 0
-            0,     # 1
-            0,     # 2
-            1024,  # 3
-            1024   # 4
-        ]
+        bias_memory_size = [0, 0, 0, 1024, 1024]  # 0  # 1  # 2  # 3  # 4
 
         constraints = [
-            LayerConstraints(km, nm, bm) for (km, nm, bm) in
-            zip(weights_memory_size, neurons_memory_size, bias_memory_size)
+            LayerConstraints(km, nm, bm)
+            for (km, nm, bm) in zip(
+                weights_memory_size, neurons_memory_size, bias_memory_size
+            )
         ]
         return constraints

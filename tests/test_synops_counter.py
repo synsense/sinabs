@@ -201,12 +201,12 @@ def test_nonspiking_stateful_layer():
     output = model(input_)
     model_stats = analyzer.get_model_statistics(average=True)
     assert model_stats["firing_rate"] == 0.25
-    
+
     layer_stats = analyzer.get_layer_statistics(average=True)
     # ExpLeak layer should not show up in spiking or parameter stats
     assert "1" not in layer_stats["spiking"]
     assert "1" not in layer_stats["parameter"]
-    
+
     spiking_layer_stats = layer_stats["spiking"]["0"]
     assert spiking_layer_stats["firing_rate"] == 0.25
     assert spiking_layer_stats["firing_rate_per_neuron"].shape == (4, 4)

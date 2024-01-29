@@ -356,8 +356,9 @@ def calculate_neuron_address(
 def neuron_address_to_cxy(
     address: int, feature_map_size: Tuple[int, int, int]
 ) -> Tuple:
-    """
-    Calculate the c, x, y, coordinate of a neuron when the address of the NeuronValue event is given
+    """Calculate the c, x, y, coordinate of a neuron when the address of the NeuronValue event is
+    given.
+
     Args
     ----
 
@@ -371,7 +372,6 @@ def neuron_address_to_cxy(
 
     neuron_cxy: Tuple[int, int, int]
         the [channel, x, y] of the neuron
-
     """
     # calculate how many bits it takes based on the feature map size
     channel, height, width = feature_map_size

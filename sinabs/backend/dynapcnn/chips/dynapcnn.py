@@ -14,7 +14,6 @@ from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 
 class DynapcnnConfigBuilder(ConfigBuilder):
-
     @classmethod
     def get_samna_module(cls):
         return samna.dynapcnn
@@ -24,8 +23,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return DynapcnnConfiguration()
 
     @classmethod
-    def get_dvs_layer_config_dict(cls, layer: DVSLayer):
-        ...
+    def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
     @classmethod
     def write_dvs_layer_config(cls, layer: DVSLayer, config: "DvsLayerConfig"):
@@ -33,8 +31,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             setattr(config, param, value)
 
     @classmethod
-    def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict)->dict:
-        """This method updates all the kill_bit parameters
+    def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
+        """This method updates all the kill_bit parameters.
 
         Args:
             layer (DynapcnnLayer): The layer of whome the configuration is to be generated
@@ -68,7 +66,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 f"Current v_mem (shape: {layer.spk_layer.v_mem.shape}) of spiking layer not understood."
             )
 
-        config_dict["neurons_value_kill_bit"] = torch.zeros_like(neurons_state).bool().tolist()
+        config_dict["neurons_value_kill_bit"] = (
+            torch.zeros_like(neurons_state).bool().tolist()
+        )
 
         return config_dict
 
@@ -89,8 +89,14 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         dimensions["output_shape"]["feature_count"] = f
         dimensions["output_shape"]["size"]["x"] = w
         dimensions["output_shape"]["size"]["y"] = h
-        dimensions["padding"] = {"x": layer.conv_layer.padding[1], "y": layer.conv_layer.padding[0]}
-        dimensions["stride"] = {"x": layer.conv_layer.stride[1], "y": layer.conv_layer.stride[0]}
+        dimensions["padding"] = {
+            "x": layer.conv_layer.padding[1],
+            "y": layer.conv_layer.padding[0],
+        }
+        dimensions["stride"] = {
+            "x": layer.conv_layer.stride[1],
+            "y": layer.conv_layer.stride[0],
+        }
         dimensions["kernel_size"] = layer.conv_layer.kernel_size[0]
 
         if dimensions["kernel_size"] != layer.conv_layer.kernel_size[1]:
@@ -106,8 +112,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict["weights"] = weights.int().tolist()
         config_dict["biases"] = biases.int().tolist()
         config_dict["leak_enable"] = biases.bool().any()
-        #config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        #config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
+        # config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
+        # config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
 
         # Update parameters from the spiking layer
 
@@ -130,27 +136,33 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         elif isinstance(layer.spk_layer.reset_fn, sinabs.activation.MembraneSubtract):
             return_to_zero = False
         else:
-            raise Exception("Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood.")
+            raise Exception(
+                "Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood."
+            )
 
-        #if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
+        # if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
         #    warn(
         #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
         #    )
         if layer.spk_layer.min_v_mem is None:
-            min_v_mem = -2**15
+            min_v_mem = -(2**15)
         else:
             min_v_mem = int(layer.spk_layer.min_v_mem)
-        config_dict.update({
-            "return_to_zero": return_to_zero,
-            "threshold_high": int(layer.spk_layer.spike_threshold),
-            "threshold_low": min_v_mem,
-            "monitor_enable": False,
-            "neurons_initial_value": neurons_state.int().tolist(),
-            #"neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
-        })
+        config_dict.update(
+            {
+                "return_to_zero": return_to_zero,
+                "threshold_high": int(layer.spk_layer.spike_threshold),
+                "threshold_low": min_v_mem,
+                "monitor_enable": False,
+                "neurons_initial_value": neurons_state.int().tolist(),
+                # "neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
+            }
+        )
         # Update parameters from pooling
         if layer.pool_layer is not None:
-            config_dict["destinations"][0]["pooling"] = expand_to_pair(layer.pool_layer.kernel_size)[0]
+            config_dict["destinations"][0]["pooling"] = expand_to_pair(
+                layer.pool_layer.kernel_size
+            )[0]
             config_dict["destinations"][0]["enable"] = True
         else:
             pass
@@ -161,9 +173,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config_dict
 
     @classmethod
-    def write_dynapcnn_layer_config(cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig"):
-        """
-        Write a single layer configuration to the dynapcnn conf object.
+    def write_dynapcnn_layer_config(
+        cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig"
+    ):
+        """Write a single layer configuration to the dynapcnn conf object.
 
         Parameters
         ----------
@@ -179,7 +192,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict.pop("dimensions")
         for i in range(len(config_dict["destinations"])):
             if "pooling" in config_dict["destinations"][i]:
-                chip_layer.destinations[i].pooling = config_dict["destinations"][i]["pooling"]
+                chip_layer.destinations[i].pooling = config_dict["destinations"][i][
+                    "pooling"
+                ]
         config_dict.pop("destinations")
         for param, value in config_dict.items():
             try:
@@ -250,15 +265,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         bias_memory_size = [1024] * 9
 
         constraints = [
-            LayerConstraints(km, nm, bm) for (km, nm, bm) in
-            zip(weight_memory_size, neurons_memory_size, bias_memory_size)
+            LayerConstraints(km, nm, bm)
+            for (km, nm, bm) in zip(
+                weight_memory_size, neurons_memory_size, bias_memory_size
+            )
         ]
         return constraints
 
     @classmethod
     def monitor_layers(cls, config: "DynapcnnConfiguration", layers: List):
-        """
-        Updates the config object in place.
+        """Updates the config object in place.
 
         Parameters
         ----------
@@ -306,7 +322,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros
             if randomize:
-                new_state = torch.randint(lyr.threshold_low, lyr.threshold_high, shape).tolist()
+                new_state = torch.randint(
+                    lyr.threshold_low, lyr.threshold_high, shape
+                ).tolist()
             else:
                 new_state = torch.zeros(shape, dtype=torch.int).tolist()
             config.cnn_layers[idx].neurons_initial_value = new_state

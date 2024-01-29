@@ -1,9 +1,10 @@
-from typing import Optional, Tuple
 from copy import deepcopy
+from typing import Optional, Tuple
 from warnings import warn
 
 import torch
 import torch.nn as nn
+
 import sinabs.layers as sl
 
 DYNAPCNN_WEIGHT_PRECISION_BITS = 8
@@ -33,7 +34,6 @@ def discretize_conv_spike(
         Discretized copy of convolutional layer
     sl.IAF
         Discretized copy of spiking layer
-
     """
     conv_lyr_copy = deepcopy(conv_lyr)
     spike_lyr_copy = deepcopy(spike_lyr)
@@ -63,7 +63,6 @@ def discretize_conv_spike_(
         Discretized convolutional layer
     sl.IAF
         Discretized spiking layer
-
     """
 
     return _discretize_conv_spk_(conv_lyr, spike_lyr, to_int=to_int)
@@ -98,7 +97,6 @@ def discretize_conv(
     -------
     nn.Conv2d
         Discretized copy of convolutional layer
-
     """
     lyr_copy = deepcopy(layer)
     layer_discr = discretize_conv_(
@@ -140,7 +138,6 @@ def discretize_conv_(
     -------
     nn.Conv2d
         Discretized convolutional layer
-
     """
     layer_discr, __ = _discretize_conv_spk_(
         conv_lyr=layer,
@@ -178,7 +175,6 @@ def discretize_spk(
     -------
     sl.IAF
         Discretized copy of spiking layer
-
     """
     lyr_copy = deepcopy(layer)
     layer_discr = discretize_spk_(
@@ -213,7 +209,6 @@ def discretize_spk_(
     -------
     sl.IAF
         Discretized spiking
-
     """
     __, layer_discr = _discretize_conv_spk_(
         spike_lyr=layer, conv_weight=conv_weight, conv_bias=conv_bias, to_int=to_int
@@ -231,7 +226,7 @@ def _discretize_conv_spk_(
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
 ):
-    """Discretize convolutional and spiking layer
+    """Discretize convolutional and spiking layer.
 
     Determine and apply a suitable scaling factor for weight and bias of
     convolutional layer as well as thresholds and state of spiking layer, taking
@@ -361,7 +356,7 @@ def _discretize_conv_spk_(
 
 
 def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> float:
-    """Determine a scale for discretization
+    """Determine a scale for discretization.
 
     Determine how much the values of a torch tensor can be scaled in order to fit
     the given precision
@@ -401,7 +396,7 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
 def discretize_tensor(
     obj: torch.Tensor, scaling: float, to_int: bool = True
 ) -> torch.Tensor:
-    """Scale a torch.Tensor and cast it to discrete integer values
+    """Scale a torch.Tensor and cast it to discrete integer values.
 
     Parameters
     ----------
@@ -431,7 +426,7 @@ def discretize_tensor(
 
 
 def discretize_scalar(obj: float, scaling: float) -> int:
-    """Scale a float and cast it to discrete integer values
+    """Scale a float and cast it to discrete integer values.
 
     Parameters
     ----------

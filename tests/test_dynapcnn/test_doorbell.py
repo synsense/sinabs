@@ -1,21 +1,27 @@
+"""This module is meant to test a real use case.
+
+It will include testing of the network equivalence, and of the correct output configuration.
 """
-This module is meant to test a real use case. It will include testing of
-the network equivalence, and of the correct output configuration.
-"""
+
 import samna
+import torch
+from torch import nn
+
+from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+from sinabs.from_torch import from_model
+from sinabs.layers import NeuromorphicReLU
+
 # this is necessary as a workaround because of a problem
 # that occurs when samna is imported after torch
-
-from torch import nn
-import torch
-from sinabs.layers import NeuromorphicReLU
-from sinabs.from_torch import from_model
-from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 
 class SmartDoorClassifier(nn.Module):
     def __init__(
-        self, quantize=False, linear_size=32, n_channels_in=2, n_channels_out=1,
+        self,
+        quantize=False,
+        linear_size=32,
+        n_channels_in=2,
+        n_channels_out=1,
     ):
         super().__init__()
 

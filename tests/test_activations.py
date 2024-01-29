@@ -77,7 +77,7 @@ def test_maxspike_activation():
     spikes = spike_fn.apply(v_mem, spike_threshold, SingleExponential())
     new_state = reset_fn(spikes, state, spike_threshold)
 
-    assert torch.allclose(spikes, torch.tensor([4., 1.]))
+    assert torch.allclose(spikes, torch.tensor([4.0, 1.0]))
     assert torch.allclose(new_state["v_mem"], torch.tensor([2.5, 0.3]))
 
     loss = torch.nn.functional.mse_loss(spikes, torch.ones_like(spikes))
