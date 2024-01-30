@@ -354,7 +354,7 @@ class DynapcnnVisualizer:
                 plots.append(self.add_readout_plot(layout=layout[2], **readout_args))
             except Exception as e:
                 print(
-                    f"Either the layout or the images are missing in the readout plot. "
+                    "Either the layout or the images are missing in the readout plot. "
                 )
                 print(e)
 
@@ -372,8 +372,8 @@ class DynapcnnVisualizer:
                         layout=layout[3], **power_measurement_kwargs
                     )
                 )
-            except:
-                print(f"Layout missing the power monitor plot. ")
+            except Exception:
+                print("Layout missing the power monitor plot. ")
 
         return plots
 
@@ -387,11 +387,6 @@ class DynapcnnVisualizer:
             dynapcnn_network (DynapcnnNetwork): The network that needs to be deployed and visualized
             disjoint_process (bool, optional): If true, the GUI is launched as a separate disjoint process. Useful for MacOS users. Defaults to False.
 
-        Raises:
-            ConnectionError: _description_
-            ValueError: _description_
-            ValueError: _description_
-            NotImplementedError: _description_
         """
         # Checks for the visualizer to work correctly.
         if not hasattr(dynapcnn_network, "samna_device"):
@@ -436,7 +431,7 @@ class DynapcnnVisualizer:
         self.streamer_graph = samna.graph.EventFilterGraph()
 
         ## Start visualizer and create plots based on parameters.
-        gui_process = self.create_visualizer_process(
+        self.create_visualizer_process(
             visualizer_endpoint=f"tcp://0.0.0.0:{self.samna_visualizer_port}",
             disjoint_process=disjoint_process,
         )
