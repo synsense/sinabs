@@ -18,6 +18,11 @@ extensions = [
     "sphinx_gallery.gen_gallery",
 ]
 
+myst_enable_extensions = [
+    "dollarmath",
+    "amsmath",
+]
+
 autodoc_typehints = "both"
 
 sphinx_gallery_conf = {
