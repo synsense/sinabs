@@ -82,3 +82,26 @@ def test_from_nir_to_sequential():
     assert type(orig_model[2]) == type(converted_modules[3])
     torch.testing.assert_allclose(orig_model[3].weight, converted_modules[4].weight)
     torch.testing.assert_allclose(orig_model[3].bias, converted_modules[4].bias)
+
+
+def test_as_pair():
+    from sinabs.nir import _as_pair
+
+    assert (2, 2) == _as_pair(2)
+    assert (-1, 4) == _as_pair((-1, 4))
+
+
+def test_2dcnn_network():
+    from sinabs.nir import from_nir, to_nir
+
+    orig_model = nn.Sequential(
+        nn.Conv2d(2, 8, kernel_size=3, padding=1),
+        sl.LIFSqueeze(tau_mem=10.0, batch_size=1),
+        sl.SumPool2d(2),
+        nn.Flatten(),
+        nn.Linear(2 * 10 * 10, 5),
+    )
+
+    nir_graph = to_nir(orig_model, torch.rand(1, 2, 10, 10))
+
+    loaded_model = from_nir(nir_graph, batch_size=1)

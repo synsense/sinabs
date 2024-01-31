@@ -52,14 +52,16 @@ class TinyModel(torch.nn.Module):
 
 def test_parsing():
     model = Model()
-    loss = SynOpCounter(model.modules())
+    with pytest.warns(DeprecationWarning):
+        loss = SynOpCounter(model.modules())
 
     assert len(loss.modules) == 3
 
 
 def test_loss():
     model = TinyModel(quantize=False)
-    criterion = SynOpCounter(model.modules())
+    with pytest.warns(DeprecationWarning):
+        criterion = SynOpCounter(model.modules())
     input = torch.tensor([[0.5, 0.5, 0.5, 0.5, 0.5]])
     model(input)
     loss = criterion()
@@ -69,7 +71,8 @@ def test_loss():
 
 def test_loss_quantized():
     model = TinyModel(quantize=True)
-    criterion = SynOpCounter(model.modules())
+    with pytest.warns(DeprecationWarning):
+        criterion = SynOpCounter(model.modules())
     input = torch.tensor([[0.5, 0.5, 0.5, 0.5, 0.5]])
     model(input)
     loss = criterion()
@@ -79,7 +82,8 @@ def test_loss_quantized():
 
 def test_layer_synops():
     model = Model()
-    criterion = SynOpCounter(model.modules(), sum_activations=False)
+    with pytest.warns(DeprecationWarning):
+        criterion = SynOpCounter(model.modules(), sum_activations=False)
     input = torch.rand([1, 1, 64, 64])
     model(input)
     loss = criterion()
@@ -92,7 +96,8 @@ def test_linear_synops_counter():
     input_ = torch.zeros((2, 3))
     input_[0, 0] = 3
     input_[1, 2] = 5
-    analyzer = SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model)
     model(input_)
     model_stats = analyzer.get_model_statistics()
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
@@ -109,7 +114,8 @@ def test_linear_synops_counter_with_time():
     input_ = torch.zeros((2, n_steps, 3))
     input_[0, 0, 0] = 3
     input_[1, 0, 1] = 5
-    analyzer = SNNAnalyzer(model, dt=dt)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model, dt=dt)
     model(input_)
     layer_stats = analyzer.get_layer_statistics()["parameter"][""]
 
@@ -122,7 +128,8 @@ def test_linear_synops_counter_across_batches():
     input1[0, 0] = 3
     input2 = torch.zeros((1, 3))
     input2[0, 0] = 6
-    analyzer = SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model)
     model(input1)
     batch1_stats = analyzer.get_model_statistics(average=False)
     model(input2)
@@ -139,7 +146,8 @@ def test_linear_synops_counter_across_batches():
 def test_conv_synops_counter():
     model = nn.Conv2d(1, 5, kernel_size=2)
     input_ = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
-    analyzer = SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model)
     model(input_)
     model_stats = analyzer.get_model_statistics(average=True)
     layer_stats = analyzer.get_layer_statistics(average=True)["parameter"][""]
@@ -153,7 +161,8 @@ def test_conv_synops_counter_counts_across_batches():
     model = nn.Conv2d(1, 5, kernel_size=2)
     input1 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1)
     input2 = torch.eye(3).unsqueeze(0).unsqueeze(0).repeat(2, 1, 1, 1) * 2
-    analyzer = SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model)
     model(input1)
     batch1_stats = analyzer.get_model_statistics(average=False)
     model(input2)
@@ -170,7 +179,8 @@ def test_spiking_layer_firing_rate():
     layer = sl.IAF()
     input_ = torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyzer = sinabs.SNNAnalyzer(layer)
+    with pytest.warns(DeprecationWarning):
+        analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
     model_stats = analyzer.get_model_statistics(average=True)
     layer_stats = analyzer.get_layer_statistics(average=True)["spiking"][""]
@@ -186,16 +196,17 @@ def test_nonspiking_stateful_layer():
     model = nn.Sequential(sl.IAF(), sl.ExpLeak(tau_mem=10))
     input_ = torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyzer = sinabs.SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = sinabs.SNNAnalyzer(model)
     output = model(input_)
     model_stats = analyzer.get_model_statistics(average=True)
     assert model_stats["firing_rate"] == 0.25
-    
+
     layer_stats = analyzer.get_layer_statistics(average=True)
     # ExpLeak layer should not show up in spiking or parameter stats
     assert "1" not in layer_stats["spiking"]
     assert "1" not in layer_stats["parameter"]
-    
+
     spiking_layer_stats = layer_stats["spiking"]["0"]
     assert spiking_layer_stats["firing_rate"] == 0.25
     assert spiking_layer_stats["firing_rate_per_neuron"].shape == (4, 4)
@@ -207,7 +218,8 @@ def test_spiking_layer_firing_rate_across_batches():
     input1 = torch.eye(4).unsqueeze(0).unsqueeze(0)
     input2 = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyzer = sinabs.SNNAnalyzer(layer)
+    with pytest.warns(DeprecationWarning):
+        analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input1)
     batch1_stats = analyzer.get_model_statistics(average=False)
     sinabs.reset_states(layer)
@@ -228,7 +240,8 @@ def test_analyzer_reset():
     layer = sl.IAF()
     input_ = 2 * torch.eye(4).unsqueeze(0).unsqueeze(0)
 
-    analyzer = sinabs.SNNAnalyzer(layer)
+    with pytest.warns(DeprecationWarning):
+        analyzer = sinabs.SNNAnalyzer(layer)
     output = layer(input_)
     output = layer(input_)
     sinabs.reset_states(layer)
@@ -254,7 +267,8 @@ def test_snn_analyzer_statistics():
         IAFSqueeze(batch_size=batch_size),
     )
 
-    analyzer = SNNAnalyzer(model)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(model)
     input_ = torch.rand((batch_size, num_timesteps, 1, 16, 16)) * 100
     input_flattended = input_.flatten(0, 1)
     output = model(input_flattended)
@@ -294,14 +308,16 @@ def test_snn_analyzer_does_not_depend_on_batch_size():
     batch_size_1 = 5
     num_timesteps = 10
     linear1 = nn.Linear(3, 4, bias=False)
-    analyzer = SNNAnalyzer(linear1)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(linear1)
     input_ = torch.ones((batch_size_1, num_timesteps, 3)) * 10
     linear1(input_)
     model_stats_batch_size_1 = analyzer.get_model_statistics(average=True)
 
     batch_size_2 = 10
     linear2 = nn.Linear(3, 4, bias=False)
-    analyzer = SNNAnalyzer(linear2)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(linear2)
     input_ = torch.ones((batch_size_2, num_timesteps, 3)) * 10
     linear2(input_)
     model_stats_batch_size_2 = analyzer.get_model_statistics(average=True)
@@ -312,7 +328,8 @@ def test_snn_analyzer_does_not_depend_on_batch_size():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_snnanalyzer_on_gpu():
     linear = nn.Linear(3, 4, bias=False)
-    analyzer = SNNAnalyzer(linear)
+    with pytest.warns(DeprecationWarning):
+        analyzer = SNNAnalyzer(linear)
     linear.cuda()
     input_ = torch.ones((2, 10, 3), device="cuda") * 10
     linear(input_)

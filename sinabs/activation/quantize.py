@@ -3,7 +3,8 @@ import torch.autograd
 
 class Quantize(torch.autograd.Function):
     """PyTorch-compatible function that applies a floor() operation on the input, while providing a
-    surrogate gradient (equivalent to that of a linear function) in the backward pass."""
+    surrogate gradient (equivalent to that of a linear function) in the backward pass.
+    """
 
     @staticmethod
     def forward(ctx, inp):

@@ -3,3 +3,5 @@ numpy
 torch>=1.8
 nir
 nirtorch
+samna >= 0.33
+

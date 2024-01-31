@@ -6,4 +6,5 @@
 
    synops_loss_ann
    synops_loss_snn
+   custom_hooks
    activations
