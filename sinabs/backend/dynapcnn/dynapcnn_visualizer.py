@@ -534,10 +534,11 @@ class DynapcnnVisualizer:
         print("Set up completed!")
 
     def update_feature_count(self, dynapcnn_network: DynapcnnNetwork):
-        """Extract feature count from the last layer and pass it to GUI
+        """Extract feature count from the last layer and pass it to GUI.
+
         Args:
-            dynapcnn_network: DynapcnnNetwork
-                sinabs-dynapcnn, `DynapcnnNetwork` object.
+            dynapcnn_network (DynapcnnNetwork): DynapcnnNetwork object
+
         """
         last_layer = dynapcnn_network.chip_layers_ordering[-1]
         config = dynapcnn_network.samna_config
