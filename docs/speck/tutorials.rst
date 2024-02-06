@@ -1,6 +1,6 @@
 
-Tutorials
-=========
+Hardware Tutorials
+==================
 
 .. toctree::
     :maxdepth: 2
