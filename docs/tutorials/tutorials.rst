@@ -2,7 +2,7 @@
 =============
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    bptt
    weight_transfer_mnist
@@ -10,4 +10,5 @@
    weight_scaling
    nir_to_speck
    LeNet_5_EngChinese
+   ../speck/tutorials
    
