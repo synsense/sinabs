@@ -1,6 +1,3 @@
-Developer's Guide
-=================
-
 How to add support for a new chip
 ---------------------------------
 

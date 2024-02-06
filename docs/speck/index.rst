@@ -11,4 +11,3 @@
     visualizer
     specksim
     faqs/index
-    development
