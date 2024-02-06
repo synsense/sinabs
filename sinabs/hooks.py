@@ -289,23 +289,23 @@ class ModelSynopsHook:
     The hook will be called automatically at each forward pass. Afterwards
     the data can be accessed in several ways:
 
-        - each layer that has a synops hook registered, will have an entry
-          'synops_per_timestep' in its `hook_data`. Other than the
-          'layer_synops_per_timestep', this entry takes preceding average
-          pooling layers into account.
+    - Each layer that has a synops hook registered, will have an entry
+      'synops_per_timestep' in its `hook_data`. Other than the
+      'layer_synops_per_timestep', this entry takes preceding average
+      pooling layers into account.
 
-        - The same values can be accessed through a dict inside the `hook_data`
-          of the Sequential, under the key `synops_per_timestep`. The keys
-          inside this dict correspond to the layer indices within the Sequencial,
-          e.g.: `sequential.hook_data['synops_per_timestep'][1]`
+    - The same values can be accessed through a dict inside the `hook_data`
+      of the Sequential, under the key `synops_per_timestep`. The keys
+      inside this dict correspond to the layer indices within the Sequential,
+      e.g.: `sequential.hook_data['synops_per_timestep'][1]`
 
-        - The `hook_data` of the sequential also contains a scalar entry
-          'total_synops_per_timestep' which sums the synops over all layers.
+    - The `hook_data` of the sequential also contains a scalar entry
+      'total_synops_per_timestep' which sums the synops over all layers.
 
-        - If `dt` is not None, for each of the entries listed above, there
-          will be a corresponding `(total_)synops_per_second` entry, indicating
-          the synaptic operations per second, under the assumption that `dt`
-          is the time step in seconds.
+    - If `dt` is not None, for each of the entries listed above, there
+      will be a corresponding '(total_)synops_per_second' entry, indicating
+      the synaptic operations per second, under the assumption that `dt`
+      is the time step in seconds.
 
     Parameters:
       dt: If not None, should be a float that indicates the simulation
@@ -343,7 +343,7 @@ class ModelSynopsHook:
                 # them to the counted Synops in the next conv or linear layer
                 if lyr.kernel_size != lyr.stride:
                     warnings.warn(
-                        f"In order for the Synops counter to work accurately the pooling "
+                        "In order for the Synops counter to work accurately the pooling "
                         f"layers kernel size should match their strides. At the moment at layer {name}, "
                         f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
                     )
