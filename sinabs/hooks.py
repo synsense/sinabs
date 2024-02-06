@@ -102,7 +102,7 @@ def input_diff_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["diff_output"]
+    `module.hook_data['diff_output']`
 
     Parameters:
         module: Either a torch.nn.Conv2d or Linear layer
@@ -142,7 +142,7 @@ def firing_rate_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["firing_rate"]
+    `module.hook_data['firing_rate']`
 
     Parameters:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
@@ -167,7 +167,7 @@ def firing_rate_per_neuron_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["firing_rate_per_neuron"]
+    `module.hook_data['firing_rate_per_neuron']`
 
     Parameters:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
@@ -203,7 +203,7 @@ def conv_layer_synops_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["layer_synops_per_timestep"]
+    `module.hook_data['layer_synops_per_timestep']`
 
     Parameters:
         module: A torch.nn.Conv2d layer
@@ -247,7 +247,7 @@ def linear_layer_synops_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["layer_synops_per_timestep"]
+    `module.hook_data['layer_synops_per_timestep']`
 
     Parameters:
         module: A torch.nn.Linear layer.

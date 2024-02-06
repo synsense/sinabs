@@ -13,7 +13,9 @@ import sinabs.layers as sl
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork, DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
-to_tuple = lambda x: (x, x) if isinstance(x, int) else x
+
+def to_tuple(x):
+    return (x, x) if isinstance(x, int) else x
 
 
 def convert_linear_to_convolutional(
@@ -225,7 +227,7 @@ def from_sequential(
         else:
             warn(
                 f"Layer with name: {name} of type: {type(layer)} is ignored"
-                + f"and will not be included. Your network may not be properly simulated."
+                + "and will not be included. Your network may not be properly simulated."
             )
             continue
 
@@ -246,7 +248,7 @@ class SpecksimNetwork:
     def __init__(
         self,
         graph: samna.graph.EventFilterGraph,
-        graph_members: List["SamnaFilterNode"],
+        graph_members: List["SamnaFilterNode"],  # noqa: F821
         initial_sleep_duration: float = 1.0,
         subsequent_sleep_duration: float = 0.1,
     ):
@@ -271,7 +273,7 @@ class SpecksimNetwork:
         """Applies the network forward pass given events.
 
         Args:
-            xytp (np.record): Input events as a numpy record array with keys ("x", "y", "t", "p")
+            xytp (np.record): Input events as a numpy record array with keys ('x', 'y', 't', 'p')
 
         Returns:
             np.record: Output events as a numpy record array of the same type as the input events.
@@ -316,7 +318,9 @@ class SpecksimNetwork:
         return self.forward(xytp)
 
     def reset_states(self):
-        """Reset the states of every spiking layer in the network to 0."""
+        """
+        Reset the states of every spiking layer in the network to 0.
+        """
         for member in self.members:
             if isinstance(member, IAFFilter):
                 member.get_layer().reset_states()
