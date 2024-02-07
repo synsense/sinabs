@@ -67,6 +67,24 @@ def test_model_synops_hook(dt):
         assert model.hook_data["total_synops_per_second"] == synops_total / dt
 
 
+@pytest.mark.parametrize("dt", dts)
+def test_model_synops_hook_invalid_pooling(dt):
+
+    model = nn.Sequential(
+        nn.Conv2d(2, 4, 3, 3),
+        IAFSqueeze(batch_size=2),
+        # Pooling with different kernel size and stride
+        nn.AvgPool2d(kernel_size=4, stride=2),
+        nn.Conv2d(4, 2, 3, 3),
+        IAFSqueeze(batch_size=2),
+    )
+    hooks.register_synops_hooks(model, dt=dt)
+
+    inp = torch.rand(8, 2, 32, 32)
+    with pytest.warns(Warning):
+        model(inp)
+
+
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook_cuda(dt):
