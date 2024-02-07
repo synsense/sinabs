@@ -1,10 +1,75 @@
 CHANGES
 =======
 
+* moved instructions for adding new device to FAQ
+* minor style corrections in doc strings
+* moved tutorials from speck to top level
+* doc strings refractored
+* doc string style correction
+* updated config file to remove unsupported build\_sphinx
+* build sphinx command not supported anymore by pbr
+* minor typos cleanup
+* tests updated to new API
+* removing doc formatter
+* blackened files once again
+* added black to the doc formatter
+* upgraded to black 24.1.0
+* black formatted all tests
+* black formatted source
+* added black action for linting
+* updated setup-python action to v5
+* Update conf.py to enable Latex/Math rendering
+* getting rid of ONNX support in favor of NIR
+* Hooks: Fix syntax of docstrings
+* Remove whitespace from api ref
+* Add missing entry in api ref
+* Update API reference
+* added notebooks to ignore execution list
+* commented out duplicate from chip\_factory
+* Fix unit test to check for deprecation warnings correctly
+* How to on custom hooks
+* Include firing rate analysis in synop loss tutorial
+* Add deprecation warnings to SNNAnalyzer and SynOpsCouner
+* Add missing typehint import
+* Fix indentation of docstring and import of missing typehint
+* Add tutorial about nir deployment on speck
+* explicit import in init file
+* added nir api to docs
+* added test for extended readout layer
+* commented out unused methods
+* excluding device deployment from coverage
+* excluding device deployment code from coverage
+* added test for NIR submodule
+* added test for raster to events
+* Error imports explicit
+* Dynapcnn Utils: build\_from\_list skips default ignored layers
+* Merged documentation for speck/dynapcnn
+* docs pointing to the correct folder
+* How tos: Update synop loss tutorials for snns and anns
+* Add docstrings to new functions
+* Synops module hook: Enable accessing synops through module directly
+* removing unused gitlab CI file
+* Minor improvements to synop loss ANN how to
+* Update how to on synops loss for ann to use new model hook
+* Synops model hook: Ensure connection map is on same device as input
+* Add test for synop model hook on cuda
+* Synops model hook: Track total synops
 * Tidy up test folder
+* Add 'hook\_data' attribute
+* Unit tests for hooks: Add missing files
+* Unit tests for firing rate and input diff hooks
+* Speed up synops hook
+* Add unit tests for model-to-layer conversion
+* Allow ignoring layers when converting to dynapcnn network
+* Unit tests for synops hooks
+* Hooks: More explicit naming of added synops attributes. Function for auto-registering synops hooks
+* Hooks: Fix multiple bugs. Add Synop model hook
+* WIP: Add hooks for synops and firing rate analysis
 * Update ci-pipeline.yml
 * Update ci-pipeline.yml
 * Update ci-pipeline.yml
+* Update ci-pipeline.yml
+* Revert "Update ci-pipeline.yml"
 * Update ci-pipeline.yml
 * Update ci-pipeline.yml
 * Update ci-pipeline.yml
@@ -13,6 +78,7 @@ CHANGES
 * Add import to Visualizer back
 * Fix typo
 * Add \_\_init\_\_ folder to backend
+* Hook for novel 'diff input' metric
 * [WIP] Organize includes form merging packages
 * Remove easy-install command
 * Add graphviz dependency
@@ -454,13 +520,9 @@ v1.1.2
 * Enable top-level conversion of sinabs layers with 'replace\_module' function. Resolves issue #60
 * Enable converting sinabs layers with
 * add documentation about how to release a new Sinabs version
-
-v1.1.1
-------
-
 * Hotfix new arg\_dict
 
-v1.1.0
+v1.1.1
 ------
 
 * add arg\_dict property to StatefulLayer
