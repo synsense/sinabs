@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import reduce
 from typing import Any, Dict, List, Optional, Union
+from warnings import warn
 
 import torch
 from torch import nn
@@ -342,9 +343,9 @@ class ModelSynopsHook:
                 # We need to correct for that by accumulating the scaling factors and multiplying
                 # them to the counted Synops in the next conv or linear layer
                 if lyr.kernel_size != lyr.stride:
-                    warnings.warn(
+                    warn(
                         "In order for the Synops counter to work accurately the pooling "
-                        f"layers kernel size should match their strides. At the moment at layer {name}, "
+                        f"layers kernel size should match their strides. At the moment at layer {lyr_idx}, "
                         f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
                     )
                 ks = lyr.kernel_size
