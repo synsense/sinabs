@@ -10,6 +10,4 @@
     dangers
     visualizer
     specksim
-    tutorials
     faqs/index
-    development

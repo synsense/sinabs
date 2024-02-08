@@ -9,20 +9,22 @@ from torch import nn
 from sinabs.layers import SqueezeMixin, StatefulLayer
 
 
-def _extract_single_input(input_: List[Any]) -> Any:
+def _extract_single_input(input_data: List[Any]) -> Any:
     """Extract single element of a list.
 
     Parameters:
-        input_: List that should have only one element
+        input_data: List that should have only one element
+
     Returns:
         The only element from the list
+
     Raises:
-        ValueError if input_ does not have exactly
+        ValueError if input_data does not have exactly
         one element.
     """
-    if len(input_) != 1:
+    if len(input_data) != 1:
         raise ValueError("Multiple inputs not supported for `input_diff_hook`")
-    return input_[0]
+    return input_data[0]
 
 
 def conv_connection_map(
@@ -103,7 +105,7 @@ def input_diff_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["diff_output"]
+    `module.hook_data['diff_output']`
 
     Parameters:
         module: Either a torch.nn.Conv2d or Linear layer
@@ -143,7 +145,7 @@ def firing_rate_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["firing_rate"]
+    `module.hook_data['firing_rate']`
 
     Parameters:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
@@ -168,7 +170,7 @@ def firing_rate_per_neuron_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["firing_rate_per_neuron"]
+    `module.hook_data['firing_rate_per_neuron']`
 
     Parameters:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
@@ -204,7 +206,7 @@ def conv_layer_synops_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["layer_synops_per_timestep"]
+    `module.hook_data['layer_synops_per_timestep']`
 
     Parameters:
         module: A torch.nn.Conv2d layer
@@ -248,7 +250,7 @@ def linear_layer_synops_hook(
     The hook should be registered with the layer using
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
-    `module.hook_data["layer_synops_per_timestep"]
+    `module.hook_data['layer_synops_per_timestep']`
 
     Parameters:
         module: A torch.nn.Linear layer.
@@ -277,8 +279,8 @@ class ModelSynopsHook:
     Other than the layer-wise synops hook, this hook accounts for
     preceeding average pooling layers, which scale the data.
 
-    To use this hook, the `conv_layer_synops_hook`s and
-    `linear_layer_synops_hook`s need to be registered with the layers
+    To use this hook, the `conv_layer_synops_hook` and
+    `linear_layer_synops_hook` need to be registered with the layers
     inside the Sequential first.  The hook should then be instantiated
     with or without a `dt` and registered with the Sequential using
     `torch.register_forward_hook`.
@@ -287,18 +289,22 @@ class ModelSynopsHook:
 
     The hook will be called automatically at each forward pass. Afterwards
     the data can be accessed in several ways:
-    - each layer that has a synops hook registered, will have an entry
+
+    - Each layer that has a synops hook registered, will have an entry
       'synops_per_timestep' in its `hook_data`. Other than the
-      `layer_synops_per_timestep`, this entry takes preceding average
+      'layer_synops_per_timestep', this entry takes preceding average
       pooling layers into account.
+
     - The same values can be accessed through a dict inside the `hook_data`
       of the Sequential, under the key `synops_per_timestep`. The keys
-      inside this dict correspond to the layer indices within the Sequencial,
-      e.g.: `sequential.hook_data['synops_per_timestep'][1]
+      inside this dict correspond to the layer indices within the Sequential,
+      e.g.: `sequential.hook_data['synops_per_timestep'][1]`
+
     - The `hook_data` of the sequential also contains a scalar entry
-      'total_synops_per_timestep` which sums the synops over all layers.
+      'total_synops_per_timestep' which sums the synops over all layers.
+
     - If `dt` is not None, for each of the entries listed above, there
-      will be a corresponding `(total_)synops_per_second` entry, indicating
+      will be a corresponding '(total_)synops_per_second' entry, indicating
       the synaptic operations per second, under the assumption that `dt`
       is the time step in seconds.
 
@@ -338,7 +344,7 @@ class ModelSynopsHook:
                 # them to the counted Synops in the next conv or linear layer
                 if lyr.kernel_size != lyr.stride:
                     warn(
-                        f"In order for the Synops counter to work accurately the pooling "
+                        "In order for the Synops counter to work accurately the pooling "
                         f"layers kernel size should match their strides. At the moment at layer {lyr_idx}, "
                         f"the kernel_size = {lyr.kernel_size}, the stride = {lyr.stride}."
                     )

@@ -1,5 +1,5 @@
 FAQs
-===================================
+====
 
 .. toctree::
     :maxdepth: 2
@@ -11,4 +11,5 @@ FAQs
     device_management
     output_monitoring
     save_hardware_config_as_binary
+    add_new_device
     ../notebooks/leak_neuron
