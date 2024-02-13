@@ -303,7 +303,7 @@ class ModelSynopsHook:
       'total_synops_per_timestep' which sums the synops over all layers.
 
     - If `dt` is not None, for each of the entries listed above, there
-      will be a corresponding '(total_)synops_per_second' entry, indicating
+      will be a corresponding 'synops_per_second' entry, indicating
       the synaptic operations per second, under the assumption that `dt`
       is the time step in seconds.
 
