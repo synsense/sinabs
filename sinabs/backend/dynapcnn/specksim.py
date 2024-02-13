@@ -329,10 +329,10 @@ class SpecksimNetwork:
         """Get nth spiking layer for reading.
 
         Args:
-            spike_layer_number (int): `spike_layer_number`th IAFFilter
+            spike_layer_number (int): `spike_layer_number` th IAFFilter
 
         Returns:
-            IAFFilter: `spike_layer_number`th IAFFilter
+            IAFFilter: `spike_layer_number` th IAFFilter
         """
         spike_layer_idx = 0
         for member in self.members:
@@ -344,10 +344,10 @@ class SpecksimNetwork:
         raise ValueError(f"{spike_layer_number}th monitor does not exist!")
 
     def add_monitor(self, spike_layer_number: int):
-        """Add a monitor to the `spike_layer_number`th IAF layer.
+        """Add a monitor to the `spike_layer_number` th IAF layer.
 
         Args:
-            spike_layer_number (int): `spike_layer_number`th IAF layer to monitor
+            spike_layer_number (int): `spike_layer_number` th IAF layer to monitor
         """
         iaf_filter = self.get_nth_spiking_layer(spike_layer_number)
         graph = samna.graph.EventFilterGraph()
@@ -366,13 +366,13 @@ class SpecksimNetwork:
             self.add_monitor(number)
 
     def read_monitor(self, spike_layer_number: int) -> np.record:
-        """Read the events from the `spike_layer_number`th hidden spiking layer.
+        """Read the events from the `spike_layer_number` th hidden spiking layer.
 
         Args:
-            spike_layer_number (int): `spike_layer_number`th spiking layer to monitor.
+            spike_layer_number (int): `spike_layer_number` th spiking layer to monitor.
 
         Returns:
-            np.record: Events from `spike_layer_number`th spiking layer as a numpy
+            np.record: Events from `spike_layer_number` th spiking layer as a numpy
                 record array.
         """
         if spike_layer_number not in self.monitors.keys():
@@ -407,10 +407,10 @@ class SpecksimNetwork:
     def read_spiking_layer_states(
         self, spike_layer_number: int
     ) -> List[List[List[int]]]:
-        """Read the states of the `spike_layer_number`th spiking layer.
+        """Read the states of the `spike_layer_number` th spiking layer.
 
         Args:
-            spike_layer_number (int): `spike_layer_number`th spiking layer to read states from.
+            spike_layer_number (int): `spike_layer_number` th spiking layer to read states from.
 
         Returns:
             List[List[List[int]]]: 3-dimensional list of states in (channel, y, x)

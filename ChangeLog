@@ -1,6 +1,7 @@
 CHANGES
 =======
 
+* Fix broken links in docs
 * Fix minor typos and formatting issues in docstrings
 * moved instructions for adding new device to FAQ
 * minor style corrections in doc strings
