@@ -189,7 +189,12 @@ Suppose we have an IAF neuron `A`
    
 
 ## Selection Of Spike Function
-You'd better choose "Multi-Spike" instead of "Single-Spike" due to the nature of our hardware as demonstrated
-in the chapter above.
+Empirically, it usually works better to choose the 'MultiSpike' activation instead of 'SingleSpike'. The reason is that
+the chip is asynchronous and hence does not use time steps. This means that if there is a high frequency of input spikes,
+the hardware neuron can spike multiple times during the duration of a single simulation time step. The `MultiSpike` activation
+allows to reflect this in simulation. 
+
+For training, make sure to use a gradient function that makes sense with your choice of activation function. For `MultiSpike` this could mean
+a `PeriodicExponential` surrogate, for example.
 
 
