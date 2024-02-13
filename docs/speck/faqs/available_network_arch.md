@@ -204,7 +204,7 @@ network = nn.sequential([
 ## Memory Constrains
 Each core has a different "neuron memory" and "weight memory" constraints in the design.
 Please be careful about the memory limitations when you design your SNN.
-See detail in the [overview of devkit.](../getting_started/overview.md)
+See detail in the [overview of devkit.](../overview.md)
 
 ## Feature Map Size Constrains
 The maximum output feature map size supported by each core is 64 x 64, while our maximum input shape is 128 x 128.
@@ -213,5 +213,5 @@ model.
 
 ## Limitation of Using ReadoutLayer
 If you are using readout layer, the number of output class should < **15**.
-See detail in the [readout layer introduction.](../getting_started/notebooks/using_readout_layer.ipynb)
+See detail in the [readout layer introduction.](../notebooks/using_readout_layer.ipynb)
 

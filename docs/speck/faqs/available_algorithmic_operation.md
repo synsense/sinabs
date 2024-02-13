@@ -28,4 +28,4 @@ Our devkit support a constant leakage on the membrane-potential of the IAF neuro
 - Make sure the `bias` is lower than 0 after the training.
 - Turn on the slow-clock of the devkit which driven the leakage functionality when deploy the SNN to the devkit.
 
-For more details see [how to leak neuron](./notebooks/leak_neuron.ipynb)
+For more details see [how to leak neuron](../notebooks/leak_neuron.ipynb)

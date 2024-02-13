@@ -5,13 +5,13 @@ process smoother.
 
 ## Memory Constrains On The Hardware
 
-In the ["overview of devkit"](/getting_started/overview.md) we mentioned that each core on our devkit has its own memory
+In the ["overview of devkit"](../overview.md) we mentioned that each core on our devkit has its own memory
 constrains:
 
 ![memoryconstrains](/_static/Overview/memory_constraints.png)
 
 If you want your SNN can be deployed to the devkit, please ensure your network has an appropriate architecture.
-The way to calculate the neuron memory and kernel memory can be found [here.](/getting_started/overview.md)
+The way to calculate the neuron memory and kernel memory can be found [here.](../overview.md)
 
 ## SynOps/s Bandwidth Constrains On The Hardware
 
