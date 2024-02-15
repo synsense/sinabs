@@ -152,7 +152,7 @@ Where 128Ki neuron exceeds any available neuron memory contrains among 9 layers,
 
 #### Leak operation
 
-Each layer includes a leak generation block, which will update all the configured neuron states with provided leak values with a clock reference signal.**[tutorial on how to use leak feature]**
+Each layer includes a leak generation block, which will update all the configured neuron states with provided leak values with a clock reference signal. Checkout the [tutorial](notebooks/leak_neuron) on how to use leak feature.
 
 #### Congestion banlancer
 In __latest devlopment kit(speck2e)__, each dynapcnn layer is equipped with a congestion banlancer upon its data path input. It is able to drops the incoming events at any time when the convolutional cores is overloaded in processing. 
