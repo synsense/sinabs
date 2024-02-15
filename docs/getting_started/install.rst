@@ -20,6 +20,15 @@ If you want to develop or have access to source code of **sinabs**, download the
     cd <to/your/software/folder>
     git clone git@github.com:synsense/sinabs.git
     cd sinabs
-    pip install -e . --user
+    pip install .
+
 
 For developers, we recommend that you install this package as a development version so that you can update the package without reinstalling it.
+
+    pip install -e .
+
+.. note:: 
+    If you are either using or developing plugin packages such as `sinabs-exodus`, a development install with `-e` flag does not work as expected. 
+    We suggest you do a regular pip installation every time you make a change.
+ 
+ 
