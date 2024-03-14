@@ -1,6 +1,9 @@
 CHANGES
 =======
 
+v2.0.0
+------
+
 * Fix typos and broken links in the documentation
 * Move instructions for adding new device to FAQ
 * Move tutorials from speck to top level
