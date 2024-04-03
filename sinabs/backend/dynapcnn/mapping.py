@@ -88,7 +88,7 @@ class Edge:
 
 # graph is list of list of edges. Each edge is
 def edmonds(graph, source, sink, verbose: bool = False):
-    """ Use Edmonds-Karp-Algorithm to match software layers to chip layers"""
+    """Use Edmonds-Karp-Algorithm to match software layers to chip layers"""
     graph = deepcopy(graph)
     flow = 0
     while True:
@@ -98,11 +98,7 @@ def edmonds(graph, source, sink, verbose: bool = False):
         while len(q) != 0:
             cur = q.popleft()  # current node index
             for edge in graph[cur]:  # edges to/from current node
-                if (
-                    pred[edge.t] is None
-                    and edge.t != source
-                    and edge.cap > edge.flow
-                ):
+                if pred[edge.t] is None and edge.t != source and edge.cap > edge.flow:
                     pred[edge.t] = edge
                     q.append(edge.t)
         if pred[sink] is not None:
