@@ -90,4 +90,4 @@ class DynapcnnNetworkGraph(nn.Module):
         )
 
         # Fix graph
-        self.sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+        self.sinabs_edges, _ = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)

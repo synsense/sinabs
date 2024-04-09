@@ -120,18 +120,22 @@ class GraphTracer():
         will be dropped as the node that originally targeted this node to be dropped.
         """
         edges = copy.deepcopy(self.edges_list)
-        new_edges = []
+        parsed_edges = []
+        removed_nodes = []
 
+        # removing ignored nodes from edges.
         for edge_idx in range(len(edges)):
             _src = edges[edge_idx][0]
             _trg = edges[edge_idx][1]
 
             if isinstance(self.modules_map[_src], default_ignored_nodes):
+                removed_nodes.append(_src)
                 # all edges where node '_src' is target change it to node '_trg' as their target.
                 for edge in edges:
                     if edge[1] == _src:
                         new_edge = (edge[0], _trg)
             elif isinstance(self.modules_map[_trg], default_ignored_nodes):
+                removed_nodes.append(_trg)
                 # all edges where node '_trg' is source change it to node '_src' as their source.
                 for edge in edges:
                     if edge[0] == _trg:
@@ -139,10 +143,24 @@ class GraphTracer():
             else:
                 new_edge = (_src, _trg)
             
-            if new_edge not in new_edges:
-                new_edges.append(new_edge)
+            if new_edge not in parsed_edges:
+                parsed_edges.append(new_edge)
 
-        return new_edges
+        # remapping nodes indexes.
+        remapped_nodes = {}
+        for node_indx, __ in self.modules_map.items():
+            _ = [x for x in removed_nodes if node_indx > x]
+            remapped_nodes[node_indx] = node_indx - len(_)
+            
+        for x in removed_nodes:
+            del remapped_nodes[x]
+
+        # remapping nodes names in parsed edges.
+        remapped_edges = []
+        for edge in parsed_edges:
+            remapped_edges.append((remapped_nodes[edge[0]], remapped_nodes[edge[1]]))
+
+        return remapped_edges, parsed_edges
     
     def plot_graph(self):
         """ ."""
