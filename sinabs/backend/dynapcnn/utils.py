@@ -13,6 +13,8 @@ from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer
 from .flipdims import FlipDims
 
+from .utils_graph import process_edge
+
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
@@ -401,6 +403,7 @@ def build_from_list(
     dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
         layers, input_shape=in_shape, idx_start=lyr_indx_next, dvs_input=dvs_input
     )
+    
     if dvs_layer is not None:
         compatible_layers.append(dvs_layer)
         in_shape = dvs_layer.get_output_shape()
@@ -537,3 +540,26 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
         torch.zeros(size=(1, *input_shape))
     )  # run a forward pass to initialize the new weights and last IAF
     return model
+
+def build_from_graph(layers: list, in_shape, edges: List[Tuple[int, int]]):
+    """ ."""
+    print('\n [ ENTERED build_from_graph() ]\n')
+
+    # @TODO the graph extraction is not yet considering DVS input.
+    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
+        layers, 
+        input_shape=in_shape, 
+        idx_start=0, 
+        dvs_input=False)
+    
+    layers_to_cores_map = {}
+
+    if dvs_layer is not None:
+        # @TODO the graph extraction is not yet considering DVS input.
+        pass
+    else:
+        # looping though graph edges.
+        for edge in edges:
+            process_edge(layers, edge, layers_to_cores_map)
+    
+    return None

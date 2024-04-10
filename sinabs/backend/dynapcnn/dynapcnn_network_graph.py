@@ -16,6 +16,7 @@ from .io import disable_timestamps, enable_timestamps, open_device, reset_timest
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     build_from_list,
+    build_from_graph,
     convert_model_to_layer_list,
     infer_input_shape,
     parse_device_id,
@@ -53,24 +54,28 @@ class DynapcnnNetworkGraph(nn.Module):
                 If True, discretize the parameters and thresholds.
                 This is needed for uploading weights to dynapcnn. Set to False only for
                 testing purposes.
+        
+        1. @TODO | 'self.sinabs_edges' has to be validated to be abiding to the device contraints before being passed to 'build_from_graph()'.
         """
         super().__init__()
+
+        dvs_input = False                                           # @TODO for now the graph part is not taking into consideration this.
 
         # Computational graph from original PyTorch module.
         self.graph_tracer = GraphTracer(
             snn.analog_model, 
-            torch.randn((1, *input_shape))  # torch.jit needs the batch dimension.
+            torch.randn((1, *input_shape))                          # torch.jit needs the batch dimension.
             )
 
-        # This attribute stores the location/core-id of each of the DynapcnnLayers upon placement on chip
+        # This attribute stores the location/core-id of each of the DynapcnnLayers upon placement on chip.
         self.chip_layers_ordering = []
 
-        self.input_shape = input_shape  # Convert models  to sequential
+        self.input_shape = input_shape                              # convert models  to sequential.
         self.layers = convert_model_to_layer_list(
             model=snn.spiking_model, ignore=DEFAULT_IGNORED_LAYER_TYPES
         )
 
-        # Check if dvs input is expected
+        # Check if dvs input is expected.
         if dvs_input:
             self.dvs_input = True
         else:
@@ -79,7 +84,7 @@ class DynapcnnNetworkGraph(nn.Module):
         input_shape = infer_input_shape(self.layers, input_shape=input_shape)
         assert len(input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
-        # Build model from layers
+        # Build model from layers.
         self.sequence = build_from_list(
             self.layers,
             in_shape=input_shape,
@@ -87,8 +92,16 @@ class DynapcnnNetworkGraph(nn.Module):
             dvs_input=self.dvs_input,
         )
 
-        # Get sinabs graph
+        # Get sinabs graph.
         self.sinabs_edges = self.get_sinabs_edges(snn)
+
+        _ = build_from_graph(
+            layers=self.layers, 
+            in_shape=input_shape,
+            edges=self.sinabs_edges)
+
+        for i, mod in enumerate(self.sequence):
+            print(i, mod)
 
     def get_sinabs_edges(self, sinabs_model):
         """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
