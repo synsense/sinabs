@@ -146,6 +146,8 @@ class GraphTracer():
             if new_edge not in parsed_edges:
                 parsed_edges.append(new_edge)
 
+        removed_nodes = list(set(removed_nodes))
+
         # remapping nodes indexes.
         remapped_nodes = {}
         for node_indx, __ in self.modules_map.items():
@@ -160,12 +162,12 @@ class GraphTracer():
         for edge in parsed_edges:
             remapped_edges.append((remapped_nodes[edge[0]], remapped_nodes[edge[1]]))
 
-        return remapped_edges, parsed_edges
+        return remapped_edges
     
-    def plot_graph(self):
+    @staticmethod
+    def plot_graph(edges_list):
         """ ."""
-        G = nx.DiGraph(self.edges_list)
+        G = nx.DiGraph(edges_list)
         layout = nx.spring_layout(G)
         nx.draw(G, pos = layout, with_labels=True, node_size=800)
-        plt.title('GraphTracer (new)')
         plt.show()

@@ -3,6 +3,7 @@ from subprocess import CalledProcessError
 from typing import List, Optional, Sequence, Tuple, Union
 
 import samna
+import sinabs.layers
 import torch
 import torch.nn as nn
 
@@ -65,12 +66,9 @@ class DynapcnnNetworkGraph(nn.Module):
         self.chip_layers_ordering = []
 
         self.input_shape = input_shape  # Convert models  to sequential
-        layers = convert_model_to_layer_list(
+        self.layers = convert_model_to_layer_list(
             model=snn.spiking_model, ignore=DEFAULT_IGNORED_LAYER_TYPES
         )
-
-        for i, l in enumerate(layers):
-            print(i, l)
 
         # Check if dvs input is expected
         if dvs_input:
@@ -78,16 +76,56 @@ class DynapcnnNetworkGraph(nn.Module):
         else:
             self.dvs_input = False
 
-        input_shape = infer_input_shape(layers, input_shape=input_shape)
+        input_shape = infer_input_shape(self.layers, input_shape=input_shape)
         assert len(input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         # Build model from layers
         self.sequence = build_from_list(
-            layers,
+            self.layers,
             in_shape=input_shape,
             discretize=discretize,
             dvs_input=self.dvs_input,
         )
 
-        # Fix graph
-        self.sinabs_edges, _ = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+        # Get sinabs graph
+        self.sinabs_edges = self.get_sinabs_edges(snn)
+
+    def get_sinabs_edges(self, sinabs_model):
+        """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
+        representation for the 'sinabs_model.spiking_model'.
+        """
+        # parse original graph to ammend edges containing nodes dropped in 'convert_model_to_layer_list()'.
+        sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+
+        if DynapcnnNetworkGraph.was_spiking_output_added(sinabs_model):
+            # spiking output layer has been added: create new edge.
+            last_edge = sinabs_edges[-1]
+            new_edge = (last_edge[1], last_edge[1]+1)
+            sinabs_edges.append(new_edge)
+        else:
+            pass
+
+        return sinabs_edges
+
+    @staticmethod
+    def was_spiking_output_added(sinabs_model):
+        """ Compares the models outputed by 'sinabs.from_torch.from_model()' to check if
+        a spiking output was added to the spiking version of the analog model.
+        """
+        analog_modules = []
+        spiking_modules = []
+
+        for mod in sinabs_model.analog_model:
+            analog_modules.append(mod)
+
+        for mod in sinabs_model.spiking_model:
+            spiking_modules.append(mod)
+
+        if len(analog_modules) != len(spiking_modules):
+            if isinstance(spiking_modules[-1], sinabs.layers.iaf.IAFSqueeze):
+                return True
+            else:
+                # throw error
+                return False
+        else:
+            return False
