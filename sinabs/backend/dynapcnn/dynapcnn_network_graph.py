@@ -54,8 +54,6 @@ class DynapcnnNetworkGraph(nn.Module):
                 If True, discretize the parameters and thresholds.
                 This is needed for uploading weights to dynapcnn. Set to False only for
                 testing purposes.
-        
-        1. @TODO | 'self.sinabs_edges' has to be validated to be abiding to the device contraints before being passed to 'build_from_graph()'.
         """
         super().__init__()
 
@@ -95,10 +93,14 @@ class DynapcnnNetworkGraph(nn.Module):
         # Get sinabs graph.
         self.sinabs_edges = self.get_sinabs_edges(snn)
 
-        _ = build_from_graph(
+        self.layers_to_cores_map, self.core_to_core_map = build_from_graph(
             layers=self.layers, 
             in_shape=input_shape,
             edges=self.sinabs_edges)
+        
+    @staticmethod
+    def build_from_graph_():                        # @TODO used for debug only (remove when class is complete).
+        return build_from_graph
 
     def get_sinabs_edges(self, sinabs_model):
         """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent

@@ -13,7 +13,7 @@ from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer
 from .flipdims import FlipDims
 
-from .sinabs_edges_handler import process_edge
+from .sinabs_edges_handler import process_edge, get_dynapcnnlayers_destinations
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
@@ -541,16 +541,17 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
     )  # run a forward pass to initialize the new weights and last IAF
     return model
 
-def build_from_graph(layers: list, in_shape, edges: List[Tuple[int, int]]):
+def build_from_graph(layers: List[nn.Module], in_shape, edges: List[Tuple[int, int]]):
     """ ."""
     print('\n [ ENTERED build_from_graph() ]\n')
 
     # @TODO the graph extraction is not yet considering DVS input.
-    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
-        layers, 
-        input_shape=in_shape, 
-        idx_start=0, 
-        dvs_input=False)
+    # dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
+    #     layers, 
+    #     input_shape=in_shape, 
+    #     idx_start=0, 
+    #     dvs_input=False)
+    dvs_layer = None
     
     '''
     holds 'blocks' of modules that populate a single DynapcnnLayer object.
@@ -565,10 +566,18 @@ def build_from_graph(layers: list, in_shape, edges: List[Tuple[int, int]]):
         for edge in edges:
             process_edge(layers, edge, layers_to_cores_map)
 
+    print('node to DynapcnnLayer mapping:')
+
     for key, val in layers_to_cores_map.items():
-        print(key)
+        print('DynapcnnLayer index: ', key)
         for k, v in val.items():
-            print('     ', k, type(v))
-        print('\n')
+            print(f'     [{k} {type(v)}]')
+
+    core_to_core_map = get_dynapcnnlayers_destinations(layers, edges, layers_to_cores_map)
+
+    print('\nDynapcnnLayer to DynapcnnLayer mapping:')
+
+    for key, val in core_to_core_map.items():
+        print(f'DynapcnnLayer {key} destinations: {val}')
     
-    return None
+    return layers_to_cores_map, core_to_core_map
