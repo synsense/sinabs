@@ -100,9 +100,6 @@ class DynapcnnNetworkGraph(nn.Module):
             in_shape=input_shape,
             edges=self.sinabs_edges)
 
-        for i, mod in enumerate(self.sequence):
-            print(i, mod)
-
     def get_sinabs_edges(self, sinabs_model):
         """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
         representation for the 'sinabs_model.spiking_model'.

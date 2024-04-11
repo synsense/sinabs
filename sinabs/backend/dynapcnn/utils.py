@@ -13,7 +13,7 @@ from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer
 from .flipdims import FlipDims
 
-from .utils_graph import process_edge
+from .sinabs_edges_handler import process_edge
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
@@ -552,14 +552,23 @@ def build_from_graph(layers: list, in_shape, edges: List[Tuple[int, int]]):
         idx_start=0, 
         dvs_input=False)
     
+    '''
+    holds 'blocks' of modules that populate a single DynapcnnLayer object.
+    key (int): DynapcnnLayer index.
+    value (dict): node index (key) and its type (module).
+    '''
     layers_to_cores_map = {}
 
-    if dvs_layer is not None:
-        # @TODO the graph extraction is not yet considering DVS input.
+    if dvs_layer is not None:           # @TODO the graph extraction is not yet considering DVS input.
         pass
-    else:
-        # looping though graph edges.
+    else:                               # looping though graph edges.
         for edge in edges:
             process_edge(layers, edge, layers_to_cores_map)
+
+    for key, val in layers_to_cores_map.items():
+        print(key)
+        for k, v in val.items():
+            print('     ', k, type(v))
+        print('\n')
     
     return None
