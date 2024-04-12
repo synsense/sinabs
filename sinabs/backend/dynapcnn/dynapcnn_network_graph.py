@@ -82,42 +82,27 @@ class DynapcnnNetworkGraph(nn.Module):
         input_shape = infer_input_shape(self.layers, input_shape=input_shape)
         assert len(input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
-        # Build model from layers.
-        self.sequence = build_from_list(
-            self.layers,
-            in_shape=input_shape,
-            discretize=discretize,
-            dvs_input=self.dvs_input,
-        )
-
         # Get sinabs graph.
         self.sinabs_edges = self.get_sinabs_edges(snn)
 
-        self.layers_to_cores_map, self.core_to_core_map = build_from_graph(
+        # Build model from layers.
+        self.dynapcnn_layers, self.nodes_to_dcnnl_map, self.dcnnl_to_dcnnl_map = build_from_graph(
+            discretize=discretize,
             layers=self.layers, 
             in_shape=input_shape,
             edges=self.sinabs_edges)
+
+    def __str__(self):
+        pretty_print = ''
+        for idx, layer_dest in self.dynapcnn_layers.items():
+            layer = layer_dest['layer']
+            dest = layer_dest['destinations']
+            pretty_print += f'\nlayer index: {idx}\nlayer modules: {layer}\nlayer destinations: {dest}\n'
+        return pretty_print
         
     @staticmethod
-    def build_from_graph_():                        # @TODO used for debug only (remove when class is complete).
+    def build_from_graph_():                                        # @TODO used for debug only (remove when class is complete).
         return build_from_graph
-
-    def get_sinabs_edges(self, sinabs_model):
-        """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
-        representation for the 'sinabs_model.spiking_model'.
-        """
-        # parse original graph to ammend edges containing nodes dropped in 'convert_model_to_layer_list()'.
-        sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
-
-        if DynapcnnNetworkGraph.was_spiking_output_added(sinabs_model):
-            # spiking output layer has been added: create new edge.
-            last_edge = sinabs_edges[-1]
-            new_edge = (last_edge[1], last_edge[1]+1)
-            sinabs_edges.append(new_edge)
-        else:
-            pass
-
-        return sinabs_edges
 
     @staticmethod
     def was_spiking_output_added(sinabs_model):
@@ -141,3 +126,20 @@ class DynapcnnNetworkGraph(nn.Module):
                 return False
         else:
             return False
+        
+    def get_sinabs_edges(self, sinabs_model):
+        """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
+        representation for the 'sinabs_model.spiking_model'.
+        """
+        # parse original graph to ammend edges containing nodes dropped in 'convert_model_to_layer_list()'.
+        sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+
+        if DynapcnnNetworkGraph.was_spiking_output_added(sinabs_model):
+            # spiking output layer has been added: create new edge.
+            last_edge = sinabs_edges[-1]
+            new_edge = (last_edge[1], last_edge[1]+1)
+            sinabs_edges.append(new_edge)
+        else:
+            pass
+
+        return sinabs_edges
