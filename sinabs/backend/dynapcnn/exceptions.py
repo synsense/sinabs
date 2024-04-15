@@ -30,3 +30,9 @@ class WrongPoolingModule(Exception):
 
     def __init__(self, pooling_module,):
         super().__init__(f"The function 'utils.build_SumPool2d(mod)' expects 'mod = nn.AvgPool2d' but got 'mod = {pooling_module}'.")
+
+class InvalidModel(Exception):
+    model: type
+
+    def __init__(self, model,):
+        super().__init__(f"'model' accepts either a DynapcnnNetwork or a DynapcnnNetworkGraph but {model} was given.")

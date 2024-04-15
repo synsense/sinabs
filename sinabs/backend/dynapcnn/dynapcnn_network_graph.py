@@ -90,15 +90,12 @@ class DynapcnnNetworkGraph(nn.Module):
 
     def __str__(self):
         pretty_print = ''
-        for idx, layer_dest in self.dynapcnn_layers.items():
-            layer = layer_dest['layer']
-            dest = layer_dest['destinations']
-            pretty_print += f'\nlayer index: {idx}\nlayer modules: {layer}\nlayer destinations: {dest}\n'
+        for idx, layer_data in self.dynapcnn_layers.items():
+            layer = layer_data['layer']
+            dest = layer_data['destinations']
+            core = layer_data['core_idx']
+            pretty_print += f'\nlayer index: {idx}\nlayer modules: {layer}\nlayer destinations: {dest}\nassigned core: {core}\n'
         return pretty_print
-        
-    @staticmethod
-    def build_from_graph_():                                        # @TODO used for debug only (remove when class is complete).
-        return build_from_graph
     
     def to(
         self,
@@ -204,10 +201,35 @@ class DynapcnnNetworkGraph(nn.Module):
             chip_layers_ordering = config_builder.get_valid_mapping(self)
 
         else:                                                        # mapping from each DynapcnnLayer into cores has been provided.
-            if has_dvs_layer:                                        # @TODO maybe this has to be modified given the new representation of layers in a dictionary (instead of a list).
-                chip_layers_ordering = chip_layers_ordering[: len(self.sequence) - 1]
+            if has_dvs_layer:
+                pass                                                 # TODO not handling DVSLayer yet.
 
-            chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
+        config = config_builder.build_config(self, [])               # update config.
+
+        if self.input_shape and self.input_shape[0] == 1:            # ???
+            config.dvs_layer.merge = True
+
+        monitor_chip_layers = []                                     # TODO all this monitoring part needs validation still.
+        if monitor_layers is None:                                   # check if any monitoring is enabled (if not, enable monitoring for the last layer).
+            for _, dcnnl_data in self.dynapcnn_layers.items():
+                if len(dcnnl_data['destinations']) == 0:
+                    monitor_chip_layers.append(dcnnl_data['core_idx'])
+                    break
+        elif monitor_layers == "all":
+            for _, dcnnl_data in self.dynapcnn_layers.items():      # monitor each chip core (if not a DVSLayer).
+                if not isinstance(dcnnl_data['layer'], DVSLayer):
+                    monitor_chip_layers.append(dcnnl_data['core_idx'])
+        
+        if monitor_layers:
+            if "dvs" in monitor_layers:
+                monitor_chip_layers.append("dvs")
+
+        config_builder.monitor_layers(config, monitor_chip_layers)   # enable monitors on the specified layers.
+
+        if config_modifier is not None:                              # apply user config modifier.
+            config = config_modifier(config)
+
+        return config, config_builder.validate_configuration(config) # validate config.
     
     def get_sinabs_edges(self, sinabs_model):
         """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
@@ -256,3 +278,7 @@ class DynapcnnNetworkGraph(nn.Module):
                 return False
         else:
             return False
+        
+    @staticmethod
+    def build_from_graph_():                                        # @TODO used for debug only (remove when class is complete).
+        return build_from_graph

@@ -1,10 +1,13 @@
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
 
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
+
+import sinabs
+from .exceptions import InvalidModel
 
 
 @dataclass
@@ -44,33 +47,47 @@ def find_chip_layers(
 
 
 def get_valid_mapping(
-    model: "DynapcnnNetwork", constraints: List[LayerConstraints]
+    model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], constraints: List[LayerConstraints]
 ) -> List[Tuple[int, int]]:
     """Given a model, find a valid layer ordering for its placement within the constraints
     provided.
 
     Parameters
     ----------
-    model:
-        DynapcnnNetwork
-    constraints:
-        A list of all the layer's constraints
+        model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
+        constraints: a list of all the layer's constraints.
 
     Returns
+        netmap: a list of tuples with (dynapcnnlayer index, core index).
     -------
     """
     layer_mapping = []
 
-    for layer in model.sequence:
-        if isinstance(layer, DynapcnnLayer):
-            layer_mapping.append(find_chip_layers(layer, constraints))
+    if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+        for layer in model.sequence:
+            if isinstance(layer, DynapcnnLayer):
+                layer_mapping.append(find_chip_layers(layer, constraints))
 
-    graph = make_flow_graph(layer_mapping, len(constraints))
+        graph = make_flow_graph(layer_mapping, len(constraints))
 
-    # Call mapping
-    new_graph = edmonds(graph, 0, len(graph) - 1)
+        new_graph = edmonds(graph, 0, len(graph) - 1)                       # use graph algorithm to find suitable cores for each DynapcnnLayer.
 
-    netmap = recover_mapping(new_graph, layer_mapping)
+        netmap = recover_mapping(new_graph, layer_mapping)
+
+    elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
+        for _, layer_data in model.dynapcnn_layers.items():
+            if isinstance(layer_data['layer'], DynapcnnLayer):
+                layer_mapping.append(find_chip_layers(layer_data['layer'], constraints))
+
+        graph = make_flow_graph(layer_mapping, len(constraints))
+
+        new_graph = edmonds(graph, 0, len(graph) - 1)                       # use graph algorithm to find suitable cores for each DynapcnnLayer.
+
+        netmap = recover_mapping(new_graph, layer_mapping)
+
+    else:
+        raise InvalidModel(model)
+
     return netmap
 
 

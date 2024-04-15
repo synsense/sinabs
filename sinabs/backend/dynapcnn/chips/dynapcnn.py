@@ -1,5 +1,5 @@
 import copy
-from typing import List
+from typing import List, Union, Dict
 from warnings import warn
 
 import samna
@@ -12,6 +12,7 @@ from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
+import sinabs
 
 class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
@@ -190,6 +191,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         # Update configuration of the DYNAPCNN layer
         chip_layer.dimensions = config_dict["dimensions"]
         config_dict.pop("dimensions")
+
         for i in range(len(config_dict["destinations"])):
             if "pooling" in config_dict["destinations"][i]:
                 chip_layer.destinations[i].pooling = config_dict["destinations"][i][
@@ -201,38 +203,97 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 setattr(chip_layer, param, value)
             except TypeError as e:
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
+            
+    @classmethod
+    def write_dynapcnn_layer_config_graph(
+        cls, dcnnl_data: dict, chip_layer: "CNNLayerConfig"
+    ):
+        """ ."""
+        
+        config_dict = cls.get_dynapcnn_layer_config_dict(              # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
+            layer=dcnnl_data['layer'])
+
+        chip_layer.dimensions = config_dict["dimensions"]        
+        config_dict.pop("dimensions")
+
+        pooling = None
+        if "pooling" in config_dict["destinations"][0]:
+            pooling = config_dict["destinations"][0]["pooling"]        # TODO make pooling be destination-dependent.
+        config_dict.pop("destinations")
+
+        for dest_idx in range(len(dcnnl_data['destinations'])):        # configuring the destinations for this DynapcnnLayer.
+            chip_layer.destinations[dest_idx].enable = True
+            chip_layer.destinations[dest_idx].layer = dcnnl_data['destinations'][dest_idx]
+
+            if isinstance(pooling, int):
+                chip_layer.destinations[dest_idx].pooling = pooling
+
+        if len(dcnnl_data['destinations']) == 0:                       # this is the output layer.
+            chip_layer.destinations[0].enable = False
+            chip_layer.destinations[1].enable = False
+
+        for param, value in config_dict.items():
+            try:
+                setattr(chip_layer, param, value)
+            except TypeError as e:
+                raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
-        layers = model.sequence
-        config = cls.get_default_config()
+    def build_config(cls, model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], chip_layers: List[int]):
 
-        has_dvs_layer = False
-        i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
-        for i, chip_equivalent_layer in enumerate(layers):
-            if isinstance(chip_equivalent_layer, DVSLayer):
-                chip_layer = config.dvs_layer
-                cls.write_dvs_layer_config(chip_equivalent_layer, chip_layer)
-                has_dvs_layer = True
-            elif isinstance(chip_equivalent_layer, DynapcnnLayer):
-                chip_layer = config.cnn_layers[chip_layers[i_cnn_layer]]
-                cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
-                i_cnn_layer += 1
+        if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+            layers = model.sequence
+            config = cls.get_default_config()
+
+            has_dvs_layer = False
+            i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
+            for i, chip_equivalent_layer in enumerate(layers):
+                if isinstance(chip_equivalent_layer, DVSLayer):
+                    chip_layer = config.dvs_layer
+                    cls.write_dvs_layer_config(chip_equivalent_layer, chip_layer)
+                    has_dvs_layer = True
+                elif isinstance(chip_equivalent_layer, DynapcnnLayer):
+                    chip_layer = config.cnn_layers[chip_layers[i_cnn_layer]]
+                    cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
+                    i_cnn_layer += 1
+                else:
+                    # in our generated network there is a spurious layer...
+                    # should never happen
+                    raise TypeError("Unexpected layer in the model")
+
+                if i == len(layers) - 1:
+                    # last layer
+                    chip_layer.destinations[0].enable = False
+                else:
+                    # Set destination layer
+                    chip_layer.destinations[0].layer = chip_layers[i_cnn_layer]
+                    chip_layer.destinations[0].enable = True
+
+            if not has_dvs_layer:
+                config.dvs_layer.pass_sensor_events = False
+
+        elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
+            config = cls.get_default_config()
+            has_dvs_layer = False
+
+            for _, layer_data in model.dynapcnn_layers.items():
+                if isinstance(layer_data['layer'], DVSLayer):
+                    pass                                                # TODO DVSLayer not supported yet.
+
+                elif isinstance(layer_data['layer'], DynapcnnLayer):
+                    chip_layer = config.cnn_layers[layer_data['core_idx']]
+                    cls.write_dynapcnn_layer_config_graph(layer_data, chip_layer)
+
+                else:
+                    raise TypeError("Unexpected layer in the model.")   # shouldn't happen since type checks are made previously.
+                
+            if not has_dvs_layer:                                       # TODO DVSLayer not supported yet.
+                config.dvs_layer.pass_sensor_events = False
             else:
-                # in our generated network there is a spurious layer...
-                # should never happen
-                raise TypeError("Unexpected layer in the model")
+                config.dvs_layer.pass_sensor_events = False
 
-            if i == len(layers) - 1:
-                # last layer
-                chip_layer.destinations[0].enable = False
-            else:
-                # Set destination layer
-                chip_layer.destinations[0].layer = chip_layers[i_cnn_layer]
-                chip_layer.destinations[0].enable = True
-
-        if not has_dvs_layer:
-            config.dvs_layer.pass_sensor_events = False
+        else:
+            raise TypeError(f"Unexpected model {type(model)}.")
 
         return config
 

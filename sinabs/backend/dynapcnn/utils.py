@@ -579,13 +579,13 @@ def build_from_graph(
     dvs_layer = None
     rescale_factor = 1
 
-    nodes_to_dcnnl_map = {}            # mapper from nodes to sets of layers that populate a DynapcnnLayer.
+    nodes_to_dcnnl_map = {}                     # mapper from nodes to sets of layers that populate a DynapcnnLayer.
 
     if dvs_layer is not None:
-        pass                            # @TODO the graph extraction is not yet considering DVS input.
+        pass                                    # @TODO the graph extraction is not yet considering DVS input.
     else:
         for edge in edges:
-            process_edge(               # figure out to which (future) DynapcnnLayer each node will belong to.
+            process_edge(                       # figure out to which (future) DynapcnnLayer each node will belong to.
                 layers, edge, nodes_to_dcnnl_map)
 
     # look for edges between connecting nodes in different (future) DynapcnnLayer.
@@ -594,6 +594,10 @@ def build_from_graph(
     # turn sets of layers into DynapcnnLayer objects.
     dynapcnn_layers = construct_dynapcnnlayers_from_mapper(
         discretize, nodes_to_dcnnl_map, dcnnl_to_dcnnl_map, in_shape, rescale_factor)
+    
+    for idx, layer_data in dynapcnn_layers.items():
+        if 'core_idx' not in layer_data:
+            layer_data['core_idx'] = -1         # a DynapcnnLayer gets assigned a core index when 'DynapcnnNetworkGraph.to()' is called.
     
     return dynapcnn_layers, nodes_to_dcnnl_map, dcnnl_to_dcnnl_map
 

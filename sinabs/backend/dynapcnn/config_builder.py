@@ -3,10 +3,13 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import samna
+import sinabs.backend
+import sinabs.backend.dynapcnn
 
 from .dvs_layer import DVSLayer
 from .mapping import LayerConstraints, get_valid_mapping
-
+import sinabs
+from .exceptions import InvalidModel
 
 class ConfigBuilder(ABC):
     @classmethod
@@ -75,15 +78,31 @@ class ConfigBuilder(ABC):
         The index of the core on chip to which the i-th layer in the
         model is mapped is the value of the i-th entry in the list.
         """
-        mapping = get_valid_mapping(model, cls.get_constraints())
-        # turn the mapping into a dict
-        mapping = {m[0]: m[1] for m in mapping}
-        # Check if there is a dvs layer in the model
-        num_dynapcnn_cores = len(model.sequence)
-        if isinstance(model.sequence[0], DVSLayer):
-            num_dynapcnn_cores -= 1
-        # apply the mapping
-        chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
+
+        chip_layers_ordering = []
+
+        if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+            mapping = get_valid_mapping(model, cls.get_constraints())
+            # turn the mapping into a dict
+            mapping = {m[0]: m[1] for m in mapping}
+            # Check if there is a dvs layer in the model
+            num_dynapcnn_cores = len(model.sequence)
+            if isinstance(model.sequence[0], DVSLayer):
+                num_dynapcnn_cores -= 1
+            # apply the mapping
+            chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
+
+        elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
+            mapping = get_valid_mapping(model, cls.get_constraints())
+
+            if isinstance(model.dynapcnn_layers[0]['layer'], DVSLayer):
+                pass                                                    # TODO not handling DVSLayer yet.
+
+            for (dcnnl, core_idx) in mapping:
+                model.dynapcnn_layers[dcnnl]['core_idx'] = core_idx
+        else:
+            raise InvalidModel(model)
+
         return chip_layers_ordering
 
     @classmethod
