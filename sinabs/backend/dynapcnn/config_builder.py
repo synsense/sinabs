@@ -100,6 +100,7 @@ class ConfigBuilder(ABC):
 
             for (dcnnl, core_idx) in mapping:
                 model.dynapcnn_layers[dcnnl]['core_idx'] = core_idx
+
         else:
             raise InvalidModel(model)
 

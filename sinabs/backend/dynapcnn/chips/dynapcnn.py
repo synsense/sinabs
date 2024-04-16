@@ -188,6 +188,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 configuration is written.
         """
         config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer)
+
         # Update configuration of the DYNAPCNN layer
         chip_layer.dimensions = config_dict["dimensions"]
         config_dict.pop("dimensions")
@@ -205,12 +206,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
             
     @classmethod
-    def write_dynapcnn_layer_config_graph(
-        cls, dcnnl_data: dict, chip_layer: "CNNLayerConfig"
-    ):
+    def write_dynapcnn_layer_config_graph(cls, dcnnl_data: dict, chip_layer: "CNNLayerConfig", dynapcnn_layers: dict):
         """ ."""
         
-        config_dict = cls.get_dynapcnn_layer_config_dict(              # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
+        config_dict = cls.get_dynapcnn_layer_config_dict(                                             # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
             layer=dcnnl_data['layer'])
 
         chip_layer.dimensions = config_dict["dimensions"]        
@@ -218,17 +217,19 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
         pooling = None
         if "pooling" in config_dict["destinations"][0]:
-            pooling = config_dict["destinations"][0]["pooling"]        # TODO make pooling be destination-dependent.
+            pooling = config_dict["destinations"][0]["pooling"]                                       # TODO make pooling be destination-dependent.
         config_dict.pop("destinations")
 
-        for dest_idx in range(len(dcnnl_data['destinations'])):        # configuring the destinations for this DynapcnnLayer.
+        for dest_idx in range(len(dcnnl_data['destinations'])):                                       # configuring the destinations for this DynapcnnLayer.
             chip_layer.destinations[dest_idx].enable = True
-            chip_layer.destinations[dest_idx].layer = dcnnl_data['destinations'][dest_idx]
+            
+            destination_core_idx = dynapcnn_layers[dcnnl_data['destinations'][dest_idx]]['core_idx']  # retrive the core to wich a destination DynapcnnLayer has been assigned to.
+            chip_layer.destinations[dest_idx].layer = destination_core_idx
 
             if isinstance(pooling, int):
                 chip_layer.destinations[dest_idx].pooling = pooling
 
-        if len(dcnnl_data['destinations']) == 0:                       # this is the output layer.
+        if len(dcnnl_data['destinations']) == 0:                                                      # this is the output layer.
             chip_layer.destinations[0].enable = False
             chip_layer.destinations[1].enable = False
 
@@ -247,6 +248,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
             has_dvs_layer = False
             i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
+            _prev_idx = 0
             for i, chip_equivalent_layer in enumerate(layers):
                 if isinstance(chip_equivalent_layer, DVSLayer):
                     chip_layer = config.dvs_layer
@@ -282,7 +284,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
                 elif isinstance(layer_data['layer'], DynapcnnLayer):
                     chip_layer = config.cnn_layers[layer_data['core_idx']]
-                    cls.write_dynapcnn_layer_config_graph(layer_data, chip_layer)
+                    cls.write_dynapcnn_layer_config_graph(layer_data, chip_layer, model.dynapcnn_layers)
 
                 else:
                     raise TypeError("Unexpected layer in the model.")   # shouldn't happen since type checks are made previously.
