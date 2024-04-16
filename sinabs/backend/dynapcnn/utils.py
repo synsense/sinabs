@@ -427,26 +427,32 @@ def build_from_list(
 
 
 def convert_model_to_layer_list(
-    model: Union[nn.Sequential, sinabs.Network],
+    model: Union[nn.Sequential, sinabs.Network, nn.Module],
     ignore: Union[Type, Tuple[Type, ...]] = (),
 ) -> List[nn.Module]:
     """Convert a model to a list of layers.
 
     Parameters
     ----------
-    model: nn.Sequential or sinabs.Network
-    ignore: type or tuple of types of modules to be ignored
+        model: nn.Sequential, nn.Module or sinabs.Network.
+        ignore: type or tuple of types of modules to be ignored.
 
     Returns
     -------
-    List[nn.Module]
+        List[nn.Module]
     """
     if isinstance(model, sinabs.Network):
         return convert_model_to_layer_list(model.spiking_model)
+    
     elif isinstance(model, nn.Sequential):
         layers = [layer for layer in model if not isinstance(layer, ignore)]
+
+    elif isinstance(model, nn.Module):
+        layers = [layer for _, layer in model.named_children() if not isinstance(layer, ignore)]
+
     else:
         raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
+    
     return layers
 
 
