@@ -276,6 +276,7 @@ class DynapcnnNetwork(nn.Module):
         ]
         if "dvs" in monitor_layers:
             monitor_chip_layers.append("dvs")
+
         config_builder.monitor_layers(config, monitor_chip_layers)
 
         # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)

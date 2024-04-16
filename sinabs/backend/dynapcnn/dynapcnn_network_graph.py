@@ -105,7 +105,41 @@ class DynapcnnNetworkGraph(nn.Module):
         config_modifier=None,
         slow_clk_frequency: int = None,
     ):
-        """ ."""
+        """Note that the model parameters are only ever transferred to the device on the `to` call,
+        so changing a threshold or weight of a model that is deployed will have no effect on the
+        model on chip until `to` is called again.
+
+        Parameters
+        ----------
+
+        device: String
+            cpu:0, cuda:0, dynapcnndevkit, speck2devkit
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+
+        monitor_layers: None/List
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+
+        Note
+        ----
+        chip_layers_ordering and monitor_layers are used only when using synsense devices.
+        For GPU or CPU usage these options are ignored.
+        """
         self.device = device
 
         if isinstance(device, torch.device):
@@ -233,8 +267,48 @@ class DynapcnnNetworkGraph(nn.Module):
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ) -> Tuple["SamnaConfiguration", bool]:
-        """ Prepare and output the `samna` configuration for this network. """
+        """Prepare and output the `samna` configuration for this network.
 
+        Parameters
+        ----------
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+
+        device: String
+            dynapcnndevkit, speck2b or speck2devkit
+
+        monitor_layers: None/List/Str
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+            If this value is left as None, by default the last layer of the model is monitored.
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+
+        Returns
+        -------
+        Configuration object
+            Object defining the configuration for the device
+        Bool
+            True if the configuration is valid for the given device.
+
+        Raises
+        ------
+            ImportError
+                If samna is not available.
+        """
         config_builder = ChipFactory(device).get_config_builder()
 
         has_dvs_layer = isinstance(self.dynapcnn_layers[0]['layer'], DVSLayer)
@@ -246,7 +320,7 @@ class DynapcnnNetworkGraph(nn.Module):
             if has_dvs_layer:
                 pass                                                 # TODO not handling DVSLayer yet.
 
-        config = config_builder.build_config(self, [])               # update config.
+        config = config_builder.build_config(self, None)             # update config.
 
         if self.input_shape and self.input_shape[0] == 1:            # ???
             config.dvs_layer.merge = True
@@ -273,25 +347,24 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return config, config_builder.validate_configuration(config) # validate config.
     
-    def get_sinabs_edges(self, sinabs_model):
+    def get_sinabs_edges(self, sinabs_model: sinabs.network.Network) -> List[Tuple[int, int]]:
         """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
         representation for the 'sinabs_model.spiking_model'.
         
         Parameters
         ----------
-            sinabs_model: ...
+            sinabs_model: a sinabs network object created from a PyTorch model.
 
         Returns
-            sinabs_edges: ...
+            sinabs_edges: a list of tuples representing the edges between the layers of a sinabs model.
         ----------
         """
         # parse original graph to ammend edges containing nodes dropped in 'convert_model_to_layer_list()'.
         sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
 
         if DynapcnnNetworkGraph.was_spiking_output_added(sinabs_model):
-            # spiking output layer has been added: create new edge.
             last_edge = sinabs_edges[-1]
-            new_edge = (last_edge[1], last_edge[1]+1)
+            new_edge = (last_edge[1], last_edge[1]+1)               # spiking output layer has been added: create new edge.
             sinabs_edges.append(new_edge)
         else:
             pass

@@ -115,7 +115,7 @@ class GraphTracer():
         return ATens
     
     def remove_ignored_nodes(self, default_ignored_nodes):
-        """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignored. This
+        """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
         will be dropped as the node that originally targeted this node to be dropped.
         """
