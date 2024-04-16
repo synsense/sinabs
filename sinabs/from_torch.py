@@ -101,10 +101,28 @@ def from_model(
                     **kwargs_backend,
                 ).to(device),
             )
+
+        elif isinstance(model, nn.Module):
+            layers = [layer for _, layer in model.named_children()]
+
+            if not isinstance(layers[-1], (nn.ReLU, sl.NeuromorphicReLU)):
+                snn.add_module(
+                    "spike_output",
+                    spike_layer_class(
+                        spike_threshold=spike_threshold,
+                        spike_fn=spike_fn,
+                        reset_fn=reset_fn,
+                        surrogate_grad_fn=surrogate_grad_fn,
+                        min_v_mem=min_v_mem,
+                        **kwargs_backend,
+                    ).to(device),
+                )
+
+            else:
+                warn("Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added.")
+
         else:
-            warn(
-                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
-            )
+            warn("Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added.")
 
     for module in snn.modules():
         if bias_rescaling != 1.0 and isinstance(module, (nn.Linear, nn.Conv2d)):
