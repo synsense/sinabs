@@ -114,14 +114,56 @@ class DynapcnnNetworkGraph(nn.Module):
         elif isinstance(device, str):
             device_name, _ = parse_device_id(device)
 
-            if device_name in ChipFactory.supported_devices:        # pragma: no cover
+            if device_name in ChipFactory.supported_devices:                # pragma: no cover
                 
-                config = self.make_config(                          # generate config.
+                config = self.make_config(                                  # generate config.
                     chip_layers_ordering=chip_layers_ordering,
                     device=device,
                     monitor_layers=monitor_layers,
                     config_modifier=config_modifier,
                 )
+
+                self.samna_device = open_device(device)                     # apply configuration to device.
+                self.samna_device.get_model().apply_configuration(config)
+                time.sleep(1)
+
+                if slow_clk_frequency is not None:                          # set external slow-clock if needed.
+                    dk_io = self.samna_device.get_io_module()
+                    dk_io.set_slow_clk(True)
+                    dk_io.set_slow_clk_rate(slow_clk_frequency)             # Hz
+
+                builder = ChipFactory(device).get_config_builder()
+                
+                self.samna_input_buffer = builder.get_input_buffer()        # create input source node.
+                self.samna_output_buffer = builder.get_output_buffer()      # create output sink node node.
+
+                self.device_input_graph = samna.graph.EventFilterGraph()    # connect source node to device sink.
+                self.device_input_graph.sequential(
+                    [
+                        self.samna_input_buffer,
+                        self.samna_device.get_model().get_sink_node(),
+                    ]
+                )
+
+                self.device_output_graph = samna.graph.EventFilterGraph()   # connect sink node to device.
+                self.device_output_graph.sequential(
+                    [
+                        self.samna_device.get_model().get_source_node(),
+                        self.samna_output_buffer,
+                    ]
+                )
+
+                self.device_input_graph.start()
+                self.device_output_graph.start()
+                self.samna_config = config
+
+                return self
+            
+            else:
+                return super().to(device)
+            
+        else:
+            raise Exception("Unknown device description.")
 
     def make_config(
         self,
