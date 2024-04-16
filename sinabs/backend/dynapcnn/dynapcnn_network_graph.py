@@ -27,6 +27,8 @@ from .utils import (
 )
 
 from .graph_tracer import GraphTracer
+from .exceptions import InvalidTorchModel
+from warnings import warn
 
 class DynapcnnNetworkGraph(nn.Module):
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
@@ -36,7 +38,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
     def __init__(
         self,
-        snn: Union[nn.Sequential, sinabs.Network],
+        snn: Union[nn.Sequential, sinabs.Network, nn.Module],
         input_shape: Optional[Tuple[int, int, int]] = None,
         dvs_input: bool = False,
         discretize: bool = True
@@ -61,15 +63,16 @@ class DynapcnnNetworkGraph(nn.Module):
         """
         super().__init__()
 
-        dvs_input = False                                           # @TODO for now the graph part is not taking into consideration this.
+        dvs_input = False                                           # TODO for now the graph part is not taking into consideration this.
 
         self.graph_tracer = GraphTracer(                            # computational graph from original PyTorch module.
             snn.analog_model, 
             torch.randn((1, *input_shape))                          # torch.jit needs the batch dimension.
             )
 
-        self.input_shape = input_shape                              # convert models  to sequential.
-        self.layers = convert_model_to_layer_list(
+        self.input_shape = input_shape
+
+        self.layers = convert_model_to_layer_list(                  # convert models  to sequential.
             model=snn.spiking_model, ignore=DEFAULT_IGNORED_LAYER_TYPES
         )
 
@@ -372,25 +375,49 @@ class DynapcnnNetworkGraph(nn.Module):
         return sinabs_edges
 
     @staticmethod
-    def was_spiking_output_added(sinabs_model):
+    def was_spiking_output_added(sinabs_model: sinabs.Network) -> bool:
         """ Compares the models outputed by 'sinabs.from_torch.from_model()' to check if
         a spiking output was added to the spiking version of the analog model.
+
+        Parameters
+        ----------
+            sinabs_model: a sinabs network. `sinabs_model.analog_model`\`sinabs_model.spiking_model` need to be either a nn.Module or a nn.Sequential.
+        
+        Returns
+        ----------
+            bool: wheter or not a neuron layers has been added to the `sinabs_model.spiking_model`.
         """
         analog_modules = []
         spiking_modules = []
 
-        for mod in sinabs_model.analog_model:
-            analog_modules.append(mod)
+        if isinstance(sinabs_model.analog_model, nn.Sequential):
+            for mod in sinabs_model.analog_model:
+                analog_modules.append(mod)
 
-        for mod in sinabs_model.spiking_model:
-            spiking_modules.append(mod)
+        elif isinstance(sinabs_model.analog_model, nn.Module):
+            analog_modules = [layer for _, layer in sinabs_model.analog_model.named_children()]
+
+        else:
+            raise InvalidTorchModel('sinabs_model.analog_model')
+
+        if isinstance(sinabs_model.spiking_model, nn.Sequential):
+            for mod in sinabs_model.spiking_model:
+                spiking_modules.append(mod)
+
+        elif isinstance(sinabs_model.spiking_model, nn.Module):
+            spiking_modules = [layer for _, layer in sinabs_model.spiking_model.named_children()]
+
+        else:
+            raise InvalidTorchModel('sinabs_model.spiking_model')
 
         if len(analog_modules) != len(spiking_modules):
             if isinstance(spiking_modules[-1], sinabs.layers.iaf.IAFSqueeze):
                 return True
+            
             else:
-                # throw error
+                warn(f'sinabs.spiking_model has a {type(spiking_modules[-1])} as last layer.')
                 return False
+            
         else:
             return False
         

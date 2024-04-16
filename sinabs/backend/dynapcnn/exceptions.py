@@ -36,3 +36,9 @@ class InvalidModel(Exception):
 
     def __init__(self, model,):
         super().__init__(f"'model' accepts either a DynapcnnNetwork or a DynapcnnNetworkGraph but {model} was given.")
+
+class InvalidTorchModel(Exception):
+    network_type: str
+
+    def __init__(self, network_type):
+        super().__init__(f"A {network_type} needs to be either of type nn.Sequential or nn.Module.")
