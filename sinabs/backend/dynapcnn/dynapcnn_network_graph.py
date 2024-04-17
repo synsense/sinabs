@@ -28,6 +28,7 @@ from .exceptions import InvalidTorchModel
 from warnings import warn
 
 from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
+from .sinabs_edges_handler import merge_handler
 
 class DynapcnnNetworkGraph(nn.Module):
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
@@ -73,6 +74,9 @@ class DynapcnnNetworkGraph(nn.Module):
             torch.randn((1, *self.input_shape)))                    # needs the batch dimension.        
 
         self.sinabs_edges, self.sinabs_modules_map = self.get_sinabs_edges_and_modules(snn)
+
+        # for edge in self.sinabs_edges:
+        #     print(edge)
 
         self.dynapcnn_layers, \
             self.nodes_to_dcnnl_map, \
@@ -351,9 +355,9 @@ class DynapcnnNetworkGraph(nn.Module):
             sinabs_model: a sinabs network object created from a PyTorch model.
 
         Returns
+        ----------
             sinabs_edges: a list of tuples representing the edges between the layers of a sinabs model.
             sinabs_modules_map: a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
-        ----------
         """
         sinabs_edges, remapped_nodes = self.graph_tracer.remove_ignored_nodes(  # remap `(A, X)` and `(X, B)` into `(A, B)`.
             DEFAULT_IGNORED_LAYER_TYPES)
@@ -362,4 +366,6 @@ class DynapcnnNetworkGraph(nn.Module):
         for orig_name, new_name in remapped_nodes.items():
             sinabs_modules_map[new_name] = self.graph_tracer.modules_map[orig_name]
 
-        return sinabs_edges, sinabs_modules_map
+        edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)   # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
+
+        return edges_without_merge, sinabs_modules_map

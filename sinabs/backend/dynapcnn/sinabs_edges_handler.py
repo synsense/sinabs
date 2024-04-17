@@ -3,8 +3,10 @@
 # contact       : williansoaresgirao@gmail.com
 
 from typing import Tuple, List, Dict
+import sinabs.layers
 import torch.nn as nn
 from .sinabs_edges_utils import *
+import sinabs, copy
 
 def process_edge(layers: Dict[int, nn.Module], edge: Tuple[int, int], mapper: dict) -> None:
     """ Read in an edge describing the connection between two layers (nodes in the computational graph). If 'edge'
@@ -180,3 +182,53 @@ def is_valid_dynapcnnlayer_pairing(layers: Dict[int, nn.Module], edge: Tuple[int
         return True
     else:
         raise InvalidLayerDestination(type(layers[edge[0]]), type(layers[edge[1]]))
+    
+def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[int, nn.Module]) -> List[Tuple[int, int]]:
+    """ Handles connections between nodes made via a `sinabs.layers.Merge` layer. If `X` is a merge layer then edges `(X, C)` are removed
+    from the edges list since they don't affect the creationg of DynapcnnLayers. Edges `(Y, X)` are turned into a edge `(Y, C)` pointing
+    directly to the node receiving the merged inputs such that the DynapcnnLayer containing `Y` can have the DynapcnnLayer containing `C`
+    as one of its destinations.
+
+    Parameters
+    ----------
+        sinabs_edges: ...
+        sinabs_modules_map: ...
+
+    Reurns
+        edges_without_merge: ...
+    ----------
+    """
+    edges = copy.deepcopy(sinabs_edges)
+    edges_without_merge = []
+    merge_nodes = {}
+
+    for edge in edges:                                                      # finding the nodes representing Merge layers.
+        src = edge[0]
+        trg = edge[1]
+
+        if isinstance(sinabs_modules_map[src], sinabs.layers.Merge):
+            if src not in merge_nodes:                                      # found node receiving merged inputs from two previous layers.
+                merge_nodes[src] = {'sources': [], 'merge_into': trg}
+
+                for _edge in edges:
+                    if _edge[1] == src:                                     # found node used as argument for a Merge layer.
+                        merge_nodes[src]['sources'].append(_edge[0])
+                        if len(merge_nodes[src]['sources']) > 2:
+                            raise ValueError("A Merge layer can not have more than two inputs.")
+
+    for edge in edges:                                                      # removing edges connection from/to merging layers from the computational graph.
+        src = edge[0]
+        trg = edge[1]
+
+        if src in merge_nodes:                                              # edge (`Merge`, trg) is not necessary for later DynapcnnLayer creation.
+            pass
+        
+        elif trg in merge_nodes:                                            # point `src` directly to the node it was previously targeting via a Merge layer.
+            new_edge = (src, merge_nodes[trg]['merge_into'])
+            edges_without_merge.append(new_edge)
+
+        else:                                                               # edge not involved in merging.
+            edges_without_merge.append(edge)
+
+    return edges_without_merge
+

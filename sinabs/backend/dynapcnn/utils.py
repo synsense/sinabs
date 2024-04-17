@@ -549,7 +549,7 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
 
 def build_from_graph(
         discretize: bool,
-        layers: dict, 
+        layers: Dict[int, nn.Module], 
         in_shape: Tuple[int, int, int], 
         edges: List[Tuple[int, int]]) -> Tuple[List[DynapcnnLayer], Dict[int, Dict[int, nn.Module]], Dict[int, List[int]]]:
     """ Parses each edge of a 'sinabs_mode.spiking_model' computational graph. Each node (layer) is assigned to a 
@@ -560,7 +560,7 @@ def build_from_graph(
     ----------
         discretize: If True, discretize the parameters and thresholds. This is needed for uploading weights to dynapcnn.
             Set to False only for testing purposes.
-        layers    : ...
+        layers    : a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
         in_shape  : Tuple describing the input to the very first layer (batch_size, hight, width).
         edges     : List of edges returned by 'DynapcnnNetworkGraph.get_sinabs_edges()'.
 
@@ -665,6 +665,11 @@ def construct_dynapcnnlayer(
     else:
         raise WrongModuleCount(layer_index, len(layer_modules))
     
+    print('input shape: ', input_shape)
+    print(lyr_conv)
+    print(lyr_spk)
+    print(lyr_pool)
+    
     dynapcnnlayer = DynapcnnLayer(
             conv            = lyr_conv,
             spk             = lyr_spk,
@@ -673,6 +678,8 @@ def construct_dynapcnnlayer(
             discretize      = discretize,
             rescale_weights = rescale_factor,
         )
+    print('output shape: ', dynapcnnlayer.get_output_shape())
+    print('------------------------------------------')
         
     return dynapcnnlayer, dynapcnnlayer.get_output_shape(), rescale_factor_after_pooling
 
