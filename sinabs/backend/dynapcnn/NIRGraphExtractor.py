@@ -104,4 +104,4 @@ class NIRtoDynapcnnNetworkGraph():
         for edge in parsed_edges:
             remapped_edges.append((remapped_nodes[edge[0]], remapped_nodes[edge[1]]))
 
-        return remapped_edges
+        return remapped_edges, remapped_nodes

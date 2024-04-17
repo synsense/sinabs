@@ -2,18 +2,18 @@
 # author        : Willian Soares Girao
 # contact       : williansoaresgirao@gmail.com
 
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 import torch.nn as nn
 from .sinabs_edges_utils import *
 
-def process_edge(layers: List[nn.Module], edge: Tuple[int, int], mapper: dict) -> None:
+def process_edge(layers: Dict[int, nn.Module], edge: Tuple[int, int], mapper: dict) -> None:
     """ Read in an edge describing the connection between two layers (nodes in the computational graph). If 'edge'
     is a valid connection between two layers, update 'mapper' to incorporate these layers into a new or existing dictonary
     containing the modules comprising a future DynacnnLayer object.
 
     Parameters
     ----------
-        layers  : list of modules returned by 'utils.convert_model_to_layer_list()'.
+        layers  : a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
         edge    : tuple representing the connection between two nodes in computational graph of 'DynapcnnNetworkGraph.snn.spiking_model'.
         mapper  : dictionary where each 'key' is the index of a future 'DynapcnnLayer' and 'value' is a dictionary ('key': node, 'value': module).
     """
@@ -24,7 +24,7 @@ def process_edge(layers: List[nn.Module], edge: Tuple[int, int], mapper: dict) -
     else:
         raise InvalidEdge(edge, type(layers[edge[0]]), type(layers[edge[1]]))
     
-def is_valid_edge(edge: Tuple[int, int], layers: List[nn.Module], valid_edges_map: dict) -> int:
+def is_valid_edge(edge: Tuple[int, int], layers: Dict[int, nn.Module], valid_edges_map: dict) -> int:
     """ Checks if the modules each node in 'edge' represent are a valid connection between a sinabs network to be 
     loaded on Speck.
 
@@ -42,7 +42,7 @@ def is_valid_edge(edge: Tuple[int, int], layers: List[nn.Module], valid_edges_ma
             return edge_type
     return None
     
-def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: dict, layers: List[nn.Module]) -> None:
+def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: dict, layers: Dict[int, nn.Module]) -> None:
     """ Parses the nodes within an edge and incorporate them either into a **new** or an **already existing** DynapcnnLayer represented 
     in 'mapper'.
     """
@@ -59,7 +59,7 @@ def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: d
     else:
         raise InvalidEdgeType(edge, edge_type)
     
-def init_xor_complete_new_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: List[nn.Module]) -> None:
+def init_xor_complete_new_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
     """ Incorporates nodes from either a '(conv, neuron)' or a '(linear, neuron)' edge. These are either initiating a (new) DynapcnnLayer 
     or completing a conv->neuron sequence (in the case the node for 'conv' as already been incorporated somewhere in 'mapper'). 'nn.Linear' layers 
     are converted into 'nn.Conv2d' by DynapcnnLayer.
@@ -82,7 +82,7 @@ def init_xor_complete_new_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int],
             dynapcnnlayer_indx += 1
         mapper[dynapcnnlayer_indx] = {edge[0]: layers[edge[0]], edge[1]: layers[edge[1]]}
 
-def connect_dynapcnnlayer_blks(mapper: dict, edge: Tuple[int, int], layers: List[nn.Module]) -> None:
+def connect_dynapcnnlayer_blks(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
     """ Incorporates nodes from either a '(neuron, conv)/(neuron, lin)' or '(pool, conv)/(pool, lin)' edge. These represent connections between an existing 
     DynapcnnLayer in 'mapper' and a new one yet to be represented in 'mapper'. 'nn.Linear' layers are converted into 'nn.Conv2d' by DynapcnnLayer.
     """
@@ -102,7 +102,7 @@ def connect_dynapcnnlayer_blks(mapper: dict, edge: Tuple[int, int], layers: List
         else:
             raise UnmatchedNode(edge, node)
     
-def add_pool_to_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: List[nn.Module]) -> None:
+def add_pool_to_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
     """ Incorporating a '(neuron, pool)' edge. Node 'pool' has to be part of an already existing DynapcnnLayer in 'mapper'. """
     matched = False
     for indx, dynapcnnlayer in mapper.items():
@@ -124,14 +124,14 @@ def is_initialized_node(node: int, mapper: dict) -> bool:
                 return True
     return False
 
-def get_dynapcnnlayers_destinations(layers: List[nn.Module], edges: List[Tuple[int, int]], mapper: dict) -> dict:
+def get_dynapcnnlayers_destinations(layers: Dict[int, nn.Module], edges: List[Tuple[int, int]], mapper: dict) -> dict:
     """ Loops over the edges list describing the computational graph. It will access each node in the graph and find to which
     DynapcnnLayer they belong to. If source and target belong to different DynapcnnLayers (described as a dictionary in 'mapper')
     the destination of the 'DynapcnnLayer.source' is set to be 'DynapcnnLayer.target'.
 
     Parameters
     ----------
-        layers  : list of modules returned by 'utils.convert_model_to_layer_list()'.
+        layers  : a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
         edges   : list of tuples representing the connection between nodes in computational graph of 'DynapcnnNetworkGraph.snn.spiking_model'.
         mapper  : dictionary where each 'key' is the index of a future 'DynapcnnLayer' and 'value' its modules (output of 'process_edge(mapper)').
 
@@ -174,7 +174,7 @@ def get_dynapcnnlayer_index(node: int, mapper: dict) -> int:
             return indx
     raise UnknownNode(node)
 
-def is_valid_dynapcnnlayer_pairing(layers: List[nn.Module], edge: Tuple[int, int], valid_dynapcnnlayer_edges: List[Tuple[nn.Module, nn.Module]]) -> bool:
+def is_valid_dynapcnnlayer_pairing(layers: Dict[int, nn.Module], edge: Tuple[int, int], valid_dynapcnnlayer_edges: List[Tuple[nn.Module, nn.Module]]) -> bool:
     """ Checks if the module in 'DynapcnnLayer.source' is targetting a valid module in 'DynapcnnLayer.target'. """
     if (type(layers[edge[0]]), type(layers[edge[1]])) in valid_dynapcnnlayer_edges:
         return True

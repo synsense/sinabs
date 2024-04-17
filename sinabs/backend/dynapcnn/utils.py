@@ -549,7 +549,7 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
 
 def build_from_graph(
         discretize: bool,
-        layers: List[nn.Module], 
+        layers: dict, 
         in_shape: Tuple[int, int, int], 
         edges: List[Tuple[int, int]]) -> Tuple[List[DynapcnnLayer], Dict[int, Dict[int, nn.Module]], Dict[int, List[int]]]:
     """ Parses each edge of a 'sinabs_mode.spiking_model' computational graph. Each node (layer) is assigned to a 
@@ -560,7 +560,7 @@ def build_from_graph(
     ----------
         discretize: If True, discretize the parameters and thresholds. This is needed for uploading weights to dynapcnn.
             Set to False only for testing purposes.
-        layers    : List of modules returned by 'utils.convert_model_to_layer_list()'.
+        layers    : ...
         in_shape  : Tuple describing the input to the very first layer (batch_size, hight, width).
         edges     : List of edges returned by 'DynapcnnNetworkGraph.get_sinabs_edges()'.
 

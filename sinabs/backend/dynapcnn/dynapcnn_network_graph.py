@@ -4,7 +4,7 @@
 
 import time
 from subprocess import CalledProcessError
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union, Dict
 
 import samna
 import sinabs.layers
@@ -19,10 +19,7 @@ from .dynapcnn_layer import DynapcnnLayer
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
-    build_from_list,
     build_from_graph,
-    convert_model_to_layer_list,
-    infer_input_shape,
     parse_device_id,
 )
 
@@ -43,8 +40,7 @@ class DynapcnnNetworkGraph(nn.Module):
         snn: Union[nn.Sequential, sinabs.Network, nn.Module],
         input_shape: Optional[Tuple[int, int, int]] = None,
         dvs_input: bool = False,
-        discretize: bool = True,
-        use_jit_tracer: bool = True
+        discretize: bool = True
     ):
         """
         DynapcnnNetworkGraph: a class turning sinabs networks into dynapcnn
@@ -67,37 +63,23 @@ class DynapcnnNetworkGraph(nn.Module):
         super().__init__()
 
         dvs_input = False                                           # TODO for now the graph part is not taking into consideration this.
-
-        if use_jit_tracer:                                          # TODO this is deprecated now: we want to use the graph from NIR (remove it).
-            self.graph_tracer = GraphTracer(                        # computational graph from original PyTorch module.
-                snn.analog_model, 
-                torch.randn((1, *input_shape))                      # torch.jit needs the batch dimension.
-                )
-
-        else:
-            self.graph_tracer = NIRtoDynapcnnNetworkGraph(          # computational graph from original PyTorch module.
-                snn.analog_model,
-                torch.randn((1, *input_shape)))                     # needs the batch dimension.
-
+        self.dvs_input = dvs_input                                  # check if dvs input is expected.
         self.input_shape = input_shape
 
-        self.layers = convert_model_to_layer_list(                  # convert models  to sequential.
-            model=snn.spiking_model, ignore=DEFAULT_IGNORED_LAYER_TYPES
-        )
+        assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
-        self.dvs_input = dvs_input                                  # check if dvs input is expected.
+        self.graph_tracer = NIRtoDynapcnnNetworkGraph(              # computational graph from original PyTorch module.
+            snn.spiking_model,
+            torch.randn((1, *self.input_shape)))                    # needs the batch dimension.        
 
-        input_shape = infer_input_shape(self.layers, input_shape=input_shape)
-        assert len(input_shape) == 3, "infer_input_shape did not return 3-tuple"
-
-        self.sinabs_edges = self.get_sinabs_edges(snn)              # get sinabs graph.
+        self.sinabs_edges, self.sinabs_modules_map = self.get_sinabs_edges_and_modules(snn)
 
         self.dynapcnn_layers, \
             self.nodes_to_dcnnl_map, \
                 self.dcnnl_to_dcnnl_map = build_from_graph(         # build model from graph edges.
             discretize=discretize,
-            layers=self.layers, 
-            in_shape=input_shape,
+            layers=self.sinabs_modules_map, 
+            in_shape=self.input_shape,
             edges=self.sinabs_edges)
 
     def __str__(self):
@@ -359,9 +341,10 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return config, config_builder.validate_configuration(config) # validate config.
     
-    def get_sinabs_edges(self, sinabs_model: sinabs.network.Network) -> List[Tuple[int, int]]:
-        """ Converts the computational graph extracted from 'sinabs_model.analog_model' into its equivalent
-        representation for the 'sinabs_model.spiking_model'.
+    def get_sinabs_edges_and_modules(self, sinabs_model: sinabs.network.Network) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
+        """ The computational graph extracted from 'sinabs_model.spiking_model' contains layers that are ignored (e.g. a nn.Flatten() will be
+        ignored when creating a `DynapcnnLayer` instance). Thus the list of edges from such model need to be rebuilt such that if there are
+        edges `(A, X)` and `(X, B)`, and `X` is an ignored layer, an edge `(A, B)` is created.
         
         Parameters
         ----------
@@ -369,63 +352,14 @@ class DynapcnnNetworkGraph(nn.Module):
 
         Returns
             sinabs_edges: a list of tuples representing the edges between the layers of a sinabs model.
+            sinabs_modules_map: a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
         ----------
         """
-        # parse original graph to ammend edges containing nodes dropped in 'convert_model_to_layer_list()'.
-        sinabs_edges = self.graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+        sinabs_edges, remapped_nodes = self.graph_tracer.remove_ignored_nodes(  # remap `(A, X)` and `(X, B)` into `(A, B)`.
+            DEFAULT_IGNORED_LAYER_TYPES)
 
-        if DynapcnnNetworkGraph.was_spiking_output_added(sinabs_model):
-            last_edge = sinabs_edges[-1]
-            new_edge = (last_edge[1], last_edge[1]+1)               # spiking output layer has been added: create new edge.
-            sinabs_edges.append(new_edge)
-        else:
-            pass
+        sinabs_modules_map = {}                                                 # nodes (layers' "names") need remapping in case some layers have been removed (e.g. nn.Flattern()).
+        for orig_name, new_name in remapped_nodes.items():
+            sinabs_modules_map[new_name] = self.graph_tracer.modules_map[orig_name]
 
-        return sinabs_edges
-
-    @staticmethod
-    def was_spiking_output_added(sinabs_model: sinabs.Network) -> bool:
-        """ Compares the models outputed by 'sinabs.from_torch.from_model()' to check if
-        a spiking output was added to the spiking version of the analog model.
-
-        Parameters
-        ----------
-            sinabs_model: a sinabs network. `sinabs_model.analog_model`\`sinabs_model.spiking_model` need to be either a nn.Module or a nn.Sequential.
-        
-        Returns
-        ----------
-            bool: wheter or not a neuron layers has been added to the `sinabs_model.spiking_model`.
-        """
-        analog_modules = []
-        spiking_modules = []
-
-        if isinstance(sinabs_model.analog_model, nn.Sequential):
-            for mod in sinabs_model.analog_model:
-                analog_modules.append(mod)
-
-        elif isinstance(sinabs_model.analog_model, nn.Module):
-            analog_modules = [layer for _, layer in sinabs_model.analog_model.named_children()]
-
-        else:
-            raise InvalidTorchModel('sinabs_model.analog_model')
-
-        if isinstance(sinabs_model.spiking_model, nn.Sequential):
-            for mod in sinabs_model.spiking_model:
-                spiking_modules.append(mod)
-
-        elif isinstance(sinabs_model.spiking_model, nn.Module):
-            spiking_modules = [layer for _, layer in sinabs_model.spiking_model.named_children()]
-
-        else:
-            raise InvalidTorchModel('sinabs_model.spiking_model')
-
-        if len(analog_modules) != len(spiking_modules):
-            if isinstance(spiking_modules[-1], sinabs.layers.iaf.IAFSqueeze):
-                return True
-            
-            else:
-                warn(f'sinabs.spiking_model has a {type(spiking_modules[-1])} as last layer.')
-                return False
-            
-        else:
-            return False
+        return sinabs_edges, sinabs_modules_map
