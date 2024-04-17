@@ -30,6 +30,8 @@ from .graph_tracer import GraphTracer
 from .exceptions import InvalidTorchModel
 from warnings import warn
 
+from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
+
 class DynapcnnNetworkGraph(nn.Module):
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
     test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
@@ -41,7 +43,8 @@ class DynapcnnNetworkGraph(nn.Module):
         snn: Union[nn.Sequential, sinabs.Network, nn.Module],
         input_shape: Optional[Tuple[int, int, int]] = None,
         dvs_input: bool = False,
-        discretize: bool = True
+        discretize: bool = True,
+        use_jit_tracer: bool = True
     ):
         """
         DynapcnnNetworkGraph: a class turning sinabs networks into dynapcnn
@@ -65,10 +68,16 @@ class DynapcnnNetworkGraph(nn.Module):
 
         dvs_input = False                                           # TODO for now the graph part is not taking into consideration this.
 
-        self.graph_tracer = GraphTracer(                            # computational graph from original PyTorch module.
-            snn.analog_model, 
-            torch.randn((1, *input_shape))                          # torch.jit needs the batch dimension.
-            )
+        if use_jit_tracer:                                          # TODO this is deprecated now: we want to use the graph from NIR (remove it).
+            self.graph_tracer = GraphTracer(                        # computational graph from original PyTorch module.
+                snn.analog_model, 
+                torch.randn((1, *input_shape))                      # torch.jit needs the batch dimension.
+                )
+
+        else:
+            self.graph_tracer = NIRtoDynapcnnNetworkGraph(          # computational graph from original PyTorch module.
+                snn.analog_model,
+                torch.randn((1, *input_shape)))                     # needs the batch dimension.
 
         self.input_shape = input_shape
 
@@ -420,7 +429,3 @@ class DynapcnnNetworkGraph(nn.Module):
             
         else:
             return False
-        
-    @staticmethod
-    def build_from_graph_():                                        # @TODO used for debug only (remove when class is complete).
-        return build_from_graph
