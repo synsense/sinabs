@@ -205,7 +205,7 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
             if edge.flow == 1:
                 mapping.append((i, edge.t - len(layer_mapping) - 1))
     if len(mapping) != len(layer_mapping):
-        raise ValueError("No valid mapping found")
+        raise ValueError("One of the DynapcnnLayers could not be mapped to any core.")
     return mapping
 
 
