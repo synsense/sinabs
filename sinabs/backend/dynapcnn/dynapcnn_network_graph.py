@@ -49,8 +49,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
         Parameters
         ----------
-            snn: sinabs.Network
-                SNN that determines the structure of the `DynapcnnNetwork`
+            snn: ...
             input_shape: None or tuple of ints
                 Shape of the input, convention: (features, height, width)
                 If None, `snn` needs an InputLayer
@@ -70,13 +69,10 @@ class DynapcnnNetworkGraph(nn.Module):
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         self.graph_tracer = NIRtoDynapcnnNetworkGraph(              # computational graph from original PyTorch module.
-            snn.spiking_model,
+            snn,
             torch.randn((1, *self.input_shape)))                    # needs the batch dimension.        
 
-        self.sinabs_edges, self.sinabs_modules_map = self.get_sinabs_edges_and_modules(snn)
-
-        # for edge in self.sinabs_edges:
-        #     print(edge)
+        self.sinabs_edges, self.sinabs_modules_map, self.merge_nodes = self.get_sinabs_edges_and_modules()
 
         self.dynapcnn_layers, \
             self.nodes_to_dcnnl_map, \
@@ -84,7 +80,8 @@ class DynapcnnNetworkGraph(nn.Module):
             discretize=discretize,
             layers=self.sinabs_modules_map, 
             in_shape=self.input_shape,
-            edges=self.sinabs_edges)
+            edges=self.sinabs_edges,
+            merge_nodes=self.merge_nodes)
 
     def __str__(self):
         pretty_print = ''
@@ -345,14 +342,10 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return config, config_builder.validate_configuration(config) # validate config.
     
-    def get_sinabs_edges_and_modules(self, sinabs_model: sinabs.network.Network) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
-        """ The computational graph extracted from 'sinabs_model.spiking_model' contains layers that are ignored (e.g. a nn.Flatten() will be
+    def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
+        """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be
         ignored when creating a `DynapcnnLayer` instance). Thus the list of edges from such model need to be rebuilt such that if there are
         edges `(A, X)` and `(X, B)`, and `X` is an ignored layer, an edge `(A, B)` is created.
-        
-        Parameters
-        ----------
-            sinabs_model: a sinabs network object created from a PyTorch model.
 
         Returns
         ----------
@@ -366,6 +359,12 @@ class DynapcnnNetworkGraph(nn.Module):
         for orig_name, new_name in remapped_nodes.items():
             sinabs_modules_map[new_name] = self.graph_tracer.modules_map[orig_name]
 
-        edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)   # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
+        edges_without_merge, merge_nodes = merge_handler(sinabs_edges, sinabs_modules_map)   # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
 
-        return edges_without_merge, sinabs_modules_map
+        merge_data = {}
+        for key, val in merge_nodes.items():
+            merge_data[val['merge_into']] = {}
+            for src in val['sources']:
+                merge_data[val['merge_into']][src] = None
+
+        return edges_without_merge, sinabs_modules_map, merge_data

@@ -4,20 +4,16 @@ import nirtorch
 import copy
 
 class NIRtoDynapcnnNetworkGraph():
-    def __init__(self, analog_model, dummy_input) -> None:
-        """ .
+    def __init__(self, spiking_model, dummy_input) -> None:
+        """ ."""
 
-        TODO
-            [ ] test it with nn.Sequential and a version defined as class inheriting from nn.Module.
-        """
+        nir_graph = nirtorch.extract_torch_graph(spiking_model, dummy_input, model_name=None).ignore_tensors()
 
-        nir_graph = nirtorch.extract_torch_graph(analog_model, dummy_input, model_name=None).ignore_tensors()
-
-        self.edges_list, self.name_2_indx_map = self.get_edges_from_nir(nir_graph, analog_model)
+        self.edges_list, self.name_2_indx_map = self.get_edges_from_nir(nir_graph)
         
-        self.modules_map = self.get_named_modules(analog_model)
+        self.modules_map = self.get_named_modules(spiking_model)
 
-    def get_edges_from_nir(self, nir_graph, analog_model):
+    def get_edges_from_nir(self, nir_graph):
         """ ."""
         edges_list = []
         name_2_indx_map = {}
@@ -37,22 +33,21 @@ class NIRtoDynapcnnNetworkGraph():
 
         return edges_list, name_2_indx_map
     
-    def get_named_modules(self, analog_model):
+    def get_named_modules(self, model):
         """ ."""
         modules_map = {}
 
-        if isinstance(analog_model, nn.Sequential):             # access modules via `.named_modules()`.
-            for name, module in analog_model.named_modules():
+        if isinstance(model, nn.Sequential):                    # access modules via `.named_modules()`.
+            for name, module in model.named_modules():
                 if name != '':                                  # skip the module itself.
                     modules_map[self.name_2_indx_map[name]] = module
 
-        elif isinstance(analog_model, nn.Module):               # access modules via `.named_children()`.
-            for name, module in analog_model.named_children():
+        elif isinstance(model, nn.Module):                      # access modules via `.named_children()`.
+            for name, module in model.named_children():
                 modules_map[self.name_2_indx_map[name]] = module
 
         else:
-            # TODO raise error
-            pass
+            raise ValueError('Either a nn.Sequential or a nn.Module is required.')
 
         return modules_map
     

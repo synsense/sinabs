@@ -1,3 +1,10 @@
+"""
+functionality : implementation of exceptions and constraints regarding the processing of edges from a network
+                computational graph.
+author        : Willian Soares Girao
+contact       : williansoaresgirao@gmail.com
+"""
+
 import sinabs.layers as sl
 import torch.nn as nn
 from typing import Tuple

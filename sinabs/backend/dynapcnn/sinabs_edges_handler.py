@@ -1,6 +1,9 @@
-# functionality : functions implementing the pre-processing of edges into blocks of nodes (modules) for future creation of DynapcnnLayer objects.
-# author        : Willian Soares Girao
-# contact       : williansoaresgirao@gmail.com
+"""
+functionality : functions implementing the pre-processing of edges into blocks of nodes (modules) for future
+                creation of DynapcnnLayer objects.
+author        : Willian Soares Girao
+contact       : williansoaresgirao@gmail.com
+"""
 
 from typing import Tuple, List, Dict
 import sinabs.layers
@@ -39,9 +42,11 @@ def is_valid_edge(edge: Tuple[int, int], layers: Dict[int, nn.Module], valid_edg
         edge_type: the edge type specified in 'valid_edges_map' ('None' if edge is not valid).
     """
     edge_layers = (layers[edge[0]], layers[edge[1]])
+
     for edge_type, sinabs_edge in valid_edges_map.items():
         if (type(edge_layers[0]) == sinabs_edge[0]) and (type(edge_layers[1]) == sinabs_edge[1]):
             return edge_type
+
     return None
     
 def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: dict, layers: Dict[int, nn.Module]) -> None:
@@ -219,7 +224,7 @@ def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[
     for edge in edges:                                                      # removing edges connection from/to merging layers from the computational graph.
         src = edge[0]
         trg = edge[1]
-
+        # print('> ', edge)
         if src in merge_nodes:                                              # edge (`Merge`, trg) is not necessary for later DynapcnnLayer creation.
             pass
         
@@ -230,5 +235,5 @@ def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[
         else:                                                               # edge not involved in merging.
             edges_without_merge.append(edge)
 
-    return edges_without_merge
+    return edges_without_merge, merge_nodes
 

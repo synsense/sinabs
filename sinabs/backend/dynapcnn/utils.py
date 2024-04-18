@@ -551,7 +551,8 @@ def build_from_graph(
         discretize: bool,
         layers: Dict[int, nn.Module], 
         in_shape: Tuple[int, int, int], 
-        edges: List[Tuple[int, int]]) -> Tuple[List[DynapcnnLayer], Dict[int, Dict[int, nn.Module]], Dict[int, List[int]]]:
+        edges: List[Tuple[int, int]],
+        merge_nodes: dict) -> Tuple[List[DynapcnnLayer], Dict[int, Dict[int, nn.Module]], Dict[int, List[int]]]:
     """ Parses each edge of a 'sinabs_mode.spiking_model' computational graph. Each node (layer) is assigned to a 
     DynapcnnLayer object. The target destination of each DynapcnnLayer is computed via edges connecting nodes in 
     different DynapcnnLayer objects.
@@ -599,7 +600,7 @@ def build_from_graph(
 
     # turn sets of layers into DynapcnnLayer objects.
     dynapcnn_layers = construct_dynapcnnlayers_from_mapper(
-        discretize, nodes_to_dcnnl_map, dcnnl_to_dcnnl_map, in_shape, rescale_factor)
+        discretize, nodes_to_dcnnl_map, dcnnl_to_dcnnl_map, in_shape, rescale_factor, merge_nodes)
     
     for idx, layer_data in dynapcnn_layers.items():
         if 'core_idx' not in layer_data:
@@ -612,7 +613,8 @@ def construct_dynapcnnlayers_from_mapper(
         nodes_to_dcnnl_map: dict,
         dcnnl_to_dcnnl_map: dict,
         input_shape: Union[Tuple[int, int], Tuple[int, int, int]], 
-        rescale_factor: int) -> Dict[int, Dict[DynapcnnLayer, List]]:
+        rescale_factor: int,
+        merge_nodes: dict = None) -> Dict[int, Dict[DynapcnnLayer, List]]:
     """ Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
 
     Parameters
@@ -628,7 +630,7 @@ def construct_dynapcnnlayers_from_mapper(
     
     for dynapcnnl_indx, layer_modules in nodes_to_dcnnl_map.items():
         dynapcnnlayer, input_shape, rescale_factor = construct_dynapcnnlayer(
-            discretize, layer_modules, dynapcnnl_indx, input_shape, rescale_factor)
+            discretize, layer_modules, dynapcnnl_indx, input_shape, rescale_factor, merge_nodes)
         
         dynapcnn_layers[dynapcnnl_indx] = {
             'layer': dynapcnnlayer, 
@@ -642,7 +644,8 @@ def construct_dynapcnnlayer(
         layer_modules: dict, 
         layer_index: int, 
         input_shape: Union[Tuple[int, int], Tuple[int, int, int]], 
-        rescale_factor: int) -> Tuple[DynapcnnLayer, Union[Tuple[int, int], Tuple[int, int, int]], int]:
+        rescale_factor: int,
+        merge_nodes: dict = None) -> Tuple[DynapcnnLayer, Union[Tuple[int, int], Tuple[int, int, int]], int]:
     """ Extract the modules (layers) in a dictionary and uses them to instantiate a DynapcnnLayer object. """
     lyr_conv = None
     lyr_spk = None
@@ -665,10 +668,19 @@ def construct_dynapcnnlayer(
     else:
         raise WrongModuleCount(layer_index, len(layer_modules))
     
-    print('input shape: ', input_shape)
-    print(lyr_conv)
-    print(lyr_spk)
-    print(lyr_pool)
+    ################ TODO HACKY STUFF MAKE IT BETTER ##################
+    for node_idx, _ in layer_modules.items():
+        if node_idx in merge_nodes:
+            # print('>>>> merge_nodes: ', merge_nodes[node_idx], get_input_shape_from_merge(merge_nodes[node_idx]))
+            input_shape = get_input_shape_from_merge(merge_nodes[node_idx])
+            break
+
+    ###############################################################################
+    
+    # print('input shape: ', input_shape)
+    # print(lyr_conv)
+    # print(lyr_spk)
+    # print(lyr_pool)
     
     dynapcnnlayer = DynapcnnLayer(
             conv            = lyr_conv,
@@ -678,10 +690,29 @@ def construct_dynapcnnlayer(
             discretize      = discretize,
             rescale_weights = rescale_factor,
         )
-    print('output shape: ', dynapcnnlayer.get_output_shape())
-    print('------------------------------------------')
+    # print('output shape: ', dynapcnnlayer.get_output_shape())
+
+    ################ TODO HACKY STUFF MAKE IT BETTER ##################
+    if len(merge_nodes) != 0:
+        for merge_target, merge_data in merge_nodes.items():
+            for node_idx, _ in layer_modules.items():
+                if node_idx in merge_data and merge_data[node_idx] == None:
+                    if isinstance(layer_modules[node_idx], sinabs.layers.iaf.IAFSqueeze):
+                        merge_data[node_idx] = dynapcnnlayer.get_neuron_shape()
+                    else:
+                        merge_data[node_idx] = dynapcnnlayer.get_output_shape()
+    ###################################################################
         
     return dynapcnnlayer, dynapcnnlayer.get_output_shape(), rescale_factor_after_pooling
+
+def get_input_shape_from_merge(merge_data):
+    ################ TODO HACKY STUFF MAKE IT BETTER ##################
+    input_shape = [0, 0, 0]
+    for key, val in merge_data.items():
+        for i in range(len(val)):
+            input_shape[i] = val[i] if val[i] > input_shape[i] else input_shape[i]
+    return (input_shape[0], input_shape[1], input_shape[2])
+
 
 def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
     """ Converts a 'nn.AvgPool2d' into a 'sl.SumPool2d' layer. """
