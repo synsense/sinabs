@@ -583,6 +583,7 @@ def build_from_graph(
     #     input_shape=in_shape, 
     #     idx_start=0, 
     #     dvs_input=False)
+    
     dvs_layer = None
     rescale_factor = 1
 
@@ -671,16 +672,10 @@ def construct_dynapcnnlayer(
     ################ TODO HACKY STUFF MAKE IT BETTER ##################
     for node_idx, _ in layer_modules.items():
         if node_idx in merge_nodes:
-            # print('>>>> merge_nodes: ', merge_nodes[node_idx], get_input_shape_from_merge(merge_nodes[node_idx]))
             input_shape = get_input_shape_from_merge(merge_nodes[node_idx])
             break
 
     ###############################################################################
-    
-    # print('input shape: ', input_shape)
-    # print(lyr_conv)
-    # print(lyr_spk)
-    # print(lyr_pool)
     
     dynapcnnlayer = DynapcnnLayer(
             conv            = lyr_conv,
@@ -690,7 +685,6 @@ def construct_dynapcnnlayer(
             discretize      = discretize,
             rescale_weights = rescale_factor,
         )
-    # print('output shape: ', dynapcnnlayer.get_output_shape())
 
     ################ TODO HACKY STUFF MAKE IT BETTER ##################
     if len(merge_nodes) != 0:

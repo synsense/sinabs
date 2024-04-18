@@ -13,6 +13,8 @@ class NIRtoDynapcnnNetworkGraph():
         
         self.modules_map = self.get_named_modules(spiking_model)
 
+        # self.get_modules_io()
+
     def get_edges_from_nir(self, nir_graph):
         """ ."""
         edges_list = []
@@ -50,6 +52,37 @@ class NIRtoDynapcnnNetworkGraph():
             raise ValueError('Either a nn.Sequential or a nn.Module is required.')
 
         return modules_map
+    
+    def get_modules_io(self, input_dummy):
+        """ ."""
+        modules_io_map = {}
+
+        for edge in self.edges_list:
+            src = edge[0]
+            trg = edge[1]
+
+            # pass input through source.
+            if src not in modules_io_map:
+                modules_io_map[src] = {'input': None, 'output': None}
+
+            if src == 0:
+                _input = input_dummy
+            else:
+                inp_node = self.find_my_input_node(src)
+                _input = modules_io_map[inp_node]['output']
+            
+            _output = self.modules_map[src](_input)
+
+            # pass input through target.
+            if trg not in modules_io_map:
+                modules_io_map[trg] = {'input': None, 'output': None}
+
+    def find_my_input_node(self, node_idx):
+        for edge in self.edges_list:
+            if edge[1] == node_idx:
+                return edge[0]
+        return -1
+
     
     def remove_ignored_nodes(self, default_ignored_nodes):
         """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This

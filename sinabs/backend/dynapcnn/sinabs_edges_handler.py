@@ -236,4 +236,4 @@ def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[
             edges_without_merge.append(edge)
 
     return edges_without_merge, merge_nodes
-
+    
