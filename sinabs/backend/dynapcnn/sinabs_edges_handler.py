@@ -67,12 +67,13 @@ def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: d
         raise InvalidEdgeType(edge, edge_type)
     
 def init_xor_complete_new_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
-    """ Incorporates nodes from either a '(conv, neuron)' or a '(linear, neuron)' edge. These are either initiating a (new) DynapcnnLayer 
-    or completing a conv->neuron sequence (in the case the node for 'conv' as already been incorporated somewhere in 'mapper'). 'nn.Linear' layers 
-    are converted into 'nn.Conv2d' by DynapcnnLayer.
+    """ Incorporates nodes from either a `(conv, neuron)` or a `(linear, neuron)` edge. These are either initiating a new `dict` mapping
+    into a future `DynapcnnLayer` or completing a `conv->neuron` sequence (in the case the node for `conv` as already been incorporated 
+    somewhere in `mapper`). Obs.: `nn.Linear` layers are converted into `nn.Conv2d` by `DynapcnnLayer`.
     """
     matched = False
     dynapcnnlayer_indx = 0
+
     for indx, dynapcnnlayer in mapper.items():                      # see if 'edge[0]' exists in a DynapcnnLayer block.
         for node, _ in dynapcnnlayer.items():
             if node == edge[0]:
@@ -80,18 +81,22 @@ def init_xor_complete_new_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int],
                 matched = True
                 break
         if matched:                                                 # 'edge[0]' found: 'edge[1]' belongs to its DynapcnnLayer block.
-            mapper[dynapcnnlayer_indx][edge[1]] = layers[edge[1]]
+            mapper[dynapcnnlayer_indx][edge[1]] = {'layer': layers[edge[1]], 'input_shape': None, 'output_shape': None}
             break
         
     if not matched:                                                 # 'edge[0]' not found: start new DynapcnnLayer block.
         dynapcnnlayer_indx = 0
         for indx, _ in mapper.items():
             dynapcnnlayer_indx += 1
-        mapper[dynapcnnlayer_indx] = {edge[0]: layers[edge[0]], edge[1]: layers[edge[1]]}
+        mapper[dynapcnnlayer_indx] = {
+            edge[0]: {'layer': layers[edge[0]], 'input_shape': None, 'output_shape': None}, 
+            edge[1]: {'layer': layers[edge[1]], 'input_shape': None, 'output_shape': None}
+            }
 
 def connect_dynapcnnlayer_blks(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
-    """ Incorporates nodes from either a '(neuron, conv)/(neuron, lin)' or '(pool, conv)/(pool, lin)' edge. These represent connections between an existing 
-    DynapcnnLayer in 'mapper' and a new one yet to be represented in 'mapper'. 'nn.Linear' layers are converted into 'nn.Conv2d' by DynapcnnLayer.
+    """ Incorporates nodes from either a `(neuron, conv)/(neuron, lin)` or `(pool, conv)/(pool, lin)` edge. These represent connections between an existing 
+    `dict` in `mapper` that will be mapped into a `DynapcnnLayer` and a new one yet to be represented in `mapper`. Obs.: `nn.Linear` layers are converted 
+    into `nn.Conv2d` by `DynapcnnLayer`.
     """
     if not is_initialized_node(edge[1], mapper):
         dynapcnnlayer_indx = 0
@@ -105,17 +110,22 @@ def connect_dynapcnnlayer_blks(mapper: dict, edge: Tuple[int, int], layers: Dict
             if matched:
                 break
         if matched:
-            mapper[dynapcnnlayer_indx] = {edge[1]: layers[edge[1]]} # 'edge[1]' starts new DynapcnnLayer block as 'indx+1'.
+            while (dynapcnnlayer_indx in mapper):
+                dynapcnnlayer_indx += 1
+            mapper[dynapcnnlayer_indx] = {                          # 'edge[1]' starts new DynapcnnLayer block.
+                edge[1]: {'layer': layers[edge[1]], 'input_shape': None, 'output_shape': None}}
         else:
             raise UnmatchedNode(edge, node)
     
 def add_pool_to_dynapcnnlayer_blk(mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]) -> None:
-    """ Incorporating a '(neuron, pool)' edge. Node 'pool' has to be part of an already existing DynapcnnLayer in 'mapper'. """
+    """ Incorporating a `(neuron, pool)` edge. Node `pool` has to be part of an already existing `dict` mapping into a `DynapcnnLaye` in `mapper`.
+    """
     matched = False
     for indx, dynapcnnlayer in mapper.items():
         for node, _ in dynapcnnlayer.items():
             if node == edge[0]:
-                dynapcnnlayer[edge[1]] = layers[edge[1]]            # 'edge[0]' is a neuron layer inputing into pooling layer 'edge[1]'.
+                dynapcnnlayer[edge[1]] = {                          # 'edge[0]' is a neuron layer inputing into pooling layer 'edge[1]'.
+                    'layer': layers[edge[1]], 'input_shape': None, 'output_shape': None}
                 matched = True
                 break
         if matched:
@@ -224,7 +234,7 @@ def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[
     for edge in edges:                                                      # removing edges connection from/to merging layers from the computational graph.
         src = edge[0]
         trg = edge[1]
-        # print('> ', edge)
+
         if src in merge_nodes:                                              # edge (`Merge`, trg) is not necessary for later DynapcnnLayer creation.
             pass
         

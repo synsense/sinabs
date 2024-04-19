@@ -151,7 +151,6 @@ class NIRtoDynapcnnNetworkGraph():
 
         return nodes_io_map
 
-
     def find_input_to_node(self, node):
         """ ."""
         for edge in self.edges_list:

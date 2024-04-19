@@ -62,26 +62,31 @@ class DynapcnnNetworkGraph(nn.Module):
         """
         super().__init__()
 
-        dvs_input = False                                           # TODO for now the graph part is not taking into consideration this.
-        self.dvs_input = dvs_input                                  # check if dvs input is expected.
+        dvs_input = False                                       # TODO for now the graph part is not taking into consideration this.
+        self.dvs_input = dvs_input                              # check if dvs input is expected.
         self.input_shape = input_shape
 
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
-        self.graph_tracer = NIRtoDynapcnnNetworkGraph(              # computational graph from original PyTorch module.
+        self.graph_tracer = NIRtoDynapcnnNetworkGraph(          # computational graph from original PyTorch module.
             snn,
-            torch.randn((1, *self.input_shape)))                    # needs the batch dimension.        
+            torch.randn((1, *self.input_shape)))                # needs the batch dimension.        
 
-        self.sinabs_edges, self.sinabs_modules_map, self.merge_nodes = self.get_sinabs_edges_and_modules()
+        self.sinabs_edges, \
+            self.sinabs_modules_map, \
+                self.merge_nodes, \
+                    self.nodes_name_remap = self.get_sinabs_edges_and_modules()
 
         self.dynapcnn_layers, \
             self.nodes_to_dcnnl_map, \
-                self.dcnnl_to_dcnnl_map = build_from_graph(         # build model from graph edges.
+                self.dcnnl_to_dcnnl_map = build_from_graph(     # build model from graph edges.
             discretize=discretize,
             layers=self.sinabs_modules_map, 
             in_shape=self.input_shape,
             edges=self.sinabs_edges,
             merge_nodes=self.merge_nodes)
+        
+        self.populate_nodes_io()                                # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
 
     def __str__(self):
         pretty_print = ''
@@ -367,4 +372,28 @@ class DynapcnnNetworkGraph(nn.Module):
             for src in val['sources']:
                 merge_data[val['merge_into']][src] = None
 
-        return edges_without_merge, sinabs_modules_map, merge_data
+        return edges_without_merge, sinabs_modules_map, merge_data, remapped_nodes
+    
+    def populate_nodes_io(self):
+        """ ."""
+
+        def find_original_node_name(name_mapper, node):
+            for orig_name, new_name in name_mapper.items():
+                if new_name == node:
+                    return orig_name
+            raise ValueError(f'Node {node} could not be found within the name remapping done by self.get_sinabs_edges_and_modules().')
+
+        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+            for node, node_data in dcnnl_data.items():
+                if isinstance(node, int):                       # node dictionary with layer data.
+                    orig_name = find_original_node_name(self.nodes_name_remap, node)
+                    _in, _out = self.graph_tracer.get_node_io_shapes(orig_name)
+                    node_data['input_shape'] = _in
+                    node_data['output_shape'] = _out
+
+        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+            print(f'DynapcnnLayer-index {dcnnl_idx}')
+            for key, val in dcnnl_data.items():
+                print(key, val['input_shape'], val['output_shape'])
+            print('\n')
+                    
