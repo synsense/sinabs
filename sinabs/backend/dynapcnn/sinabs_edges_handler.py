@@ -180,9 +180,12 @@ def get_dynapcnnlayers_destinations(layers: Dict[int, nn.Module], edges: List[Tu
                 else:
                     raise InvalidLayerLoop(source_layer, destination_layer)
                 
-    del used_layer_edges
-
-    return dynapcnnlayers_destinations_map
+    for dcnnl_idx, destinations in dynapcnnlayers_destinations_map.items():     # TODO document the 'rescale_factor' better.
+        mapper[dcnnl_idx]['destinations'] = destinations            
+        mapper[dcnnl_idx]['destinations_rescale_factor'] = {}                   # needed for when SumPool is built.
+        
+        for dest in destinations:
+            mapper[dcnnl_idx]['destinations_rescale_factor'][dest] = 1
                 
 def get_dynapcnnlayer_index(node: int, mapper: dict) -> int:
     """ Returns the DynapcnnLayer index to which 'node' belongs to. """

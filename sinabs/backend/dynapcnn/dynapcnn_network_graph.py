@@ -20,6 +20,7 @@ from .io import disable_timestamps, enable_timestamps, open_device, reset_timest
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     build_from_graph,
+    build_nodes_to_dcnnl_map,
     parse_device_id,
 )
 
@@ -74,19 +75,28 @@ class DynapcnnNetworkGraph(nn.Module):
 
         self.sinabs_edges, \
             self.sinabs_modules_map, \
-                self.merge_nodes, \
                     self.nodes_name_remap = self.get_sinabs_edges_and_modules()
-
-        self.dynapcnn_layers, \
-            self.nodes_to_dcnnl_map, \
-                self.dcnnl_to_dcnnl_map = build_from_graph(     # build model from graph edges.
-            discretize=discretize,
-            layers=self.sinabs_modules_map, 
-            in_shape=self.input_shape,
-            edges=self.sinabs_edges,
-            merge_nodes=self.merge_nodes)
         
-        self.populate_nodes_io()                                # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
+        self.nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
+            layers=self.sinabs_modules_map, 
+            edges=self.sinabs_edges)
+        
+        # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
+        self.populate_nodes_io()
+
+        self.dynapcnn_layers = build_from_graph(     # build model from graph edges.
+            discretize=discretize,
+            edges=self.sinabs_edges,
+            nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
+        
+        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+            print(f'DynapcnnLayer-index {dcnnl_idx}')
+            for key, val in dcnnl_data.items():
+                if isinstance(key, int):
+                    print(key, val['layer'], val['input_shape'])
+                else:
+                    print(key, val)
+            print('\n')
 
     def __str__(self):
         pretty_print = ''
@@ -366,13 +376,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
         edges_without_merge, merge_nodes = merge_handler(sinabs_edges, sinabs_modules_map)   # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
 
-        merge_data = {}
-        for key, val in merge_nodes.items():
-            merge_data[val['merge_into']] = {}
-            for src in val['sources']:
-                merge_data[val['merge_into']][src] = None
-
-        return edges_without_merge, sinabs_modules_map, merge_data, remapped_nodes
+        return edges_without_merge, sinabs_modules_map, remapped_nodes
     
     def populate_nodes_io(self):
         """ ."""
@@ -390,10 +394,3 @@ class DynapcnnNetworkGraph(nn.Module):
                     _in, _out = self.graph_tracer.get_node_io_shapes(orig_name)
                     node_data['input_shape'] = _in
                     node_data['output_shape'] = _out
-
-        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
-            print(f'DynapcnnLayer-index {dcnnl_idx}')
-            for key, val in dcnnl_data.items():
-                print(key, val['input_shape'], val['output_shape'])
-            print('\n')
-                    
