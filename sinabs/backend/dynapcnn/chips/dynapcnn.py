@@ -233,32 +233,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             dcnnl_core_idx = dynapcnn_layers[dcnnl_idx]['core_idx']                                   # get the core the destination DynapcnnLayer is using.
             dest_config['layer'] = dcnnl_core_idx
 
-        for key, val in config_dict.items():
-            print(key, val)
-
-        input('...')
-
-        chip_layer.dimensions = config_dict["dimensions"]        
-        config_dict.pop("dimensions")
-
-        pooling = None
-        if "pooling" in config_dict["destinations"][0]:
-            pooling = config_dict["destinations"][0]["pooling"]                                       # TODO make pooling be destination-dependent.
+        # set the destinations configuration.
+        for i in range(len(config_dict['destinations'])):
+            chip_layer.destinations[i] = config_dict['destinations'][i]
         config_dict.pop("destinations")
 
-        for dest_idx in range(len(dcnnl_data['destinations'])):                                       # configuring the destinations for this DynapcnnLayer.
-            chip_layer.destinations[dest_idx].enable = True
-            
-            destination_core_idx = dynapcnn_layers[dcnnl_data['destinations'][dest_idx]]['core_idx']  # retrive the core to wich the destination DynapcnnLayer has been assigned to.
-            chip_layer.destinations[dest_idx].layer = destination_core_idx
-
-            if isinstance(pooling, int):
-                chip_layer.destinations[dest_idx].pooling = pooling
-
-        if len(dcnnl_data['destinations']) == 0:                                                      # this is the output layer.
-            chip_layer.destinations[0].enable = False
-            chip_layer.destinations[1].enable = False
-
+        # set remaining configuration.
         for param, value in config_dict.items():                                                      # set remaining attributes.
             try:
                 setattr(chip_layer, param, value)

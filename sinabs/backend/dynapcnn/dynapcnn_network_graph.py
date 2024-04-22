@@ -333,9 +333,6 @@ class DynapcnnNetworkGraph(nn.Module):
             if has_dvs_layer:
                 pass                                                 # TODO not handling DVSLayer yet.
 
-        # we now know what core has been assigned to each DynapcnnLayer: add their core destinations info.
-        self.add_core_destinations_to_mapper()                       # TODO remove this.
-
         # update config.
         config = config_builder.build_config(self, None)
 
@@ -368,19 +365,6 @@ class DynapcnnNetworkGraph(nn.Module):
             config = config_modifier(config)
 
         return config, config_builder.validate_configuration(config)
-    
-    def add_core_destinations_to_mapper(self):
-        """ ."""
-
-        for idx, layer_data in self.dynapcnn_layers.items():
-            destinations = layer_data['destinations']
-            core_destinations = []
-
-            for lyr_dest in destinations:
-                core_dest = self.dynapcnn_layers[lyr_dest]['core_idx']
-                core_destinations.append(core_destinations)
-
-            layer_data['core_destinations'] = core_destinations
     
     def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
         """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be

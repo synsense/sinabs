@@ -69,6 +69,11 @@ class DynapcnnLayer(nn.Module):
         
         spk = deepcopy(spk)
         if spk.is_state_initialised():
+            # TODO this line bellow is causing an exception on `.v_men.shape` to be raised in `.get_layer_config_dict()`. Find out why.
+            # spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
+
+            # TODO hacky stuff: make it better (THIS SEEMS TO BE FIXING THE PROBLEM ABOVE THO).
+            if len(list(spk.v_mem.shape)) != 4:
                 spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
 
         if isinstance(conv, nn.Linear):
@@ -240,7 +245,7 @@ class DynapcnnLayer(nn.Module):
         dimensions['stride']        = {'x': self.conv_layer.stride[1], 'y': self.conv_layer.stride[0]}
         dimensions['kernel_size']   = self.conv_layer.kernel_size[0]
 
-        config_dict.update(dimensions)        # update config dict.
+        config_dict['dimensions'] = dimensions              # update config dict.
 
         # update parameters from convolution.
         if self.conv_layer.bias is not None:
@@ -303,7 +308,7 @@ class DynapcnnLayer(nn.Module):
                 dest_config = {
                     'layer': self.dynapcnnlayer_destination[i],# TODO this destination index is not the core index yet, just the index of the DynapcnnLayers themselves.
                     'enable': True, 
-                    'pooling': self.pool_layer[i].kernel_size
+                    'pooling': self.pool_layer[i].kernel_size[0]    # TODO make sure the kernel is a square.
                     }
                 
                 config_dict['destinations'].append(dest_config)

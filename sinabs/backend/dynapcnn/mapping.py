@@ -4,7 +4,8 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
 from .dvs_layer import DVSLayer
-from .dynapcnn_layer import DynapcnnLayer
+# from .dynapcnn_layer import DynapcnnLayer
+from .dynapcnn_layer_new import DynapcnnLayer
 
 import sinabs
 from .exceptions import InvalidModel
