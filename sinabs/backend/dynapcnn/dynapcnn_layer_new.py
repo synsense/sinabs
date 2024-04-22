@@ -19,8 +19,7 @@ class DynapcnnLayer(nn.Module):
     def __init__(
         self,
         dcnnl_data: dict, 
-        discretize: bool,
-        rescale_weights: int = 1,       # TODO remove.
+        discretize: bool
     ):
         super().__init__()
         """
@@ -94,7 +93,9 @@ class DynapcnnLayer(nn.Module):
         self.conv_layer = conv
         self.spk_layer = spk
         self.pool_layer = []
+
         if len(pool) != 0:
+            # the 1st pooling targets the 1st destination in `dcnnl_data['destinations']`, the 2nd pooling targets the 2nd destination...
             for plyr in pool:
                 if plyr.kernel_size[0] != plyr.kernel_size[1]:
                     raise ValueError("Only square kernels are supported")
@@ -179,6 +180,7 @@ class DynapcnnLayer(nn.Module):
         return self.spk_layer.zero_grad(set_to_none)
     
     def get_conv_output_shape(self, conv_layer: nn.Conv2d, input_shape: tuple):
+        """ ."""
         # get the layer's parameters.
         out_channels = conv_layer.out_channels
         kernel_size = conv_layer.kernel_size

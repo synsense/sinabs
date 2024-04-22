@@ -666,13 +666,6 @@ def construct_dynapcnnlayer(
     # convert all AvgPool2d in 'dcnnl_data' into SumPool2d.
     convert_Avg_to_Sum_pooling(dcnnl_data, edges, nodes_to_dcnnl_map)
 
-    # TODO 'rescale_weight' information is inside 'dcnnl_data' but it is not yet being used.
-    # TODO the input shapes work fine when processing conv layers but once we reach linear layers
-    # their input shapes has to come from the conv layers projecting to the node. Currently also a 
-    # linear layer after a flatten has the input shape coming out of the flatten but it needs to be
-    # the conv output shape before the flatten. A linear layer coming after a previous linear layer 
-    # converted into conv needs to have its input shape updated based on this conversion.
-
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
         dcnnl_data      = dcnnl_data,
@@ -693,7 +686,7 @@ def convert_Avg_to_Sum_pooling(dcnnl_data: dict, edges: list, nodes_to_dcnnl_map
     """
     for key, value in dcnnl_data.items():
         if isinstance(key, int):
-            # accessing the node 'key's dictionary.
+            # accessing the node `key` dictionary.
 
             if isinstance(value['layer'], nn.AvgPool2d):
                 # convert AvgPool2d into SumPool2d.
@@ -702,13 +695,13 @@ def convert_Avg_to_Sum_pooling(dcnnl_data: dict, edges: list, nodes_to_dcnnl_map
                 # turn avg into sum pool.
                 value['layer'] = lyr_pool
 
-                # find which node 'key' will target.
+                # find which node `key` will target.
                 for edge in edges:
                     if edge[0] == key:
                         # find index of DynapcnnLayer where the target of `edge[0]` is.
                         trg_dcnnl_idx = find_nodes_dcnnl_idx(edge[1], nodes_to_dcnnl_map)
 
-                        # update the rescale factor for the target of node 'key'.
+                        # update the rescale factor for the target of node `key`.
                         if rescale_factor > nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor']:
                             #   If more than one DynapcnnLayers target `trg_dcnnl_idx` with different rescale
                             # factors, the highest amongst them is used.
@@ -719,9 +712,9 @@ def find_nodes_dcnnl_idx(node, nodes_to_dcnnl_map):
     for dcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         for key, value in dcnnl_data.items():
             if isinstance(key, int):
-                # 'key' is a node.
+                # `key` is a node.
                 if key == node:
-                    # node belongs to DynapcnnLayer index 'dcnnl_idx'.
+                    # node belongs to DynapcnnLayer index `dcnnl_idx`.
                     return dcnnl_idx
 
     # this exception should never happen.
