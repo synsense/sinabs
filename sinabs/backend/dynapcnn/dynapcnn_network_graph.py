@@ -63,13 +63,16 @@ class DynapcnnNetworkGraph(nn.Module):
         """
         super().__init__()
 
-        dvs_input = False                                       # TODO for now the graph part is not taking into consideration this.
-        self.dvs_input = dvs_input                              # check if dvs input is expected.
+        # TODO for now the graph part is not taking into consideration this.
+        # check if dvs input is expected.
+        dvs_input = False
+        self.dvs_input = dvs_input
         self.input_shape = input_shape
 
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
-        self.graph_tracer = NIRtoDynapcnnNetworkGraph(          # computational graph from original PyTorch module.
+        # computational graph from original PyTorch module.
+        self.graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
             torch.randn((1, *self.input_shape)))                # needs the batch dimension.        
 
@@ -84,19 +87,20 @@ class DynapcnnNetworkGraph(nn.Module):
         # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
         self.populate_nodes_io()
 
-        self.dynapcnn_layers = build_from_graph(     # build model from graph edges.
-            discretize=discretize,
-            edges=self.sinabs_edges,
-            nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
+        # # build model from graph edges.
+        # self.dynapcnn_layers = build_from_graph(
+        #     discretize=discretize,
+        #     edges=self.sinabs_edges,
+        #     nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
         
-        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
-            print(f'DynapcnnLayer-index {dcnnl_idx}')
-            for key, val in dcnnl_data.items():
-                if isinstance(key, int):
-                    print(key, val['layer'], val['input_shape'])
-                else:
-                    print(key, val)
-            print('\n')
+        # for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+        #     print(f'DynapcnnLayer-index {dcnnl_idx}')
+        #     for key, val in dcnnl_data.items():
+        #         if isinstance(key, int):
+        #             print(key, val['layer'], val['input_shape'])
+        #         else:
+        #             print(key, val)
+        #     print('\n')
 
     def __str__(self):
         pretty_print = ''
@@ -381,16 +385,52 @@ class DynapcnnNetworkGraph(nn.Module):
     def populate_nodes_io(self):
         """ ."""
 
+        for edge in self.sinabs_edges:
+            print(edge)
+        print('\n')
+
         def find_original_node_name(name_mapper, node):
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
                     return orig_name
             raise ValueError(f'Node {node} could not be found within the name remapping done by self.get_sinabs_edges_and_modules().')
+        
+        def find_my_input(edges_list, node):
+            for edge in edges_list:
+                if edge[1] == node:
+                    #   TODO nodes originally receiving input from merge will appear twice in the list of edges, one
+                    # edge per input to the merge layer. For now both inputs to a `Merge` have the same dimensions 
+                    # necessarily so this works for now but later will have to be revised.
+                    return edge[0]
+            raise ValueError(f'Node {node} is not receiving input from any other node in the graph.')
 
+        # access the I/O shapes for each node in `self.sinabs_edges` from the original graph in `self.graph_tracer`.
         for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
             for node, node_data in dcnnl_data.items():
-                if isinstance(node, int):                       # node dictionary with layer data.
+                # node dictionary with layer data.
+                if isinstance(node, int):
+                    # some nodes might have been renamed (e.g. after droppping a `nn.Flatten`), so find how node was originally named.
                     orig_name = find_original_node_name(self.nodes_name_remap, node)
                     _in, _out = self.graph_tracer.get_node_io_shapes(orig_name)
-                    node_data['input_shape'] = _in
-                    node_data['output_shape'] = _out
+
+                    # update node I/O shape in the mapper (drop batch dimension).
+                    if node != 0:
+                        #   Find node outputing into the current node being processed (this will be the input shape). This is
+                        # necessary cuz if a node originally receives input from a `nn.Flatten` for instance, when mapped into
+                        # a `DynapcnnLayer` it will be receiving the input from a privious `sl.SumPool2d`.
+                        input_node = find_my_input(self.sinabs_edges, node)
+                        input_node_orig_name = find_original_node_name(self.nodes_name_remap, input_node)
+                        _, _input_source_shape = self.graph_tracer.get_node_io_shapes(input_node_orig_name)
+                        node_data['input_shape'] = tuple(list(_input_source_shape)[1:])
+                    else:
+                        # first node does not have an input source within the graph.
+                        node_data['input_shape'] = tuple(list(_in)[1:])
+
+                    node_data['output_shape'] = tuple(list(_out)[1:])
+
+        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+            print(f'DynapcnnLayer-index {dcnnl_idx}')
+            for key, val in dcnnl_data.items():
+                if isinstance(key, int):
+                    print(key, val['input_shape'], val['output_shape'])
+            print('\n')
