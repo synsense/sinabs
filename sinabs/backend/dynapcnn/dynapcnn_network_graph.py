@@ -92,17 +92,6 @@ class DynapcnnNetworkGraph(nn.Module):
             discretize=discretize,
             edges=self.sinabs_edges,
             nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
-        
-        print('------------------------------------------------------')
-        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
-            print(f'DynapcnnLayer-index {dcnnl_idx}')
-            for key, val in dcnnl_data.items():
-                if isinstance(key, int):
-                    print(key, val['input_shape'], val['output_shape'])
-                else:
-                    print(key, val)
-            print('\n')
-        print('------------------------------------------------------')
 
     def __str__(self):
         pretty_print = ''
@@ -111,7 +100,12 @@ class DynapcnnNetworkGraph(nn.Module):
             layer = layer_data['layer']
             dest = layer_data['destinations']
             core = layer_data['core_idx']
-            pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
+
+            if 'core_destinations' in layer_data:
+                core_dest = layer_data['destinations']
+                pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> core destinations: {core_dest}\n> assigned core: {core}\n\n'
+            else:
+                pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
         return pretty_print
     
     def to(
@@ -330,26 +324,35 @@ class DynapcnnNetworkGraph(nn.Module):
 
         has_dvs_layer = isinstance(self.dynapcnn_layers[0]['layer'], DVSLayer)
 
-        if chip_layers_ordering == "auto":                           # figure out mapping of each DynapcnnLayer into one core.
+        if chip_layers_ordering == "auto":
+            # figure out mapping of each DynapcnnLayer into one core.
             chip_layers_ordering = config_builder.get_valid_mapping(self)
 
-        else:                                                        # mapping from each DynapcnnLayer into cores has been provided.
+        else:
+            # mapping from each DynapcnnLayer into cores has been provided.
             if has_dvs_layer:
                 pass                                                 # TODO not handling DVSLayer yet.
 
-        config = config_builder.build_config(self, None)             # update config.
+        # we now know what core has been assigned to each DynapcnnLayer: add their core destinations info.
+        self.add_core_destinations_to_mapper()                       # TODO remove this.
+
+        # update config.
+        config = config_builder.build_config(self, None)
 
         if self.input_shape and self.input_shape[0] == 1:            # ???
             config.dvs_layer.merge = True
 
-        monitor_chip_layers = []                                     # TODO all this monitoring part needs validation still.
-        if monitor_layers is None:                                   # check if any monitoring is enabled (if not, enable monitoring for the last layer).
+        # TODO all this monitoring part needs validation still.
+        monitor_chip_layers = []
+        if monitor_layers is None:
+            # check if any monitoring is enabled (if not, enable monitoring for the last layer).
             for _, dcnnl_data in self.dynapcnn_layers.items():
                 if len(dcnnl_data['destinations']) == 0:
                     monitor_chip_layers.append(dcnnl_data['core_idx'])
                     break
         elif monitor_layers == "all":
-            for _, dcnnl_data in self.dynapcnn_layers.items():      # monitor each chip core (if not a DVSLayer).
+            for _, dcnnl_data in self.dynapcnn_layers.items():
+                # monitor each chip core (if not a DVSLayer).
                 if not isinstance(dcnnl_data['layer'], DVSLayer):
                     monitor_chip_layers.append(dcnnl_data['core_idx'])
         
@@ -357,12 +360,27 @@ class DynapcnnNetworkGraph(nn.Module):
             if "dvs" in monitor_layers:
                 monitor_chip_layers.append("dvs")
 
-        config_builder.monitor_layers(config, monitor_chip_layers)   # enable monitors on the specified layers.
+        # enable monitors on the specified layers.
+        config_builder.monitor_layers(config, monitor_chip_layers)
 
-        if config_modifier is not None:                              # apply user config modifier.
+        if config_modifier is not None:
+            # apply user config modifier.
             config = config_modifier(config)
 
-        return config, config_builder.validate_configuration(config) # validate config.
+        return config, config_builder.validate_configuration(config)
+    
+    def add_core_destinations_to_mapper(self):
+        """ ."""
+
+        for idx, layer_data in self.dynapcnn_layers.items():
+            destinations = layer_data['destinations']
+            core_destinations = []
+
+            for lyr_dest in destinations:
+                core_dest = self.dynapcnn_layers[lyr_dest]['core_idx']
+                core_destinations.append(core_destinations)
+
+            layer_data['core_destinations'] = core_destinations
     
     def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
         """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be

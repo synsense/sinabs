@@ -9,7 +9,8 @@ from samna.dynapcnn.configuration import DynapcnnConfiguration
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
-from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
+# from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
+from sinabs.backend.dynapcnn.dynapcnn_layer_new import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 import sinabs
@@ -207,10 +208,35 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             
     @classmethod
     def write_dynapcnn_layer_config_graph(cls, dcnnl_data: dict, chip_layer: "CNNLayerConfig", dynapcnn_layers: dict):
-        """ ."""
-        
-        config_dict = cls.get_dynapcnn_layer_config_dict(                                             # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
-            layer=dcnnl_data['layer'])
+        """ Uses the data in `dcnnl_data` to configure a `CNNLayerConfig` to be deployed on chip.
+
+        Parameters
+        ----------
+            dcnnl_data:
+                contains the DynapcnnLayer (`dcnnl_data['layer']`), is list of destination DynapcnnLayer indexes 
+                (`dcnnl_data['destinations']`), and the core ID it is to be mapped to (`dcnnl_data['core_idx']`).
+            chip_layer:
+                a `CNNLayerConfig` (indexed by `dcnnl_data['core_idx']`) used to represent the DynapcnnLayer 
+                in `dcnnl_data['layer']`.
+            dynapcnn_layers:
+                a dictionary with keys being the ID of each DynapcnnLayer and values being the dictionary with the
+                `dcnnl_data` structure described above. This is used to retrieve the `core_idx` for each of the
+                layers in `dcnnl_data['destinations']` such that `chip_layer.destinations` can be configured.
+        """
+
+        # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
+        config_dict = dcnnl_data['layer'].get_layer_config_dict()
+
+        # use core indexing instead of DynapcnnLayer indexing for destinations.
+        for dest_config in config_dict['destinations']:
+            dcnnl_idx = dest_config['layer']
+            dcnnl_core_idx = dynapcnn_layers[dcnnl_idx]['core_idx']                                   # get the core the destination DynapcnnLayer is using.
+            dest_config['layer'] = dcnnl_core_idx
+
+        for key, val in config_dict.items():
+            print(key, val)
+
+        input('...')
 
         chip_layer.dimensions = config_dict["dimensions"]        
         config_dict.pop("dimensions")
@@ -223,7 +249,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         for dest_idx in range(len(dcnnl_data['destinations'])):                                       # configuring the destinations for this DynapcnnLayer.
             chip_layer.destinations[dest_idx].enable = True
             
-            destination_core_idx = dynapcnn_layers[dcnnl_data['destinations'][dest_idx]]['core_idx']  # retrive the core to wich a destination DynapcnnLayer has been assigned to.
+            destination_core_idx = dynapcnn_layers[dcnnl_data['destinations'][dest_idx]]['core_idx']  # retrive the core to wich the destination DynapcnnLayer has been assigned to.
             chip_layer.destinations[dest_idx].layer = destination_core_idx
 
             if isinstance(pooling, int):
@@ -233,18 +259,36 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             chip_layer.destinations[0].enable = False
             chip_layer.destinations[1].enable = False
 
-        for param, value in config_dict.items():
+        for param, value in config_dict.items():                                                      # set remaining attributes.
             try:
                 setattr(chip_layer, param, value)
             except TypeError as e:
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], chip_layers: List[int]):
+    def build_config(cls, model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], chip_layers: Union[List[int], None]) -> DynapcnnConfiguration:
+        """ Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
+        using using the `DynapcnnLayer` properties. 
+
+        Parameters
+        ----------
+            model:
+                either a `DynapcnnNetwork` or a `DynapcnnNetworkGraph` instance where the model (DynapcnnLayer) layers can be found.
+            chip_layers:
+                a list containing the core indexes where each `DynapcnnLayer` will be mapped to (if `model` is an instance of `DynapcnnNetwork`, otherwise `None`).
+
+        Returns
+        ----------
+            config:
+                an instance of a `DynapcnnConfiguration`.
+        """
+        config = cls.get_default_config()
 
         if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+            """ loops through `DynapcnnNetwork.sequence`, sequentially using the core IDs in `chip_layers` to configure their
+            respective `CNNLayerConfig`.
+            """
             layers = model.sequence
-            config = cls.get_default_config()
 
             has_dvs_layer = False
             i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
@@ -275,8 +319,11 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 config.dvs_layer.pass_sensor_events = False
 
         elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
-            config = cls.get_default_config()
-            has_dvs_layer = False
+            """ loops through `DynapcnnNetworkGraph.dynapcnn_layers`, where each represented layer representation constains their
+            core ID to be loaded onto and their target destinations. Each `layer_data` has all the info. necessary to config.
+            their respective `CNNLayerConfig` object.
+            """
+            has_dvs_layer = False                                       # TODO DVSLayer not supported yet.
 
             for _, layer_data in model.dynapcnn_layers.items():
                 if isinstance(layer_data['layer'], DVSLayer):
@@ -287,6 +334,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     cls.write_dynapcnn_layer_config_graph(layer_data, chip_layer, model.dynapcnn_layers)
 
                 else:
+                    print('[error] ', layer_data['layer'])
                     raise TypeError("Unexpected layer in the model.")   # shouldn't happen since type checks are made previously.
                 
             if not has_dvs_layer:                                       # TODO DVSLayer not supported yet.
