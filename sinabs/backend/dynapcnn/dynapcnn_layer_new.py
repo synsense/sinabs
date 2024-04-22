@@ -14,54 +14,34 @@ from .dvs_layer import expand_to_pair
 
 
 class DynapcnnLayer(nn.Module):
-    """Create a DynapcnnLayer object representing a dynapcnn layer.
-
-    Requires a convolutional layer, a sinabs spiking layer and an optional
-    pooling value. The layers are used in the order conv -> spike -> pool.
-
-    Parameters
-    ----------
-        conv: torch.nn.Conv2d or torch.nn.Linear
-            Convolutional or linear layer (linear will be converted to convolutional)
-        spk: sinabs.layers.IAFSqueeze
-            Sinabs IAF layer
-        in_shape: tuple of int
-            The input shape, needed to create dynapcnn configs if the network does not
-            contain an input layer. Convention: (features, height, width)
-        pool: int or None
-            Integer representing the sum pooling kernel and stride. If `None`, no
-            pooling will be applied.
-        discretize: bool
-            Whether to discretize parameters.
-        rescale_weights: int
-            Layer weights will be divided by this value.
-    """
+    """Create a DynapcnnLayer object representing a dynapcnn layer. """
 
     def __init__(
         self,
         dcnnl_data: dict, 
         discretize: bool,
-        nodes_mapper: dict,
         rescale_weights: int = 1,       # TODO remove.
     ):
         super().__init__()
         """
         ...
 
+        Parameters
+        ----------
+
         TODO
-            1) need to figure out how to apply 'rescale_weights' since there are more than two poolings.
-            2) currently there's no way the forward would work since there are more than two poolings.
+            1) currently there's no way the forward would work since there are more than two poolings.
         """
         self.lin_to_conv_conversion = False
 
         conv = None
-        conv_node_id = None
+        self.conv_node_id = None
 
         spk = None
         self.spk_node_id = None
 
         pool = []
-        pool_node_id = []
+        self.pool_node_id = []
 
         for key, value in dcnnl_data.items():
             if isinstance(key, int):
@@ -71,10 +51,10 @@ class DynapcnnLayer(nn.Module):
                     self.spk_node_id = key
                 elif isinstance(value['layer'], nn.Linear) or isinstance(value['layer'], nn.Conv2d):
                     conv = value['layer']
-                    conv_node_id = key
+                    self.conv_node_id = key
                 elif isinstance(value['layer'], sl.SumPool2d):
                     pool.append(value['layer'])
-                    pool_node_id.append(key)
+                    self.pool_node_id.append(key)
                 else:
                     raise ValueError(f'Node {key} has not valid layer associated with it.')
                 
@@ -89,11 +69,11 @@ class DynapcnnLayer(nn.Module):
                 spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
 
         if isinstance(conv, nn.Linear):
-            conv, conv_in_shape = self._convert_linear_to_conv(conv, dcnnl_data[conv_node_id])
+            conv, conv_in_shape = self._convert_linear_to_conv(conv, dcnnl_data[self.conv_node_id])
 
             # the original `nn.Linear` output shape becomes the equivalent `nn.Conv2d` shape.
             conv_out_shape = self._update_conv_node_output_shape(
-                conv_layer=conv, layer_data=dcnnl_data[conv_node_id], input_shape=conv_in_shape)
+                conv_layer=conv, layer_data=dcnnl_data[self.conv_node_id], input_shape=conv_in_shape)
 
             # the I/O shapes for neuron layer following the new conv need also to be updated.
             self._update_neuron_node_output_shape(layer_data=dcnnl_data[self.spk_node_id], input_shape=conv_out_shape)
@@ -101,11 +81,10 @@ class DynapcnnLayer(nn.Module):
         else:
             conv = deepcopy(conv)
 
-        # TODO have to consider that two poolings might be projecting to this conv (these lines of code are deprecated).
         # this weight rescale comes from the node projecting into this 'conv' node.
-        if rescale_weights != 1:
+        if dcnnl_data['conv_rescale_factor'] != 1:
             # this has to be done after copying but before discretizing
-            conv.weight.data = (conv.weight / rescale_weights).clone().detach()
+            conv.weight.data = (conv.weight / dcnnl_data['conv_rescale_factor']).clone().detach()
 
         # int conversion is done while writing the config.
         if discretize:
@@ -122,13 +101,13 @@ class DynapcnnLayer(nn.Module):
                 self.pool_layer.append(deepcopy(plyr))
 
     def __str__(self):
-        pretty_print = ''
+        pretty_print = '\n'
 
-        pretty_print += f'(con_layer): {self.conv_layer}\n'
-        pretty_print += f'(spk_layer): {self.spk_layer}\n'
+        pretty_print += f'(node {self.conv_node_id}): {self.conv_layer}\n'
+        pretty_print += f'(node {self.spk_node_id}): {self.spk_layer}'
         if len(self.pool_layer) != 0:
             for idx, lyr in enumerate(self.pool_layer):
-                pretty_print += f'(pool_layer {idx}): {lyr}\n'
+                pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
 
         return pretty_print
 

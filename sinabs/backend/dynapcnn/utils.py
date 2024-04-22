@@ -619,6 +619,7 @@ def construct_dynapcnnlayers_from_mapper(
     dynapcnn_layers = {}
     
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
+        # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
             discretize, dcnnl_data, edges, nodes_to_dcnnl_map)
         
@@ -627,8 +628,10 @@ def construct_dynapcnnlayers_from_mapper(
             'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
             }
 
+        # check if any node (layer) in `dynapcnnlayer` has been modified (e.g. `nn.Linear` turned `nn.Conv2d`).
         node, output_shape = dynapcnnlayer.get_modified_node_it(dcnnl_data)
 
+        # one of the layers in `dynapcnnlayer` had its type modified (update input shape of nodes receiving from it).
         if isinstance(node, int) and isinstance(output_shape, tuple):
             update_nodes_io(node, output_shape, nodes_to_dcnnl_map, edges)
 
@@ -673,8 +676,7 @@ def construct_dynapcnnlayer(
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
         dcnnl_data      = dcnnl_data,
-        discretize      = discretize,
-        nodes_mapper    = nodes_to_dcnnl_map
+        discretize      = discretize
     )
 
     return dynapcnnlayer
@@ -703,11 +705,14 @@ def convert_Avg_to_Sum_pooling(dcnnl_data: dict, edges: list, nodes_to_dcnnl_map
                 # find which node 'key' will target.
                 for edge in edges:
                     if edge[0] == key:
-                        # target within DynapcnnLayer index 'trg_dcnnl_idx'.
+                        # find index of DynapcnnLayer where the target of `edge[0]` is.
                         trg_dcnnl_idx = find_nodes_dcnnl_idx(edge[1], nodes_to_dcnnl_map)
 
                         # update the rescale factor for the target of node 'key'.
-                        dcnnl_data['destinations_rescale_factor'][trg_dcnnl_idx] = rescale_factor
+                        if rescale_factor > nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor']:
+                            #   If more than one DynapcnnLayers target `trg_dcnnl_idx` with different rescale
+                            # factors, the highest amongst them is used.
+                            nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor'] = rescale_factor
 
 def find_nodes_dcnnl_idx(node, nodes_to_dcnnl_map):
     """ ."""

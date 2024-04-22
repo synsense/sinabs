@@ -92,14 +92,26 @@ class DynapcnnNetworkGraph(nn.Module):
             discretize=discretize,
             edges=self.sinabs_edges,
             nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
+        
+        print('------------------------------------------------------')
+        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+            print(f'DynapcnnLayer-index {dcnnl_idx}')
+            for key, val in dcnnl_data.items():
+                if isinstance(key, int):
+                    print(key, val['input_shape'], val['output_shape'])
+                else:
+                    print(key, val)
+            print('\n')
+        print('------------------------------------------------------')
 
     def __str__(self):
         pretty_print = ''
         for idx, layer_data in self.dynapcnn_layers.items():
+            pretty_print += f'---- DynapcnnLayer {idx} ----------------------------------------------------------'
             layer = layer_data['layer']
             dest = layer_data['destinations']
             core = layer_data['core_idx']
-            pretty_print += f'\nlayer index: {idx}\nlayer modules: {layer}\nlayer destinations: {dest}\nassigned core: {core}\n'
+            pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
         return pretty_print
     
     def to(
