@@ -41,6 +41,7 @@ class DynapcnnLayer(nn.Module):
         self,
         dcnnl_data: dict, 
         discretize: bool,
+        nodes_mapper: dict,
         rescale_weights: int = 1,       # TODO remove.
     ):
         super().__init__()
@@ -51,14 +52,13 @@ class DynapcnnLayer(nn.Module):
             1) need to figure out how to apply 'rescale_weights' since there are more than two poolings.
             2) currently there's no way the forward would work since there are more than two poolings.
         """
-
-        #### NEW WAY #######################################################################
+        self.lin_to_conv_conversion = False
 
         conv = None
         conv_node_id = None
 
         spk = None
-        spk_node_id = None
+        self.spk_node_id = None
 
         pool = []
         pool_node_id = []
@@ -68,7 +68,7 @@ class DynapcnnLayer(nn.Module):
                 # value has data pertaining a node (torch/sinabs layer).
                 if isinstance(value['layer'], sl.IAFSqueeze):
                     spk = value['layer']
-                    spk_node_id = key
+                    self.spk_node_id = key
                 elif isinstance(value['layer'], nn.Linear) or isinstance(value['layer'], nn.Conv2d):
                     conv = value['layer']
                     conv_node_id = key
@@ -89,7 +89,15 @@ class DynapcnnLayer(nn.Module):
                 spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
 
         if isinstance(conv, nn.Linear):
-            conv = self._convert_linear_to_conv(conv, dcnnl_data[conv_node_id])
+            conv, conv_in_shape = self._convert_linear_to_conv(conv, dcnnl_data[conv_node_id])
+
+            # the original `nn.Linear` output shape becomes the equivalent `nn.Conv2d` shape.
+            conv_out_shape = self._update_conv_node_output_shape(
+                conv_layer=conv, layer_data=dcnnl_data[conv_node_id], input_shape=conv_in_shape)
+
+            # the I/O shapes for neuron layer following the new conv need also to be updated.
+            self._update_neuron_node_output_shape(layer_data=dcnnl_data[self.spk_node_id], input_shape=conv_out_shape)
+
         else:
             conv = deepcopy(conv)
 
@@ -113,6 +121,17 @@ class DynapcnnLayer(nn.Module):
                     raise ValueError("Only square kernels are supported")
                 self.pool_layer.append(deepcopy(plyr))
 
+    def __str__(self):
+        pretty_print = ''
+
+        pretty_print += f'(con_layer): {self.conv_layer}\n'
+        pretty_print += f'(spk_layer): {self.spk_layer}\n'
+        if len(self.pool_layer) != 0:
+            for idx, lyr in enumerate(self.pool_layer):
+                pretty_print += f'(pool_layer {idx}): {lyr}\n'
+
+        return pretty_print
+
     def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
         """Convert Linear layer to Conv2d.
 
@@ -126,12 +145,9 @@ class DynapcnnLayer(nn.Module):
             nn.Conv2d
                 Convolutional layer equivalent to `lin`.
         """
+        self.lin_to_conv_conversion = True
 
-        #   TODO linear layers are convered to conv so the input shapes in the original
-        # mapper has to be updated accordingly. Another problem is that the input shape
-        # after a flatten layer won't match the fact that there's a convolution output before
-        # the flatten.
-        input_shape = tuple(list(layer_data['input_shape'])[1:-1])  # removing the batch dimension.
+        input_shape = layer_data['input_shape']
 
         in_chan, in_h, in_w = input_shape
 
@@ -155,12 +171,48 @@ class DynapcnnLayer(nn.Module):
             .reshape((lin.out_features, in_chan, in_h, in_w))
         )
 
-        return layer
+        return layer, input_shape
+    
+    def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: tuple) -> Tuple:
+        """ The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
+        in the edge and setting it as the input shape to the 2nd element in the edge. If a node used to be a `nn.Linear` 
+        and it became a `nn.Conv2d`, output shape in the mapper needs to be updated, otherwise there will be a mismatch
+        between its output and the input it provides to another node.
+        """
+        layer_data['output_shape'] = self.get_conv_output_shape(conv_layer, input_shape)
+
+        return layer_data['output_shape']
+
+    def _update_neuron_node_output_shape(self, layer_data: dict, input_shape: tuple) -> None:
+        """ Following the conversion of a `nn.Linear` into a `nn.Conv2d` the neuron layer in the
+        sequence also needs its I/O shapes uodated.
+        """
+        layer_data['input_shape'] = input_shape
+        layer_data['output_shape'] = layer_data['input_shape']
+
+    def get_modified_node_it(self, dcnnl_data: dict) -> Union[Tuple[int, tuple], Tuple[None, None]]:
+        """ ."""
+        if self.lin_to_conv_conversion:
+            return self.spk_node_id, dcnnl_data[self.spk_node_id]['output_shape']
+        return None, None
     
     def zero_grad(self, set_to_none: bool = False) -> None:
         return self.spk_layer.zero_grad(set_to_none)
     
-    ########################################################################################
+    def get_conv_output_shape(self, conv_layer: nn.Conv2d, input_shape: tuple):
+        # get the layer's parameters.
+        out_channels = conv_layer.out_channels
+        kernel_size = conv_layer.kernel_size
+        stride = conv_layer.stride
+        padding = conv_layer.padding
+        dilation = conv_layer.dilation
+
+        # compute the output height and width.
+        out_height = ((input_shape[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) // stride[0]) + 1
+        out_width = ((input_shape[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) // stride[1]) + 1
+
+        return (out_channels, out_height, out_width)
+
 
     def summary(self) -> dict:                                      # TODO deprecated.
         return {

@@ -599,7 +599,7 @@ def build_from_graph(
         if 'core_idx' not in layer_data:
             layer_data['core_idx'] = -1         # a DynapcnnLayer gets assigned a core index when 'DynapcnnNetworkGraph.to()' is called.
     
-    return None
+    return dynapcnn_layers
 
 def construct_dynapcnnlayers_from_mapper(
         discretize: bool,
@@ -622,22 +622,36 @@ def construct_dynapcnnlayers_from_mapper(
         dynapcnnlayer = construct_dynapcnnlayer(
             discretize, dcnnl_data, edges, nodes_to_dcnnl_map)
         
-        print('> ', dpcnnl_idx)
-        
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
             'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
             }
 
+        node, output_shape = dynapcnnlayer.get_modified_node_it(dcnnl_data)
+
+        if isinstance(node, int) and isinstance(output_shape, tuple):
+            update_nodes_io(node, output_shape, nodes_to_dcnnl_map, edges)
+
     return dynapcnn_layers
+
+def update_nodes_io(updated_node: int, output_shape: tuple, nodes_to_dcnnl_map: dict, edges: List[Tuple[int, int]]) -> None:
+    """ ."""
+    for edge in edges:
+        if edge[0] == updated_node:
+            # found source node where output shape has been modified.
+            for dcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
+                for key, val in dcnnl_data.items():
+                    if isinstance(key, int):
+                        # accessing node data (layer, input_shape, output_shape).
+                        if key == edge[1]:
+                            # accessing node targeted by `updated_node` (its input shape becomes `updated_node.output_shape`).
+                            val['input_shape'] = output_shape
 
 def construct_dynapcnnlayer(
         discretize: bool,
         dcnnl_data: dict, 
         edges: List[Tuple[int, int]],
-        nodes_to_dcnnl_map: dict,
-        layer_index = None,         # TODO remove.            
-        ) -> DynapcnnLayer:
+        nodes_to_dcnnl_map: dict) -> DynapcnnLayer:
     """ Extract the modules (layers) in a dictionary and uses them to instantiate a DynapcnnLayer object. 
 
     Parameters
@@ -659,7 +673,8 @@ def construct_dynapcnnlayer(
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
         dcnnl_data      = dcnnl_data,
-        discretize      = discretize
+        discretize      = discretize,
+        nodes_mapper    = nodes_to_dcnnl_map
     )
 
     return dynapcnnlayer

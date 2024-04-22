@@ -87,20 +87,11 @@ class DynapcnnNetworkGraph(nn.Module):
         # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
         self.populate_nodes_io()
 
-        # # build model from graph edges.
-        # self.dynapcnn_layers = build_from_graph(
-        #     discretize=discretize,
-        #     edges=self.sinabs_edges,
-        #     nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
-        
-        # for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
-        #     print(f'DynapcnnLayer-index {dcnnl_idx}')
-        #     for key, val in dcnnl_data.items():
-        #         if isinstance(key, int):
-        #             print(key, val['layer'], val['input_shape'])
-        #         else:
-        #             print(key, val)
-        #     print('\n')
+        # build model from graph edges.
+        self.dynapcnn_layers = build_from_graph(
+            discretize=discretize,
+            edges=self.sinabs_edges,
+            nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
 
     def __str__(self):
         pretty_print = ''
@@ -385,10 +376,6 @@ class DynapcnnNetworkGraph(nn.Module):
     def populate_nodes_io(self):
         """ ."""
 
-        for edge in self.sinabs_edges:
-            print(edge)
-        print('\n')
-
         def find_original_node_name(name_mapper, node):
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
@@ -427,10 +414,3 @@ class DynapcnnNetworkGraph(nn.Module):
                         node_data['input_shape'] = tuple(list(_in)[1:])
 
                     node_data['output_shape'] = tuple(list(_out)[1:])
-
-        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
-            print(f'DynapcnnLayer-index {dcnnl_idx}')
-            for key, val in dcnnl_data.items():
-                if isinstance(key, int):
-                    print(key, val['input_shape'], val['output_shape'])
-            print('\n')
