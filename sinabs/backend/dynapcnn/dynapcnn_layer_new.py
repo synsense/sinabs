@@ -12,7 +12,6 @@ import sinabs.layers as sl
 from .discretize import discretize_conv_spike_
 from .dvs_layer import expand_to_pair
 
-
 class DynapcnnLayer(nn.Module):
     """Create a DynapcnnLayer object representing a dynapcnn layer. """
 
@@ -27,9 +26,8 @@ class DynapcnnLayer(nn.Module):
 
         Parameters
         ----------
-
-        TODO
-            1) currently there's no way the forward would work since there are more than two poolings.
+            dcnnl_data (dict): ...
+            discretize (bool): ...
         """
         self.lin_to_conv_conversion = False
 
@@ -128,6 +126,18 @@ class DynapcnnLayer(nn.Module):
                 pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
 
         return pretty_print
+    
+    def forward(self, x):
+        """Torch forward pass."""
+        
+        x = self.conv_layer(x)
+        x = self.spk_layer(x)
+
+        if len(self.pool_layer) == 1:
+            # single pooling layer (not a divergent node).
+            x = self.pool_layer[0](x)
+
+        return x
 
     def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
         """Convert Linear layer to Conv2d.
@@ -344,11 +354,3 @@ class DynapcnnLayer(nn.Module):
             * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
-
-    def forward(self, x):                                           # TODO deprecated.
-        """Torch forward pass."""
-        x = self.conv_layer(x)
-        x = self.spk_layer(x)
-        if self.pool_layer is not None:
-            x = self.pool_layer(x)
-        return x

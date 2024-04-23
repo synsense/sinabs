@@ -31,6 +31,8 @@ from warnings import warn
 from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
 from .sinabs_edges_handler import merge_handler
 
+from .dynapcnnnetwork_module import DynapcnnNetworkModule
+
 class DynapcnnNetworkGraph(nn.Module):
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
     test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
@@ -70,7 +72,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
         self.sinabs_edges, \
             self.sinabs_modules_map, \
-                    self.nodes_name_remap = self.get_sinabs_edges_and_modules()
+                    self.nodes_name_remap = self._get_sinabs_edges_and_modules()
         
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self.nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
@@ -78,9 +80,9 @@ class DynapcnnNetworkGraph(nn.Module):
             edges=self.sinabs_edges)
         
         # updates 'self.nodes_to_dcnnl_map' to include the I/O shape for each node.
-        self.populate_nodes_io()
+        self._populate_nodes_io()
 
-        # build model from graph edges.
+        # build `DynapcnnLayer` instances from graph edges and mapper.
         self.dynapcnn_layers = build_from_graph(
             discretize=discretize,
             edges=self.sinabs_edges,
@@ -100,6 +102,24 @@ class DynapcnnNetworkGraph(nn.Module):
             else:
                 pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
         return pretty_print
+    
+    def get_network_module(self):
+        """ ."""
+
+        # get connections between `DynapcnnLayer`s.
+        dcnnl_edges = self._get_dynapcnnlayers_edges()
+
+        network_module = DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
+
+    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
+        """ Create edges representing connections between `DynapcnnLayer` instances. """
+        dcnnl_edges = []
+
+        for dcnnl_idx, layer_data in self.dynapcnn_layers.items():
+            for dest in layer_data['destinations']:
+                dcnnl_edges.append((dcnnl_idx, dest))
+        
+        return dcnnl_edges
     
     def to(
         self,
@@ -359,7 +379,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return config, config_builder.validate_configuration(config)
     
-    def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module], Dict[int, int]]:
+    def _get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module], Dict[int, int]]:
         """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be
         ignored when creating a `DynapcnnLayer` instance). Thus the list of edges from such model need to be rebuilt such that if there are
         edges `(A, X)` and `(X, B)`, and `X` is an ignored layer, an edge `(A, B)` is created.
@@ -388,7 +408,7 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return edges_without_merge, sinabs_modules_map, remapped_nodes
     
-    def populate_nodes_io(self):
+    def _populate_nodes_io(self):
         """ Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
         representations in `self.nodes_to_dcnnl_map`."""
 
@@ -397,7 +417,7 @@ class DynapcnnNetworkGraph(nn.Module):
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
                     return orig_name
-            raise ValueError(f'Node {node} could not be found within the name remapping done by self.get_sinabs_edges_and_modules().')
+            raise ValueError(f'Node {node} could not be found within the name remapping done by self._get_sinabs_edges_and_modules().')
         
         def find_my_input(edges_list: list, node: int):
             """ Returns the node `X` in the first edge `(X, node)`."""
