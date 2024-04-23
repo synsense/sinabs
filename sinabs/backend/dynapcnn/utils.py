@@ -548,8 +548,23 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
     )  # run a forward pass to initialize the new weights and last IAF
     return model
 
-def build_nodes_to_dcnnl_map(layers: Dict[int, nn.Module], edges: List[Tuple[int, int]]):
-    """ ."""
+def build_nodes_to_dcnnl_map(layers: Dict[int, nn.Module], edges: List[Tuple[int, int]]) -> dict:
+    """ Initializes and populates a `dict` that will map data into a future `DynapcnnLayer` instance. The call
+    to `process_edge()` initializes a `key` (the index of a `DynapcnnLayer`) and assigns to it a dict containing the 
+    nodes (layers in a `nn.Module`) that should belong to the same `DynapcnnLayer`. The call to `get_dynapcnnlayers_destinations()`
+    further incorporates to each "DynapcnnLayer dictionary" a `destinations` attribute, which is a list of integers indicating the
+    the target destinations of a `DynapcnnLayer` instance.
+
+    Parameters
+    ---------
+        layers (dict): constains the nodes of a graph as `key` and their associated module as `value`.
+        edges (list): edges describing how nodes connect to each other.
+
+    Returns
+    ---------
+        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    """
     # @TODO the graph extraction is not yet considering DVS input.
 
     # dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
@@ -560,17 +575,19 @@ def build_nodes_to_dcnnl_map(layers: Dict[int, nn.Module], edges: List[Tuple[int
     
     dvs_layer = None
 
-    nodes_to_dcnnl_map = {}                     # mapper from nodes to sets of layers that populate a DynapcnnLayer.
+    # mapper from nodes to sets of layers that populate a DynapcnnLayer.
+    nodes_to_dcnnl_map = {}
 
     if dvs_layer is not None:
-        pass                                    # TODO the graph extraction is not yet considering DVS input.
+        # TODO the graph extraction is not yet considering DVS input.
+        pass
     else:
         for edge in edges:
-            process_edge(                       # figure out to which (future) DynapcnnLayer each node will belong to.
-                layers, edge, nodes_to_dcnnl_map)
+            # Figure out to which (future) DynapcnnLayer each node will belong to.
+            process_edge(layers, edge, nodes_to_dcnnl_map)
 
-    get_dynapcnnlayers_destinations(            # look for edges between connecting nodes in different (future) DynapcnnLayer.
-        layers, edges, nodes_to_dcnnl_map)
+    # look for edges between connecting nodes in different (future) DynapcnnLayer.
+    get_dynapcnnlayers_destinations(layers, edges, nodes_to_dcnnl_map)
     
     return nodes_to_dcnnl_map
 
@@ -584,20 +601,24 @@ def build_from_graph(
 
     Parameters
     ----------
-        ...
+        discretize (bool): ...
+        edges (list): edges describing how nodes connect to each other.
+        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
 
     Returns
     ----------
-        ...
+        dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
     """
 
-
-    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(                     # turn sets of layers into DynapcnnLayer objects.
-        discretize, nodes_to_dcnnl_map, edges)
+    # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
+    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges)
     
+    # initialize attribute holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
     for idx, layer_data in dynapcnn_layers.items():
         if 'core_idx' not in layer_data:
-            layer_data['core_idx'] = -1         # a DynapcnnLayer gets assigned a core index when 'DynapcnnNetworkGraph.to()' is called.
+            # a `DynapcnnLayer` gets assigned a core index when `DynapcnnNetworkGraph.to()`` is called.
+            layer_data['core_idx'] = -1
     
     return dynapcnn_layers
 
@@ -609,11 +630,14 @@ def construct_dynapcnnlayers_from_mapper(
 
     Parameters
     ----------
-        rescale_factor: Rescaling factor needed when turning AvgPool to SumPool. May differ from the pooling kernel in 
-                        certain cases.
+        discretize (bool): ...
+        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+        edges (list): edges describing how nodes connect to each other.
+
     Returns
     ----------
-        dynapcnn_layers: A dictionary containing DynapcnnLayer objects and a list with their destinations.
+        dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
     """
 
     dynapcnn_layers = {}

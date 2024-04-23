@@ -12,15 +12,25 @@ from .sinabs_edges_utils import *
 import sinabs, copy
 
 def process_edge(layers: Dict[int, nn.Module], edge: Tuple[int, int], mapper: dict) -> None:
-    """ Read in an edge describing the connection between two layers (nodes in the computational graph). If 'edge'
-    is a valid connection between two layers, update 'mapper' to incorporate these layers into a new or existing dictonary
-    containing the modules comprising a future DynacnnLayer object.
+    """ Read in an edge describing the connection between two layers (nodes in the computational graph). If `edge`
+    is a valid connection between two layers, update `mapper` to incorporate these layers into a new or existing dictonary
+    containing the modules comprising a future `DynacnnLayer` object.
+
+    After of call of this function `mapper` is updated to incorporate a set of nodes into the data required to create a
+    `DynapcnnLayer` instance. For example, after processing the 1st edge `(0, 1)`, an entry `0` for a future `DynapcnnLayer` is
+    created and its set of nodes will include node `0` and node `1`:
+
+    mapper[0] = {
+        0: {'layer': Conv2d, 'input_shape': None, 'output_shape': None}, 
+        1: {'layer': IAFSqueeze, 'input_shape': None, 'output_shape': None},
+        ...
+    }
 
     Parameters
     ----------
-        layers  : a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
-        edge    : tuple representing the connection between two nodes in computational graph of 'DynapcnnNetworkGraph.snn.spiking_model'.
-        mapper  : dictionary where each 'key' is the index of a future 'DynapcnnLayer' and 'value' is a dictionary ('key': node, 'value': module).
+        layers (dict): a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
+        edge (tuple): tuple representing the connection between two nodes in computational graph of 'DynapcnnNetworkGraph.snn.spiking_model'.
+        mapper (dict): dictionary where each 'key' is the index of a future 'DynapcnnLayer' and 'value' is a dictionary ('key': node, 'value': module).
     """
     edge_type = is_valid_edge(edge, layers, VALID_SINABS_EDGES)
 
@@ -146,11 +156,23 @@ def get_dynapcnnlayers_destinations(layers: Dict[int, nn.Module], edges: List[Tu
     DynapcnnLayer they belong to. If source and target belong to different DynapcnnLayers (described as a dictionary in 'mapper')
     the destination of the 'DynapcnnLayer.source' is set to be 'DynapcnnLayer.target'.
 
+    After one call of this function an attribute `destination` is added to an entry in `mapper` to save the indexes (a different `key`
+    in `mapper`) of `DynapcnnLayer`s targeted by another `DynapcnnLayer`. For example, if in an edge `(1, 4)` the node `1` belongs to
+    `mapper[0]` and node `4` belongs to `mapper[2]`, the former is updated to tager the latter, like the following:
+
+    mapper[0] = {
+        0: {'layer': Conv2d, ...}, 
+        1: {'layer': IAFSqueeze, ...},  # node `1` in edge `(1, 4)` belongs to `mapper[0]`...
+        ...
+        'destinations': [2],            # ... so DynacnnLayer built from `mapper[2]` is destination of DynapcnnLayer built from `mapper[0]`.
+        ...
+    }
+
     Parameters
     ----------
-        layers  : a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
-        edges   : list of tuples representing the connection between nodes in computational graph of 'DynapcnnNetworkGraph.snn.spiking_model'.
-        mapper  : dictionary where each 'key' is the index of a future 'DynapcnnLayer' and 'value' its modules (output of 'process_edge(mapper)').
+        layers (dict): contains the nodes of the graph as `key` and their associated module as `value`.
+        edges (list): tuples representing the connection between nodes in computational graph spiking network.
+        mapper (dict): each 'key' is the index of a future `DynapcnnLayer` and `value` the data necessary to instantiate it.
 
     Returns
     ----------
@@ -182,10 +204,7 @@ def get_dynapcnnlayers_destinations(layers: Dict[int, nn.Module], edges: List[Tu
                 
     for dcnnl_idx, destinations in dynapcnnlayers_destinations_map.items():     # TODO document the 'rescale_factor' better.
         mapper[dcnnl_idx]['destinations'] = destinations            
-        mapper[dcnnl_idx]['destinations_rescale_factor'] = {}                   # needed for when SumPool is built.
-        
-        for dest in destinations:
-            mapper[dcnnl_idx]['destinations_rescale_factor'][dest] = 1
+        mapper[dcnnl_idx]['conv_rescale_factor'] = 1
                 
 def get_dynapcnnlayer_index(node: int, mapper: dict) -> int:
     """ Returns the DynapcnnLayer index to which 'node' belongs to. """
@@ -203,50 +222,59 @@ def is_valid_dynapcnnlayer_pairing(layers: Dict[int, nn.Module], edge: Tuple[int
     
 def merge_handler(sinabs_edges: List[Tuple[int, int]], sinabs_modules_map: Dict[int, nn.Module]) -> List[Tuple[int, int]]:
     """ Handles connections between nodes made via a `sinabs.layers.Merge` layer. If `X` is a merge layer then edges `(X, C)` are removed
-    from the edges list since they don't affect the creationg of DynapcnnLayers. Edges `(Y, X)` are turned into a edge `(Y, C)` pointing
-    directly to the node receiving the merged inputs such that the DynapcnnLayer containing `Y` can have the DynapcnnLayer containing `C`
+    from the edges list since they don't affect the creationg of `DynapcnnLayer`s. Edges `(Y, X)` are turned into a edge `(Y, C)` pointing
+    directly to the node receiving the merged inputs such that the `DynapcnnLayer` containing `Y` can have the `DynapcnnLayer` containing `C`
     as one of its destinations.
 
     Parameters
     ----------
-        sinabs_edges: ...
-        sinabs_modules_map: ...
+        sinabs_edges (list): edges extracted from the computational graph of the network provided to `DynapcnnNetworkGraph` where edges involving
+            layers that are ignored (e.g. `nn.Flatten`) have been removed (the nodes previously linked via dropped nodes are linked to each other directly).
+        sinabs_modules_map (dict): mapping where the `key` represents a node in the graph and the `value` represents the node's layer.
 
-    Reurns
-        edges_without_merge: ...
+    Returns
     ----------
+        edges_without_merge (list): edges based on `sinabs_edges` but where edges involving a `Merge` layer have been remapped to connect the nodes
+            involved in the merging directly.
     """
     edges = copy.deepcopy(sinabs_edges)
     edges_without_merge = []
     merge_nodes = {}
 
-    for edge in edges:                                                      # finding the nodes representing Merge layers.
+    # finding the nodes representing Merge layers.
+    for edge in edges:
         src = edge[0]
         trg = edge[1]
 
         if isinstance(sinabs_modules_map[src], sinabs.layers.Merge):
-            if src not in merge_nodes:                                      # found node receiving merged inputs from two previous layers.
+            if src not in merge_nodes:
+                # found node receiving merged inputs from two previous layers.
                 merge_nodes[src] = {'sources': [], 'merge_into': trg}
 
                 for _edge in edges:
-                    if _edge[1] == src:                                     # found node used as argument for a Merge layer.
+                    if _edge[1] == src:
+                        # found node used as argument for a Merge layer.
                         merge_nodes[src]['sources'].append(_edge[0])
                         if len(merge_nodes[src]['sources']) > 2:
                             raise ValueError("A Merge layer can not have more than two inputs.")
 
-    for edge in edges:                                                      # removing edges connection from/to merging layers from the computational graph.
+    for edge in edges:
+        # removing edges connection from/to merging layers from the computational graph.
         src = edge[0]
         trg = edge[1]
 
-        if src in merge_nodes:                                              # edge (`Merge`, trg) is not necessary for later DynapcnnLayer creation.
+        if src in merge_nodes:
+            # edge (`Merge`, trg) is not necessary for later DynapcnnLayer creation.
             pass
         
-        elif trg in merge_nodes:                                            # point `src` directly to the node it was previously targeting via a Merge layer.
+        elif trg in merge_nodes:
+            # point `src` directly to the node it was previously targeting via a Merge layer.
             new_edge = (src, merge_nodes[trg]['merge_into'])
             edges_without_merge.append(new_edge)
 
-        else:                                                               # edge not involved in merging.
+        else:
+            # edge not involved in merging.
             edges_without_merge.append(edge)
 
-    return edges_without_merge, merge_nodes
+    return edges_without_merge
     

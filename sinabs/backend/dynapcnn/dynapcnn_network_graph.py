@@ -39,31 +39,23 @@ class DynapcnnNetworkGraph(nn.Module):
 
     def __init__(
         self,
-        snn: Union[nn.Sequential, sinabs.Network, nn.Module],
-        input_shape: Optional[Tuple[int, int, int]] = None,
+        snn: nn.Module,
+        input_shape: Tuple[int, int, int],
         dvs_input: bool = False,
         discretize: bool = True
     ):
         """
-        DynapcnnNetworkGraph: a class turning sinabs networks into dynapcnn
-        compatible networks, and making dynapcnn configurations.
-
         Parameters
         ----------
-            snn: ...
-            input_shape: None or tuple of ints
-                Shape of the input, convention: (features, height, width)
-                If None, `snn` needs an InputLayer
-            dvs_input: bool
-                Does dynapcnn receive input from its DVS camera?
-            discretize: bool
-                If True, discretize the parameters and thresholds.
-                This is needed for uploading weights to dynapcnn. Set to False only for
-                testing purposes.
+            snn : a `nn.Module` implementing a spiking network.
+            input_shape: a description of the input dimensions (features, height, width).
+            dvs_input: wether or not dynapcnn receive input from its DVS camera.
+            discretize: If `True`, discretize the parameters and thresholds. This is needed for uploading 
+                weights to dynapcnn. Set to `False` only for testing purposes.
         """
         super().__init__()
 
-        # TODO for now the graph part is not taking into consideration this.
+        # TODO for now the graph part is not taking into consideration DVS inputs.
         # check if dvs input is expected.
         dvs_input = False
         self.dvs_input = dvs_input
@@ -80,11 +72,12 @@ class DynapcnnNetworkGraph(nn.Module):
             self.sinabs_modules_map, \
                     self.nodes_name_remap = self.get_sinabs_edges_and_modules()
         
+        # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self.nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
             layers=self.sinabs_modules_map, 
             edges=self.sinabs_edges)
         
-        # update the I/O shapes for each layer in 'self.nodes_to_dcnnl_map'.
+        # updates 'self.nodes_to_dcnnl_map' to include the I/O shape for each node.
         self.populate_nodes_io()
 
         # build model from graph edges.
@@ -336,7 +329,7 @@ class DynapcnnNetworkGraph(nn.Module):
         # update config.
         config = config_builder.build_config(self, None)
 
-        if self.input_shape and self.input_shape[0] == 1:            # ???
+        if self.input_shape and self.input_shape[0] == 1:            # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
             config.dvs_layer.merge = True
 
         # TODO all this monitoring part needs validation still.
@@ -366,37 +359,48 @@ class DynapcnnNetworkGraph(nn.Module):
 
         return config, config_builder.validate_configuration(config)
     
-    def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module]]:
+    def get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module], Dict[int, int]]:
         """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be
         ignored when creating a `DynapcnnLayer` instance). Thus the list of edges from such model need to be rebuilt such that if there are
         edges `(A, X)` and `(X, B)`, and `X` is an ignored layer, an edge `(A, B)` is created.
 
         Returns
         ----------
-            sinabs_edges: a list of tuples representing the edges between the layers of a sinabs model.
-            sinabs_modules_map: a dictionary containing the nodes of the graph as `key` and their associated module as `value`.
+            edges_without_merge (list): a list of edges based on `sinabs_edges` but where edges involving a `Merge` layer have been 
+                remapped to connect the nodes involved in the merging directly.
+            sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and 
+                their associated module as `value`.
+            remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self.graph_tracer`) and `value` is
+                the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
         """
-        sinabs_edges, remapped_nodes = self.graph_tracer.remove_ignored_nodes(  # remap `(A, X)` and `(X, B)` into `(A, B)`.
+        
+        # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
+        sinabs_edges, remapped_nodes = self.graph_tracer.remove_ignored_nodes( 
             DEFAULT_IGNORED_LAYER_TYPES)
 
-        sinabs_modules_map = {}                                                 # nodes (layers' "names") need remapping in case some layers have been removed (e.g. nn.Flattern()).
+        # nodes (layers' "names") need remapping in case some layers have been removed (e.g. a `nn.Flattern` is ignored).
+        sinabs_modules_map = {}
         for orig_name, new_name in remapped_nodes.items():
             sinabs_modules_map[new_name] = self.graph_tracer.modules_map[orig_name]
 
-        edges_without_merge, merge_nodes = merge_handler(sinabs_edges, sinabs_modules_map)   # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
+        # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
+        edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)
 
         return edges_without_merge, sinabs_modules_map, remapped_nodes
     
     def populate_nodes_io(self):
-        """ ."""
+        """ Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
+        representations in `self.nodes_to_dcnnl_map`."""
 
-        def find_original_node_name(name_mapper, node):
+        def find_original_node_name(name_mapper: dict, node: int):
+            """ Find what a node is originally named when built in `self.graph_tracer`. """
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
                     return orig_name
             raise ValueError(f'Node {node} could not be found within the name remapping done by self.get_sinabs_edges_and_modules().')
         
-        def find_my_input(edges_list, node):
+        def find_my_input(edges_list: list, node: int):
+            """ Returns the node `X` in the first edge `(X, node)`."""
             for edge in edges_list:
                 if edge[1] == node:
                     #   TODO nodes originally receiving input from merge will appear twice in the list of edges, one
