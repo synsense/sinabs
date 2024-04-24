@@ -6,6 +6,8 @@ import torch.nn as nn
 from sinabs.layers import Merge
 from typing import List, Tuple, Dict, Union
 import copy
+import sinabs
+import sinabs.layers as sl
 
 class DynapcnnNetworkModule(nn.Module):
     """
@@ -138,6 +140,31 @@ class DynapcnnNetworkModule(nn.Module):
                 final_edges.append((_, trg))
         
         return final_edges
+    
+    def parameters(self) -> list:
+        """ ."""
+        parameters = []
+
+        for module in self._forward_map.values():
+            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                parameters.extend(module.conv_layer.parameters())
+
+        return parameters
+    
+    def init_weights(self):
+        """ ."""
+        for node, module in self._forward_map.items():
+            if isinstance(module, nn.Conv2d):
+                nn.init.xavier_normal_(module.weight.data)
+
+    def detach_neuron_states(self) -> None:
+        """ Detach the neuron states and activations from current computation graph (necessary). """
+
+        for module in self._forward_map.values():
+            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                if isinstance(module.spk_layer, sl.StatefulLayer):
+                    for name, buffer in module.spk_layer.named_buffers():
+                        buffer.detach_()
     
     def forward(self, x):
         """ The torch forward uses `self._forward_edges` to feed data throguh the 
