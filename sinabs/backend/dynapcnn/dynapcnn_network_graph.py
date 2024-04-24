@@ -37,6 +37,9 @@ class DynapcnnNetworkGraph(nn.Module):
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
     test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
     make the dynapcnn configuration and upload it to DYNAPCNN.
+
+    TODO turn what is now the `forward` in `self.network = DynapcnnNetworkModule` into a forward method for this class.
+    TODO `make_config` and `_make_config` should be merged into a single method.
     """
 
     def __init__(
@@ -87,6 +90,11 @@ class DynapcnnNetworkGraph(nn.Module):
             discretize=discretize,
             edges=self.sinabs_edges,
             nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
+        
+        # the trainable network instance: set at the end of the `.make_config()` call if configuration is valid.
+        self.network = None
+
+    ### Public Methods ###
 
     def __str__(self):
         pretty_print = ''
@@ -102,24 +110,6 @@ class DynapcnnNetworkGraph(nn.Module):
             else:
                 pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
         return pretty_print
-    
-    def get_network_module(self):
-        """ ."""
-
-        # get connections between `DynapcnnLayer`s.
-        dcnnl_edges = self._get_dynapcnnlayers_edges()
-
-        network_module = DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
-
-    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
-        """ Create edges representing connections between `DynapcnnLayer` instances. """
-        dcnnl_edges = []
-
-        for dcnnl_idx, layer_data in self.dynapcnn_layers.items():
-            for dest in layer_data['destinations']:
-                dcnnl_edges.append((dcnnl_idx, dest))
-        
-        return dcnnl_edges
     
     def to(
         self,
@@ -222,7 +212,7 @@ class DynapcnnNetworkGraph(nn.Module):
             
         else:
             raise Exception("Unknown device description.")
-
+        
     def make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
@@ -278,11 +268,38 @@ class DynapcnnNetworkGraph(nn.Module):
             config_modifier=config_modifier,
         )
 
-        if is_compatible:                                           # validate config.
+        if is_compatible:
+            # validate config.
             print("Network is valid")
+            
+            # constructs a `nn.Module` class combining the `DynapcnnLayer` uploaded to the chip.
+            self.network = self._get_network_module()
+            
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
+        
+    ### Private Methods ###
+
+    def _get_network_module(self) -> nn.Module:
+        """ Uses the `DynapcnnLayer` instances in `self.dynapcnn_layers` and the connectivity between the cores
+        to craete a `nn.Module` with a forward method that incorporates each `DynapcnnLayer` into a trainable network.
+        """
+
+        # get connections between `DynapcnnLayer`s.
+        dcnnl_edges = self._get_dynapcnnlayers_edges()
+
+        return DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
+
+    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
+        """ Create edges representing connections between `DynapcnnLayer` instances. """
+        dcnnl_edges = []
+
+        for dcnnl_idx, layer_data in self.dynapcnn_layers.items():
+            for dest in layer_data['destinations']:
+                dcnnl_edges.append((dcnnl_idx, dest))
+        
+        return dcnnl_edges
         
     def _make_config(
         self,
