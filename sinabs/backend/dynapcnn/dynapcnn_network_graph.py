@@ -33,12 +33,11 @@ from .sinabs_edges_handler import merge_handler
 
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 
-class DynapcnnNetworkGraph(nn.Module):
+class DynapcnnNetworkGraph():
     """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
     test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
     make the dynapcnn configuration and upload it to DYNAPCNN.
 
-    TODO turn what is now the `forward` in `self.network = DynapcnnNetworkModule` into a forward method for this class.
     TODO `make_config` and `_make_config` should be merged into a single method.
     """
 
@@ -58,7 +57,6 @@ class DynapcnnNetworkGraph(nn.Module):
             discretize: If `True`, discretize the parameters and thresholds. This is needed for uploading 
                 weights to dynapcnn. Set to `False` only for testing purposes.
         """
-        super().__init__()
 
         # TODO for now the graph part is not taking into consideration DVS inputs.
         # check if dvs input is expected.
@@ -91,7 +89,7 @@ class DynapcnnNetworkGraph(nn.Module):
             edges=self.sinabs_edges,
             nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
         
-        # the trainable network instance: set at the end of the `.make_config()` call if configuration is valid.
+        # the trainable network (a `nn.Module`) instance: set at the end of the `.make_config()` call if configuration is valid.
         self.network = None
 
     ### Public Methods ###

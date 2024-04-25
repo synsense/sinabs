@@ -138,7 +138,7 @@ class DynapcnnLayer(nn.Module):
             x = self.pool_layer[0](x)
 
         return x
-
+    
     def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
         """Convert Linear layer to Conv2d.
 

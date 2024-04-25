@@ -44,7 +44,7 @@ class DynapcnnNetworkModule(nn.Module):
             # processing the source `DynapcnnLayer`.
 
             if source_dcnnl not in forward_map:
-                forward_map[source_dcnnl] = dynapcnn_layers[source_dcnnl]['layer']
+                forward_map[source_dcnnl] = copy.deepcopy(dynapcnn_layers[source_dcnnl]['layer'])
 
                 if len(forward_map[source_dcnnl].pool_layer) > 1:
                     # this `DynapcnnLayer` is a divergent point in the graph.
@@ -57,7 +57,7 @@ class DynapcnnNetworkModule(nn.Module):
 
                         # create forward 'node' for the i-th pooling layer.
                         if pool_name not in forward_map:
-                            forward_map[pool_name] = forward_map[source_dcnnl].pool_layer[i]
+                            forward_map[pool_name] = copy.deepcopy(forward_map[source_dcnnl].pool_layer[i])
 
                         # create edge from i-th pooling to its target `DynapcnnLayer`.
                         new_edge_2_append.append((pool_name, dynapcnn_layers[source_dcnnl]['destinations'][i]))
@@ -65,7 +65,7 @@ class DynapcnnNetworkModule(nn.Module):
             # processing the target `DynapcnnLayer`.
 
             if target_dcnnl not in forward_map:
-                forward_map[target_dcnnl] = dynapcnn_layers[target_dcnnl]['layer']
+                forward_map[target_dcnnl] = copy.deepcopy(dynapcnn_layers[target_dcnnl]['layer'])
 
                 if len(forward_map[target_dcnnl].pool_layer) > 1:
                     # this `DynapcnnLayer` is a divergent point in the graph.
@@ -78,7 +78,7 @@ class DynapcnnNetworkModule(nn.Module):
 
                         # create forward 'node' for the i-th pooling layer.
                         if pool_name not in forward_map:
-                            forward_map[pool_name] = forward_map[target_dcnnl].pool_layer[i]
+                            forward_map[pool_name] = copy.deepcopy(forward_map[target_dcnnl].pool_layer[i])
 
                         # create edge from i-th pooling to its target `DynapcnnLayer`.
                         new_edge_2_append.append((pool_name, dynapcnn_layers[target_dcnnl]['destinations'][i]))
@@ -145,17 +145,31 @@ class DynapcnnNetworkModule(nn.Module):
         """ ."""
         parameters = []
 
-        for module in self._forward_map.values():
-            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
-                parameters.extend(module.conv_layer.parameters())
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                parameters.extend(layer.conv_layer.parameters())
 
         return parameters
     
     def init_weights(self):
         """ ."""
-        for node, module in self._forward_map.items():
-            if isinstance(module, nn.Conv2d):
-                nn.init.xavier_normal_(module.weight.data)
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                nn.init.xavier_normal_(layer.conv_layer.weight.data)
+
+    def to(self, device):
+        """ ."""
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                layer.conv_layer.to(device)
+                layer.spk_layer.to(device)
+                
+                # if there's more than one pooling each of them becomes a node that is catched by the `else` statement.
+                if len(layer.pool_layer) == 1:
+                    layer.pool_layer[0].to(device)
+            else:
+                # this nodes are created from `DynapcnnLayer`s that have multiple poolings (each pooling becomes a new node).
+                layer.to(device)
 
     def detach_neuron_states(self) -> None:
         """ Detach the neuron states and activations from current computation graph (necessary). """
