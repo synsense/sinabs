@@ -1,5 +1,10 @@
 from tqdm.notebook import tqdm
 import torch
+from tonic.datasets.dvsgesture import DVSGesture
+from tonic.datasets.nmnist import NMNIST
+from tonic.transforms import ToFrame
+import numpy as np
+from torch.utils.data import Subset
 
 def training_loop(device, nb_time_steps, batch_size, feature_map_size, dataloader_train, model, loss_fn, optimizer, epochs, dataloader_test):
     epochs_y = []
@@ -79,3 +84,65 @@ def test(device, nb_time_steps, batch_size, feature_map_size, dataloader_test, m
     
     correct_predictions = torch.cat(correct_predictions)
     return correct_predictions.sum().item()/(len(correct_predictions))*100
+
+def load_dataset(dataset, n_time_steps):
+    if dataset == 'DVSGESTURE':
+        root_dir = "../../DVSGESTURE"
+        _ = DVSGesture(save_to=root_dir, train=True)
+        _ = DVSGesture(save_to=root_dir, train=False)
+
+        to_raster = ToFrame(sensor_size=DVSGesture.sensor_size, n_time_bins=n_time_steps)
+
+        snn_train_dataset = DVSGesture(save_to=root_dir, train=True, transform=to_raster)
+        snn_test_dataset = DVSGesture(save_to=root_dir, train=False, transform=to_raster)
+
+        return snn_train_dataset, snn_test_dataset, DVSGesture.sensor_size
+    
+    elif dataset == 'NMNIST':
+        root_dir = "../../NMNIST"
+        _ = NMNIST(save_to=root_dir, train=True)
+        _ = NMNIST(save_to=root_dir, train=False)
+
+        to_raster = ToFrame(sensor_size=NMNIST.sensor_size, n_time_bins=n_time_steps)
+
+        snn_train_dataset = NMNIST(save_to=root_dir, train=True, transform=to_raster)
+        snn_test_dataset = NMNIST(save_to=root_dir, train=False, transform=to_raster)
+
+        return snn_train_dataset, snn_test_dataset, NMNIST.sensor_size
+    
+    else:
+
+        raise ValueError('no valid dataset')
+    
+def split_train_validation(validation_ratio, snn_train_dataset, rand_seed):
+    num_samples = len(snn_train_dataset)
+    num_validation_samples = int(validation_ratio * num_samples)
+
+    np.random.seed(rand_seed)
+
+    validation_indices = np.random.choice(np.arange(num_samples), size=num_validation_samples, replace=False)
+    training_indices = np.array(list(filter(lambda x: x not in validation_indices, np.arange(num_samples))))
+
+    train_dataset = Subset(snn_train_dataset, training_indices)
+    validation_dataset = Subset(snn_train_dataset, validation_indices)
+
+    return train_dataset, validation_dataset
+
+def load_architecture(architecture, input_size, nb_classes, batch_size, surrogate_fn, min_v_mem=-0.313, spk_thr=2.0):
+    import sys
+    sys.path.append('../models')
+
+    if architecture == 'ResSCNN1':
+        from ResSCNN1 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN2':
+        from ResSCNN2 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN3':
+        from ResSCNN3 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN4':
+        from ResSCNN4 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    else:
+        return None
