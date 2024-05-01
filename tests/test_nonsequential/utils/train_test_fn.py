@@ -144,5 +144,17 @@ def load_architecture(architecture, input_size, nb_classes, batch_size, surrogat
     elif architecture == 'ResSCNN4':
         from ResSCNN4 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN5':
+        from ResSCNN5 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN6':
+        from ResSCNN6 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN7':
+        from ResSCNN7 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN8':
+        from ResSCNN8 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
     else:
         return None
