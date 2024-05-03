@@ -47,7 +47,6 @@ class SCNN(nn.Module):
 
         self.merge1a = sl.Merge()
         self.merge1b = sl.Merge()
-        self.merge1c = sl.Merge()
 
     @staticmethod
     def get_flatten_size(input_size):
