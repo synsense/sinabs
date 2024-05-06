@@ -56,10 +56,18 @@ def training_loop(device, nb_time_steps, batch_size, feature_map_size, dataloade
 
     return epochs_x, epochs_y, epochs_acc
 
-def training_loop_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, dataloader_train, model, loss_fn, optimizer, epochs, dataloader_test):
+def training_loop_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, dataloader_train, model, loss_fn, optimizer, epochs, dataloader_test, record_data = False):
+    epochs_y = []
+    epochs_x = []
+    epochs_acc = []
+
     model.train()
 
     for e in range(epochs):
+        losses = []
+        batches = []
+        batch_count = 0
+
         for X, y in dataloader_train:
             # reshape the input from [Batch, Time, Channel, Height, Width] into [Batch*Time, Channel, Height, Width]
             X = X.reshape(-1, feature_map_size[2], feature_map_size[0], feature_map_size[1]).to(dtype=torch.float, device=device)
@@ -83,9 +91,23 @@ def training_loop_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, d
             # detach the neuron states and activations from current computation graph(necessary)
             model.detach_neuron_states()
 
-        acc = test_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, dataloader_test, model)
+            if record_data:
+                batch_count += 1
+                losses.append(loss.item())
+                batches.append(batch_count)
 
-    return acc
+        if record_data:
+            epochs_y.append(losses)
+            epochs_x.append(batches)
+
+        acc = test_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, dataloader_test, model)
+        if record_data:
+            epochs_acc.append(acc)
+
+    if record_data:
+        return epochs_x, epochs_y, epochs_acc
+    else:
+        return acc
 
 def test_no_tqdm(device, nb_time_steps, batch_size, feature_map_size, dataloader_test, model):
     correct_predictions = []
@@ -186,33 +208,67 @@ def split_train_validation(validation_ratio, snn_train_dataset, rand_seed):
 
     return train_dataset, validation_dataset
 
-def load_architecture(architecture, input_size, nb_classes, batch_size, surrogate_fn, min_v_mem=-0.313, spk_thr=2.0):
+def split_train_validation_used_seed(validation_ratio, snn_train_dataset, used_seed):
+    """ Will generate a validation dataset in which the random indices do not overlap
+    with the ones that are generated using the random seed `used_seed`.
+    """
+    num_samples = len(snn_train_dataset)
+    num_validation_samples = int(validation_ratio * num_samples)
+
+    np.random.seed(used_seed)
+
+    used_validation_indices = np.random.choice(np.arange(num_samples), size=num_validation_samples, replace=False)
+
+    validation_indices = np.random.choice(np.setdiff1d(np.arange(num_samples), used_validation_indices), size=len(used_validation_indices), replace=False)
+
+    training_indices = np.array(list(filter(lambda x: x not in validation_indices, np.arange(num_samples))))
+
+    if len(np.intersect1d(used_validation_indices, validation_indices)) != 0:
+        raise ValueError(f'data leakage: generated validation set overlaps with previously generated indices')
+
+    train_dataset = Subset(snn_train_dataset, training_indices)
+    validation_dataset = Subset(snn_train_dataset, validation_indices)
+
+    return train_dataset, validation_dataset
+
+def load_architecture(
+        architecture, input_size, nb_classes, batch_size, surrogate_fn, 
+        min_v_mem=-0.313, spk_thr=2.0, hetero_init = False, hetero_seed = 1):
     import sys
     sys.path.append('../models')
 
-    if architecture == 'ResSCNN1':
-        from ResSCNN1 import SCNN
+    if architecture == 'ResSCNN_1':
+        from ResSCNN_1 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN2':
-        from ResSCNN2 import SCNN
+    elif architecture == 'ResSCNN_2':
+        from ResSCNN_2 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN3':
-        from ResSCNN3 import SCNN
+    elif architecture == 'ResSCNN_3':
+        from ResSCNN_3 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN4':
-        from ResSCNN4 import SCNN
+    elif architecture == 'ResSCNN_4':
+        from ResSCNN_4 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN5':
-        from ResSCNN5 import SCNN
+    elif architecture == 'ResSCNN_5':
+        from ResSCNN_5 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN6':
-        from ResSCNN6 import SCNN
+    elif architecture == 'ResSCNN_6':
+        from ResSCNN_6 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN7':
-        from ResSCNN7 import SCNN
+    elif architecture == 'ResSCNN_7':
+        from ResSCNN_7 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
-    elif architecture == 'ResSCNN8':
-        from ResSCNN8 import SCNN
+    elif architecture == 'ResSCNN_8':
+        from ResSCNN_8 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN_9':
+        from ResSCNN_9 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr, hetero_init, hetero_seed)
+    elif architecture == 'ResSCNN_10':
+        from ResSCNN_10 import SCNN
+        return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
+    elif architecture == 'ResSCNN_11':
+        from ResSCNN_11 import SCNN
         return SCNN(input_size, nb_classes, batch_size, surrogate_fn, min_v_mem, spk_thr)
     else:
         return None
