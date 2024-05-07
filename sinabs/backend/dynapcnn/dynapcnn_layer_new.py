@@ -112,7 +112,9 @@ class DynapcnnLayer(nn.Module):
         if len(pool) != 0:
             # the 1st pooling targets the 1st destination in `dcnnl_data['destinations']`, the 2nd pooling targets the 2nd destination...
             for plyr in pool:
-                if plyr.kernel_size[0] != plyr.kernel_size[1]:
+                # @TODO POSSIBLE INCONSISTENCY: if the `SumPool2d` is the result of a conversion from `AvgPool2d` then `SumPool2d.kernel_size` 
+                # is of type tuple, otherwise it is an int.
+                if isinstance(plyr.kernel_size, tuple) and plyr.kernel_size[0] != plyr.kernel_size[1]:
                     raise ValueError("Only square kernels are supported")
                 self.pool_layer.append(deepcopy(plyr))
 
@@ -223,10 +225,22 @@ class DynapcnnLayer(nn.Module):
 
     def summary(self) -> dict:
         # TODO I can't see pooling being used in checking memory constraints by the builder so I'm ignoring for now the fact that multiple pooling could exist.
+        
+        _pool = None
+
+        # @TODO POSSIBLE INCONSISTENCY: if the `SumPool2d` is the result of a conversion from `AvgPool2d` then `SumPool2d.kernel_size` 
+        # is of type tuple, otherwise it is an int. 
+        if len(self.pool_layer) != 0:
+            # @TODO ignoring for now that there could be multiple poolings (just use the first one).
+            if isinstance(self.pool_layer[0].kernel_size, tuple):
+                _pool = list(self.pool_layer[0].kernel_size)
+            elif isinstance(self.pool_layer[0].kernel_size, int):
+                _pool = [self.pool_layer[0].kernel_size, self.pool_layer[0].kernel_size]
+            else:
+                raise ValueError('Type of `self.pool_layer[0].kernel_size` not understood.')
+
         return {
-            "pool": (                                               # ignoring for now that there could be multiple poolings (just use the first one).
-                None if len(self.pool_layer) == 0 else list(self.pool_layer[0].kernel_size)
-            ),
+            "pool": (_pool),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self.conv_out_shape,                          # neuron layer output has the same shape as the convolution layer ouput.
         }
@@ -318,7 +332,7 @@ class DynapcnnLayer(nn.Module):
                 dest_config = {
                     'layer': self.dynapcnnlayer_destination[i],# TODO this destination index is not the core index yet, just the index of the DynapcnnLayers themselves.
                     'enable': True, 
-                    'pooling': self.pool_layer[i].kernel_size[0]    # TODO make sure the kernel is a square.
+                    'pooling': self.pool_layer[i].kernel_size[0] if isinstance(self.pool_layer[i].kernel_size, tuple) else self.pool_layer[i].kernel_size    # TODO make sure the kernel is a square.
                     }
                 
                 config_dict['destinations'].append(dest_config)
