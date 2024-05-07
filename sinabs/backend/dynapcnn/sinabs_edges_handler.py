@@ -67,10 +67,10 @@ def update_dynapcnnlayer_mapper(edge_type: int, edge: Tuple[int, int], mapper: d
     if edge_type in [0, 6]:
         init_xor_complete_new_dynapcnnlayer_blk(mapper, edge, layers)
 
-    elif edge_type == 1:
+    elif edge_type in [1, 7]:
         add_pool_to_dynapcnnlayer_blk(mapper, edge, layers)
         
-    elif edge_type in [2, 3, 4, 5]:
+    elif edge_type in [2, 3, 4, 5, 8, 9]:
         connect_dynapcnnlayer_blks(mapper, edge, layers)
 
     else:
