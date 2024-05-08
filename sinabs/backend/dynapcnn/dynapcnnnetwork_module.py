@@ -27,6 +27,9 @@ class DynapcnnNetworkModule(nn.Module):
 
         self._forward_edges, self._forward_map = self._build_module_forward_from_graph(dcnnl_edges, dynapcnn_layers)
 
+    def get_forward_edges(self):
+        return self._forward_edges
+
     def _build_module_forward_from_graph(self, dcnnl_edges: list, dynapcnn_layers: dict) -> Union[list, dict]:
         """
         TODO use copy.deepcopy for create the `forward_map`.

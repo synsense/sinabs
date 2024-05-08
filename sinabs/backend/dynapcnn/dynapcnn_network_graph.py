@@ -277,19 +277,10 @@ class DynapcnnNetworkGraph():
         else:
             raise ValueError(f"Generated config is not valid for {device}")
         
-    ### Private Methods ###
-
-    def _get_network_module(self) -> nn.Module:
-        """ Uses the `DynapcnnLayer` instances in `self.dynapcnn_layers` and the connectivity between the cores
-        to craete a `nn.Module` with a forward method that incorporates each `DynapcnnLayer` into a trainable network.
-        """
-
-        # get connections between `DynapcnnLayer`s.
-        dcnnl_edges = self._get_dynapcnnlayers_edges()
-
-        return DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
-
-    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
+    def get_network_module(self):
+        return self._get_network_module()
+        
+    def get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
         """ Create edges representing connections between `DynapcnnLayer` instances. """
         dcnnl_edges = []
 
@@ -298,6 +289,18 @@ class DynapcnnNetworkGraph():
                 dcnnl_edges.append((dcnnl_idx, dest))
         
         return dcnnl_edges
+        
+    ### Private Methods ###
+
+    def _get_network_module(self) -> nn.Module:
+        """ Uses the `DynapcnnLayer` instances in `self.dynapcnn_layers` and the connectivity between the cores
+        to craete a `nn.Module` with a forward method that incorporates each `DynapcnnLayer` into a trainable network.
+        """
+
+        # get connections between `DynapcnnLayer`s.
+        dcnnl_edges = self.get_dynapcnnlayers_edges()
+
+        return DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
         
     def _make_config(
         self,
