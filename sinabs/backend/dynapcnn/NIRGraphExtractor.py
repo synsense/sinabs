@@ -33,6 +33,9 @@ class NIRtoDynapcnnNetworkGraph():
 
     ### Publich Methods ###
 
+    def get_edges_list(self):
+        return self._edges_list
+
     def remove_ignored_nodes(self, default_ignored_nodes):
         """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
