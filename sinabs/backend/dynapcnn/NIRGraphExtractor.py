@@ -223,7 +223,13 @@ class NIRtoDynapcnnNetworkGraph():
                     else:
                         # find node generating the input to be used.
                         inp_node = self._find_input_to_node(src)
-                        _input = nodes_io_map[inp_node]['output']
+
+                        if inp_node == -1:
+                            #   `src` is receiving external (not from another layer) input. This will be the case when two
+                            # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
+                            _input = input_dummy
+                        else:
+                            _input = nodes_io_map[inp_node]['output']
                     
                     # forward input through the node.
                     _output = self.modules_map[src](_input)
@@ -242,7 +248,13 @@ class NIRtoDynapcnnNetworkGraph():
                     else:
                         # find node generating the input to be used.
                         inp_node = self._find_input_to_node(src)
-                        _input = nodes_io_map[inp_node]['output']
+
+                        if inp_node == -1:
+                            #   `src` is receiving external (not from another layer) input. This will be the case when two
+                            # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
+                            _input = input_dummy
+                        else:
+                            _input = nodes_io_map[inp_node]['output']
                     
                     # forward input through the node.
                     _output = self.modules_map[src](_input)
@@ -256,7 +268,13 @@ class NIRtoDynapcnnNetworkGraph():
 
                     # find node generating the input to be used.
                     inp_node = self._find_input_to_node(trg)
-                    _input = nodes_io_map[inp_node]['output']
+
+                    if inp_node == -1:
+                        #   `src` is receiving external (not from another layer) input. This will be the case when two
+                        # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
+                        _input = input_dummy
+                    else:
+                        _input = nodes_io_map[inp_node]['output']
 
                     # forward input through the node.
                     _output = self.modules_map[trg](_input)
@@ -272,11 +290,24 @@ class NIRtoDynapcnnNetworkGraph():
         return nodes_io_map
 
     def _find_input_to_node(self, node: int) -> int:
-        """ Finds the first edge `(X, node)` returns `X`. """
+        """ Finds the first edge `(X, node)` returns `X`.
+
+        Parameters
+        ----------
+            node (int): the node in the computational graph for which we whish to find the input source (either another node in the
+                graph or the original input itself to the network).
+        
+        Returns
+        ----------
+            input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
+                receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
+                when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
+        """
         for edge in self._edges_list:
             if edge[1] == node:
                 return edge[0]
-        raise ValueError(f'Node {node} is not the target node of any edge in the graph.')
+
+        return -1
 
     def _find_merge_arguments(self, merge_node: int) -> list:
         """ A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer. """

@@ -437,15 +437,27 @@ class DynapcnnNetworkGraph():
                     return orig_name
             raise ValueError(f'Node {node} could not be found within the name remapping done by self._get_sinabs_edges_and_modules().')
         
-        def find_my_input(edges_list: list, node: int):
-            """ Returns the node `X` in the first edge `(X, node)`."""
+        def find_my_input(edges_list: list, node: int) -> int:
+            """ Returns the node `X` in the first edge `(X, node)`.
+
+            Parameters
+            ----------
+                node (int): the node in the computational graph for which we whish to find the input source (either another node in the
+                    graph or the original input itself to the network).
+            
+            Returns
+            ----------
+                input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
+                    receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
+                    when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
+            """
             for edge in edges_list:
                 if edge[1] == node:
                     #   TODO nodes originally receiving input from merge will appear twice in the list of edges, one
                     # edge per input to the merge layer. For now both inputs to a `Merge` have the same dimensions 
                     # necessarily so this works for now but later will have to be revised.
                     return edge[0]
-            raise ValueError(f'Node {node} is not receiving input from any other node in the graph.')
+            return -1
 
         # access the I/O shapes for each node in `self.sinabs_edges` from the original graph in `self.graph_tracer`.
         for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
@@ -462,9 +474,15 @@ class DynapcnnNetworkGraph():
                         # necessary cuz if a node originally receives input from a `nn.Flatten` for instance, when mapped into
                         # a `DynapcnnLayer` it will be receiving the input from a privious `sl.SumPool2d`.
                         input_node = find_my_input(self.sinabs_edges, node)
-                        input_node_orig_name = find_original_node_name(self.nodes_name_remap, input_node)
-                        _, _input_source_shape = self.graph_tracer.get_node_io_shapes(input_node_orig_name)
-                        node_data['input_shape'] = tuple(list(_input_source_shape)[1:])
+
+                        if input_node == -1:
+                            # node does not have an input source within the graph (it consumes the original input to the model).
+                            node_data['input_shape'] = tuple(list(_in)[1:])
+                        else:
+                            # input comes from another node in the graph.
+                            input_node_orig_name = find_original_node_name(self.nodes_name_remap, input_node)
+                            _, _input_source_shape = self.graph_tracer.get_node_io_shapes(input_node_orig_name)
+                            node_data['input_shape'] = tuple(list(_input_source_shape)[1:])
                     else:
                         # first node does not have an input source within the graph.
                         node_data['input_shape'] = tuple(list(_in)[1:])
