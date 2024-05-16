@@ -645,7 +645,7 @@ def construct_dynapcnnlayers_from_mapper(
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
-            discretize, dcnnl_data, edges, nodes_to_dcnnl_map)
+            dpcnnl_idx, discretize, dcnnl_data, edges, nodes_to_dcnnl_map)
         
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
@@ -675,6 +675,7 @@ def update_nodes_io(updated_node: int, output_shape: tuple, nodes_to_dcnnl_map: 
                             val['input_shape'] = output_shape
 
 def construct_dynapcnnlayer(
+        dpcnnl_idx: int,
         discretize: bool,
         dcnnl_data: dict, 
         edges: List[Tuple[int, int]],
@@ -692,6 +693,7 @@ def construct_dynapcnnlayer(
 
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
+        dpcnnl_index    = dpcnnl_idx,
         dcnnl_data      = dcnnl_data,
         discretize      = discretize,
         sinabs_edges    = edges

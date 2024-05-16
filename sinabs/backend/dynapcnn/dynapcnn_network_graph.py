@@ -3,11 +3,10 @@
 # contact       : williansoaresgirao@gmail.com
 
 import time
-from subprocess import CalledProcessError
 from typing import List, Optional, Sequence, Tuple, Union, Dict
 
 import samna
-import sinabs.layers
+import sinabs.layers as sl
 import torch
 import torch.nn as nn
 
@@ -15,8 +14,7 @@ import sinabs
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
-from .dynapcnn_layer import DynapcnnLayer
-from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
+from .io import open_device
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     build_from_graph,
@@ -24,23 +22,14 @@ from .utils import (
     parse_device_id,
 )
 
-from .graph_tracer import GraphTracer
-from .exceptions import InvalidTorchModel
-from warnings import warn
-
 from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
 from .sinabs_edges_handler import merge_handler
 
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 
-class DynapcnnNetworkGraph():
-    """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
-    test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
-    make the dynapcnn configuration and upload it to DYNAPCNN.
+# TODO `make_config` and `_make_config` should be merged into a single method.
 
-    TODO `make_config` and `_make_config` should be merged into a single method.
-    """
-
+class DynapcnnNetworkGraph(nn.Module):
     def __init__(
         self,
         snn: nn.Module,
@@ -49,6 +38,21 @@ class DynapcnnNetworkGraph():
         discretize: bool = True
     ):
         """
+            Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
+        test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
+        make the dynapcnn configuration and upload it to DYNAPCNN.
+
+        Some of the properties defined within the class constructor are meant to be temporary data structures handling the conversion
+        of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Thus, the following 
+        private properties are delted once a successfull call to `self.to(device='speck...')` is made:
+
+        - self._graph_tracer
+        - self._sinabs_edges
+        - self._sinabs_modules_map
+        - self._nodes_name_remap
+        - self._nodes_to_dcnnl_map
+        - self._dynapcnn_layers
+
         Parameters
         ----------
             snn : a `nn.Module` implementing a spiking network.
@@ -57,6 +61,7 @@ class DynapcnnNetworkGraph():
             discretize: If `True`, discretize the parameters and thresholds. This is needed for uploading 
                 weights to dynapcnn. Set to `False` only for testing purposes.
         """
+        super().__init__()
 
         # TODO for now the graph part is not taking into consideration DVS inputs.
         # check if dvs input is expected.
@@ -68,50 +73,129 @@ class DynapcnnNetworkGraph():
 
         # computational graph from original PyTorch module.
         # TODO - bacth size must be passed as argument.
-        self.graph_tracer = NIRtoDynapcnnNetworkGraph(
+        self._graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
             torch.randn((1, *self.input_shape)))                # needs the batch dimension.        
 
-        self.sinabs_edges, \
-            self.sinabs_modules_map, \
-                    self.nodes_name_remap = self._get_sinabs_edges_and_modules()
+        self._sinabs_edges, \
+            self._sinabs_modules_map, \
+                    self._nodes_name_remap = self._get_sinabs_edges_and_modules()
         
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self.nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
-            layers=self.sinabs_modules_map, 
-            edges=self.sinabs_edges)
+        self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
+            layers=self._sinabs_modules_map, 
+            edges=self._sinabs_edges)
         
-        # updates 'self.nodes_to_dcnnl_map' to include the I/O shape for each node.
+        # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
         self._populate_nodes_io()
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
-        # for edge in self.sinabs_edges:
-        #     print(edge)
-        # print('\n')
-        self.dynapcnn_layers = build_from_graph(
+        self._dynapcnn_layers = build_from_graph(
             discretize=discretize,
-            edges=self.sinabs_edges,
-            nodes_to_dcnnl_map=self.nodes_to_dcnnl_map)
+            edges=self._sinabs_edges,
+            nodes_to_dcnnl_map=self._nodes_to_dcnnl_map)
         
-        # the trainable network (a `nn.Module`) instance: set at the end of the `.make_config()` call if configuration is valid.
-        self.network = None
+        # these gather all data necessay to implement the forward method for this class.
+        self._dcnnl_edges, self._forward_map, self._merge_points = self._get_network_module()
 
-    ### Public Methods ###
+    ####################################################### Public Methods #######################################################
 
-    def __str__(self):
-        pretty_print = ''
-        for idx, layer_data in self.dynapcnn_layers.items():
-            pretty_print += f'---- DynapcnnLayer {idx} ----------------------------------------------------------'
-            layer = layer_data['layer']
-            dest = layer_data['destinations']
-            core = layer_data['core_idx']
+    @property
+    def dynapcnn_layers(self):
+        if hasattr(self, '_dynapcnn_layers'):
+            return self._dynapcnn_layers
+        else:
+            return None
 
-            if 'core_destinations' in layer_data:
-                core_dest = layer_data['destinations']
-                pretty_print += f'\n> layer modules: {layer}\n> destination DynapcnnLayers: {dest}\n> core destinations: {core_dest}\n> assigned core: {core}\n\n'
+    def forward(self, x):
+        """ ."""
+
+        layers_outputs = {}
+
+        #   TODO - currently `node 0` (this 1st node in the 1st edge of `self._dcnnl_edges`) is always taken to be the
+        # input node of the network. This won't work in cases where there are more the one input nodes to the network
+        # so this functionality needs some refactoring.
+        self._forward_map[self._dcnnl_edges[0][0]](x)
+
+        # forward the input `x` through the input `DynapcnnLayer` in the `DynapcnnNetwork`s graph (1st node in the 1st edge in `self._dcnnl_edges`).
+        layers_outputs[self._dcnnl_edges[0][0]] = self._forward_map[self._dcnnl_edges[0][0]](x)
+
+        # propagate outputs in `layers_outputs` through the rest of the nodes of `self._dcnnl_edges`.
+        for edge in self._dcnnl_edges:
+            
+            # target DynapcnnLayer (will consume tensors from `layers_outputs`).
+            trg_dcnnl = edge[1]
+
+            if trg_dcnnl in self._merge_points and trg_dcnnl not in layers_outputs:
+                # by this points the arguments of the `Merge` associated with `trg_dcnnl` should have been computed.
+                arg1, arg2 = self._merge_points[trg_dcnnl]['sources']
+
+                #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
+                # to the target DynapcnnLayer `trg_dcnnl`.
+                return_index_arg1 = self._forward_map[arg1].get_destination_dcnnl_index(trg_dcnnl)
+                return_index_arg2 = self._forward_map[arg2].get_destination_dcnnl_index(trg_dcnnl)
+
+                # retrieve input tensors to `Merge`.
+                _arg1 = layers_outputs[arg1][return_index_arg1]
+                _arg2 = layers_outputs[arg2][return_index_arg2]
+
+                # merge tensors.
+                merge_output = self._merge_points[trg_dcnnl]['merge'](_arg1, _arg2)
+
+                # call the forward.
+                layers_outputs[trg_dcnnl] = self._forward_map[trg_dcnnl](merge_output)
+
+            elif trg_dcnnl not in layers_outputs:
+                # input source for `trg_dcnnl`.
+                src_dcnnl = edge[0]
+
+                #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
+                # to the target DynapcnnLayer `trg_dcnnl`.
+                return_index = self._forward_map[src_dcnnl].get_destination_dcnnl_index(trg_dcnnl)
+
+                # call the forward.
+                layers_outputs[trg_dcnnl] = self._forward_map[trg_dcnnl](layers_outputs[src_dcnnl][return_index])
+
             else:
-                pretty_print += f'\n> layer modules: {layer}\n> destination DynapcnnLayers: {dest}\n> assigned core: {core}\n\n'
-        return pretty_print
+
+                pass
+        
+        # TODO - this assumes the network has a single output node.
+        # last computed is the output layer.
+        return layers_outputs[trg_dcnnl][0]
+    
+    def parameters(self) -> list:
+        """ Gathers all the parameters of the network in a list. This is done by accessing the convolutional layer in each `DynapcnnLayer`, calling 
+        its `.parameters` method and saving it to a list.
+
+        Note: the method assumes no biases are used.
+
+        Returns
+        ----------
+            parameters (list): a list of parameters of all convolutional layers in the `DynapcnnNetwok`.
+        """
+        parameters = []
+
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                parameters.extend(layer.conv_layer.parameters())
+
+        return parameters
+    
+    def init_weights(self, init_fn: nn.init = nn.init.xavier_normal_) -> None:
+        """ Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance."""
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                init_fn(layer.conv_layer.weight.data)
+
+    def detach_neuron_states(self) -> None:
+        """ Detach the neuron states and activations from current computation graph (necessary). """
+
+        for module in self._forward_map.values():
+            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                if isinstance(module.spk_layer, sl.StatefulLayer):
+                    for name, buffer in module.spk_layer.named_buffers():
+                        buffer.detach_()
     
     def to(
         self,
@@ -159,35 +243,42 @@ class DynapcnnNetworkGraph():
         self.device = device
 
         if isinstance(device, torch.device):
-            return super().to(device)
+            self._to_device(device)
         
         elif isinstance(device, str):
             device_name, _ = parse_device_id(device)
 
-            if device_name in ChipFactory.supported_devices:                # pragma: no cover
+            if device_name in ChipFactory.supported_devices:
                 
-                config = self.make_config(                                  # generate config.
+                # generate config.
+                config = self.make_config(
                     chip_layers_ordering=chip_layers_ordering,
                     device=device,
                     monitor_layers=monitor_layers,
                     config_modifier=config_modifier,
                 )
 
-                self.samna_device = open_device(device)                     # apply configuration to device.
+                # apply configuration to device.
+                self.samna_device = open_device(device)
                 self.samna_device.get_model().apply_configuration(config)
                 time.sleep(1)
 
-                if slow_clk_frequency is not None:                          # set external slow-clock if needed.
+                # set external slow-clock if needed.
+                if slow_clk_frequency is not None:
                     dk_io = self.samna_device.get_io_module()
                     dk_io.set_slow_clk(True)
-                    dk_io.set_slow_clk_rate(slow_clk_frequency)             # Hz
+                    dk_io.set_slow_clk_rate(slow_clk_frequency) # Hz
 
                 builder = ChipFactory(device).get_config_builder()
                 
-                self.samna_input_buffer = builder.get_input_buffer()        # create input source node.
-                self.samna_output_buffer = builder.get_output_buffer()      # create output sink node node.
+                # create input source node.
+                self.samna_input_buffer = builder.get_input_buffer()
 
-                self.device_input_graph = samna.graph.EventFilterGraph()    # connect source node to device sink.
+                # create output sink node node.
+                self.samna_output_buffer = builder.get_output_buffer()
+
+                # connect source node to device sink.
+                self.device_input_graph = samna.graph.EventFilterGraph()
                 self.device_input_graph.sequential(
                     [
                         self.samna_input_buffer,
@@ -195,7 +286,8 @@ class DynapcnnNetworkGraph():
                     ]
                 )
 
-                self.device_output_graph = samna.graph.EventFilterGraph()   # connect sink node to device.
+                # connect sink node to device.
+                self.device_output_graph = samna.graph.EventFilterGraph()
                 self.device_output_graph.sequential(
                     [
                         self.samna_device.get_model().get_source_node(),
@@ -207,10 +299,10 @@ class DynapcnnNetworkGraph():
                 self.device_output_graph.start()
                 self.samna_config = config
 
-                return self
+                return print(self)
             
             else:
-                return super().to(device)
+                self._to_device(device)
             
         else:
             raise Exception("Unknown device description.")
@@ -272,39 +364,51 @@ class DynapcnnNetworkGraph():
 
         if is_compatible:
             # validate config.
-            print("Network is valid")
-            
-            # constructs a `nn.Module` class combining the `DynapcnnLayer` uploaded to the chip.
-            self.network = self._get_network_module()
+            print("Network is valid: \n")
+
+            # DynapcnnLayer have been configured: removing intermediary data structures no longer necessary.
+            del self._graph_tracer
+            del self._sinabs_edges
+            del self._sinabs_modules_map
+            del self._nodes_name_remap
+            del self._nodes_to_dcnnl_map
+            del self._dynapcnn_layers
             
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
         
-    def get_network_module(self):
-        return self._get_network_module()
-        
-    def get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
+    ####################################################### Private Methods #######################################################
+
+    def _get_network_module(self) -> Union[list, dict, dict]:
+        """ Uses the `DynapcnnLayer` instances in `self._dynapcnn_layers` and the connectivity between them to create three data structures 
+        that guide the data forwarding between the layer during the forward pass.
+
+        Note: the property `DynapcnnLayer.assigned_core` is only set after `self.to(device='speck...')` is called.
+
+        Returns
+        ----------
+            dcnnl_edges (list): edges, represented as tuples of `DynapcnnLayer` indices, used to guide the data forwarding through each `DynapcnnLayer` in forward method.
+            forward_map (dict): have all the `DynapcnnLayer` (`value`), each being accessible via its index (`key`). Used to call `DynapcnnLayer.forward` in forward method.
+            merge_points (dict): used to compose the inputs to a `DynapcnnLayer` that requires an input from a `Merge` layer.
+        """
+
+        # get connections between `DynapcnnLayer`s.
+        dcnnl_edges = self._get_dynapcnnlayers_edges()
+
+        dcnnnet_module = DynapcnnNetworkModule(dcnnl_edges, self._dynapcnn_layers)
+
+        return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points
+    
+    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
         """ Create edges representing connections between `DynapcnnLayer` instances. """
         dcnnl_edges = []
 
-        for dcnnl_idx, layer_data in self.dynapcnn_layers.items():
+        for dcnnl_idx, layer_data in self._dynapcnn_layers.items():
             for dest in layer_data['destinations']:
                 dcnnl_edges.append((dcnnl_idx, dest))
         
         return dcnnl_edges
-        
-    ### Private Methods ###
-
-    def _get_network_module(self) -> nn.Module:
-        """ Uses the `DynapcnnLayer` instances in `self.dynapcnn_layers` and the connectivity between the cores
-        to craete a `nn.Module` with a forward method that incorporates each `DynapcnnLayer` into a trainable network.
-        """
-
-        # get connections between `DynapcnnLayer`s.
-        dcnnl_edges = self.get_dynapcnnlayers_edges()
-
-        return DynapcnnNetworkModule(dcnnl_edges, self.dynapcnn_layers)
         
     def _make_config(
         self,
@@ -357,14 +461,18 @@ class DynapcnnNetworkGraph():
         """
         config_builder = ChipFactory(device).get_config_builder()
 
-        has_dvs_layer = isinstance(self.dynapcnn_layers[0]['layer'], DVSLayer)
+        has_dvs_layer = isinstance(self._dynapcnn_layers[0]['layer'], DVSLayer)
 
         if chip_layers_ordering == "auto":
             # figure out mapping of each DynapcnnLayer into one core.
             chip_layers_ordering = config_builder.get_valid_mapping(self)
 
+            # update the `assigned_core` property of each DynapcnnLayer instance.
+            for dcnnl_index, dcnnl_data in self._dynapcnn_layers.items():
+                self._forward_map[dcnnl_index].assigned_core = dcnnl_data['core_idx']
+
         else:
-            # mapping from each DynapcnnLayer into cores has been provided.
+            # TODO - mapping from each DynapcnnLayer into cores has been provided by the user: NOT IMPLEMENTED YET.
             if has_dvs_layer:
                 pass                                                 # TODO not handling DVSLayer yet.
 
@@ -378,12 +486,12 @@ class DynapcnnNetworkGraph():
         monitor_chip_layers = []
         if monitor_layers is None:
             # check if any monitoring is enabled (if not, enable monitoring for the last layer).
-            for _, dcnnl_data in self.dynapcnn_layers.items():
+            for _, dcnnl_data in self._dynapcnn_layers.items():
                 if len(dcnnl_data['destinations']) == 0:
                     monitor_chip_layers.append(dcnnl_data['core_idx'])
                     break
         elif monitor_layers == "all":
-            for _, dcnnl_data in self.dynapcnn_layers.items():
+            for _, dcnnl_data in self._dynapcnn_layers.items():
                 # monitor each chip core (if not a DVSLayer).
                 if not isinstance(dcnnl_data['layer'], DVSLayer):
                     monitor_chip_layers.append(dcnnl_data['core_idx'])
@@ -412,18 +520,18 @@ class DynapcnnNetworkGraph():
                 remapped to connect the nodes involved in the merging directly.
             sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and 
                 their associated module as `value`.
-            remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self.graph_tracer`) and `value` is
+            remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self._graph_tracer`) and `value` is
                 the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
         """
         
         # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
-        sinabs_edges, remapped_nodes = self.graph_tracer.remove_ignored_nodes( 
+        sinabs_edges, remapped_nodes = self._graph_tracer.remove_ignored_nodes( 
             DEFAULT_IGNORED_LAYER_TYPES)
 
         # nodes (layers' "names") need remapping in case some layers have been removed (e.g. a `nn.Flattern` is ignored).
         sinabs_modules_map = {}
         for orig_name, new_name in remapped_nodes.items():
-            sinabs_modules_map[new_name] = self.graph_tracer.modules_map[orig_name]
+            sinabs_modules_map[new_name] = self._graph_tracer.modules_map[orig_name]
 
         # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
         edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)
@@ -432,10 +540,10 @@ class DynapcnnNetworkGraph():
     
     def _populate_nodes_io(self):
         """ Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
-        representations in `self.nodes_to_dcnnl_map`."""
+        representations in `self._nodes_to_dcnnl_map`."""
 
         def find_original_node_name(name_mapper: dict, node: int):
-            """ Find what a node is originally named when built in `self.graph_tracer`. """
+            """ Find what a node is originally named when built in `self._graph_tracer`. """
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
                     return orig_name
@@ -463,32 +571,54 @@ class DynapcnnNetworkGraph():
                     return edge[0]
             return -1
 
-        # access the I/O shapes for each node in `self.sinabs_edges` from the original graph in `self.graph_tracer`.
-        for dcnnl_idx, dcnnl_data in self.nodes_to_dcnnl_map.items():
+        # access the I/O shapes for each node in `self._sinabs_edges` from the original graph in `self._graph_tracer`.
+        for dcnnl_idx, dcnnl_data in self._nodes_to_dcnnl_map.items():
             for node, node_data in dcnnl_data.items():
                 # node dictionary with layer data.
                 if isinstance(node, int):
                     # some nodes might have been renamed (e.g. after droppping a `nn.Flatten`), so find how node was originally named.
-                    orig_name = find_original_node_name(self.nodes_name_remap, node)
-                    _in, _out = self.graph_tracer.get_node_io_shapes(orig_name)
+                    orig_name = find_original_node_name(self._nodes_name_remap, node)
+                    _in, _out = self._graph_tracer.get_node_io_shapes(orig_name)
 
                     # update node I/O shape in the mapper (drop batch dimension).
                     if node != 0:
                         #   Find node outputing into the current node being processed (this will be the input shape). This is
                         # necessary cuz if a node originally receives input from a `nn.Flatten` for instance, when mapped into
                         # a `DynapcnnLayer` it will be receiving the input from a privious `sl.SumPool2d`.
-                        input_node = find_my_input(self.sinabs_edges, node)
+                        input_node = find_my_input(self._sinabs_edges, node)
 
                         if input_node == -1:
                             # node does not have an input source within the graph (it consumes the original input to the model).
                             node_data['input_shape'] = tuple(list(_in)[1:])
                         else:
                             # input comes from another node in the graph.
-                            input_node_orig_name = find_original_node_name(self.nodes_name_remap, input_node)
-                            _, _input_source_shape = self.graph_tracer.get_node_io_shapes(input_node_orig_name)
+                            input_node_orig_name = find_original_node_name(self._nodes_name_remap, input_node)
+                            _, _input_source_shape = self._graph_tracer.get_node_io_shapes(input_node_orig_name)
                             node_data['input_shape'] = tuple(list(_input_source_shape)[1:])
                     else:
                         # first node does not have an input source within the graph.
                         node_data['input_shape'] = tuple(list(_in)[1:])
 
                     node_data['output_shape'] = tuple(list(_out)[1:])
+
+    def _to_device(self, device: torch.device) -> None:
+        """ ."""
+        for layer in self._forward_map.values():
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+                layer.conv_layer.to(device)
+                layer.spk_layer.to(device)
+                
+                # if there's more than one pooling each of them becomes a node that is catched by the `else` statement.
+                if len(layer.pool_layer) == 1:
+                    layer.pool_layer[0].to(device)
+            else:
+                # this nodes are created from `DynapcnnLayer`s that have multiple poolings (each pooling becomes a new node).
+                layer.to(device)
+
+    def __str__(self):
+        pretty_print = ''
+        for idx, layer_data in self._forward_map.items():
+            pretty_print += f'----------------------- [ DynapcnnLayer {idx} ] -----------------------\n'
+            pretty_print += f'{layer_data}\n\n'
+                
+        return pretty_print

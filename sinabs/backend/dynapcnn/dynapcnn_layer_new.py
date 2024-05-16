@@ -17,6 +17,7 @@ class DynapcnnLayer(nn.Module):
 
     def __init__(
         self,
+        dpcnnl_index: int,
         dcnnl_data: dict, 
         discretize: bool,
         sinabs_edges: list
@@ -27,9 +28,17 @@ class DynapcnnLayer(nn.Module):
 
         Parameters
         ----------
+            dpcnnl_index (int): ...
             dcnnl_data (dict): ...
             discretize (bool): ...
+            sinabs_edges (list): ...
         """
+        self.dpcnnl_index = dpcnnl_index
+        self.assigned_core = None
+
+        if 'core_idx' in dcnnl_data:
+            self.assigned_core = dcnnl_data['core_idx']
+
         self.lin_to_conv_conversion = False
 
         conv = None
@@ -162,20 +171,6 @@ class DynapcnnLayer(nn.Module):
                     destinations_input_source[id].append(edge[1])
 
         return destinations_input_source
-
-    def __str__(self):
-        pretty_print = '\n'
-
-        pretty_print += f'(node {self.conv_node_id}): {self.conv_layer}\n'
-        pretty_print += f'(node {self.spk_node_id}): {self.spk_layer}'
-        if len(self.pool_layer) != 0:
-            for idx, lyr in enumerate(self.pool_layer):
-                pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
-
-        for node, destinations in self.nodes_destinations.items():
-            pretty_print += f'\n> node {node} destination nodes: {destinations}'
-
-        return pretty_print
     
     def forward(self, x):
         """Torch forward pass.
@@ -467,3 +462,23 @@ class DynapcnnLayer(nn.Module):
             * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
+    
+    def __str__(self):
+        pretty_print = '\n'
+
+        pretty_print += 'COMPUTATIONAL NODES:\n\n'
+
+        pretty_print += f'(node {self.conv_node_id}): {self.conv_layer}\n'
+        pretty_print += f'(node {self.spk_node_id}): {self.spk_layer}'
+        if len(self.pool_layer) != 0:
+            for idx, lyr in enumerate(self.pool_layer):
+                pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
+
+        pretty_print += '\n\nMETADATA:\n'
+        pretty_print += f'\n> assigned core index: {self.assigned_core}'
+        pretty_print += f'\n> destination DynapcnnLayers: {self.dynapcnnlayer_destination}'
+
+        for node, destinations in self.nodes_destinations.items():
+            pretty_print += f'\n> node {node} feeds input to nodes {destinations}'
+
+        return pretty_print
