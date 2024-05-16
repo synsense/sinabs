@@ -18,7 +18,8 @@ class DynapcnnLayer(nn.Module):
     def __init__(
         self,
         dcnnl_data: dict, 
-        discretize: bool
+        discretize: bool,
+        sinabs_edges: list
     ):
         super().__init__()
         """
@@ -118,6 +119,50 @@ class DynapcnnLayer(nn.Module):
                     raise ValueError("Only square kernels are supported")
                 self.pool_layer.append(deepcopy(plyr))
 
+        # map destination nodes for each layer in this instance.
+        self.nodes_destinations = self._get_destinations_input_source(sinabs_edges)
+
+    def get_destination_dcnnl_index(self, dcnnl_id: int) -> int:
+        """ The `forward` method will return as many tensors as there are elements in `self.dynapcnnlayer_destination`. Since the i-th returned tensor is to be
+        fed to the i-th destionation in `self.dynapcnnlayer_destination`, the return of this method can be used to index a tensor returned in the `forward` method.
+
+        Parameters
+        ----------
+            dcnnl_id (int): this should be one of the values listed within `self.dynapcnnlayer_destination`.
+
+        Returns
+        ----------
+            The index of `dcnnl_id` within `self.dynapcnnlayer_destination`.
+        """
+        return self.dynapcnnlayer_destination.index(dcnnl_id)
+
+    def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
+        """ Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
+        `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
+        """
+        destinations_input_source = {}
+
+        # check whether spiking layer projects outside this DynapcnnLayer (i.e. to one of the destinations without passing through a pooling).
+        spk_destinations = []
+        for edge in sinabs_edges:
+            if edge[0] == self.spk_node_id and edge[1] not in self.pool_node_id:
+                # spiking layer projects to a node outside this DynapcnnLayer.
+                spk_destinations.append(edge[1])
+        if len(spk_destinations) > 0:
+            destinations_input_source[self.spk_node_id] = []
+            for node_id in spk_destinations:
+                destinations_input_source[self.spk_node_id].append(node_id)
+
+        #   get `pooling->destination` mapping. The pooling outputs will be arranged sequentially since the pooling layers are added sequentially
+        # to `self.pool_layer` (i.e., as they appear in the computational graph of the original `nn.Module`).
+        for id in self.pool_node_id:
+            destinations_input_source[id] = []
+            for edge in sinabs_edges:
+                if edge[0] == id:
+                    destinations_input_source[id].append(edge[1])
+
+        return destinations_input_source
+
     def __str__(self):
         pretty_print = '\n'
 
@@ -127,19 +172,73 @@ class DynapcnnLayer(nn.Module):
             for idx, lyr in enumerate(self.pool_layer):
                 pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
 
+        for node, destinations in self.nodes_destinations.items():
+            pretty_print += f'\n> node {node} destination nodes: {destinations}'
+
         return pretty_print
     
     def forward(self, x):
-        """Torch forward pass."""
+        """Torch forward pass.
+
+        Returns
+        ----------
+            This method will return as many tensors as there are destinations associated with this instance. The returned tensors always follows the 
+            sequence `return spiking_layer_output, pooling_layer_1, pooling_layer_2, ...`.
+        
+        Example
+        ----------
+            With `self.nodes_destinations = {1: [5, 8], 2: [4], 3: [7]}` this method will return 4 tensors (each to be sent to a different DynapcnnLayer): the 1st 
+            and 2nd are the outputs of the spiking layer (`node 1`); the 3rd is the output of the first pooling layer (`node 2`, receiving the output of node 1) appearing 
+            right after the spiking layer as defined in the original `nn.Module` being converted to a `DynapcnnNetwork`; the 4th is the output of the second pooling 
+            layer (`node 3`) to appear after the spiking layer. Thus, the return will be `return node_1_out, node_1_out, node_2_out, node_3_out`. This means the edges 
+            in the computational graph involved in this mapping were:
+            
+            1 --> 2     # `2` is one of the pooling layers of this DynapcnnLayer.
+            1 --> 3     # `3` is one of the pooling layers of this DynapcnnLayer.
+            1 --> 5     # `5` is a conv layer belonging to another DynapcnnLayer U.
+            1 --> 8     # `8` is a conv layer belonging to another DynapcnnLayer V.
+            2 --> 4     # `4` is a conv layer belonging to another DynapcnnLayer X.
+            3 --> 7     # `7` is a conv layer belonging to another DynapcnnLayer Y.
+        """
+
+        returns = []
         
         x = self.conv_layer(x)
         x = self.spk_layer(x)
 
-        if len(self.pool_layer) == 1:
-            # single pooling layer (not a divergent node).
-            x = self.pool_layer[0](x)
+        # pooling layers are sequentially added to `self.pool_layer` so we'll pass data to them sequentially.
+        pooling_indexer = 0
 
-        return x
+        # building return set of all layers as they appear in `self.nodes_destinations`.
+        for node_id, destination_node_list in self.nodes_destinations.items():
+            if node_id == self.spk_node_id:
+                # spiking output for each node outside this DynapcnnLayer receiving from its spiking layer.
+                for _ in destination_node_list:
+                    returns.append(x)
+            else:
+                # returns of each pooling layer are arranged sequenatially.
+                for _ in destination_node_list:
+                    ith_pool_output = self.pool_layer[pooling_indexer](x)
+                    returns.append(ith_pool_output)
+                
+                # forward through next pooling layer in `self.pool_layer` in the next iteration.
+                pooling_indexer += 1
+
+        if len(returns) != len(self.dynapcnnlayer_destination):
+            raise ValueError(f'Number of returned tensors ({len(returns)}) differ from the number of destinations ({len(self.dynapcnnlayer_destination)}).')
+        
+        if len(returns) == 0 and len(self.pool_layer) == 0:
+            # this is the output layer and there's no pooling after the neurons.
+            returns.append(x)
+        elif len(returns) == 0 and len(self.pool_layer) == 1:
+            # this is the output layer and there's 1 pooling after the neurons.
+            returns.append(self.pool_layer[0](x))
+        elif len(returns) == 0 and len(self.pool_layer) > 1:
+            raise ValueError(f'Output DynapcnnLayer starting with node {self.conv_node_id} has {len(self.pool_layer)} pooling layers: it should have either 1 or none.')
+        else:
+            pass
+
+        return tuple(returns)
     
     def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
         """Convert Linear layer to Conv2d.

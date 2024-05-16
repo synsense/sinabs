@@ -67,6 +67,7 @@ class DynapcnnNetworkGraph():
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         # computational graph from original PyTorch module.
+        # TODO - bacth size must be passed as argument.
         self.graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
             torch.randn((1, *self.input_shape)))                # needs the batch dimension.        
@@ -84,6 +85,9 @@ class DynapcnnNetworkGraph():
         self._populate_nodes_io()
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
+        # for edge in self.sinabs_edges:
+        #     print(edge)
+        # print('\n')
         self.dynapcnn_layers = build_from_graph(
             discretize=discretize,
             edges=self.sinabs_edges,
@@ -104,9 +108,9 @@ class DynapcnnNetworkGraph():
 
             if 'core_destinations' in layer_data:
                 core_dest = layer_data['destinations']
-                pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> core destinations: {core_dest}\n> assigned core: {core}\n\n'
+                pretty_print += f'\n> layer modules: {layer}\n> destination DynapcnnLayers: {dest}\n> core destinations: {core_dest}\n> assigned core: {core}\n\n'
             else:
-                pretty_print += f'\n> layer modules: {layer}\n> layer destinations: {dest}\n> assigned core: {core}\n\n'
+                pretty_print += f'\n> layer modules: {layer}\n> destination DynapcnnLayers: {dest}\n> assigned core: {core}\n\n'
         return pretty_print
     
     def to(

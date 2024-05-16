@@ -25,144 +25,139 @@ class DynapcnnNetworkModule(nn.Module):
     def __init__(self, dcnnl_edges: List[Tuple[int, int]], dynapcnn_layers: Dict) -> nn.Module:
         super().__init__()
 
-        self._forward_edges, self._forward_map = self._build_module_forward_from_graph(dcnnl_edges, dynapcnn_layers)
+        self.dcnnl_edges = dcnnl_edges
 
-    def get_forward_edges(self):
-        return self._forward_edges
-
-    def _build_module_forward_from_graph(self, dcnnl_edges: list, dynapcnn_layers: dict) -> Union[list, dict]:
-        """
-        TODO use copy.deepcopy for create the `forward_map`.
-        """
-        forward_map = {}
-        new_edges_set = []
-        divergent_nodes = []
-        
-        for edge in dcnnl_edges:
-            source_dcnnl = edge[0]
-            target_dcnnl = edge[1]
-
-            new_edge_2_append = []
-
-            # processing the source `DynapcnnLayer`.
-
-            if source_dcnnl not in forward_map:
-                forward_map[source_dcnnl] = copy.deepcopy(dynapcnn_layers[source_dcnnl]['layer'])
-
-                if len(forward_map[source_dcnnl].pool_layer) > 1:
-                    # this `DynapcnnLayer` is a divergent point in the graph.
-                    divergent_nodes.append(source_dcnnl)
-                    for i in range(len(forward_map[source_dcnnl].pool_layer)):
-                        
-                        # create edge representing forward through the i-th pooling layer.
-                        pool_name = f'{source_dcnnl}_pool{i}'
-                        new_edges_set.append((source_dcnnl, pool_name))
-
-                        # create forward 'node' for the i-th pooling layer.
-                        if pool_name not in forward_map:
-                            forward_map[pool_name] = copy.deepcopy(forward_map[source_dcnnl].pool_layer[i])
-
-                        # create edge from i-th pooling to its target `DynapcnnLayer`.
-                        new_edge_2_append.append((pool_name, dynapcnn_layers[source_dcnnl]['destinations'][i]))
-
-            # processing the target `DynapcnnLayer`.
-
-            if target_dcnnl not in forward_map:
-                forward_map[target_dcnnl] = copy.deepcopy(dynapcnn_layers[target_dcnnl]['layer'])
-
-                if len(forward_map[target_dcnnl].pool_layer) > 1:
-                    # this `DynapcnnLayer` is a divergent point in the graph.
-                    divergent_nodes.append(target_dcnnl)
-                    for i in range(len(forward_map[target_dcnnl].pool_layer)):
-                        
-                        # create edge representing forward through the i-th pooling layer.
-                        pool_name = f'{target_dcnnl}_pool{i}'
-                        new_edges_set.append((target_dcnnl, pool_name))
-
-                        # create forward 'node' for the i-th pooling layer.
-                        if pool_name not in forward_map:
-                            forward_map[pool_name] = copy.deepcopy(forward_map[target_dcnnl].pool_layer[i])
-
-                        # create edge from i-th pooling to its target `DynapcnnLayer`.
-                        new_edge_2_append.append((pool_name, dynapcnn_layers[target_dcnnl]['destinations'][i]))
-
-            if source_dcnnl not in divergent_nodes and target_dcnnl not in divergent_nodes:
-                # save original edge.
-                new_edges_set.append(edge)
-
-            if len(new_edge_2_append) != 0:
-                new_edges_set.extend(new_edge_2_append)
-
-        forward_edges = self._find_merging_nodes(new_edges_set, forward_map)
-
-        return forward_edges, forward_map
+        self.forward_map, self.merge_points = self._build_module_forward_from_graph_v2(dcnnl_edges, dynapcnn_layers)
     
-    def _find_merging_nodes(self, edges_list: list, forward_map: dict) -> list:
-        """ Loops through the edges and see if a node appeards in more than one edge. If so, this is a node
-        that requires a `Merge` layer. For instance, edges `(A, X)` and `(B, X)` will be replace by two new
-        edges `((A, B), Merge_X)` and `(Merge_X, X)`, where `A` and `B` are the inputs to a `Merge` feeding into `X`.
-        """
-        merge_mapping = {}
+    def _spot_merging_points(self, dcnnl_edges: list) -> dict:
+        """ . """
 
-        for edge in edges_list:
-            src = edge[0]
-            trg = edge[1]
+        nodes_with_merge_input = {}
 
-            if trg in merge_mapping:
-                # node needs to receive input from a `Merge` layer.
-                merge_arguments = (
-                    merge_mapping[trg]['src'],         # merge_arguments[0] = source (from 1st edge containing `trg`).
-                    src)                               # merge_arguments[1] = `src` (the source of the 2nd edge containing `trg`).
+        for edge in dcnnl_edges:
+            trg_node = edge[1]
+            fan_in = 0
+            src_nodes = []
 
-                merge_mapping[trg] = {'src': merge_arguments} 
+            for edge_inner in dcnnl_edges:
+                if edge_inner[1] == trg_node:
+                    fan_in += 1
+                    src_nodes.append(edge_inner[0])
+
+            if fan_in == 2 and trg_node not in nodes_with_merge_input:
+                nodes_with_merge_input[trg_node] = {'sources': tuple(src_nodes), 'merge': sl.Merge()}
+            
+            if fan_in > 2:
+                raise ValueError(f'Node {trg_node} is the has fan-in of {fan_in}: only fan-in of 2 is currently handled.')
+            
+        return nodes_with_merge_input
+
+    
+    def _build_module_forward_from_graph_v2(self, dcnnl_edges: list, dynapcnn_layers: dict) -> Union[dict, dict]:
+        """ ."""
+
+        # mapper to flag nodes that need input from a `Merge` layer.
+        merge_points = self._spot_merging_points(dcnnl_edges)
+
+        # this dict. will be used to call the `forward` methods of each `DynapcnnLayer`.
+        forward_map = {}
+
+        for edge in dcnnl_edges:
+            src_dcnnl = edge[0]     # source layer
+            trg_dcnnl = edge[1]     # target layer
+
+            if src_dcnnl not in forward_map:
+                forward_map[src_dcnnl] = copy.deepcopy(dynapcnn_layers[src_dcnnl]['layer'])
+            
+            if trg_dcnnl not in forward_map:
+                forward_map[trg_dcnnl] = copy.deepcopy(dynapcnn_layers[trg_dcnnl]['layer'])
+
+        return forward_map, merge_points
+    
+    def forward(self, x):
+        """ ."""
+
+        layers_outputs = {}
+
+        #   TODO - currently `node 0` (this 1st node in the 1st edge of `self.dcnnl_edges`) is always taken to be the
+        # input node of the network. This won't work in cases where there are more the one input nodes to the network
+        # so this functionality needs some refactoring.
+        self.forward_map[self.dcnnl_edges[0][0]](x)
+
+        # forward the input `x` through the input `DynapcnnLayer` in the `DynapcnnNetwork`s graph (1st node in the 1st edge in `self.dcnnl_edges`).
+        layers_outputs[self.dcnnl_edges[0][0]] = self.forward_map[self.dcnnl_edges[0][0]](x)
+
+        # propagate outputs in `layers_outputs` through the rest of the nodes of `self.dcnnl_edges`.
+        for edge in self.dcnnl_edges:
+            
+            # target DynapcnnLayer (will consume tensors from `layers_outputs`).
+            trg_dcnnl = edge[1]
+
+            if trg_dcnnl in self.merge_points and trg_dcnnl not in layers_outputs:
+                # by this points the arguments of the `Merge` associated with `trg_dcnnl` should have been computed.
+                arg1, arg2 = self.merge_points[trg_dcnnl]['sources']
+
+                #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
+                # to the target DynapcnnLayer `trg_dcnnl`.
+                return_index_arg1 = self.forward_map[arg1].get_destination_dcnnl_index(trg_dcnnl)
+                return_index_arg2 = self.forward_map[arg2].get_destination_dcnnl_index(trg_dcnnl)
+
+                # retrieve input tensors to `Merge`.
+                _arg1 = layers_outputs[arg1][return_index_arg1]
+                _arg2 = layers_outputs[arg2][return_index_arg2]
+
+                # merge tensors.
+                merge_output = self.merge_points[trg_dcnnl]['merge'](_arg1, _arg2)
+
+                # call the forward.
+                layers_outputs[trg_dcnnl] = self.forward_map[trg_dcnnl](merge_output)
+
+            elif trg_dcnnl not in layers_outputs:
+                # input source for `trg_dcnnl`.
+                src_dcnnl = edge[0]
+
+                #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
+                # to the target DynapcnnLayer `trg_dcnnl`.
+                return_index = self.forward_map[src_dcnnl].get_destination_dcnnl_index(trg_dcnnl)
+
+                # call the forward.
+                layers_outputs[trg_dcnnl] = self.forward_map[trg_dcnnl](layers_outputs[src_dcnnl][return_index])
 
             else:
-                merge_mapping[trg] = {'src': src}
 
-        final_edges = []
-        merge_idx = 0
-
-        # create edges `((A, B), Merge_X)` and `(Merge_X, X)`.
-        for trg, src in merge_mapping.items():
-            _ = src['src']
-
-            if isinstance(_, tuple):
-                # `trg` receives from a `Merge` layer.
-                merge_node = f'merge_{merge_idx}'
-                forward_map[merge_node] = Merge()
-                
-                new_edge = (_, merge_node)
-                final_edges.append(new_edge)
-
-                new_edge = (merge_node, trg)
-                final_edges.append(new_edge)
-
-                merge_idx += 1
-
-            else:
-                final_edges.append((_, trg))
+                pass
         
-        return final_edges
+        # TODO - this assumes the network has a single output node.
+        # last computed is the output layer.
+        return layers_outputs[trg_dcnnl][0]
     
     def parameters(self) -> list:
-        """ ."""
+        """ Gathers all the parameters of the network in a list. This is done by accessing the convolutional layer in each `DynapcnnLayer`, calling 
+        its `.parameters` method and saving it to a list.
+
+        Note: the method assumes no biases are used.
+
+        Returns
+        ----------
+            parameters (list): a list of parameters of all convolutional layers in the `DynapcnnNetwok`.
+        """
         parameters = []
 
-        for layer in self._forward_map.values():
+        for layer in self.forward_map.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
         return parameters
     
-    def init_weights(self):
-        """ ."""
-        for layer in self._forward_map.values():
+    def init_weights(self, init_fn: nn.init = nn.init.xavier_normal_) -> None:
+        """ Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance."""
+        for layer in self.forward_map.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
-                nn.init.xavier_normal_(layer.conv_layer.weight.data)
+                init_fn(layer.conv_layer.weight.data)
 
-    def to(self, device):
+    def to(self, device) -> None:
         """ ."""
-        for layer in self._forward_map.values():
+        for layer in self.forward_map.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
                 layer.conv_layer.to(device)
                 layer.spk_layer.to(device)
@@ -177,36 +172,8 @@ class DynapcnnNetworkModule(nn.Module):
     def detach_neuron_states(self) -> None:
         """ Detach the neuron states and activations from current computation graph (necessary). """
 
-        for module in self._forward_map.values():
+        for module in self.forward_map.values():
             if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
                         buffer.detach_()
-    
-    def forward(self, x):
-        """ The torch forward uses `self._forward_edges` to feed data throguh the 
-        layers in `self._forward_map`.
-        """
-
-        layers_outputs = {}
-
-        # input node has to be `0`.
-        layers_outputs[0] = self._forward_map[0](x)
-
-        for edge in self._forward_edges:
-            src = edge[0]
-            trg = edge[1]
-
-            # gets the input to the target node (must have been computed already).
-            if isinstance(src, tuple):
-                # `trg` is a Merge layer.
-                arg1 = layers_outputs[src[0]]
-                arg2 = layers_outputs[src[1]]
-
-                layers_outputs[trg] = self._forward_map[trg](arg1, arg2)
-                
-            else:
-                x = layers_outputs[src]
-                layers_outputs[trg] = self._forward_map[trg](x)
-
-        return layers_outputs[trg]

@@ -693,7 +693,8 @@ def construct_dynapcnnlayer(
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
         dcnnl_data      = dcnnl_data,
-        discretize      = discretize
+        discretize      = discretize,
+        sinabs_edges    = edges
     )
 
     return dynapcnnlayer
