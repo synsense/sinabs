@@ -95,11 +95,14 @@ class ConfigBuilder(ABC):
         elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
             mapping = get_valid_mapping(model, cls.get_constraints())
 
-            if isinstance(model.dynapcnn_layers[0]['layer'], DVSLayer):
-                pass                                                    # TODO not handling DVSLayer yet.
+            if isinstance(model.forward_map[0], DVSLayer):
+                # TODO not handling DVSLayer yet.
+                # TODO if the architecture has more than one `DynapcnnLayer`s acting as input node of the model
+                # thi check will be wrong since it assumes the network has a single input node `model.forward_map[0]`.
+                pass
 
             for (dcnnl, core_idx) in mapping:
-                model.dynapcnn_layers[dcnnl]['core_idx'] = core_idx
+                model.forward_map[dcnnl].assigned_core = core_idx
 
         else:
             raise InvalidModel(model)

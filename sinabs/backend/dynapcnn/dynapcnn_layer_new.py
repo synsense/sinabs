@@ -131,6 +131,8 @@ class DynapcnnLayer(nn.Module):
         # map destination nodes for each layer in this instance.
         self.nodes_destinations = self._get_destinations_input_source(sinabs_edges)
 
+    ####################################################### Public Methods #######################################################
+
     def get_destination_dcnnl_index(self, dcnnl_id: int) -> int:
         """ The `forward` method will return as many tensors as there are elements in `self.dynapcnnlayer_destination`. Since the i-th returned tensor is to be
         fed to the i-th destionation in `self.dynapcnnlayer_destination`, the return of this method can be used to index a tensor returned in the `forward` method.
@@ -144,33 +146,6 @@ class DynapcnnLayer(nn.Module):
             The index of `dcnnl_id` within `self.dynapcnnlayer_destination`.
         """
         return self.dynapcnnlayer_destination.index(dcnnl_id)
-
-    def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
-        """ Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
-        `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
-        """
-        destinations_input_source = {}
-
-        # check whether spiking layer projects outside this DynapcnnLayer (i.e. to one of the destinations without passing through a pooling).
-        spk_destinations = []
-        for edge in sinabs_edges:
-            if edge[0] == self.spk_node_id and edge[1] not in self.pool_node_id:
-                # spiking layer projects to a node outside this DynapcnnLayer.
-                spk_destinations.append(edge[1])
-        if len(spk_destinations) > 0:
-            destinations_input_source[self.spk_node_id] = []
-            for node_id in spk_destinations:
-                destinations_input_source[self.spk_node_id].append(node_id)
-
-        #   get `pooling->destination` mapping. The pooling outputs will be arranged sequentially since the pooling layers are added sequentially
-        # to `self.pool_layer` (i.e., as they appear in the computational graph of the original `nn.Module`).
-        for id in self.pool_node_id:
-            destinations_input_source[id] = []
-            for edge in sinabs_edges:
-                if edge[0] == id:
-                    destinations_input_source[id].append(edge[1])
-
-        return destinations_input_source
     
     def forward(self, x):
         """Torch forward pass.
@@ -234,64 +209,6 @@ class DynapcnnLayer(nn.Module):
             pass
 
         return tuple(returns)
-    
-    def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
-        """Convert Linear layer to Conv2d.
-
-        Parameters
-        ----------
-            lin: nn.Linear
-                Linear layer to be converted
-
-        Returns
-        -------
-            nn.Conv2d
-                Convolutional layer equivalent to `lin`.
-        """
-        self.lin_to_conv_conversion = True
-
-        input_shape = layer_data['input_shape']
-
-        in_chan, in_h, in_w = input_shape
-
-        if lin.in_features != in_chan * in_h * in_w:
-            raise ValueError("Shapes don't match.")
-
-        layer = nn.Conv2d(
-            in_channels=in_chan,
-            kernel_size=(in_h, in_w),
-            out_channels=lin.out_features,
-            padding=0,
-            bias=lin.bias is not None,
-        )
-
-        if lin.bias is not None:
-            layer.bias.data = lin.bias.data.clone().detach()
-
-        layer.weight.data = (
-            lin.weight.data.clone()
-            .detach()
-            .reshape((lin.out_features, in_chan, in_h, in_w))
-        )
-
-        return layer, input_shape
-    
-    def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: tuple) -> Tuple:
-        """ The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
-        in the edge and setting it as the input shape to the 2nd element in the edge. If a node used to be a `nn.Linear` 
-        and it became a `nn.Conv2d`, output shape in the mapper needs to be updated, otherwise there will be a mismatch
-        between its output and the input it provides to another node.
-        """
-        layer_data['output_shape'] = self.get_conv_output_shape(conv_layer, input_shape)
-
-        return layer_data['output_shape']
-
-    def _update_neuron_node_output_shape(self, layer_data: dict, input_shape: tuple) -> None:
-        """ Following the conversion of a `nn.Linear` into a `nn.Conv2d` the neuron layer in the
-        sequence also needs its I/O shapes uodated.
-        """
-        layer_data['input_shape'] = input_shape
-        layer_data['output_shape'] = layer_data['input_shape']
 
     def get_modified_node_it(self, dcnnl_data: dict) -> Union[Tuple[int, tuple], Tuple[None, None]]:
         """ ."""
@@ -340,7 +257,9 @@ class DynapcnnLayer(nn.Module):
         }
 
     def get_layer_config_dict(self) -> dict:
-        """ Returns a dict containing the properties required to configure a `CNNLayerConfig` instance."""
+        """ Returns a dict containing the properties required to configure a `CNNLayerConfig` instance that
+        will map this DynapcnnLayer onto the chip.
+        """
         config_dict = {}
 
         # configures `CNNLayerConfig.dimensions` (instance of `CNNLayerDimensions`).
@@ -482,3 +401,90 @@ class DynapcnnLayer(nn.Module):
             pretty_print += f'\n> node {node} feeds input to nodes {destinations}'
 
         return pretty_print
+    
+    ####################################################### Private Methods #######################################################
+
+    def _update_neuron_node_output_shape(self, layer_data: dict, input_shape: tuple) -> None:
+        """ Following the conversion of a `nn.Linear` into a `nn.Conv2d` the neuron layer in the
+        sequence also needs its I/O shapes uodated.
+        """
+        layer_data['input_shape'] = input_shape
+        layer_data['output_shape'] = layer_data['input_shape']
+
+    def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: tuple) -> Tuple:
+        """ The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
+        in the edge and setting it as the input shape to the 2nd element in the edge. If a node used to be a `nn.Linear` 
+        and it became a `nn.Conv2d`, output shape in the mapper needs to be updated, otherwise there will be a mismatch
+        between its output and the input it provides to another node.
+        """
+        layer_data['output_shape'] = self.get_conv_output_shape(conv_layer, input_shape)
+
+        return layer_data['output_shape']
+    
+    def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
+        """Convert Linear layer to Conv2d.
+
+        Parameters
+        ----------
+            lin: nn.Linear
+                Linear layer to be converted
+
+        Returns
+        -------
+            nn.Conv2d
+                Convolutional layer equivalent to `lin`.
+        """
+        self.lin_to_conv_conversion = True
+
+        input_shape = layer_data['input_shape']
+
+        in_chan, in_h, in_w = input_shape
+
+        if lin.in_features != in_chan * in_h * in_w:
+            raise ValueError("Shapes don't match.")
+
+        layer = nn.Conv2d(
+            in_channels=in_chan,
+            kernel_size=(in_h, in_w),
+            out_channels=lin.out_features,
+            padding=0,
+            bias=lin.bias is not None,
+        )
+
+        if lin.bias is not None:
+            layer.bias.data = lin.bias.data.clone().detach()
+
+        layer.weight.data = (
+            lin.weight.data.clone()
+            .detach()
+            .reshape((lin.out_features, in_chan, in_h, in_w))
+        )
+
+        return layer, input_shape
+    
+    def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
+        """ Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
+        `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
+        """
+        destinations_input_source = {}
+
+        # check whether spiking layer projects outside this DynapcnnLayer (i.e. to one of the destinations without passing through a pooling).
+        spk_destinations = []
+        for edge in sinabs_edges:
+            if edge[0] == self.spk_node_id and edge[1] not in self.pool_node_id:
+                # spiking layer projects to a node outside this DynapcnnLayer.
+                spk_destinations.append(edge[1])
+        if len(spk_destinations) > 0:
+            destinations_input_source[self.spk_node_id] = []
+            for node_id in spk_destinations:
+                destinations_input_source[self.spk_node_id].append(node_id)
+
+        #   get `pooling->destination` mapping. The pooling outputs will be arranged sequentially since the pooling layers are added sequentially
+        # to `self.pool_layer` (i.e., as they appear in the computational graph of the original `nn.Module`).
+        for id in self.pool_node_id:
+            destinations_input_source[id] = []
+            for edge in sinabs_edges:
+                if edge[0] == id:
+                    destinations_input_source[id].append(edge[1])
+
+        return destinations_input_source

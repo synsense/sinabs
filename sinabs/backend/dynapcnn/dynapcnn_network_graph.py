@@ -1,6 +1,9 @@
-# functionality : ...
-# author        : Willian Soares Girao
-# contact       : williansoaresgirao@gmail.com
+"""
+functionality : extracts the computational graph of a network defined as a `nn.Module` and converts it into a set of `DynapcnnLayer`s
+                that implement a network ()`DynapcnnNetwork`) instance that can be deployed to a Speck chip.
+author        : Willian Soares Girao
+contact       : williansoaresgirao@gmail.com
+"""
 
 import time
 from typing import List, Optional, Sequence, Tuple, Union, Dict
@@ -27,8 +30,6 @@ from .sinabs_edges_handler import merge_handler
 
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 
-# TODO `make_config` and `_make_config` should be merged into a single method.
-
 class DynapcnnNetworkGraph(nn.Module):
     def __init__(
         self,
@@ -43,8 +44,10 @@ class DynapcnnNetworkGraph(nn.Module):
         make the dynapcnn configuration and upload it to DYNAPCNN.
 
         Some of the properties defined within the class constructor are meant to be temporary data structures handling the conversion
-        of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Thus, the following 
-        private properties are delted once a successfull call to `self.to(device='speck...')` is made:
+        of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Once their role
+        in preprocessing `snn` is finished, all required data to train/deploy the `DynapcnnNetwork` instance is within `self._dcnnl_edges`
+        (the connectivity between each `DynapcnnLayer`/core), `self._forward_map` (every `DynapcnnLayer` in the network) and `self._merge_points`
+        (the `DynapcnnLayer`s that need a `Merge` input). Thus, the following private properties are delted as last step of the constructor:
 
         - self._graph_tracer
         - self._sinabs_edges
@@ -55,10 +58,10 @@ class DynapcnnNetworkGraph(nn.Module):
 
         Parameters
         ----------
-            snn : a `nn.Module` implementing a spiking network.
-            input_shape: a description of the input dimensions (features, height, width).
-            dvs_input: wether or not dynapcnn receive input from its DVS camera.
-            discretize: If `True`, discretize the parameters and thresholds. This is needed for uploading 
+            snn (nn.Module): a  implementing a spiking network.
+            input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
+            dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
+            discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading 
                 weights to dynapcnn. Set to `False` only for testing purposes.
         """
         super().__init__()
@@ -98,14 +101,20 @@ class DynapcnnNetworkGraph(nn.Module):
         # these gather all data necessay to implement the forward method for this class.
         self._dcnnl_edges, self._forward_map, self._merge_points = self._get_network_module()
 
-    ####################################################### Public Methods #######################################################
+        # all necessary `DynapcnnLayer` data held in `self._forward_map`: removing intermediary data structures no longer necessary.
+        del self._graph_tracer
+        del self._sinabs_edges
+        del self._sinabs_modules_map
+        del self._nodes_name_remap
+        del self._nodes_to_dcnnl_map
+        del self._dynapcnn_layers
 
+    ####################################################### Public Methods #######################################################
+        
     @property
-    def dynapcnn_layers(self):
-        if hasattr(self, '_dynapcnn_layers'):
-            return self._dynapcnn_layers
-        else:
-            return None
+    def forward_map(self) -> dict:
+        """ This dictionary contains each `DynapcnnLayer` in the model indexed by their ID (layer index). """
+        return self._forward_map
 
     def forward(self, x):
         """ ."""
@@ -251,7 +260,7 @@ class DynapcnnNetworkGraph(nn.Module):
             if device_name in ChipFactory.supported_devices:
                 
                 # generate config.
-                config = self.make_config(
+                config = self._make_config(
                     chip_layers_ordering=chip_layers_ordering,
                     device=device,
                     monitor_layers=monitor_layers,
@@ -307,7 +316,9 @@ class DynapcnnNetworkGraph(nn.Module):
         else:
             raise Exception("Unknown device description.")
         
-    def make_config(
+    ####################################################### Private Methods #######################################################
+
+    def _make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
         device="dynapcnndevkit:0",
@@ -355,30 +366,61 @@ class DynapcnnNetworkGraph(nn.Module):
             ValueError
                 If the generated configuration is not valid for the specified device.
         """
-        config, is_compatible = self._make_config(
-            chip_layers_ordering=chip_layers_ordering,
-            device=device,
-            monitor_layers=monitor_layers,
-            config_modifier=config_modifier,
-        )
+        config_builder = ChipFactory(device).get_config_builder()
 
-        if is_compatible:
+        # TODO not handling DVSLayer yet.
+        has_dvs_layer = isinstance(self._forward_map[0], DVSLayer)
+
+        if chip_layers_ordering == "auto":
+            # figure out mapping of each DynapcnnLayer into one core.
+            chip_layers_ordering = config_builder.get_valid_mapping(self)
+
+        else:
+            # TODO - mapping from each DynapcnnLayer into cores has been provided by the user: NOT IMPLEMENTED YET.
+            if has_dvs_layer:
+                # TODO not handling DVSLayer yet.
+                pass
+
+        # update config.
+        config = config_builder.build_config(self, None)
+
+        # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
+
+        # TODO all this monitoring part needs validation still.
+        monitor_chip_layers = []
+        if monitor_layers is None:
+            # check if any monitoring is enabled (if not, enable monitoring for the last layer).
+            for dcnnl_index, ith_dcnnl in self._forward_map.items():
+                if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
+                    monitor_chip_layers.append(ith_dcnnl.assigned_core)
+                    break
+        elif monitor_layers == "all":
+            for dcnnl_index, ith_dcnnl in self._forward_map.items():
+                # TODO not handling DVSLayer yet
+                # monitor each chip core (if not a DVSLayer).
+                if not isinstance(ith_dcnnl, DVSLayer):
+                    monitor_chip_layers.append(ith_dcnnl.assigned_core)
+        
+        if monitor_layers:
+            if "dvs" in monitor_layers:
+                monitor_chip_layers.append("dvs")
+
+        # enable monitors on the specified layers.
+        config_builder.monitor_layers(config, monitor_chip_layers)
+
+        if config_modifier is not None:
+            # apply user config modifier.
+            config = config_modifier(config)
+
+        if config_builder.validate_configuration(config):
             # validate config.
             print("Network is valid: \n")
-
-            # DynapcnnLayer have been configured: removing intermediary data structures no longer necessary.
-            del self._graph_tracer
-            del self._sinabs_edges
-            del self._sinabs_modules_map
-            del self._nodes_name_remap
-            del self._nodes_to_dcnnl_map
-            del self._dynapcnn_layers
             
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")
-        
-    ####################################################### Private Methods #######################################################
 
     def _get_network_module(self) -> Union[list, dict, dict]:
         """ Uses the `DynapcnnLayer` instances in `self._dynapcnn_layers` and the connectivity between them to create three data structures 
@@ -409,105 +451,6 @@ class DynapcnnNetworkGraph(nn.Module):
                 dcnnl_edges.append((dcnnl_idx, dest))
         
         return dcnnl_edges
-        
-    def _make_config(
-        self,
-        chip_layers_ordering: Union[Sequence[int], str] = "auto",
-        device="dynapcnndevkit:0",
-        monitor_layers: Optional[Union[List, str]] = None,
-        config_modifier=None,
-    ) -> Tuple["SamnaConfiguration", bool]:
-        """Prepare and output the `samna` configuration for this network.
-
-        Parameters
-        ----------
-
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
-
-        device: String
-            dynapcnndevkit, speck2b or speck2devkit
-
-        monitor_layers: None/List/Str
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
-
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
-
-            If this value is left as None, by default the last layer of the model is monitored.
-
-        config_modifier:
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-
-        Returns
-        -------
-        Configuration object
-            Object defining the configuration for the device
-        Bool
-            True if the configuration is valid for the given device.
-
-        Raises
-        ------
-            ImportError
-                If samna is not available.
-        """
-        config_builder = ChipFactory(device).get_config_builder()
-
-        has_dvs_layer = isinstance(self._dynapcnn_layers[0]['layer'], DVSLayer)
-
-        if chip_layers_ordering == "auto":
-            # figure out mapping of each DynapcnnLayer into one core.
-            chip_layers_ordering = config_builder.get_valid_mapping(self)
-
-            # update the `assigned_core` property of each DynapcnnLayer instance.
-            for dcnnl_index, dcnnl_data in self._dynapcnn_layers.items():
-                self._forward_map[dcnnl_index].assigned_core = dcnnl_data['core_idx']
-
-        else:
-            # TODO - mapping from each DynapcnnLayer into cores has been provided by the user: NOT IMPLEMENTED YET.
-            if has_dvs_layer:
-                pass                                                 # TODO not handling DVSLayer yet.
-
-        # update config.
-        config = config_builder.build_config(self, None)
-
-        if self.input_shape and self.input_shape[0] == 1:            # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
-            config.dvs_layer.merge = True
-
-        # TODO all this monitoring part needs validation still.
-        monitor_chip_layers = []
-        if monitor_layers is None:
-            # check if any monitoring is enabled (if not, enable monitoring for the last layer).
-            for _, dcnnl_data in self._dynapcnn_layers.items():
-                if len(dcnnl_data['destinations']) == 0:
-                    monitor_chip_layers.append(dcnnl_data['core_idx'])
-                    break
-        elif monitor_layers == "all":
-            for _, dcnnl_data in self._dynapcnn_layers.items():
-                # monitor each chip core (if not a DVSLayer).
-                if not isinstance(dcnnl_data['layer'], DVSLayer):
-                    monitor_chip_layers.append(dcnnl_data['core_idx'])
-        
-        if monitor_layers:
-            if "dvs" in monitor_layers:
-                monitor_chip_layers.append("dvs")
-
-        # enable monitors on the specified layers.
-        config_builder.monitor_layers(config, monitor_chip_layers)
-
-        if config_modifier is not None:
-            # apply user config modifier.
-            config = config_modifier(config)
-
-        return config, config_builder.validate_configuration(config)
     
     def _get_sinabs_edges_and_modules(self) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module], Dict[int, int]]:
         """ The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be
