@@ -35,6 +35,7 @@ class DynapcnnNetworkGraph(nn.Module):
         self,
         snn: nn.Module,
         input_shape: Tuple[int, int, int],
+        batch_size: int,
         dvs_input: bool = False,
         discretize: bool = True
     ):
@@ -78,7 +79,7 @@ class DynapcnnNetworkGraph(nn.Module):
         # TODO - bacth size must be passed as argument.
         self._graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
-            torch.randn((1, *self.input_shape)))                # needs the batch dimension.        
+            torch.randn((batch_size, *self.input_shape)))                # needs the batch dimension.        
 
         self._sinabs_edges, \
             self._sinabs_modules_map, \
