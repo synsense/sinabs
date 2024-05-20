@@ -4,8 +4,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
 from .dvs_layer import DVSLayer
-# from .dynapcnn_layer import DynapcnnLayer
-from .dynapcnn_layer_new import DynapcnnLayer
+from .dynapcnn_layer import DynapcnnLayer
 
 import sinabs
 from .exceptions import InvalidModel
@@ -48,7 +47,7 @@ def find_chip_layers(
 
 
 def get_valid_mapping(
-    model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], constraints: List[LayerConstraints]
+    model: Union["DynapcnnNetwork"], constraints: List[LayerConstraints]
 ) -> List[Tuple[int, int]]:
     """Given a model, find a valid layer ordering for its placement within the constraints
     provided.
@@ -65,18 +64,6 @@ def get_valid_mapping(
     layer_mapping = []
 
     if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-        for layer in model.sequence:
-            if isinstance(layer, DynapcnnLayer):
-                layer_mapping.append(find_chip_layers(layer, constraints))
-
-        graph = make_flow_graph(layer_mapping, len(constraints))
-
-        # use graph algorithm to find suitable cores for each DynapcnnLayer.
-        new_graph = edmonds(graph, 0, len(graph) - 1)
-
-        netmap = recover_mapping(new_graph, layer_mapping)
-
-    elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
         for dcnnl_index, ith_dcnnl in model.forward_map.items():
             if isinstance(ith_dcnnl, DynapcnnLayer):
                 layer_mapping.append(find_chip_layers(ith_dcnnl, constraints))

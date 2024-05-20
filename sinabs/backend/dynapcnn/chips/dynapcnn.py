@@ -9,8 +9,7 @@ from samna.dynapcnn.configuration import DynapcnnConfiguration
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
-# from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.dynapcnn_layer_new import DynapcnnLayer
+from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 import sinabs
@@ -244,7 +243,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: Union["DynapcnnNetwork", "DynapcnnNetworkGraph"], chip_layers: Union[List[int], None]) -> DynapcnnConfiguration:
+    def build_config(cls, model: Union["DynapcnnNetwork"], chip_layers: Union[List[int], None]) -> DynapcnnConfiguration:
         """ Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
         using using the `DynapcnnLayer` properties. 
 
@@ -263,40 +262,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config = cls.get_default_config()
 
         if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-            """ loops through `DynapcnnNetwork.sequence`, sequentially using the core IDs in `chip_layers` to configure their
-            respective `CNNLayerConfig`.
-            """
-            layers = model.sequence
-
-            has_dvs_layer = False
-            i_cnn_layer = 0  # Instantiate an iterator for the cnn cores
-            _prev_idx = 0
-            for i, chip_equivalent_layer in enumerate(layers):
-                if isinstance(chip_equivalent_layer, DVSLayer):
-                    chip_layer = config.dvs_layer
-                    cls.write_dvs_layer_config(chip_equivalent_layer, chip_layer)
-                    has_dvs_layer = True
-                elif isinstance(chip_equivalent_layer, DynapcnnLayer):
-                    chip_layer = config.cnn_layers[chip_layers[i_cnn_layer]]
-                    cls.write_dynapcnn_layer_config(chip_equivalent_layer, chip_layer)
-                    i_cnn_layer += 1
-                else:
-                    # in our generated network there is a spurious layer...
-                    # should never happen
-                    raise TypeError("Unexpected layer in the model")
-
-                if i == len(layers) - 1:
-                    # last layer
-                    chip_layer.destinations[0].enable = False
-                else:
-                    # Set destination layer
-                    chip_layer.destinations[0].layer = chip_layers[i_cnn_layer]
-                    chip_layer.destinations[0].enable = True
-
-            if not has_dvs_layer:
-                config.dvs_layer.pass_sensor_events = False
-
-        elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
             """ Loops through `DynapcnnNetworkGraph._forward_map`, containing all `DynapcnnLayer`s in the model, their
             core ID to be loaded onto and their target destinations. Each `ith_dcnnl` has all the info. necessary to config.
             their respective `CNNLayerConfig` object.

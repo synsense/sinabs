@@ -83,17 +83,6 @@ class ConfigBuilder(ABC):
 
         if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
             mapping = get_valid_mapping(model, cls.get_constraints())
-            # turn the mapping into a dict
-            mapping = {m[0]: m[1] for m in mapping}
-            # Check if there is a dvs layer in the model
-            num_dynapcnn_cores = len(model.sequence)
-            if isinstance(model.sequence[0], DVSLayer):
-                num_dynapcnn_cores -= 1
-            # apply the mapping
-            chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
-
-        elif type(model) == sinabs.backend.dynapcnn.dynapcnn_network_graph.DynapcnnNetworkGraph:
-            mapping = get_valid_mapping(model, cls.get_constraints())
 
             if isinstance(model.forward_map[0], DVSLayer):
                 # TODO not handling DVSLayer yet.

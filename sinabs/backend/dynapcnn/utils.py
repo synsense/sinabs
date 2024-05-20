@@ -9,8 +9,7 @@ import sinabs.layers as sl
 
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer, expand_to_pair
-#from .dynapcnn_layer import DynapcnnLayer
-from .dynapcnn_layer_new import DynapcnnLayer
+from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer, WrongModuleCount, WrongPoolingModule
 from .flipdims import FlipDims
 
