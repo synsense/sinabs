@@ -6,7 +6,7 @@ contact       : williansoaresgirao@gmail.com
 """
 
 import time
-from typing import List, Optional, Sequence, Tuple, Union, Dict
+from typing import List, Optional, Sequence, Tuple, Union, Dict, Callable
 
 import samna
 import sinabs.layers as sl
@@ -29,6 +29,7 @@ from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
 from .sinabs_edges_handler import merge_handler
 
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
+from .weight_rescaling_methods import rescale_method_1, rescale_method_2
 
 class DynapcnnNetwork(nn.Module):
     def __init__(
@@ -37,13 +38,26 @@ class DynapcnnNetwork(nn.Module):
         input_shape: Tuple[int, int, int],
         batch_size: int,
         dvs_input: bool = False,
-        discretize: bool = True
+        discretize: bool = True,
+        weight_rescaling_fn: Callable = rescale_method_1
     ):
         """
             Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
         test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
         make the dynapcnn configuration and upload it to DYNAPCNN.
 
+        Parameters
+        ----------
+        - snn (nn.Module): a  implementing a spiking network.
+        - input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
+        - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
+        - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading 
+            weights to dynapcnn. Set to `False` only for testing purposes.
+        - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
+            the same convolutional layer are combined/re-scaled before applying them.
+
+        Notes
+        ----------
         Some of the properties defined within the class constructor are meant to be temporary data structures handling the conversion
         of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Once their role
         in preprocessing `snn` is finished, all required data to train/deploy the `DynapcnnNetwork` instance is within `self._dcnnl_edges`
@@ -56,14 +70,6 @@ class DynapcnnNetwork(nn.Module):
         - self._nodes_name_remap
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
-
-        Parameters
-        ----------
-            snn (nn.Module): a  implementing a spiking network.
-            input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
-            dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
-            discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading 
-                weights to dynapcnn. Set to `False` only for testing purposes.
         """
         super().__init__()
 
@@ -95,9 +101,10 @@ class DynapcnnNetwork(nn.Module):
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
         self._dynapcnn_layers = build_from_graph(
-            discretize=discretize,
-            edges=self._sinabs_edges,
-            nodes_to_dcnnl_map=self._nodes_to_dcnnl_map)
+            discretize          = discretize,
+            edges               = self._sinabs_edges,
+            nodes_to_dcnnl_map  = self._nodes_to_dcnnl_map,
+            weight_rescaling_fn = weight_rescaling_fn)
         
         # these gather all data necessay to implement the forward method for this class.
         self._dcnnl_edges, self._forward_map, self._merge_points = self._get_network_module()

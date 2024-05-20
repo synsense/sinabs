@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union, Dict
+from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union, Dict, Callable
 
 import torch
 import torch.nn as nn
@@ -10,7 +10,7 @@ import sinabs.layers as sl
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer, expand_to_pair
 from .dynapcnn_layer import DynapcnnLayer
-from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer, WrongModuleCount, WrongPoolingModule
+from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer, WrongPoolingModule
 from .flipdims import FlipDims
 
 from .sinabs_edges_handler import process_edge, get_dynapcnnlayers_destinations
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 DEFAULT_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)
-
 
 def infer_input_shape(
     layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
@@ -593,25 +592,28 @@ def build_nodes_to_dcnnl_map(layers: Dict[int, nn.Module], edges: List[Tuple[int
 def build_from_graph(
         discretize: bool,
         edges: List[Tuple[int, int]],
-        nodes_to_dcnnl_map: dict) -> dict:
-    """ Parses each edge of a 'sinabs_mode.spiking_model' computational graph. Each node (layer) is assigned to a 
-    DynapcnnLayer object. The target destination of each DynapcnnLayer is computed via edges connecting nodes in 
-    different DynapcnnLayer objects.
+        nodes_to_dcnnl_map: dict,
+        weight_rescaling_fn: Callable) -> dict:
+    """ Parses each edge in `edges`, where each node is a set of layer that will compose a `DynapcnnLayer`. The 
+    target destination of each `DynapcnnLayer` is computed via edges connecting nodes in different `DynapcnnLayer` 
+    instances.
 
     Parameters
     ----------
-        discretize (bool): ...
-        edges (list): edges describing how nodes connect to each other.
-        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    - discretize (bool): if `True` the weights of all convolutional layers are discretized.
+    - edges (list): edges describing how nodes connect to each other.
+    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
+        the same convolutional layer are combined/re-scaled before applying them.
 
     Returns
     ----------
-        dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
+    - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
     """
 
     # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
-    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges)
+    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn)
     
     # initialize attribute holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
     for idx, layer_data in dynapcnn_layers.items():
@@ -624,19 +626,22 @@ def build_from_graph(
 def construct_dynapcnnlayers_from_mapper(
         discretize: bool,
         nodes_to_dcnnl_map: dict,
-        edges: List[Tuple[int, int]]) -> Dict[int, Dict[DynapcnnLayer, List]]:
+        edges: List[Tuple[int, int]],
+        weight_rescaling_fn: Callable) -> Dict[int, Dict[DynapcnnLayer, List]]:
     """ Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
 
     Parameters
     ----------
-        discretize (bool): ...
-        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
-        edges (list): edges describing how nodes connect to each other.
+    - discretize (bool): if `True` the weights of all convolutional layers are discretized.
+    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    - edges (list): edges describing how nodes connect to each other.
+    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
+        the same convolutional layer are combined/re-scaled before applying them.
 
     Returns
     ----------
-        dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
+    - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
     """
 
     dynapcnn_layers = {}
@@ -644,7 +649,7 @@ def construct_dynapcnnlayers_from_mapper(
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
-            dpcnnl_idx, discretize, dcnnl_data, edges, nodes_to_dcnnl_map)
+            dpcnnl_idx, discretize, dcnnl_data, edges, nodes_to_dcnnl_map, weight_rescaling_fn)
         
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
@@ -678,13 +683,20 @@ def construct_dynapcnnlayer(
         discretize: bool,
         dcnnl_data: dict, 
         edges: List[Tuple[int, int]],
-        nodes_to_dcnnl_map: dict) -> DynapcnnLayer:
+        nodes_to_dcnnl_map: dict,
+        weight_rescaling_fn: Callable) -> DynapcnnLayer:
     """ Extract the modules (layers) in a dictionary and uses them to instantiate a DynapcnnLayer object. 
 
     Parameters
     ----------
-        dcnnl_data: contains the nodes to be merged into a DynapcnnLayer, their I/O shapes and the index of the other DynapcnnLayers to
-                    be set as destinations.
+    - dcnnl_data (dict): contains the nodes to be merged into a DynapcnnLayer, their I/O shapes and the index of the other DynapcnnLayers to
+        be set as destinations.
+    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
+        the same convolutional layer are combined/re-scaled before applying them.
+    
+    Returns
+    ----------
+    - 
     """
 
     # convert all AvgPool2d in 'dcnnl_data' into SumPool2d.
@@ -692,10 +704,11 @@ def construct_dynapcnnlayer(
 
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
-        dpcnnl_index    = dpcnnl_idx,
-        dcnnl_data      = dcnnl_data,
-        discretize      = discretize,
-        sinabs_edges    = edges
+        dpcnnl_index        = dpcnnl_idx,
+        dcnnl_data          = dcnnl_data,
+        discretize          = discretize,
+        sinabs_edges        = edges,
+        weight_rescaling_fn = weight_rescaling_fn
     )
 
     return dynapcnnlayer
@@ -724,14 +737,11 @@ def convert_Avg_to_Sum_pooling(dcnnl_data: dict, edges: list, nodes_to_dcnnl_map
                 # find which node `key` will target.
                 for edge in edges:
                     if edge[0] == key:
-                        # find index of DynapcnnLayer where the target of `edge[0]` is.
+                        # find index of `DynapcnnLayer` where the target of `edge[0]` is.
                         trg_dcnnl_idx = find_nodes_dcnnl_idx(edge[1], nodes_to_dcnnl_map)
 
                         # update the rescale factor for the target of node `key`.
-                        if rescale_factor > nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor']:
-                            #   If more than one DynapcnnLayers target `trg_dcnnl_idx` with different rescale
-                            # factors, the highest amongst them is used.
-                            nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor'] = rescale_factor
+                        nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor'].append(rescale_factor)
 
 def find_nodes_dcnnl_idx(node, nodes_to_dcnnl_map):
     """ ."""
@@ -747,7 +757,17 @@ def find_nodes_dcnnl_idx(node, nodes_to_dcnnl_map):
     raise ValueError(f'Node {node} is not part of any dictionary mapping into a DynapcnnLayer.')
 
 def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
-    """ Converts a 'nn.AvgPool2d' into a 'sl.SumPool2d' layer. """
+    """ Converts a `nn.AvgPool2d` into a `sl.SumPool2d` layer.
+    
+    Parameters
+    ----------
+        module (torch.nn.AvgPool2d): the average pooling layer being converted into a sum pooling layer.
+
+    Returns
+    ----------
+        lyr_pool (sinabs.layers.SumPool2d): the equivalent sum pooling layer.
+        rescale_factor (int): the weight re-scaling computed for the weights of the convolution layer targeted by the pooling.
+    """
     
     if isinstance(module, nn.AvgPool2d):
         if module.padding != 0:
@@ -768,12 +788,14 @@ def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
                 f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
             )
 
-    cumulative_pooling = (                  # compute cumulative pooling.
+    # compute cumulative pooling.
+    cumulative_pooling = (
         cumulative_pooling[0] * pooling[0],
         cumulative_pooling[1] * pooling[1],
     )
 
-    if isinstance(module, nn.AvgPool2d):    # update rescaling factor.
+    if isinstance(module, nn.AvgPool2d):
+        # update rescaling factor.
         rescale_factor *= pooling[0] * pooling[1]
 
     lyr_pool = sl.SumPool2d(cumulative_pooling)

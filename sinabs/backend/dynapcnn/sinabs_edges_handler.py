@@ -202,9 +202,10 @@ def get_dynapcnnlayers_destinations(layers: Dict[int, nn.Module], edges: List[Tu
                 else:
                     raise InvalidLayerLoop(source_layer, destination_layer)
                 
-    for dcnnl_idx, destinations in dynapcnnlayers_destinations_map.items():     # TODO document the 'rescale_factor' better.
-        mapper[dcnnl_idx]['destinations'] = destinations            
-        mapper[dcnnl_idx]['conv_rescale_factor'] = 1
+    for dcnnl_idx, destinations in dynapcnnlayers_destinations_map.items():
+        # TODO document the 'rescale_factor' better.
+        mapper[dcnnl_idx]['destinations'] = destinations
+        mapper[dcnnl_idx]['conv_rescale_factor'] = []
                 
 def get_dynapcnnlayer_index(node: int, mapper: dict) -> int:
     """ Returns the DynapcnnLayer index to which 'node' belongs to. """

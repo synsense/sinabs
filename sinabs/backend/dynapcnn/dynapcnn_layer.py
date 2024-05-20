@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Callable, Tuple, Union
 from warnings import warn
 
 import numpy as np
@@ -10,29 +10,31 @@ import sinabs.activation
 import sinabs.layers as sl
 
 from .discretize import discretize_conv_spike_
-from .dvs_layer import expand_to_pair
 
 class DynapcnnLayer(nn.Module):
-    """Create a DynapcnnLayer object representing a dynapcnn layer. """
+    """
+    Create a DynapcnnLayer object representing a dynapcnn layer.
+
+    Parameters
+    ----------
+    - dpcnnl_index (int): ...
+    - dcnnl_data (dict): ...
+    - discretize (bool): ...
+    - sinabs_edges (list): ...
+    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
+        the same convolutional layer are combined/re-scaled before applying them.
+    """
 
     def __init__(
         self,
         dpcnnl_index: int,
         dcnnl_data: dict, 
         discretize: bool,
-        sinabs_edges: list
+        sinabs_edges: list,
+        weight_rescaling_fn: Callable
     ):
         super().__init__()
-        """
-        ...
 
-        Parameters
-        ----------
-            dpcnnl_index (int): ...
-            dcnnl_data (dict): ...
-            discretize (bool): ...
-            sinabs_edges (list): ...
-        """
         self.dpcnnl_index = dpcnnl_index
         self.assigned_core = None
 
@@ -51,6 +53,7 @@ class DynapcnnLayer(nn.Module):
 
         pool = []
         self.pool_node_id = []
+        self.conv_rescaling_factor = None
         
         self.dynapcnnlayer_destination = dcnnl_data['destinations']
 
@@ -106,9 +109,13 @@ class DynapcnnLayer(nn.Module):
         self.conv_in_shape = dcnnl_data[self.conv_node_id]['input_shape']
 
         # this weight rescale comes from the node projecting into this 'conv' node.
-        if dcnnl_data['conv_rescale_factor'] != 1:
-            # this has to be done after copying but before discretizing
-            conv.weight.data = (conv.weight / dcnnl_data['conv_rescale_factor']).clone().detach()
+        if len(dcnnl_data['conv_rescale_factor']):
+            # this means an `AvgPool2d` has been converted into a `SumPool2d`.
+            self.conv_rescaling_factor = weight_rescaling_fn(dcnnl_data['conv_rescale_factor'])
+            conv.weight.data = (conv.weight.data / self.conv_rescaling_factor).clone().detach()
+        else:
+            # this means `SumPool2d` have been used from the start.
+            conv.weight.data = (conv.weight.data).clone().detach()
 
         # int conversion is done while writing the config.
         if discretize:
@@ -394,6 +401,7 @@ class DynapcnnLayer(nn.Module):
                 pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
 
         pretty_print += '\n\nMETADATA:\n'
+        pretty_print += f'\n> convolution\'s weight re-scaling factor: {self.conv_rescaling_factor}'
         pretty_print += f'\n> assigned core index: {self.assigned_core}'
         pretty_print += f'\n> destination DynapcnnLayers: {self.dynapcnnlayer_destination}'
 
