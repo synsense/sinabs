@@ -31,6 +31,8 @@ from .sinabs_edges_handler import merge_handler
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .weight_rescaling_methods import rescale_method_1, rescale_method_2
 
+from .dynapcnn_layer import DynapcnnLayer
+
 class DynapcnnNetwork(nn.Module):
     def __init__(
         self,
@@ -120,12 +122,28 @@ class DynapcnnNetwork(nn.Module):
     ####################################################### Public Methods #######################################################
         
     @property
-    def forward_map(self) -> dict:
-        """ This dictionary contains each `DynapcnnLayer` in the model indexed by their ID (layer index). """
+    def forward_map(self) -> Dict[int, DynapcnnLayer]:
+        """ This dictionary contains each `DynapcnnLayer` in the model indexed by their ID (layer index). 
+
+        Returns
+        ----------
+        - self._forward_map (dict): a mapper used to forward data through the `DynapcnnNetwork` instance when  `self.forward` is called.
+        """
         return self._forward_map
 
     def forward(self, x):
-        """ ."""
+        """ Forwards data through the `DynapcnnNetwork` instance. This method relies on three main data structures created to represent
+        the `DynapcnnLayer`s in the network and the data propagation through them during the forward pass:
+
+        - `self._dcnnl_edges` (list): this is used to guide the sequence in which the `DynapcnnLayer`s in `self._forward_map` are to be called
+            to generate the input tensors to be propagated through the network during the forward pass. This list of edges represent the graph
+            describing the interactions between each `DynapcnnLayer` (the nodes in the edges are the indices of these layers).
+        - `self._forward_map` (dict): a mapper used to forward data through the `DynapcnnNetwork` instances. Each `key` is the indice associated
+            with a `DynapcnnLayer` instance. The edges in `self._dcnnl_edges` are accessed sequentially and each node in an edge is used to index
+            a forward call via `self._forward_map`.
+        - `self._merge_points` (dict): this mapper has a "support" role. It indexes wich convolutional layers in the set of `DynapcnnLayer`s
+            composing the network require two sources of input (because their input tensor is the output of a `Merge` layer).
+        """
 
         layers_outputs = {}
 
@@ -182,14 +200,14 @@ class DynapcnnNetwork(nn.Module):
         return layers_outputs[trg_dcnnl][0]
     
     def parameters(self) -> list:
-        """ Gathers all the parameters of the network in a list. This is done by accessing the convolutional layer in each `DynapcnnLayer`, calling 
-        its `.parameters` method and saving it to a list.
+        """ Gathers all the parameters of the network in a list. This is done by accessing the convolutional layer in each `DynapcnnLayer`, 
+        calling its `.parameters` method and saving it to a list.
 
         Note: the method assumes no biases are used.
 
         Returns
         ----------
-            parameters (list): a list of parameters of all convolutional layers in the `DynapcnnNetwok`.
+        - parameters (list): a list of parameters of all convolutional layers in the `DynapcnnNetwok`.
         """
         parameters = []
 
@@ -200,7 +218,12 @@ class DynapcnnNetwork(nn.Module):
         return parameters
     
     def init_weights(self, init_fn: nn.init = nn.init.xavier_normal_) -> None:
-        """ Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance."""
+        """ Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance.
+
+        Parameters
+        ----------
+        - init_fn (torch.nn.init): the weight initialization method to be used.
+        """
         for layer in self._forward_map.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
@@ -434,13 +457,15 @@ class DynapcnnNetwork(nn.Module):
         """ Uses the `DynapcnnLayer` instances in `self._dynapcnn_layers` and the connectivity between them to create three data structures 
         that guide the data forwarding between the layer during the forward pass.
 
-        Note: the property `DynapcnnLayer.assigned_core` is only set after `self.to(device='speck...')` is called.
-
         Returns
         ----------
-            dcnnl_edges (list): edges, represented as tuples of `DynapcnnLayer` indices, used to guide the data forwarding through each `DynapcnnLayer` in forward method.
-            forward_map (dict): have all the `DynapcnnLayer` (`value`), each being accessible via its index (`key`). Used to call `DynapcnnLayer.forward` in forward method.
-            merge_points (dict): used to compose the inputs to a `DynapcnnLayer` that requires an input from a `Merge` layer.
+        - dcnnl_edges (list): edges, represented as tuples of `DynapcnnLayer` indices, used to guide the data forwarding through each `DynapcnnLayer` in forward method.
+        - forward_map (dict): have all the `DynapcnnLayer` (`value`), each being accessible via its index (`key`). Used to call `DynapcnnLayer.forward` in forward method.
+        - merge_points (dict): used to compose the inputs to a `DynapcnnLayer` that requires an input from a `Merge` layer.
+
+        Notes
+        ----------
+        - the property `DynapcnnLayer.assigned_core` is only set after `self.to(device='speck...')` is called.
         """
 
         # get connections between `DynapcnnLayer`s.
