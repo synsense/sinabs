@@ -174,7 +174,7 @@ def construct_dynapcnnlayers_from_mapper(
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
-            dpcnnl_idx, discretize, dcnnl_data, edges, nodes_to_dcnnl_map, weight_rescaling_fn)
+            dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn)
         
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
@@ -206,31 +206,38 @@ def update_nodes_io(updated_node: int, output_shape: tuple, nodes_to_dcnnl_map: 
 def construct_dynapcnnlayer(
         dpcnnl_idx: int,
         discretize: bool,
-        dcnnl_data: dict, 
         edges: List[Tuple[int, int]],
-        nodes_to_dcnnl_map: dict,
+        nodes_to_dcnnl_map: Dict[int, Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]]]],
         weight_rescaling_fn: Callable) -> DynapcnnLayer:
-    """ Extract the modules (layers) in a dictionary and uses them to instantiate a DynapcnnLayer object. 
+    """ Extract the modules (layers) in a dictionary and uses them to instantiate a `DynapcnnLayer` object. 
 
     Parameters
     ----------
-    - dcnnl_data (dict): contains the nodes to be merged into a DynapcnnLayer, their I/O shapes and the index of the other DynapcnnLayers to
-        be set as destinations.
+    - dpcnnl_idx (int): the index/ID that will be associated with a `DynapcnnLayer` instance. This integer indexes a `dict` within `nodes_to_dcnnl_map`
+        containing the data required to create the instance returned by this function.
+    - discretize (bool): whether or not the weights/neuron parameters of the model will be quantized.
+    - edges (list): each `nn.Module` within `nodes_to_dcnnl_map[dpcnnl_idx]` is a node in the original computational graph describing a spiking network
+        being converted to a `DynapcnnNetwork`. An edge `(A, B)` describes how modules forward data amongst themselves. This list is used by a `DynapcnnLayer` 
+        to figure out the number and sequence of output tesnors its forward method needs to return.
+    - nodes_to_dcnnl_map (dict): contains all layers (`nn.Module`) in the original spiking network grouped into dictionaries gathering the data necessary
+        to instantiate a `DynapcnnLayer`. A `nodes_to_dcnnl_map[dpcnnl_idx]` will contain `int` keys (whose value corresponds to a `dict` with a `nn.Module` 
+        instance and its associated I/O shapes, i.e., one layer within the `DynapcnnLayer` instance) or `str` keys (whose values correspond to a list of
+        integers corresponding to either destinations IDs or re-scaling factors).
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-        the same convolutional layer are combined/re-scaled before applying them.
+        the same convolutional layer are combined/re-scaled before being applied.
     
     Returns
     ----------
-    - 
+    - dynapcnnlayer (DynapcnnLayer): the a `DynapcnnLayer` instance made up by all the layers (`nn.Module`) in `dcnnl_data`.
     """
 
     # convert all AvgPool2d in 'dcnnl_data' into SumPool2d.
-    convert_Avg_to_Sum_pooling(dcnnl_data, edges, nodes_to_dcnnl_map)
+    convert_Avg_to_Sum_pooling(nodes_to_dcnnl_map[dpcnnl_idx], edges, nodes_to_dcnnl_map)
 
     # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
     dynapcnnlayer = DynapcnnLayer(
         dpcnnl_index        = dpcnnl_idx,
-        dcnnl_data          = dcnnl_data,
+        dcnnl_data          = nodes_to_dcnnl_map[dpcnnl_idx],
         discretize          = discretize,
         sinabs_edges        = edges,
         weight_rescaling_fn = weight_rescaling_fn
@@ -238,15 +245,25 @@ def construct_dynapcnnlayer(
 
     return dynapcnnlayer
 
-def convert_Avg_to_Sum_pooling(dcnnl_data: dict, edges: list, nodes_to_dcnnl_map: dict):
+def convert_Avg_to_Sum_pooling(
+        dcnnl_data: Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]]], 
+        edges: List[Tuple[int, int]],
+        nodes_to_dcnnl_map: Dict[int, Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]]]]) -> None:
     """ Converts every `AvgPool2d` node within `dcnnl_data` into a `SumPool2d` and update their respective `rescale_factor` (to
     be used when creating the `DynapcnnLayer` instance for this layer's destinations).
 
     Parameters
     ----------
-        dcnnl_data: ...
-        edges: ...
-        nodes_to_dcnnl_map: ...
+    - dcnnl_data (dict): contains the nodes to be merged into a `DynapcnnLayer`, their I/O shapes and the index of the other `DynapcnnLayer`s to
+        be set as destinations. The `int` keys correspond to the nodes IDs associated `nn.Module`s (a single layer in the original network) becoming
+        part of a single `DynapcnnLayer` instance, while the `str` keys correspond to the instance's destinations and re-scaling factors.
+    - edges (list): each node is a `nn.Module` in the original computational graph describing a spiking network being converted to a `DynapcnnNetwork`. The
+        list is used to find the targets of a `SumPool2d` (part of the `DynapcnnLayer` instance being created) and update the re-scaling factor they will
+        require.
+    - nodes_to_dcnnl_map (dict): contains all layers (`nn.Module`) in the original spiking network grouped into dictionaries gathering the data necessary
+        to instantiate a `DynapcnnLayer`. A `nodes_to_dcnnl_map[dpcnnl_idx]` will contain `int` keys (whose value corresponds to a `dict` with a `nn.Module` 
+        instance and its associated I/O shapes, i.e., one layer within the `DynapcnnLayer` instance) or `str` keys (whose values correspond to a list of
+        integers corresponding to either destinations IDs or re-scaling factors).
     """
     for key, value in dcnnl_data.items():
         if isinstance(key, int):

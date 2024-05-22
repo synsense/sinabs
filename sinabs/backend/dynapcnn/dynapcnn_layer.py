@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import Dict, Callable, Tuple, Union
+from typing import Dict, Callable, Tuple, Union, List
 from warnings import warn
 
 import numpy as np
@@ -13,14 +13,19 @@ from .discretize import discretize_conv_spike_
 
 class DynapcnnLayer(nn.Module):
     """
-    Create a DynapcnnLayer object representing a dynapcnn layer.
+    Create a `DynapcnnLayer` object representing a layer on a Speck device.
 
     Parameters
     ----------
-    - dpcnnl_index (int): ...
-    - dcnnl_data (dict): ...
-    - discretize (bool): ...
-    - sinabs_edges (list): ...
+    - dpcnnl_index (int): the index/ID that will be associated with a `DynapcnnLayer` instance. This integer indexes a `dict` within `dcnnl_data`
+        that comprises a set of layers (`nn.Module`) and their respective I/O tensor shapes.
+    - dcnnl_data (dict): contains the nodes to be merged into this `DynapcnnLayer`, their I/O shapes and the index of the other `DynapcnnLayer`s to
+        be set as destinations. The `int` keys correspond to the nodes IDs associated `nn.Module`s (a single layer in the original network) becoming
+        part of this `DynapcnnLayer` instance, while the `str` keys correspond to this instance's destinations and re-scaling factors.
+    - discretize (bool): whether or not the weights/neuron parameters of the model will be quantized.
+    - sinabs_edges (list): each `nn.Module` within `dcnnl_data` is a node in the original computational graph describing a spiking network. An edge
+        `(A, B)` describes how modules forward data amongst themselves. This list is used by a `DynapcnnLayer` to figure out the number and
+        sequence of output tesnors its forward method needs to return.
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
     """
@@ -28,9 +33,9 @@ class DynapcnnLayer(nn.Module):
     def __init__(
         self,
         dpcnnl_index: int,
-        dcnnl_data: dict, 
+        dcnnl_data: Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int], Tuple[int, int, int]]], List[int]]], 
         discretize: bool,
-        sinabs_edges: list,
+        sinabs_edges: List[Tuple[int, int]],
         weight_rescaling_fn: Callable
     ):
         super().__init__()
@@ -473,6 +478,10 @@ class DynapcnnLayer(nn.Module):
     def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
         """ Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
         `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
+
+        Returns
+        ----------
+        - destinations_input_source (dict): maps a `nn.Module` within this `DynapcnnLayer` to the nodes it provides the input to.
         """
         destinations_input_source = {}
 
