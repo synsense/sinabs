@@ -28,6 +28,7 @@ class DynapcnnLayer(nn.Module):
         sequence of output tesnors its forward method needs to return.
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
+    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
     """
 
     def __init__(
@@ -36,12 +37,14 @@ class DynapcnnLayer(nn.Module):
         dcnnl_data: Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int], Tuple[int, int, int]]], List[int]]], 
         discretize: bool,
         sinabs_edges: List[Tuple[int, int]],
-        weight_rescaling_fn: Callable
+        weight_rescaling_fn: Callable,
+        flagged_input_nodes: List[int]
     ):
         super().__init__()
 
         self.dpcnnl_index = dpcnnl_index
         self.assigned_core = None
+        self.entry_point = False
 
         if 'core_idx' in dcnnl_data:
             self.assigned_core = dcnnl_data['core_idx']
@@ -91,6 +94,9 @@ class DynapcnnLayer(nn.Module):
             # TODO hacky stuff: make it better (THIS SEEMS TO BE FIXING THE PROBLEM ABOVE THO).
             if len(list(spk.v_mem.shape)) != 4:
                 spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
+
+                if self.dpcnnl_index == 5:
+                    print(' **************88888888888888888888888 ', spk.v_mem.shape)
 
         if isinstance(conv, nn.Linear):
             # A `nn.Linear` needs to be converted into `nn.Conv2d`. The I/O shapes of the spiking layer are updated 
@@ -146,6 +152,10 @@ class DynapcnnLayer(nn.Module):
         # map destination nodes for each layer in this instance.
         self.nodes_destinations = self._get_destinations_input_source(sinabs_edges)
 
+        # flag if the instance is an entry point (i.e., an input node of the network).
+        if self.conv_node_id in flagged_input_nodes:
+            self.entry_point = True
+
     ####################################################### Public Methods #######################################################
 
     def get_destination_dcnnl_index(self, dcnnl_id: int) -> int:
@@ -190,6 +200,9 @@ class DynapcnnLayer(nn.Module):
         
         x = self.conv_layer(x)
         x = self.spk_layer(x)
+
+        if self.dpcnnl_index == 5:
+            print('NEURON OUTPUT: ', x.shape)
 
         # pooling layers are sequentially added to `self.pool_layer` so we'll pass data to them sequentially.
         pooling_indexer = 0
@@ -435,6 +448,7 @@ class DynapcnnLayer(nn.Module):
                 pretty_print += f'\n(node {self.pool_node_id[idx]}): {lyr}'
 
         pretty_print += '\n\nMETADATA:\n'
+        pretty_print += f'\n> network\'s entry point: {self.entry_point}'
         pretty_print += f'\n> convolution\'s weight re-scaling factor: {self.conv_rescaling_factor}'
         pretty_print += f'\n> assigned core index: {self.assigned_core}'
         pretty_print += f'\n> destination DynapcnnLayers: {self.dynapcnnlayer_destination}'
@@ -454,10 +468,15 @@ class DynapcnnLayer(nn.Module):
         - spiking_layer_data (dict): the dictionary containing all data regarding the spiking layer.
         - conv_out_shape (tuple): the output shape of the convolution layer preceeding the spiking layer.
         """
+
         # spiking layer consumes the tensor coming out of the conv. layer.
         spiking_layer_data['input_shape'] = conv_out_shape
         # spiking layer outputs the same shape as the conv. layer.
         spiking_layer_data['output_shape'] = spiking_layer_data['input_shape']
+
+
+        if self.dpcnnl_index == 5:
+            print('>>>>> ', spiking_layer_data['output_shape'])
 
     def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: Tuple[int, int, int]) -> Tuple[int, int, int]:
         """ Updates the shape of the output tensor of a node that used to be a `nn.Linear` and became a `nn.Conv2d`.

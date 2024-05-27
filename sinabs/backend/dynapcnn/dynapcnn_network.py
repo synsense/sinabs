@@ -5,7 +5,7 @@ author        : Willian Soares Girao
 contact       : williansoaresgirao@gmail.com
 """
 
-import time
+import time, copy
 from typing import List, Optional, Sequence, Tuple, Union, Dict, Callable
 
 import samna
@@ -72,6 +72,7 @@ class DynapcnnNetwork(nn.Module):
         - self._nodes_name_remap
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
+        - self._flagged_input_nodes
         """
         super().__init__()
 
@@ -87,7 +88,9 @@ class DynapcnnNetwork(nn.Module):
         # TODO - bacth size must be passed as argument.
         self._graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
-            torch.randn((batch_size, *self.input_shape)))                # needs the batch dimension.        
+            torch.randn((batch_size, *self.input_shape)))                # needs the batch dimension.
+
+        self._flagged_input_nodes = copy.deepcopy(self._graph_tracer.flagged_input_nodes)
 
         self._sinabs_edges, \
             self._sinabs_modules_map, \
@@ -97,19 +100,33 @@ class DynapcnnNetwork(nn.Module):
         self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
             layers=self._sinabs_modules_map, 
             edges=self._sinabs_edges)
+
+        # print('-----------------------------------------------------------------')
+        # for edge in self._sinabs_edges:
+        #     print(edge)
+        # print('-----------------------------------------------------------------')
         
         # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
         self._populate_nodes_io()
+
+        # print('-----------------------------------------------------------------')
+        # for key, val in self._nodes_to_dcnnl_map.items():
+        #     print(key, val)
+        # print('-----------------------------------------------------------------')
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
         self._dynapcnn_layers = build_from_graph(
             discretize          = discretize,
             edges               = self._sinabs_edges,
             nodes_to_dcnnl_map  = self._nodes_to_dcnnl_map,
-            weight_rescaling_fn = weight_rescaling_fn)
+            weight_rescaling_fn = weight_rescaling_fn,
+            flagged_input_nodes = self._flagged_input_nodes)
         
         # these gather all data necessay to implement the forward method for this class.
-        self._dcnnl_edges, self._forward_map, self._merge_points = self._get_network_module()
+        self._dcnnl_edges, self._forward_map, self._merge_points, self._topological_order = self._get_network_module()
+
+        # for edge in self._dcnnl_edges:
+        #     print(edge)
 
         # all necessary `DynapcnnLayer` data held in `self._forward_map`: removing intermediary data structures no longer necessary.
         del self._graph_tracer
@@ -118,6 +135,7 @@ class DynapcnnNetwork(nn.Module):
         del self._nodes_name_remap
         del self._nodes_to_dcnnl_map
         del self._dynapcnn_layers
+        del self._flagged_input_nodes
 
     ####################################################### Public Methods #######################################################
         
@@ -135,9 +153,11 @@ class DynapcnnNetwork(nn.Module):
         """ Forwards data through the `DynapcnnNetwork` instance. This method relies on three main data structures created to represent
         the `DynapcnnLayer`s in the network and the data propagation through them during the forward pass:
 
-        - `self._dcnnl_edges` (list): this is used to guide the sequence in which the `DynapcnnLayer`s in `self._forward_map` are to be called
-            to generate the input tensors to be propagated through the network during the forward pass. This list of edges represent the graph
-            describing the interactions between each `DynapcnnLayer` (the nodes in the edges are the indices of these layers).
+        - `self._topological_order` (list): this is used to guide the sequence in which the `DynapcnnLayer`s in `self._forward_map` are to be called
+            to generate the input tensors to be propagated through the network during the forward pass.
+        - `self._dcnnl_edges` (list): this list of edges represent the graph describing the interactions between each `DynapcnnLayer` (the nodes in 
+            the edges are the indices of these layers). An `edge` is used to index a mapper (using `edge[0]`) in order to retrieve the output to be fed
+            as input to a `DynapcnnLayer` instance (indexed by `edge[1]`).
         - `self._forward_map` (dict): a mapper used to forward data through the `DynapcnnNetwork` instances. Each `key` is the indice associated
             with a `DynapcnnLayer` instance. The edges in `self._dcnnl_edges` are accessed sequentially and each node in an edge is used to index
             a forward call via `self._forward_map`.
@@ -147,57 +167,57 @@ class DynapcnnNetwork(nn.Module):
 
         layers_outputs = {}
 
-        #   TODO - currently `node 0` (this 1st node in the 1st edge of `self._dcnnl_edges`) is always taken to be the
-        # input node of the network. This won't work in cases where there are more the one input nodes to the network
-        # so this functionality needs some refactoring.
-        self._forward_map[self._dcnnl_edges[0][0]](x)
+        print(self._topological_order)
 
-        # forward the input `x` through the input `DynapcnnLayer` in the `DynapcnnNetwork`s graph (1st node in the 1st edge in `self._dcnnl_edges`).
-        layers_outputs[self._dcnnl_edges[0][0]] = self._forward_map[self._dcnnl_edges[0][0]](x)
+        for i in self._topological_order:
 
-        # propagate outputs in `layers_outputs` through the rest of the nodes of `self._dcnnl_edges`.
-        for edge in self._dcnnl_edges:
-            
-            # target DynapcnnLayer (will consume tensors from `layers_outputs`).
-            trg_dcnnl = edge[1]
-
-            if trg_dcnnl in self._merge_points and trg_dcnnl not in layers_outputs:
-                # by this points the arguments of the `Merge` associated with `trg_dcnnl` should have been computed.
-                arg1, arg2 = self._merge_points[trg_dcnnl]['sources']
-
-                #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
-                # to the target DynapcnnLayer `trg_dcnnl`.
-                return_index_arg1 = self._forward_map[arg1].get_destination_dcnnl_index(trg_dcnnl)
-                return_index_arg2 = self._forward_map[arg2].get_destination_dcnnl_index(trg_dcnnl)
-
-                # retrieve input tensors to `Merge`.
-                _arg1 = layers_outputs[arg1][return_index_arg1]
-                _arg2 = layers_outputs[arg2][return_index_arg2]
-
-                # merge tensors.
-                merge_output = self._merge_points[trg_dcnnl]['merge'](_arg1, _arg2)
-
-                # call the forward.
-                layers_outputs[trg_dcnnl] = self._forward_map[trg_dcnnl](merge_output)
-
-            elif trg_dcnnl not in layers_outputs:
-                # input source for `trg_dcnnl`.
-                src_dcnnl = edge[0]
-
-                #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
-                # to the target DynapcnnLayer `trg_dcnnl`.
-                return_index = self._forward_map[src_dcnnl].get_destination_dcnnl_index(trg_dcnnl)
-
-                # call the forward.
-                layers_outputs[trg_dcnnl] = self._forward_map[trg_dcnnl](layers_outputs[src_dcnnl][return_index])
+            if self._forward_map[i].entry_point:
+                # `DynapcnnLayer i` is an entry point of the network.
+                layers_outputs[i] = self._forward_map[i](x)
 
             else:
+                # input to `DynapcnnLayer i` is the output of another instance.
 
-                pass
+                if i in self._merge_points and i not in layers_outputs:
+                    # there are two sources of input for `DynapcnnLayer i`.
+
+                    # by this points the arguments of the `Merge` associated with `i` should have been computed due to the topological sorting.
+                    arg1, arg2 = self._merge_points[i]['sources']
+
+                    #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
+                    # to the target DynapcnnLayer `i`.
+                    return_index_arg1 = self._forward_map[arg1].get_destination_dcnnl_index(i)
+                    return_index_arg2 = self._forward_map[arg2].get_destination_dcnnl_index(i)
+
+                    # retrieve input tensors to `Merge`.
+                    _arg1 = layers_outputs[arg1][return_index_arg1]
+                    _arg2 = layers_outputs[arg2][return_index_arg2]
+
+                    # merge tensors.
+                    merge_output = self._merge_points[i]['merge'](_arg1, _arg2)
+
+                    # call the forward.
+                    layers_outputs[i] = self._forward_map[i](merge_output)
+
+                elif i not in layers_outputs:
+                    # there's a single source of input for `DynapcnnLayer i`.
+
+                    # input source for `i`.
+                    src_dcnnl = self._get_input_to_dcnnl(i)
+
+                    #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
+                    # to the target DynapcnnLayer `i`.
+                    return_index = self._forward_map[src_dcnnl].get_destination_dcnnl_index(i)
+
+                    # call the forward.
+                    layers_outputs[i] = self._forward_map[i](layers_outputs[src_dcnnl][return_index])
+
+                else:
+
+                    pass
         
         # TODO - this assumes the network has a single output node.
-        # last computed is the output layer.
-        return layers_outputs[trg_dcnnl][0]
+        return layers_outputs[self._topological_order[-1]][0]
     
     def parameters(self) -> list:
         """ Gathers all the parameters of the network in a list. This is done by accessing the convolutional layer in each `DynapcnnLayer`, 
@@ -349,6 +369,13 @@ class DynapcnnNetwork(nn.Module):
         
     ####################################################### Private Methods #######################################################
 
+    def _get_input_to_dcnnl(self, dcnnl_ID) -> int:
+        """ . """
+        for edge in self._dcnnl_edges:
+            if edge[1] == dcnnl_ID:
+                return edge[0]
+        raise ValueError(f'DynapcnnLayer {dcnnl_ID} has no source of input.')
+
     def _make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
@@ -473,7 +500,7 @@ class DynapcnnNetwork(nn.Module):
 
         dcnnnet_module = DynapcnnNetworkModule(dcnnl_edges, self._dynapcnn_layers)
 
-        return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points
+        return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points, dcnnnet_module.get_topological_sort()
     
     def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
         """ Create edges representing connections between `DynapcnnLayer` instances. """
@@ -511,6 +538,12 @@ class DynapcnnNetwork(nn.Module):
 
         # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
         edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)
+
+        # original nodes flagged as input nodes (i.e., entry points of the network) might have been renamed: update list flaggind them.
+        temp = []
+        for i in range(len(self._flagged_input_nodes)):
+            temp.append(remapped_nodes[self._flagged_input_nodes[i]])
+        self._flagged_input_nodes = temp
 
         return edges_without_merge, sinabs_modules_map, remapped_nodes
     

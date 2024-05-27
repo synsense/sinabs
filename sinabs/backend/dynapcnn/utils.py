@@ -80,13 +80,13 @@ def build_nodes_to_dcnnl_map(layers: Dict[int, nn.Module], edges: List[Tuple[int
 
     Parameters
     ---------
-        layers (dict): constains the nodes of a graph as `key` and their associated module as `value`.
-        edges (list): edges describing how nodes connect to each other.
+    - layers (dict): constains the nodes of a graph as `key` and their associated module as `value`.
+    - edges (list): edges describing how nodes connect to each other.
 
     Returns
     ---------
-        nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-            their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes, 
+        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
     """
     # @TODO the graph extraction is not yet considering DVS input.
 
@@ -118,7 +118,8 @@ def build_from_graph(
         discretize: bool,
         edges: List[Tuple[int, int]],
         nodes_to_dcnnl_map: dict,
-        weight_rescaling_fn: Callable) -> dict:
+        weight_rescaling_fn: Callable,
+        flagged_input_nodes: List[int]) -> dict:
     """ Parses each edge in `edges`, where each node is a set of layer that will compose a `DynapcnnLayer`. The 
     target destination of each `DynapcnnLayer` is computed via edges connecting nodes in different `DynapcnnLayer` 
     instances.
@@ -131,6 +132,7 @@ def build_from_graph(
         their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
+    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
 
     Returns
     ----------
@@ -138,7 +140,7 @@ def build_from_graph(
     """
 
     # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
-    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn)
+    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, flagged_input_nodes)
     
     # initialize attribute holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
     for idx, layer_data in dynapcnn_layers.items():
@@ -152,7 +154,8 @@ def construct_dynapcnnlayers_from_mapper(
         discretize: bool,
         nodes_to_dcnnl_map: dict,
         edges: List[Tuple[int, int]],
-        weight_rescaling_fn: Callable) -> Dict[int, Dict[DynapcnnLayer, List]]:
+        weight_rescaling_fn: Callable,
+        flagged_input_nodes: List[int]) -> Dict[int, Dict[DynapcnnLayer, List]]:
     """ Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
 
     Parameters
@@ -163,6 +166,7 @@ def construct_dynapcnnlayers_from_mapper(
     - edges (list): edges describing how nodes connect to each other.
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
+    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
 
     Returns
     ----------
@@ -174,7 +178,20 @@ def construct_dynapcnnlayers_from_mapper(
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
-            dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn)
+            dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn, flagged_input_nodes)
+        
+        # print('-----------------------------------------------------------------')
+        # print('dpcnnl_index: ', dynapcnnlayer.dpcnnl_index)
+        # print('conv_node_id: ', dynapcnnlayer.conv_node_id)
+        # print('conv_in_shape: ', dynapcnnlayer.conv_in_shape)
+        # print('conv_out_shape: ', dynapcnnlayer.conv_out_shape)
+        # print('spk_node_id: ', dynapcnnlayer.spk_node_id)
+        # print('pool_node_id: ', dynapcnnlayer.pool_node_id)
+        # print('conv_rescaling_factor: ', dynapcnnlayer.conv_rescaling_factor)
+        # print('dynapcnnlayer_destination: ', dynapcnnlayer.dynapcnnlayer_destination)
+        # print('nodes_destinations: ', dynapcnnlayer.nodes_destinations)
+        # print('entry_point: ', dynapcnnlayer.entry_point)
+        # print('-----------------------------------------------------------------')
         
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
@@ -221,7 +238,8 @@ def construct_dynapcnnlayer(
         discretize: bool,
         edges: List[Tuple[int, int]],
         nodes_to_dcnnl_map: Dict[int, Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]]]],
-        weight_rescaling_fn: Callable) -> DynapcnnLayer:
+        weight_rescaling_fn: Callable,
+        flagged_input_nodes: List[int]) -> DynapcnnLayer:
     """ Extract the modules (layers) in a dictionary and uses them to instantiate a `DynapcnnLayer` object. 
 
     Parameters
@@ -238,6 +256,7 @@ def construct_dynapcnnlayer(
         integers corresponding to either destinations IDs or re-scaling factors).
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before being applied.
+    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
     
     Returns
     ----------
@@ -253,7 +272,8 @@ def construct_dynapcnnlayer(
         dcnnl_data          = nodes_to_dcnnl_map[dpcnnl_idx],
         discretize          = discretize,
         sinabs_edges        = edges,
-        weight_rescaling_fn = weight_rescaling_fn
+        weight_rescaling_fn = weight_rescaling_fn,
+        flagged_input_nodes = flagged_input_nodes
     )
 
     return dynapcnnlayer
