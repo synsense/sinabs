@@ -46,7 +46,7 @@ class DynapcnnLayer(nn.Module):
         if 'core_idx' in dcnnl_data:
             self.assigned_core = dcnnl_data['core_idx']
 
-        self.lin_to_conv_conversion = False
+        self._lin_to_conv_conversion = False
 
         conv = None
         self.conv_node_id = None
@@ -154,11 +154,11 @@ class DynapcnnLayer(nn.Module):
 
         Parameters
         ----------
-            dcnnl_id (int): this should be one of the values listed within `self.dynapcnnlayer_destination`.
+        - dcnnl_id (int): this should be one of the values listed within `self.dynapcnnlayer_destination`.
 
         Returns
         ----------
-            The index of `dcnnl_id` within `self.dynapcnnlayer_destination`.
+        - The index of `dcnnl_id` within `self.dynapcnnlayer_destination`.
         """
         return self.dynapcnnlayer_destination.index(dcnnl_id)
     
@@ -167,23 +167,23 @@ class DynapcnnLayer(nn.Module):
 
         Returns
         ----------
-            This method will return as many tensors as there are destinations associated with this instance. The returned tensors always follows the 
-            sequence `return spiking_layer_output, pooling_layer_1, pooling_layer_2, ...`.
+        - forward output (tuple): returns as many tensors as there are destinations associated with this instance. The returned 
+            tensors always follows the sequence `return spiking_layer_output, pooling_layer_1, pooling_layer_2, ...`.
         
         Example
         ----------
-            With `self.nodes_destinations = {1: [5, 8], 2: [4], 3: [7]}` this method will return 4 tensors (each to be sent to a different DynapcnnLayer): the 1st 
+        - With `self.nodes_destinations = {1: [5, 8], 2: [4], 3: [7]}` this method will return 4 tensors (each to be sent to a different DynapcnnLayer): the 1st 
             and 2nd are the outputs of the spiking layer (`node 1`); the 3rd is the output of the first pooling layer (`node 2`, receiving the output of node 1) appearing 
             right after the spiking layer as defined in the original `nn.Module` being converted to a `DynapcnnNetwork`; the 4th is the output of the second pooling 
             layer (`node 3`) to appear after the spiking layer. Thus, the return will be `return node_1_out, node_1_out, node_2_out, node_3_out`. This means the edges 
             in the computational graph involved in this mapping were:
             
-            1 --> 2     # `2` is one of the pooling layers of this DynapcnnLayer.
-            1 --> 3     # `3` is one of the pooling layers of this DynapcnnLayer.
-            1 --> 5     # `5` is a conv layer belonging to another DynapcnnLayer U.
-            1 --> 8     # `8` is a conv layer belonging to another DynapcnnLayer V.
-            2 --> 4     # `4` is a conv layer belonging to another DynapcnnLayer X.
-            3 --> 7     # `7` is a conv layer belonging to another DynapcnnLayer Y.
+            - 1 --> 2     # `2` is one of the pooling layers of this DynapcnnLayer.
+            - 1 --> 3     # `3` is one of the pooling layers of this DynapcnnLayer.
+            - 1 --> 5     # `5` is a conv layer belonging to another DynapcnnLayer U.
+            - 1 --> 8     # `8` is a conv layer belonging to another DynapcnnLayer V.
+            - 2 --> 4     # `4` is a conv layer belonging to another DynapcnnLayer X.
+            - 3 --> 7     # `7` is a conv layer belonging to another DynapcnnLayer Y.
         """
 
         returns = []
@@ -238,15 +238,25 @@ class DynapcnnLayer(nn.Module):
         - node ID (int): the ID of the spiking layer consuming the tunerd layer's output (`None` if there was no conversion).
         - output shape (tuple): the new output shape following a converstion from `nn.Linear` to `nn.Conv2d` (`None` if there was no conversion).
         """
-        if self.lin_to_conv_conversion:
+        if self._lin_to_conv_conversion:
             return self.spk_node_id, dcnnl_data[self.spk_node_id]['output_shape']
         return None, None
     
     def zero_grad(self, set_to_none: bool = False) -> None:
         return self.spk_layer.zero_grad(set_to_none)
     
-    def get_conv_output_shape(self, conv_layer: nn.Conv2d, input_shape: tuple):
-        """ ."""
+    def get_conv_output_shape(self, conv_layer: nn.Conv2d, input_shape: Tuple[int, int, int]) -> Tuple[int, int, int]:
+        """ Computes the output dimensions of `conv_layer`.
+        
+        Parameters
+        ----------
+        - conv_layer (nn.Conv2d): conv. layer whose output will be computed for.
+        - input_shape (tuple): the shape for the input tensor the layer will process.
+
+        Returns
+        ----------
+        - output dimensions (tuple): a tuple describing `(output channels, height, width)`.
+        """
         # get the layer's parameters.
         out_channels = conv_layer.out_channels
         kernel_size = conv_layer.kernel_size
@@ -261,6 +271,7 @@ class DynapcnnLayer(nn.Module):
         return (out_channels, out_height, out_width)
 
     def summary(self) -> dict:
+        """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
         # TODO I can't see pooling being used in checking memory constraints by the builder so I'm ignoring for now the fact that multiple pooling could exist.
         
         _pool = None
@@ -285,6 +296,10 @@ class DynapcnnLayer(nn.Module):
     def get_layer_config_dict(self) -> dict:
         """ Returns a dict containing the properties required to configure a `CNNLayerConfig` instance that
         will map this DynapcnnLayer onto the chip.
+
+        Returns
+        ----------
+        - config_dict (dict): a nested dictionary containing of the variables necessary to configure a `CNNLayerConfig` instance.
         """
         config_dict = {}
 
@@ -444,17 +459,29 @@ class DynapcnnLayer(nn.Module):
         # spiking layer outputs the same shape as the conv. layer.
         spiking_layer_data['output_shape'] = spiking_layer_data['input_shape']
 
-    def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: tuple) -> Tuple:
-        """ The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
+    def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: Tuple[int, int, int]) -> Tuple[int, int, int]:
+        """ Updates the shape of the output tensor of a node that used to be a `nn.Linear` and became a `nn.Conv2d`.
+        
+        The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
         in the edge and setting it as the input shape to the 2nd element in the edge. If a node used to be a `nn.Linear` 
         and it became a `nn.Conv2d`, output shape in the mapper needs to be updated, otherwise there will be a mismatch
         between its output and the input it provides to another node.
+
+        Parameters
+        ----------
+        - conv_layer (nn.Module): the `nn.Conv2d` created from a `nn.Linear`.
+        - layer_data (dict): the dictionary containing the data associated with the original `nn.Linear` converted into `nn.Conv2d`.
+        - input_shape (tuple): the input shape the layer expects.
+
+        Returns
+        ----------
+        - output_shape (tuple): the tensor shape produced by the `nn.Conv2d` created from a `nn.Linear`.
         """
         layer_data['output_shape'] = self.get_conv_output_shape(conv_layer, input_shape)
 
         return layer_data['output_shape']
     
-    def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
+    def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> Tuple[nn.Conv2d, Tuple[int, int, int]]:
         """ Convert Linear layer to Conv2d.
 
         Parameters
@@ -464,9 +491,10 @@ class DynapcnnLayer(nn.Module):
         Returns
         -------
         - nn.Conv2d: convolutional layer equivalent to `lin`.
+        - input_shape (tuple): the tensor shape the layer expects.
         """
         # this flags the necessity to update the I/O shape pre-computed for each of the original layers being compressed within a `DynapcnnLayer` instance.
-        self.lin_to_conv_conversion = True
+        self._lin_to_conv_conversion = True
 
         input_shape = layer_data['input_shape']
 
@@ -497,6 +525,12 @@ class DynapcnnLayer(nn.Module):
     def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
         """ Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
         `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
+
+        Parameters
+        ----------
+        - sinabs_edges (list): each `nn.Module` within `dcnnl_data` is a node in the original computational graph describing a spiking 
+            network. An edge `(A, B)` describes how modules forward data amongst themselves. This list is used by a `DynapcnnLayer` to 
+            figure out the number and sequence of output tesnors its forward method needs to return.
 
         Returns
         ----------
