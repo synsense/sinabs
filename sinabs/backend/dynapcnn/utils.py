@@ -181,24 +181,37 @@ def construct_dynapcnnlayers_from_mapper(
             'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
             }
 
-        # check if any node (layer) in `dynapcnnlayer` has been modified (e.g. `nn.Linear` turned `nn.Conv2d`).
-        node, output_shape = dynapcnnlayer.get_modified_node_it(dcnnl_data)
+        # check if a `nn.Linear` in `dynapcnnlayer` has been  turned into a `nn.Conv2d`.
+        node, output_shape = dynapcnnlayer.get_modified_node_io(dcnnl_data)
 
-        # one of the layers in `dynapcnnlayer` had its type modified (update input shape of nodes receiving from it).
         if isinstance(node, int) and isinstance(output_shape, tuple):
+            # a `nn.Linear` has been converted into a `nn.Conv2d`: update input shape of nodes receiving from the spiking layer after it.
             update_nodes_io(node, output_shape, nodes_to_dcnnl_map, edges)
 
     return dynapcnn_layers
 
 def update_nodes_io(updated_node: int, output_shape: tuple, nodes_to_dcnnl_map: dict, edges: List[Tuple[int, int]]) -> None:
-    """ ."""
+    """ Updates the `input_shape` entries of each node in `nodes_to_dcnnl_map` receiving as input the output of the spiking 
+    layer `updated_node` that had its I/O shapes updated following a `nn.Linear` to `nn.Conv2d` conversion.
+
+    Parameters
+    ----------
+    - updated_node (int): the ID of the spiking layer that had its I/O shapes updated following a `nn.Linear` to `nn.Conv2d` conversion.
+    - output_shape (tuple): the updated shape of the spiking layer with node ID `updated_node`.
+    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
+        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
+    - edges (list): edges describing how nodes connect to each other.
+    """
+
     for edge in edges:
         if edge[0] == updated_node:
             # found source node where output shape has been modified.
-            for dcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
+
+            # accessing every single node ID within the set of layers composing each `DynapcnnLayer` instance.
+            for _, dcnnl_data in nodes_to_dcnnl_map.items():
                 for key, val in dcnnl_data.items():
                     if isinstance(key, int):
-                        # accessing node data (layer, input_shape, output_shape).
+                        # accessing node data (`layer`, `input_shape` and `output_shape`).
                         if key == edge[1]:
                             # accessing node targeted by `updated_node` (its input shape becomes `updated_node.output_shape`).
                             val['input_shape'] = output_shape

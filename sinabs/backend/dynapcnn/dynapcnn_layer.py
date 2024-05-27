@@ -93,6 +93,9 @@ class DynapcnnLayer(nn.Module):
                 spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)      # expand dims.
 
         if isinstance(conv, nn.Linear):
+            # A `nn.Linear` needs to be converted into `nn.Conv2d`. The I/O shapes of the spiking layer are updated 
+            # accordingly following the conversion.
+
             conv, conv_in_shape = self._convert_linear_to_conv(conv, dcnnl_data[self.conv_node_id])
 
             # the original `nn.Linear` output shape becomes the equivalent `nn.Conv2d` shape.
@@ -100,7 +103,7 @@ class DynapcnnLayer(nn.Module):
                 conv_layer=conv, layer_data=dcnnl_data[self.conv_node_id], input_shape=conv_in_shape)
 
             # the I/O shapes for neuron layer following the new conv need also to be updated.
-            self._update_neuron_node_output_shape(layer_data=dcnnl_data[self.spk_node_id], input_shape=self.conv_out_shape)
+            self._update_neuron_node_output_shape(spiking_layer_data=dcnnl_data[self.spk_node_id], conv_out_shape=self.conv_out_shape)
 
         else:
             self.conv_out_shape = dcnnl_data[self.conv_node_id]['output_shape']
@@ -222,8 +225,19 @@ class DynapcnnLayer(nn.Module):
 
         return tuple(returns)
 
-    def get_modified_node_it(self, dcnnl_data: dict) -> Union[Tuple[int, tuple], Tuple[None, None]]:
-        """ ."""
+    def get_modified_node_io(self, dcnnl_data: dict) -> Union[Tuple[int, tuple], Tuple[None, None]]:
+        """ Follwing a conversion, the I/O shapes of the spiking layer have been updated to match the convolution's 
+        output. Thus, all nodes receiving input from this spiking layer need their input shapes updated.
+
+        Parameters
+        ----------
+        - dcnnl_data (dict): the set of layers grouped together to comprise this instance of a `DynapcnnLayer`.
+
+        Returns
+        ----------
+        - node ID (int): the ID of the spiking layer consuming the tunerd layer's output (`None` if there was no conversion).
+        - output shape (tuple): the new output shape following a converstion from `nn.Linear` to `nn.Conv2d` (`None` if there was no conversion).
+        """
         if self.lin_to_conv_conversion:
             return self.spk_node_id, dcnnl_data[self.spk_node_id]['output_shape']
         return None, None
@@ -417,12 +431,18 @@ class DynapcnnLayer(nn.Module):
     
     ####################################################### Private Methods #######################################################
 
-    def _update_neuron_node_output_shape(self, layer_data: dict, input_shape: tuple) -> None:
-        """ Following the conversion of a `nn.Linear` into a `nn.Conv2d` the neuron layer in the
-        sequence also needs its I/O shapes uodated.
+    def _update_neuron_node_output_shape(self, spiking_layer_data: dict, conv_out_shape: tuple) -> None:
+        """ Updates the spiking layer's I/O shapes after the conversion of a `nn.Linear` into a `nn.Conv2d` (to match the convolution's output).
+
+        Parameters
+        ----------
+        - spiking_layer_data (dict): the dictionary containing all data regarding the spiking layer.
+        - conv_out_shape (tuple): the output shape of the convolution layer preceeding the spiking layer.
         """
-        layer_data['input_shape'] = input_shape
-        layer_data['output_shape'] = layer_data['input_shape']
+        # spiking layer consumes the tensor coming out of the conv. layer.
+        spiking_layer_data['input_shape'] = conv_out_shape
+        # spiking layer outputs the same shape as the conv. layer.
+        spiking_layer_data['output_shape'] = spiking_layer_data['input_shape']
 
     def _update_conv_node_output_shape(self, conv_layer: nn.Conv2d, layer_data: dict, input_shape: tuple) -> Tuple:
         """ The input shapes to nodes are extracted using a list of edges by finding the output shape of the 1st element
@@ -435,18 +455,17 @@ class DynapcnnLayer(nn.Module):
         return layer_data['output_shape']
     
     def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> nn.Conv2d:
-        """Convert Linear layer to Conv2d.
+        """ Convert Linear layer to Conv2d.
 
         Parameters
         ----------
-            lin: nn.Linear
-                Linear layer to be converted
+        - lin (nn.Linear): linear layer to be converted.
 
         Returns
         -------
-            nn.Conv2d
-                Convolutional layer equivalent to `lin`.
+        - nn.Conv2d: convolutional layer equivalent to `lin`.
         """
+        # this flags the necessity to update the I/O shape pre-computed for each of the original layers being compressed within a `DynapcnnLayer` instance.
         self.lin_to_conv_conversion = True
 
         input_shape = layer_data['input_shape']

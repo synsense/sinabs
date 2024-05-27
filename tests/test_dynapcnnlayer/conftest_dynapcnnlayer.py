@@ -1,5 +1,5 @@
 import torch.nn as nn
-from sinabs.layers import IAFSqueeze, SumPool2d
+from sinabs.layers import IAFSqueeze
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
 
 nodes_to_dcnnl_map = {
@@ -110,7 +110,7 @@ expected_output = {
         'pool_node_id': [2, 3],
         'conv_rescaling_factor': None,
         'dynapcnnlayer_destination': [1, 2],
-        'nodes_destination': {2: [4], 3: [7]},
+        'nodes_destinations': {2: [4], 3: [7]},
     },
     1: {
         'dpcnnl_index': 1,
@@ -121,7 +121,7 @@ expected_output = {
         'pool_node_id': [],
         'conv_rescaling_factor': 4.5,
         'dynapcnnlayer_destination': [2],
-        'nodes_destination': {6: [7]},
+        'nodes_destinations': {6: [7]},
     },
     2: {
         'dpcnnl_index': 2,
@@ -132,7 +132,7 @@ expected_output = {
         'pool_node_id': [],
         'conv_rescaling_factor': 8.0,
         'dynapcnnlayer_destination': [3],
-        'nodes_destination': {8: [9]},
+        'nodes_destinations': {8: [9]},
     },
     3: {
         'dpcnnl_index': 3,
@@ -143,7 +143,7 @@ expected_output = {
         'pool_node_id': [],
         'conv_rescaling_factor': None,
         'dynapcnnlayer_destination': [4],
-        'nodes_destination': {10: [11]},
+        'nodes_destinations': {10: [11]},
     },
     4: {
         'dpcnnl_index': 4,
@@ -154,7 +154,7 @@ expected_output = {
         'pool_node_id': [],
         'conv_rescaling_factor': None,
         'dynapcnnlayer_destination': [],
-        'nodes_destination': {},
+        'nodes_destinations': {},
     },
 }
 
