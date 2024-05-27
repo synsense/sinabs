@@ -24,6 +24,13 @@ class NIRtoDynapcnnNetworkGraph():
 
         # converts the NIR representation into a list of edges with nodes represented as integers.
         self._edges_list, self._name_2_indx_map = self._get_edges_from_nir(nir_graph)
+
+        # for key, val in self._name_2_indx_map.items():
+        #     print(key, val)
+        # print('---------------------------------------------------')
+        # for edge in self._edges_list:
+        #     print(edge)
+        # print('---------------------------------------------------')
         
         # recovers the associated `nn.Module` (layer) of each node.
         self.modules_map = self._get_named_modules(spiking_model)
@@ -174,7 +181,7 @@ class NIRtoDynapcnnNetworkGraph():
                     nodes_io_map[trg] = {'input': None, 'output': None}
 
                     # find node generating the input to be used.
-                    inp_node = self._find_input_to_node(trg)
+                    inp_node = self._find_source_of_input_to(trg)
                     _input = nodes_io_map[inp_node]['output']
 
                     # forward input through the node.
@@ -222,13 +229,18 @@ class NIRtoDynapcnnNetworkGraph():
 
                     else:
                         # find node generating the input to be used.
-                        inp_node = self._find_input_to_node(src)
+                        inp_node = self._find_source_of_input_to(src)
 
                         if inp_node == -1:
                             #   `src` is receiving external (not from another layer) input. This will be the case when two
                             # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
                             _input = input_dummy
                         else:
+                            if isinstance(self.modules_map[inp_node], sinabs.layers.merge.Merge):
+                                # source of input is a `Merge` layer that might still need to have its I/O shapes computed.
+                                self._handle_merge_source(inp_node, nodes_io_map)
+
+                            # record what the input shape for `src` should be.
                             _input = nodes_io_map[inp_node]['output']
                     
                     # forward input through the node.
@@ -247,13 +259,18 @@ class NIRtoDynapcnnNetworkGraph():
                         _input = input_dummy
                     else:
                         # find node generating the input to be used.
-                        inp_node = self._find_input_to_node(src)
+                        inp_node = self._find_source_of_input_to(src)
 
                         if inp_node == -1:
                             #   `src` is receiving external (not from another layer) input. This will be the case when two
                             # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
                             _input = input_dummy
                         else:
+                            if isinstance(self.modules_map[inp_node], sinabs.layers.merge.Merge):
+                                # source of input is a `Merge` layer that might still need to have its I/O shapes computed.
+                                self._handle_merge_source(inp_node, nodes_io_map)
+
+                            # record what the input shape for `src` should be.
                             _input = nodes_io_map[inp_node]['output']
                     
                     # forward input through the node.
@@ -267,13 +284,18 @@ class NIRtoDynapcnnNetworkGraph():
                     nodes_io_map[trg] = {'input': None, 'output': None}
 
                     # find node generating the input to be used.
-                    inp_node = self._find_input_to_node(trg)
+                    inp_node = self._find_source_of_input_to(trg)
 
                     if inp_node == -1:
                         #   `src` is receiving external (not from another layer) input. This will be the case when two
                         # parallel branches (two independent "input nodes" in the graph) merge at some point in the graph.
                         _input = input_dummy
                     else:
+                        if isinstance(self.modules_map[inp_node], sinabs.layers.merge.Merge):
+                            # source of input is a `Merge` layer that might still need to have its I/O shapes computed.
+                            self._handle_merge_source(inp_node, nodes_io_map)
+
+                        # record what the input shape for `trg` should be.
                         _input = nodes_io_map[inp_node]['output']
 
                     # forward input through the node.
@@ -288,20 +310,51 @@ class NIRtoDynapcnnNetworkGraph():
             nodes_io_map[node]['output'] = io['output'].shape
 
         return nodes_io_map
+    
+    def _handle_merge_source(self, merge_node_id: int, nodes_io_map: dict) -> None:
+        """ This method finds the I/O shapes for node `merge_node_id` if they haven't been computed yet. When `self._find_source_of_input_to()` is 
+        called the returned node might be a `Merge` layer for which the I/O shapes have yet to be computed.
 
-    def _find_input_to_node(self, node: int) -> int:
+        NOTE: In the current implemente both arguments to a `Merge` layer need to have the same output shapes.
+
+        Parameters
+        ----------
+        - merge_node_id (int): the ID of the node representing a `Merge` layer.
+        - nodes_io_map (dict): a dictionary mapping nodes to their I/O shapes.
+        """
+
+        if merge_node_id in nodes_io_map:
+            # I/O shapes have been computed already.
+            return None
+
+        # finding nodes serving as argument to the `Merge` node...
+        for edge in self._edges_list:
+
+            if edge[1] == merge_node_id:
+                # node `edge[0]` is one of the arguments for the `Merge` layer.
+                if edge[0] in nodes_io_map:
+                    # I/O shapes of one of the arguments for the `Merge` node has been computed.
+
+                    # both arguments to `Merge` have the same I/O shape and merge outputs the same shape: updating I/O shape of `merge_node_id`.
+                    nodes_io_map[merge_node_id] = {'input': nodes_io_map[edge[0]]['output'], 'output': nodes_io_map[edge[0]]['output']}
+
+                    return None
+                
+        raise ValueError(f'Node {merge_node_id} is a \'Merge\' layer and I/O shape for none of its arguments have been computed yet.')
+
+    def _find_source_of_input_to(self, node: int) -> int:
         """ Finds the first edge `(X, node)` returns `X`.
 
         Parameters
         ----------
-            node (int): the node in the computational graph for which we whish to find the input source (either another node in the
-                graph or the original input itself to the network).
+        - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
+            graph or the original input itself to the network).
         
         Returns
         ----------
-            input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
-                receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
-                when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
+        - input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
+            receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
+            when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
         """
         for edge in self._edges_list:
             if edge[1] == node:
