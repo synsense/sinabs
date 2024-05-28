@@ -1,16 +1,16 @@
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union, Dict, Callable
+from typing import TYPE_CHECKING, List, Optional, Tuple, Union, Dict, Callable
 
 import torch
 import torch.nn as nn
 
-import sinabs
+from collections import defaultdict, deque
 import sinabs.layers as sl
 
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer, expand_to_pair
 from .dynapcnn_layer import DynapcnnLayer
-from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer, WrongPoolingModule
+from .exceptions import WrongPoolingModule
 from .flipdims import FlipDims
 
 from .sinabs_edges_handler import process_edge, get_dynapcnnlayers_destinations
@@ -119,7 +119,7 @@ def build_from_graph(
         edges: List[Tuple[int, int]],
         nodes_to_dcnnl_map: dict,
         weight_rescaling_fn: Callable,
-        flagged_input_nodes: List[int]) -> dict:
+        entry_nodes: List[int]) -> dict:
     """ Parses each edge in `edges`, where each node is a set of layer that will compose a `DynapcnnLayer`. The 
     target destination of each `DynapcnnLayer` is computed via edges connecting nodes in different `DynapcnnLayer` 
     instances.
@@ -132,7 +132,7 @@ def build_from_graph(
         their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
-    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
+    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
 
     Returns
     ----------
@@ -140,7 +140,7 @@ def build_from_graph(
     """
 
     # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
-    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, flagged_input_nodes)
+    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, entry_nodes)
     
     # initialize attribute holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
     for idx, layer_data in dynapcnn_layers.items():
@@ -155,7 +155,7 @@ def construct_dynapcnnlayers_from_mapper(
         nodes_to_dcnnl_map: dict,
         edges: List[Tuple[int, int]],
         weight_rescaling_fn: Callable,
-        flagged_input_nodes: List[int]) -> Dict[int, Dict[DynapcnnLayer, List]]:
+        entry_nodes: List[int]) -> Dict[int, Dict[DynapcnnLayer, List]]:
     """ Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
 
     Parameters
@@ -166,7 +166,7 @@ def construct_dynapcnnlayers_from_mapper(
     - edges (list): edges describing how nodes connect to each other.
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before applying them.
-    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
+    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
 
     Returns
     ----------
@@ -178,7 +178,7 @@ def construct_dynapcnnlayers_from_mapper(
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         # create a `DynapcnnLayer` from the set of layers in `dcnnl_data`.
         dynapcnnlayer = construct_dynapcnnlayer(
-            dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn, flagged_input_nodes)
+            dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn, entry_nodes)
         
         # print('-----------------------------------------------------------------')
         # print('dpcnnl_index: ', dynapcnnlayer.dpcnnl_index)
@@ -239,7 +239,7 @@ def construct_dynapcnnlayer(
         edges: List[Tuple[int, int]],
         nodes_to_dcnnl_map: Dict[int, Dict[Union[int, str], Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]]]],
         weight_rescaling_fn: Callable,
-        flagged_input_nodes: List[int]) -> DynapcnnLayer:
+        entry_nodes: List[int]) -> DynapcnnLayer:
     """ Extract the modules (layers) in a dictionary and uses them to instantiate a `DynapcnnLayer` object. 
 
     Parameters
@@ -256,7 +256,7 @@ def construct_dynapcnnlayer(
         integers corresponding to either destinations IDs or re-scaling factors).
     - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
         the same convolutional layer are combined/re-scaled before being applied.
-    - flagged_input_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
+    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
     
     Returns
     ----------
@@ -273,7 +273,7 @@ def construct_dynapcnnlayer(
         discretize          = discretize,
         sinabs_edges        = edges,
         weight_rescaling_fn = weight_rescaling_fn,
-        flagged_input_nodes = flagged_input_nodes
+        entry_nodes = entry_nodes
     )
 
     return dynapcnnlayer
@@ -376,6 +376,54 @@ def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
     lyr_pool = sl.SumPool2d(cumulative_pooling)
 
     return lyr_pool, rescale_factor
+
+def topological_sorting(edges: List[Tuple[int, int]]) -> List[int]:
+    """ Performs a topological sorting (using Kahn's algorithm) of a graph descrobed by a list edges. An entry node `X`
+    of the graph have to be flagged inside `edges` by a tuple `('input', X)`.
+
+    Parameters
+    ----------
+    edges (list): the edges describing the *acyclic* graph.
+
+    Returns
+    ----------
+    - topological_order (list): the nodes sorted by the graph's topology.
+    """
+
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
+
+    # initialize the graph and in-degrees.
+    for u, v in edges:
+        if u != 'input':
+            graph[u].append(v)
+            in_degree[v] += 1
+        else:
+            if v not in in_degree:
+                in_degree[v] = 0
+        if v not in in_degree:
+            in_degree[v] = 0
+
+    # find all nodes with zero in-degrees.
+    zero_in_degree_nodes = deque([node for node, degree in in_degree.items() if degree == 0])
+
+    # process nodes and create the topological order.
+    topological_order = []
+
+    while zero_in_degree_nodes:
+        node = zero_in_degree_nodes.popleft()
+        topological_order.append(node)
+
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                zero_in_degree_nodes.append(neighbor)
+
+    # check if all nodes are processed (to handle cycles).
+    if len(topological_order) == len(in_degree):
+        return topological_order
+    
+    raise ValueError('The graph has a cycle and cannot be topologically sorted.')
 
 ####################################################### MISSING FUNCTIONALITY #######################################################
 # TODO: these methods are currently not used by the new implementation of DynapcnnNetwork (but should).

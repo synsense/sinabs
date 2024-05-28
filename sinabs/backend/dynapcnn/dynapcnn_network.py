@@ -33,6 +33,8 @@ from .weight_rescaling_methods import rescale_method_1, rescale_method_2
 
 from .dynapcnn_layer import DynapcnnLayer
 
+from .utils import topological_sorting
+
 class DynapcnnNetwork(nn.Module):
     def __init__(
         self,
@@ -72,7 +74,7 @@ class DynapcnnNetwork(nn.Module):
         - self._nodes_name_remap
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
-        - self._flagged_input_nodes
+        - self._entry_nodes
         """
         super().__init__()
 
@@ -90,8 +92,10 @@ class DynapcnnNetwork(nn.Module):
             snn,
             torch.randn((batch_size, *self.input_shape)))                # needs the batch dimension.
 
-        self._flagged_input_nodes = copy.deepcopy(self._graph_tracer.flagged_input_nodes)
+        # get list of nodes from graph tracer that act as entry points to the network.
+        self._entry_nodes = copy.deepcopy(self._graph_tracer.entry_nodes)
 
+        # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
         self._sinabs_edges, \
             self._sinabs_modules_map, \
                     self._nodes_name_remap = self._get_sinabs_edges_and_modules()
@@ -120,7 +124,7 @@ class DynapcnnNetwork(nn.Module):
             edges               = self._sinabs_edges,
             nodes_to_dcnnl_map  = self._nodes_to_dcnnl_map,
             weight_rescaling_fn = weight_rescaling_fn,
-            flagged_input_nodes = self._flagged_input_nodes)
+            entry_nodes = self._entry_nodes)
         
         # these gather all data necessay to implement the forward method for this class.
         self._dcnnl_edges, self._forward_map, self._merge_points, self._topological_order = self._get_network_module()
@@ -135,7 +139,7 @@ class DynapcnnNetwork(nn.Module):
         del self._nodes_name_remap
         del self._nodes_to_dcnnl_map
         del self._dynapcnn_layers
-        del self._flagged_input_nodes
+        del self._entry_nodes
 
     ####################################################### Public Methods #######################################################
         
@@ -166,8 +170,6 @@ class DynapcnnNetwork(nn.Module):
         """
 
         layers_outputs = {}
-
-        print(self._topological_order)
 
         for i in self._topological_order:
 
@@ -500,7 +502,7 @@ class DynapcnnNetwork(nn.Module):
 
         dcnnnet_module = DynapcnnNetworkModule(dcnnl_edges, self._dynapcnn_layers)
 
-        return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points, dcnnnet_module.get_topological_sort()
+        return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points, topological_sorting(dcnnl_edges)
     
     def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
         """ Create edges representing connections between `DynapcnnLayer` instances. """
@@ -519,12 +521,12 @@ class DynapcnnNetwork(nn.Module):
 
         Returns
         ----------
-            edges_without_merge (list): a list of edges based on `sinabs_edges` but where edges involving a `Merge` layer have been 
-                remapped to connect the nodes involved in the merging directly.
-            sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and 
-                their associated module as `value`.
-            remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self._graph_tracer`) and `value` is
-                the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
+        - edges_without_merge (list): a list of edges based on `sinabs_edges` but where edges involving a `Merge` layer have been 
+            remapped to connect the nodes involved in the merging directly.
+        - sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and 
+            their associated module as `value`.
+        - remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self._graph_tracer`) and `value` is
+            the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
         """
         
         # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
@@ -541,9 +543,9 @@ class DynapcnnNetwork(nn.Module):
 
         # original nodes flagged as input nodes (i.e., entry points of the network) might have been renamed: update list flaggind them.
         temp = []
-        for i in range(len(self._flagged_input_nodes)):
-            temp.append(remapped_nodes[self._flagged_input_nodes[i]])
-        self._flagged_input_nodes = temp
+        for i in range(len(self._entry_nodes)):
+            temp.append(remapped_nodes[self._entry_nodes[i]])
+        self._entry_nodes = temp
 
         return edges_without_merge, sinabs_modules_map, remapped_nodes
     

@@ -1,11 +1,10 @@
 # author    : Willian Soares Girao
-# contact   : williansoaresgirao@gmail.com
+# contact   : wsoaresgirao@gmail.com
 
 import torch.nn as nn
 from typing import List, Tuple, Dict, Union
 import copy
 import sinabs.layers as sl
-from collections import defaultdict, deque
 from .dynapcnn_layer import DynapcnnLayer
 
 class DynapcnnNetworkModule():
@@ -24,56 +23,21 @@ class DynapcnnNetworkModule():
 
         self.dcnnl_edges = dcnnl_edges
 
+        # create mappers to handle `DynapcnnLayer` instances' forward calling.
         self.forward_map, self.merge_points = self._build_module_forward_from_graph(dcnnl_edges, dynapcnn_layers)
 
+        # add extra edges marking which nodes are input to the network.
         self._add_entry_points_edges(dynapcnn_layers)
 
-    def get_topological_sort(self) -> List[int]:
-        """ Performs a topological sorting (using Kahn's algorithm) of the edges describing the connectivity between 
-        the `DynapcnnLayer` instances to organize the squencen they should be called during the `DynapcnnNetwork.forward` call.
+    def _add_entry_points_edges(self, dynapcnn_layers: dict) -> None:
+        """ Addes an extra edge `('input', X)` to `self.dcnnl_edges` if `X` is an entry point of the `DynapcnnNetwork` 
+        (i.e., `dynapcnn_layers[X]['layer'].entry_point = True`).
 
         Parameters
         ----------
-        - topological_order (list): order in which each `DynapcnnLayer.forward` should be called.
+        - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances along with their supporting metadata (e.g. assigned core,
+            destination layers, etc.).
         """
-
-        graph = defaultdict(list)
-        in_degree = defaultdict(int)
-
-        # initialize the graph and in-degrees.
-        for u, v in self.dcnnl_edges:
-            if u != 'input':
-                graph[u].append(v)
-                in_degree[v] += 1
-            else:
-                if v not in in_degree:
-                    in_degree[v] = 0
-            if v not in in_degree:
-                in_degree[v] = 0
-
-        # find all nodes with zero in-degrees.
-        zero_in_degree_nodes = deque([node for node, degree in in_degree.items() if degree == 0])
-
-        # process nodes and create the topological order.
-        topological_order = []
-
-        while zero_in_degree_nodes:
-            node = zero_in_degree_nodes.popleft()
-            topological_order.append(node)
-
-            for neighbor in graph[node]:
-                in_degree[neighbor] -= 1
-                if in_degree[neighbor] == 0:
-                    zero_in_degree_nodes.append(neighbor)
-
-        # check if all nodes are processed (to handle cycles).
-        if len(topological_order) == len(in_degree):
-            return topological_order
-        
-        raise ValueError('The graph has a cycle and cannot be topologically sorted.')
-
-    def _add_entry_points_edges(self, dynapcnn_layers: dict) -> None:
-        """ Addes an extra edge `('input', X)` to `self.dcnnl_edges` if `X` is an entry point of the `DynapcnnNetwork` (i.e., `dynapcnn_layers[X]['layer'].entry_point = True`)."""
         for indx, dcnnl_data in dynapcnn_layers.items():
             if dcnnl_data['layer'].entry_point:
                 self.dcnnl_edges.append(('input', indx))
@@ -115,7 +79,7 @@ class DynapcnnNetworkModule():
             self, 
             dcnnl_edges: list, 
             dynapcnn_layers: dict) -> Union[Dict[int, DynapcnnLayer], Dict[Tuple, sl.Merge]]:
-        """ Creates two mappers, one indexing each `DynapcnnLayer` by its index (a node in `dcnnl_edges`) a another
+        """ Creates two mappers, one indexing each `DynapcnnLayer` by its index (a node in `dcnnl_edges`) and another
         indexing the `DynapcnnLayer` instances (also by the index) that need their input being the output of a
         `Merge` layer (i.e., they are nodes in the graph where two different layer outputs converge to).
         
