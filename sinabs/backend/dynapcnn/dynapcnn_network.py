@@ -1,9 +1,5 @@
-"""
-functionality : extracts the computational graph of a network defined as a `nn.Module` and converts it into a set of `DynapcnnLayer`s
-                that implement a network ()`DynapcnnNetwork`) instance that can be deployed to a Speck chip.
-author        : Willian Soares Girao
-contact       : williansoaresgirao@gmail.com
-"""
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
 
 import time, copy
 from typing import List, Optional, Sequence, Tuple, Union, Dict, Callable
@@ -87,7 +83,6 @@ class DynapcnnNetwork(nn.Module):
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         # computational graph from original PyTorch module.
-        # TODO - bacth size must be passed as argument.
         self._graph_tracer = NIRtoDynapcnnNetworkGraph(
             snn,
             torch.randn((batch_size, *self.input_shape)))                # needs the batch dimension.
@@ -104,19 +99,9 @@ class DynapcnnNetwork(nn.Module):
         self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
             layers=self._sinabs_modules_map, 
             edges=self._sinabs_edges)
-
-        # print('-----------------------------------------------------------------')
-        # for edge in self._sinabs_edges:
-        #     print(edge)
-        # print('-----------------------------------------------------------------')
         
         # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
         self._populate_nodes_io()
-
-        # print('-----------------------------------------------------------------')
-        # for key, val in self._nodes_to_dcnnl_map.items():
-        #     print(key, val)
-        # print('-----------------------------------------------------------------')
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
         self._dynapcnn_layers = build_from_graph(
@@ -129,9 +114,6 @@ class DynapcnnNetwork(nn.Module):
         # these gather all data necessay to implement the forward method for this class.
         self._dcnnl_edges, self._forward_map, self._merge_points, self._topological_order = self._get_network_module()
 
-        # for edge in self._dcnnl_edges:
-        #     print(edge)
-
         # all necessary `DynapcnnLayer` data held in `self._forward_map`: removing intermediary data structures no longer necessary.
         del self._graph_tracer
         del self._sinabs_edges
@@ -142,6 +124,18 @@ class DynapcnnNetwork(nn.Module):
         del self._entry_nodes
 
     ####################################################### Public Methods #######################################################
+
+    @property
+    def dcnnl_edges(self):
+        return self._dcnnl_edges
+    
+    @property
+    def merge_points(self):
+        return self._merge_points
+    
+    @property
+    def topological_order(self):
+        return self._topological_order
         
     @property
     def forward_map(self) -> Dict[int, DynapcnnLayer]:

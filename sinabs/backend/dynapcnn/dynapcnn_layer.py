@@ -1,6 +1,8 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
+
 from copy import deepcopy
 from typing import Dict, Callable, Tuple, Union, List
-from warnings import warn
 
 import numpy as np
 import torch

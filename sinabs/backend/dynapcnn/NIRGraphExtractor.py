@@ -14,10 +14,10 @@ class NIRtoDynapcnnNetworkGraph():
 
         Parameters
         ----------
-            spiking_model (nn.Module): a sinabs-compatible spiking network.
-            dummy_input (torch.tensor): a random input sample to be fed through the model to acquire both
-                the computational graph (via `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
-                with `(batch, channels, heigh, width)`.
+        - spiking_model (nn.Module): a sinabs-compatible spiking network.
+        - dummy_input (torch.tensor): a random input sample to be fed through the model to acquire both
+            the computational graph (via `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
+            with `(batch, channels, heigh, width)`.
         """
 
         # extract computational graph.
@@ -25,15 +25,6 @@ class NIRtoDynapcnnNetworkGraph():
 
         # converts the NIR representation into a list of edges with nodes represented as integers.
         self._edges_list, self._name_2_indx_map, self._entry_nodes = self._get_edges_from_nir(nir_graph)
-
-        # print('self._entry_nodes: ', self._entry_nodes)
-
-        # for key, val in self._name_2_indx_map.items():
-        #     print(key, val)
-        # print('---------------------------------------------------')
-        # for edge in self._edges_list:
-        #     print(edge)
-        # print('---------------------------------------------------')
         
         # recovers the associated `nn.Module` (layer) of each node.
         self.modules_map = self._get_named_modules(spiking_model)
@@ -50,6 +41,14 @@ class NIRtoDynapcnnNetworkGraph():
     @property
     def get_edges_list(self):
         return self._edges_list
+    
+    @property
+    def name_2_indx_map(self):
+        return self._name_2_indx_map
+    
+    @property
+    def nodes_io_shapes(self):
+        return self._nodes_io_shapes
 
     def remove_ignored_nodes(self, default_ignored_nodes):
         """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This

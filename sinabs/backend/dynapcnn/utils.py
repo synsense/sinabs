@@ -180,19 +180,6 @@ def construct_dynapcnnlayers_from_mapper(
         dynapcnnlayer = construct_dynapcnnlayer(
             dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn, entry_nodes)
         
-        # print('-----------------------------------------------------------------')
-        # print('dpcnnl_index: ', dynapcnnlayer.dpcnnl_index)
-        # print('conv_node_id: ', dynapcnnlayer.conv_node_id)
-        # print('conv_in_shape: ', dynapcnnlayer.conv_in_shape)
-        # print('conv_out_shape: ', dynapcnnlayer.conv_out_shape)
-        # print('spk_node_id: ', dynapcnnlayer.spk_node_id)
-        # print('pool_node_id: ', dynapcnnlayer.pool_node_id)
-        # print('conv_rescaling_factor: ', dynapcnnlayer.conv_rescaling_factor)
-        # print('dynapcnnlayer_destination: ', dynapcnnlayer.dynapcnnlayer_destination)
-        # print('nodes_destinations: ', dynapcnnlayer.nodes_destinations)
-        # print('entry_point: ', dynapcnnlayer.entry_point)
-        # print('-----------------------------------------------------------------')
-        
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
             'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
