@@ -194,7 +194,7 @@ class DynapcnnNetwork(nn.Module):
                     # call the forward.
                     layers_outputs[i] = self._forward_map[i](merge_output)
 
-                elif i not in layers_outputs:
+                else:
                     # there's a single source of input for `DynapcnnLayer i`.
 
                     # input source for `i`.
@@ -206,10 +206,6 @@ class DynapcnnNetwork(nn.Module):
 
                     # call the forward.
                     layers_outputs[i] = self._forward_map[i](layers_outputs[src_dcnnl][return_index])
-
-                else:
-
-                    pass
         
         # TODO - this assumes the network has a single output node.
         return layers_outputs[self._topological_order[-1]][0]
@@ -227,7 +223,7 @@ class DynapcnnNetwork(nn.Module):
         parameters = []
 
         for layer in self._forward_map.values():
-            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
         return parameters
@@ -240,14 +236,14 @@ class DynapcnnNetwork(nn.Module):
         - init_fn (torch.nn.init): the weight initialization method to be used.
         """
         for layer in self._forward_map.values():
-            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
 
     def detach_neuron_states(self) -> None:
         """ Detach the neuron states and activations from current computation graph (necessary). """
 
         for module in self._forward_map.values():
-            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
+            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
                         buffer.detach_()
@@ -619,16 +615,11 @@ class DynapcnnNetwork(nn.Module):
     def _to_device(self, device: torch.device) -> None:
         """ Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
         for layer in self._forward_map.values():
-            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
-                layer.conv_layer.to(device)
-                layer.spk_layer.to(device)
-                
-                # if there's more than one pooling each of them becomes a node that is catched by the `else` statement.
-                if len(layer.pool_layer) == 1:
-                    layer.pool_layer[0].to(device)
-            else:
-                # this nodes are created from `DynapcnnLayer`s that have multiple poolings (each pooling becomes a new node).
+            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 layer.to(device)
+        
+        for _, data in self._merge_points.items():
+            data['merge'].to(device)
 
     def __str__(self):
         pretty_print = ''
