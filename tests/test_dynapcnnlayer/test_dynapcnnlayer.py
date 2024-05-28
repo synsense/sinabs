@@ -4,15 +4,15 @@ from sinabs.backend.dynapcnn.weight_rescaling_methods import rescale_method_1
 
 from conftest_dynapcnnlayer import args_DynapcnnLayer
 
-@pytest.mark.parametrize("nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, expected_output", args_DynapcnnLayer)
-def test_DynapcnnLayer(nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, expected_output):
+@pytest.mark.parametrize("nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, entry_point, expected_output", args_DynapcnnLayer)
+def test_DynapcnnLayer(nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, entry_point, expected_output):
     """ Tests the instantiation of a set of `DynapcnnLayer` belonging to the same SNN and the data computed
     within their constructors and shared among the differntly interacting instances (according to the graph
     described by `sinabs_edges`).
     """
 
     # create a `DynapcnnLayer` from the set of layers in `nodes_to_dcnnl_map[dpcnnl_idx]`.
-    dynapcnnlayer = construct_dynapcnnlayer(dpcnnl_idx, True, sinabs_edges, nodes_to_dcnnl_map, rescale_method_1)
+    dynapcnnlayer = construct_dynapcnnlayer(dpcnnl_idx, True, sinabs_edges, nodes_to_dcnnl_map, rescale_method_1, entry_point)
 
     # check if any node (layer) in `dynapcnnlayer` has been modified (e.g. `nn.Linear` turned `nn.Conv2d`).
     node, output_shape = dynapcnnlayer.get_modified_node_io(nodes_to_dcnnl_map[dpcnnl_idx])
@@ -30,6 +30,7 @@ def test_DynapcnnLayer(nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, expected_ou
     conv_rescaling_factor = expected_output[dpcnnl_idx]['conv_rescaling_factor']
     dynapcnnlayer_destination = expected_output[dpcnnl_idx]['dynapcnnlayer_destination']
     nodes_destinations = expected_output[dpcnnl_idx]['nodes_destinations']
+    entry_point = expected_output[dpcnnl_idx]['entry_point']
 
     assert dynapcnnlayer.dpcnnl_index == expected_output[dpcnnl_idx]['dpcnnl_index'], \
         f'wrong \'DynapcnnLayer.dpcnnl_index\': ID of the instance should be {dpcnnl_index}.'
@@ -49,3 +50,5 @@ def test_DynapcnnLayer(nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, expected_ou
         f'wrong \'DynapcnnLayer.dynapcnnlayer_destination\': the DynapcnnLayer(s) set as destination(s) should be {dynapcnnlayer_destination}.'
     assert dynapcnnlayer.nodes_destinations == expected_output[dpcnnl_idx]['nodes_destinations'], \
         f'wrong \'DynapcnnLayer.nodes_destinations\': the targeted nodes within other DynapcnnLayer instance(s) should be {nodes_destinations}.'
+    assert dynapcnnlayer.entry_point == expected_output[dpcnnl_idx]['entry_point'], \
+        f'wrong \'DynapcnnLayer.entry_point\': its value should be {entry_point}.'
