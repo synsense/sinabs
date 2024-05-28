@@ -305,8 +305,10 @@ def convert_Avg_to_Sum_pooling(
                         # update the rescale factor for the target of node `key`.
                         nodes_to_dcnnl_map[trg_dcnnl_idx]['conv_rescale_factor'].append(rescale_factor)
 
-def find_nodes_dcnnl_idx(node, nodes_to_dcnnl_map):
-    """ ."""
+def find_nodes_dcnnl_idx(node: int, nodes_to_dcnnl_map: dict) -> int:
+    """ Find the ID of the (future) `DynapcnnLayer` instance to which `node` belongs to."""
+
+    # looping over sets of layers (nodes) that will be used to instantiate `DynapcnnLayer`s.
     for dcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
         for key, value in dcnnl_data.items():
             if isinstance(key, int):
@@ -323,11 +325,11 @@ def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
     
     Parameters
     ----------
-        module (torch.nn.AvgPool2d): the average pooling layer being converted into a sum pooling layer.
+    - module (torch.nn.AvgPool2d): the average pooling layer being converted into a sum pooling layer.
 
     Returns
     ----------
-        lyr_pool (sinabs.layers.SumPool2d): the equivalent sum pooling layer.
+    - lyr_pool (sinabs.layers.SumPool2d): the equivalent sum pooling layer.
         rescale_factor (int): the weight re-scaling computed for the weights of the convolution layer targeted by the pooling.
     """
     
@@ -370,7 +372,7 @@ def topological_sorting(edges: List[Tuple[int, int]]) -> List[int]:
 
     Parameters
     ----------
-    edges (list): the edges describing the *acyclic* graph.
+    - edges (list): the edges describing the *acyclic* graph.
 
     Returns
     ----------
