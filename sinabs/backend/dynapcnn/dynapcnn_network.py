@@ -157,8 +157,7 @@ class DynapcnnNetwork(nn.Module):
             the edges are the indices of these layers). An `edge` is used to index a mapper (using `edge[0]`) in order to retrieve the output to be fed
             as input to a `DynapcnnLayer` instance (indexed by `edge[1]`).
         - `self._forward_map` (dict): a mapper used to forward data through the `DynapcnnNetwork` instances. Each `key` is the indice associated
-            with a `DynapcnnLayer` instance. The edges in `self._dcnnl_edges` are accessed sequentially and each node in an edge is used to index
-            a forward call via `self._forward_map`.
+            with a `DynapcnnLayer` instance.
         - `self._merge_points` (dict): this mapper has a "support" role. It indexes wich convolutional layers in the set of `DynapcnnLayer`s
             composing the network require two sources of input (because their input tensor is the output of a `Merge` layer).
         """
@@ -366,7 +365,7 @@ class DynapcnnNetwork(nn.Module):
     ####################################################### Private Methods #######################################################
 
     def _get_input_to_dcnnl(self, dcnnl_ID) -> int:
-        """ . """
+        """ Returns the ID of the first `DynapcnnLayer` forwarding its input to `dcnnl_ID`. """
         for edge in self._dcnnl_edges:
             if edge[1] == dcnnl_ID:
                 return edge[0]
@@ -499,7 +498,13 @@ class DynapcnnNetwork(nn.Module):
         return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points, topological_sorting(dcnnl_edges)
     
     def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
-        """ Create edges representing connections between `DynapcnnLayer` instances. """
+        """ Create edges representing connections between `DynapcnnLayer` instances.
+        
+        Returns
+        ----------
+        - dcnnl_edges (list): a list of edges using the IDs of `DynapcnnLayer` instances. These edges describe the computational
+            graph implemented by the layers of the model (i.e., how the `DynapcnnLayer` instances address each other).
+        """
         dcnnl_edges = []
 
         for dcnnl_idx, layer_data in self._dynapcnn_layers.items():
@@ -547,8 +552,13 @@ class DynapcnnNetwork(nn.Module):
         """ Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
         representations in `self._nodes_to_dcnnl_map`."""
 
-        def find_original_node_name(name_mapper: dict, node: int):
-            """ Find what a node is originally named when built in `self._graph_tracer`. """
+        def find_original_node_name(name_mapper: dict, node: int) -> str:
+            """ Find what a node is originally named when built in `self._graph_tracer`.
+
+            Returns
+            ----------
+            - orig_name (str): a string with the original variable name given to `node`.
+            """
             for orig_name, new_name in name_mapper.items():
                 if new_name == node:
                     return orig_name
@@ -559,14 +569,14 @@ class DynapcnnNetwork(nn.Module):
 
             Parameters
             ----------
-                node (int): the node in the computational graph for which we whish to find the input source (either another node in the
-                    graph or the original input itself to the network).
+            - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
+                graph or the original input itself to the network).
             
             Returns
             ----------
-                input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
-                    receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
-                    when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
+            - input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
+                receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
+                when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
             """
             for edge in edges_list:
                 if edge[1] == node:
@@ -607,7 +617,7 @@ class DynapcnnNetwork(nn.Module):
                     node_data['output_shape'] = tuple(list(_out)[1:])
 
     def _to_device(self, device: torch.device) -> None:
-        """ ."""
+        """ Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
         for layer in self._forward_map.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer_new.DynapcnnLayer):
                 layer.conv_layer.to(device)

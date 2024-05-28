@@ -50,10 +50,19 @@ class NIRtoDynapcnnNetworkGraph():
     def nodes_io_shapes(self):
         return self._nodes_io_shapes
 
-    def remove_ignored_nodes(self, default_ignored_nodes):
-        """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This
+    def remove_ignored_nodes(self, default_ignored_nodes: tuple) -> Tuple[list, dict]:
+        """ Recreates the edges list based on layers that `DynapcnnNetwork` will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
         will be dropped as the node that originally targeted this node to be dropped.
+
+        Parameters
+        ----------
+        - default_ignored_nodes (tuple): a set of layers (`nn.Module`) that should be ignored from the graph.
+
+        Returns
+        ----------
+        - remapped_edges (list): the new list of edges after nodes flagged by `default_ignored_nodes` have been removed.
+        - remapped_nodes (dict): updated nodes' IDs after nodes flagged by `default_ignored_nodes` have been removed.
         """
         edges = copy.deepcopy(self._edges_list)
         parsed_edges = []
@@ -102,7 +111,13 @@ class NIRtoDynapcnnNetworkGraph():
     
     # TODO - it would be good if I/O shapes were returned by the NIR graph.
     def get_node_io_shapes(self, node: int) -> Tuple[torch.Size, torch.Size]:
-        """ Returns the I/O tensors' shapes of `node`. """
+        """ Returns the I/O tensors' shapes of `node`.
+
+        Returns
+        ----------
+        - input shape (torch.Size): shape of the input tensor to `node`.
+        - output shape (torch.Size): shape of the output tensor from `node`.
+        """
         return self._nodes_io_shapes[node]['input'], self._nodes_io_shapes[node]['output']
 
     ####################################################### Pivate Methods #######################################################
@@ -159,11 +174,11 @@ class NIRtoDynapcnnNetworkGraph():
 
         Parameters
         ----------
-            model (nn.Module): the `spiking_model` used as argument to the class instance.
+        - model (nn.Module): the `spiking_model` used as argument to the class instance.
 
         Returns
         ----------
-            modules_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+        - modules_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
         modules_map = {}
 
@@ -253,37 +268,6 @@ class NIRtoDynapcnnNetworkGraph():
             nodes_io_map[node]['output'] = io['output'].shape
 
         return nodes_io_map
-    
-    def _handle_merge_source(self, merge_node_id: int, nodes_io_map: dict) -> None:
-        """ This method finds the I/O shapes for node `merge_node_id` if they haven't been computed yet. When `self._find_source_of_input_to()` is 
-        called the returned node might be a `Merge` layer for which the I/O shapes have yet to be computed.
-
-        NOTE: In the current implemente both arguments to a `Merge` layer need to have the same output shapes.
-
-        Parameters
-        ----------
-        - merge_node_id (int): the ID of the node representing a `Merge` layer.
-        - nodes_io_map (dict): a dictionary mapping nodes to their I/O shapes.
-        """
-
-        if merge_node_id in nodes_io_map:
-            # I/O shapes have been computed already.
-            return None
-
-        # finding nodes serving as argument to the `Merge` node...
-        for edge in self._edges_list:
-
-            if edge[1] == merge_node_id:
-                # node `edge[0]` is one of the arguments for the `Merge` layer.
-                if edge[0] in nodes_io_map:
-                    # I/O shapes of one of the arguments for the `Merge` node has been computed.
-
-                    # both arguments to `Merge` have the same I/O shape and merge outputs the same shape: updating I/O shape of `merge_node_id`.
-                    nodes_io_map[merge_node_id] = {'input': nodes_io_map[edge[0]]['output'], 'output': nodes_io_map[edge[0]]['output']}
-
-                    return None
-                
-        raise ValueError(f'Node {merge_node_id} is a \'Merge\' layer and I/O shape for none of its arguments have been computed yet.')
 
     def _find_source_of_input_to(self, node: int) -> int:
         """ Finds the first edge `(X, node)` returns `X`.
@@ -306,7 +290,12 @@ class NIRtoDynapcnnNetworkGraph():
         return -1
 
     def _find_merge_arguments(self, merge_node: int) -> Tuple[int, int]:
-        """ A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer. """
+        """ A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer.
+
+        Returns
+        ----------
+        - args (tuple): the IDs of the nodes that provice the input arguments to a `Merge` layer.
+        """
         args = []
 
         for edge in self._edges_list:
