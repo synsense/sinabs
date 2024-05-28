@@ -1,3 +1,6 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
+
 import pytest
 from sinabs.backend.dynapcnn.utils import construct_dynapcnnlayer, update_nodes_io
 from sinabs.backend.dynapcnn.weight_rescaling_methods import rescale_method_1

@@ -8,7 +8,10 @@ from conftest_graph_extractor import args_GraphExtractor
 
 @pytest.mark.parametrize("snn, input_dummy, expected_output", args_GraphExtractor)
 def test_GraphExtractor(snn, input_dummy, expected_output):
-    """ Tests the graph extraction from the original SNN being turned into a DynapcnnNetwork."""
+    """ Tests the graph extraction from the original SNN being turned into a `DynapcnnNetwork`. These tests
+    verify the correct functionality of the `NIRtoDynapcnnNetworkGraph` class, which implements the first pre-processing
+    step on the conversion of the SNN into a DynapcnnNetwork.
+    """
 
     graph_tracer = NIRtoDynapcnnNetworkGraph(snn, input_dummy)
 

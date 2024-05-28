@@ -1,3 +1,5 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
 # implementing "a complex network structure" example in https://github.com/synsense/sinabs/issues/181 . """
 
 import torch.nn as nn

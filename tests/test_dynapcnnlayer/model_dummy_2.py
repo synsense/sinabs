@@ -1,3 +1,5 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
 # implementing "a network with a merge and a split" in https://github.com/synsense/sinabs/issues/181
 
 import torch.nn as nn

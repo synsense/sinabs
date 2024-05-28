@@ -1,3 +1,6 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
+
 from model_dummy_1 import nodes_to_dcnnl_map_1, sinabs_edges_1, expected_output_1
 from model_dummy_2 import nodes_to_dcnnl_map_2, sinabs_edges_2, expected_output_2
 from model_dummy_3 import nodes_to_dcnnl_map_3, sinabs_edges_3, expected_output_3

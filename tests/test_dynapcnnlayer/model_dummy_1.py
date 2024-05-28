@@ -1,4 +1,6 @@
-# implementing "a network with residual connections" example in https://github.com/synsense/sinabs/issues/181 . """
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
+# implementing "a network with residual connections" example in https://github.com/synsense/sinabs/issues/181
 
 import torch.nn as nn
 from sinabs.layers import IAFSqueeze, SumPool2d

@@ -1,3 +1,5 @@
+# author    : Willian Soares Girao
+# contact   : wsoaresgirao@gmail.com
 # implementing "two networks with merging outputs" in https://github.com/synsense/sinabs/issues/181
 
 import torch.nn as nn
