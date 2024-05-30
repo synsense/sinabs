@@ -478,14 +478,16 @@ class DynapcnnLayer(nn.Module):
 
         return destinations_input_source
     
-    def get_pool_kernel_size(self, node: int):
+    def get_pool_kernel_size(self, node: int) -> int:
         """ Returns the pooling kernel size if `node` is a pooling layer."""
 
         if node in self.pool_node_id:
             i = self.pool_node_id.index(node)
             return self.pool_layer[i].kernel_size[0] if isinstance(self.pool_layer[i].kernel_size, tuple) else self.pool_layer[i].kernel_size
+        elif node == self.spk_node_id:
+            return 1
         else:
-            return None
+            raise ValueError(f'Node {node} does not belong to DynapcnnLayer {self.dpcnnl_index}.')
     
     @staticmethod
     def find_nodes_core_id(node: int, forward_map: dict) -> int:
