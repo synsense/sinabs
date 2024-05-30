@@ -29,7 +29,7 @@ def test_DynapcnnNetwork(snn, input_shape, batch_size, expected_output):
             f'DynapcnnLayer {node} has wrong input sources ({args}).'
         
     for entry_point in expected_output['entry_point']:
-        assert dcnnnet.forward_map[entry_point].entry_point, \
+        assert dcnnnet.layers_mapper[entry_point].entry_point, \
             f'DynapcnnLayer {entry_point} should be an entry point.'
     
     assert expected_output['topological_order'] == dcnnnet.topological_order, \
