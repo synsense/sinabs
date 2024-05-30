@@ -64,7 +64,7 @@ def get_valid_mapping(
     layer_mapping = []
 
     if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-        for dcnnl_index, ith_dcnnl in model.forward_map.items():
+        for dcnnl_index, ith_dcnnl in model.layers_mapper.items():
             if isinstance(ith_dcnnl, DynapcnnLayer):
                 layer_mapping.append(find_chip_layers(ith_dcnnl, constraints))
             else:

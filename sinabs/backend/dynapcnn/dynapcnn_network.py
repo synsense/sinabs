@@ -13,7 +13,7 @@ import sinabs
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
-from .io import open_device
+from .io import open_device, disable_timestamps, enable_timestamps, reset_timestamps
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     build_from_graph,
@@ -25,7 +25,7 @@ from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
 from .sinabs_edges_handler import merge_handler
 
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
-from .weight_rescaling_methods import rescale_method_1, rescale_method_2
+from .weight_rescaling_methods import rescale_method_1
 
 from .dynapcnn_layer import DynapcnnLayer
 
@@ -61,7 +61,7 @@ class DynapcnnNetwork(nn.Module):
         Some of the properties defined within the class constructor are meant to be temporary data structures handling the conversion
         of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Once their role
         in preprocessing `snn` is finished, all required data to train/deploy the `DynapcnnNetwork` instance is within `self._dcnnl_edges`
-        (the connectivity between each `DynapcnnLayer`/core), `self._forward_map` (every `DynapcnnLayer` in the network) and `self._merge_points`
+        (the connectivity between each `DynapcnnLayer`/core), `self._layers_mapper` (every `DynapcnnLayer` in the network) and `self._merge_points`
         (the `DynapcnnLayer`s that need a `Merge` input). Thus, the following private properties are delted as last step of the constructor:
 
         - self._graph_tracer
@@ -112,9 +112,9 @@ class DynapcnnNetwork(nn.Module):
             entry_nodes = self._entry_nodes)
         
         # these gather all data necessay to implement the forward method for this class.
-        self._dcnnl_edges, self._forward_map, self._merge_points, self._topological_order = self._get_network_module()
+        self._dcnnl_edges, self._layers_mapper, self._merge_points, self._topological_order = self._get_network_module()
 
-        # all necessary `DynapcnnLayer` data held in `self._forward_map`: removing intermediary data structures no longer necessary.
+        # all necessary `DynapcnnLayer` data held in `self._layers_mapper`: removing intermediary data structures no longer necessary.
         del self._graph_tracer
         del self._sinabs_edges
         del self._sinabs_modules_map
@@ -138,25 +138,74 @@ class DynapcnnNetwork(nn.Module):
         return self._topological_order
         
     @property
-    def forward_map(self) -> Dict[int, DynapcnnLayer]:
-        """ This dictionary contains each `DynapcnnLayer` in the model indexed by their ID (layer index). 
+    def layers_mapper(self) -> Dict[int, DynapcnnLayer]:
+        return self._layers_mapper
+    
+    @property
+    def chip_layers_ordering(self):
+        return self._chip_layers_ordering
+    
+    def get_output_core_id(self) -> int:
+        """ ."""
 
-        Returns
-        ----------
-        - self._forward_map (dict): a mapper used to forward data through the `DynapcnnNetwork` instance when  `self.forward` is called.
+        # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
+        for _, ith_dcnnl in self._layers_mapper.items():
+            if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
+                # a DynapcnnLayer without destinations is taken to be the output layer of the network.
+                return ith_dcnnl.assigned_core
+            
+    def get_input_core_id(self) -> list:
+        """ Since the chip allows for multiple input layers (that merge into a single output at some point), this method returns
+        a list of all core IDs to which an input layer of the network has been assigned to.
         """
-        return self._forward_map
+        entry_points = []
+        for _, ith_dcnnl in self._layers_mapper.items():
+            if ith_dcnnl.entry_point:
+                entry_points.append(ith_dcnnl.assigned_core)
+
+        return entry_points
+    
+    def hw_forward(self, x):
+        """ Forwards data through the chip. """
+
+        # flush buffer.
+        _ = self.samna_output_buffer.get_events()
+
+        # NOTE: The code to start and stop time stamping is device specific
+        reset_timestamps(self.device)
+        enable_timestamps(self.device)
+
+        # send input.
+        self.samna_input_buffer.write(x)
+        received_evts = []
+
+        # record at least until the last event has been replayed.
+        min_duration = max(event.timestamp for event in x) * 1e-6
+        time.sleep(min_duration)
+
+        # keep recording if more events are being registered.
+        while True:
+            prev_length = len(received_evts)
+            time.sleep(0.1)
+            received_evts.extend(self.samna_output_buffer.get_events())
+            if prev_length == len(received_evts):
+                break
+
+        # disable timestamp
+        disable_timestamps(self.device)
+
+        return received_evts
 
     def forward(self, x):
         """ Forwards data through the `DynapcnnNetwork` instance. This method relies on three main data structures created to represent
         the `DynapcnnLayer`s in the network and the data propagation through them during the forward pass:
 
-        - `self._topological_order` (list): this is used to guide the sequence in which the `DynapcnnLayer`s in `self._forward_map` are to be called
+        - `self._topological_order` (list): this is used to guide the sequence in which the `DynapcnnLayer`s in `self._layers_mapper` are to be called
             to generate the input tensors to be propagated through the network during the forward pass.
         - `self._dcnnl_edges` (list): this list of edges represent the graph describing the interactions between each `DynapcnnLayer` (the nodes in 
             the edges are the indices of these layers). An `edge` is used to index a mapper (using `edge[0]`) in order to retrieve the output to be fed
             as input to a `DynapcnnLayer` instance (indexed by `edge[1]`).
-        - `self._forward_map` (dict): a mapper used to forward data through the `DynapcnnNetwork` instances. Each `key` is the indice associated
+        - `self._layers_mapper` (dict): a mapper used to forward data through the `DynapcnnNetwork` instances. Each `key` is the indice associated
             with a `DynapcnnLayer` instance.
         - `self._merge_points` (dict): this mapper has a "support" role. It indexes wich convolutional layers in the set of `DynapcnnLayer`s
             composing the network require two sources of input (because their input tensor is the output of a `Merge` layer).
@@ -166,9 +215,9 @@ class DynapcnnNetwork(nn.Module):
 
         for i in self._topological_order:
 
-            if self._forward_map[i].entry_point:
+            if self._layers_mapper[i].entry_point:
                 # `DynapcnnLayer i` is an entry point of the network.
-                layers_outputs[i] = self._forward_map[i](x)
+                layers_outputs[i] = self._layers_mapper[i](x)
 
             else:
                 # input to `DynapcnnLayer i` is the output of another instance.
@@ -181,8 +230,8 @@ class DynapcnnNetwork(nn.Module):
 
                     #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
                     # to the target DynapcnnLayer `i`.
-                    return_index_arg1 = self._forward_map[arg1].get_destination_dcnnl_index(i)
-                    return_index_arg2 = self._forward_map[arg2].get_destination_dcnnl_index(i)
+                    return_index_arg1 = self._layers_mapper[arg1].get_destination_dcnnl_index(i)
+                    return_index_arg2 = self._layers_mapper[arg2].get_destination_dcnnl_index(i)
 
                     # retrieve input tensors to `Merge`.
                     _arg1 = layers_outputs[arg1][return_index_arg1]
@@ -192,7 +241,7 @@ class DynapcnnNetwork(nn.Module):
                     merge_output = self._merge_points[i]['merge'](_arg1, _arg2)
 
                     # call the forward.
-                    layers_outputs[i] = self._forward_map[i](merge_output)
+                    layers_outputs[i] = self._layers_mapper[i](merge_output)
 
                 else:
                     # there's a single source of input for `DynapcnnLayer i`.
@@ -202,10 +251,10 @@ class DynapcnnNetwork(nn.Module):
 
                     #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
                     # to the target DynapcnnLayer `i`.
-                    return_index = self._forward_map[src_dcnnl].get_destination_dcnnl_index(i)
+                    return_index = self._layers_mapper[src_dcnnl].get_destination_dcnnl_index(i)
 
                     # call the forward.
-                    layers_outputs[i] = self._forward_map[i](layers_outputs[src_dcnnl][return_index])
+                    layers_outputs[i] = self._layers_mapper[i](layers_outputs[src_dcnnl][return_index])
         
         # TODO - this assumes the network has a single output node.
         return layers_outputs[self._topological_order[-1]][0]
@@ -222,7 +271,7 @@ class DynapcnnNetwork(nn.Module):
         """
         parameters = []
 
-        for layer in self._forward_map.values():
+        for layer in self._layers_mapper.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
@@ -235,14 +284,14 @@ class DynapcnnNetwork(nn.Module):
         ----------
         - init_fn (torch.nn.init): the weight initialization method to be used.
         """
-        for layer in self._forward_map.values():
+        for layer in self._layers_mapper.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
 
     def detach_neuron_states(self) -> None:
         """ Detach the neuron states and activations from current computation graph (necessary). """
 
-        for module in self._forward_map.values():
+        for module in self._layers_mapper.values():
             if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
@@ -350,7 +399,7 @@ class DynapcnnNetwork(nn.Module):
                 self.device_output_graph.start()
                 self.samna_config = config
 
-                return print(self)
+                return self
             
             else:
                 self._to_device(device)
@@ -418,11 +467,11 @@ class DynapcnnNetwork(nn.Module):
         config_builder = ChipFactory(device).get_config_builder()
 
         # TODO not handling DVSLayer yet.
-        has_dvs_layer = isinstance(self._forward_map[0], DVSLayer)
+        has_dvs_layer = isinstance(self._layers_mapper[0], DVSLayer)
 
         if chip_layers_ordering == "auto":
-            # figure out mapping of each DynapcnnLayer into one core.
-            chip_layers_ordering = config_builder.get_valid_mapping(self)
+            # figure out mapping of each DynapcnnLayer into one core (core ID will be set in the layer instance via `layer.assigned_core`).
+            _ = config_builder.get_valid_mapping(self)
 
         else:
             # TODO - mapping from each DynapcnnLayer into cores has been provided by the user: NOT IMPLEMENTED YET.
@@ -431,7 +480,7 @@ class DynapcnnNetwork(nn.Module):
                 pass
 
         # update config.
-        config = config_builder.build_config(self, None)
+        config = config_builder.build_config(self)
 
         # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
         if self.input_shape and self.input_shape[0] == 1:
@@ -441,12 +490,15 @@ class DynapcnnNetwork(nn.Module):
         monitor_chip_layers = []
         if monitor_layers is None:
             # check if any monitoring is enabled (if not, enable monitoring for the last layer).
-            for dcnnl_index, ith_dcnnl in self._forward_map.items():
+            for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
+
+                # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
                 if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
+                    # a DynapcnnLayer without destinations is taken to be the output layer of the network.
                     monitor_chip_layers.append(ith_dcnnl.assigned_core)
-                    break
+
         elif monitor_layers == "all":
-            for dcnnl_index, ith_dcnnl in self._forward_map.items():
+            for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
                 # TODO not handling DVSLayer yet
                 # monitor each chip core (if not a DVSLayer).
                 if not isinstance(ith_dcnnl, DVSLayer):
@@ -614,7 +666,7 @@ class DynapcnnNetwork(nn.Module):
 
     def _to_device(self, device: torch.device) -> None:
         """ Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
-        for layer in self._forward_map.values():
+        for layer in self._layers_mapper.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 layer.to(device)
         
@@ -623,7 +675,7 @@ class DynapcnnNetwork(nn.Module):
 
     def __str__(self):
         pretty_print = ''
-        for idx, layer_data in self._forward_map.items():
+        for idx, layer_data in self._layers_mapper.items():
             pretty_print += f'----------------------- [ DynapcnnLayer {idx} ] -----------------------\n'
             pretty_print += f'{layer_data}\n\n'
                 

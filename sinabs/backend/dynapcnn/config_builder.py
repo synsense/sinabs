@@ -74,9 +74,8 @@ class ConfigBuilder(ABC):
 
         Returns
         -------
-        List of core indices corresponding to each layer of the model:
-        The index of the core on chip to which the i-th layer in the
-        model is mapped is the value of the i-th entry in the list.
+        - chip_layers_ordering (list): the core indices corresponding to each layer of the model. Though this list is being returned, each core index
+            `core_idx` is assigned directyl to each `DynapcnnLayer` instance via accesses to `model.layers_mapper`.
         """
 
         chip_layers_ordering = []
@@ -84,18 +83,21 @@ class ConfigBuilder(ABC):
         if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
             mapping = get_valid_mapping(model, cls.get_constraints())
 
-            if isinstance(model.forward_map[0], DVSLayer):
+            if isinstance(model.layers_mapper[0], DVSLayer):
                 # TODO not handling DVSLayer yet.
                 # TODO if the architecture has more than one `DynapcnnLayer`s acting as input node of the model
-                # thi check will be wrong since it assumes the network has a single input node `model.forward_map[0]`.
+                # thi check will be wrong since it assumes the network has a single input node `model.layers_mapper[0]`.
                 pass
 
-            for (dcnnl, core_idx) in mapping:
-                model.forward_map[dcnnl].assigned_core = core_idx
+            for (dcnnl_idx, core_idx) in mapping:
+                # save the core index information directly in the `DynapcnnLayer` object assigned to it.
+                model.layers_mapper[dcnnl_idx].assigned_core = core_idx
+                chip_layers_ordering.append(core_idx)
 
         else:
             raise InvalidModel(model)
 
+        # return kept but its information is not used beyond this point (core indices already part of each `DynapcnnLayer` instance).
         return chip_layers_ordering
 
     @classmethod

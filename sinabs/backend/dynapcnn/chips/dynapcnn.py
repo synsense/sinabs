@@ -74,7 +74,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config_dict
 
     @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
+    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer, layers_mapper: Dict[int, DynapcnnLayer]) -> dict:
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
 
@@ -113,8 +113,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict["weights"] = weights.int().tolist()
         config_dict["biases"] = biases.int().tolist()
         config_dict["leak_enable"] = biases.bool().any()
-        # config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        # config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
 
         # Update parameters from the spiking layer
 
@@ -141,10 +139,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 "Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood."
             )
 
-        # if (not return_to_zero) and self.spk_layer.membrane_subtract != self.spk_layer.threshold:
-        #    warn(
-        #        "SpikingConv2dLayer: Subtraction of membrane potential is always by high threshold."
-        #    )
         if layer.spk_layer.min_v_mem is None:
             min_v_mem = -(2**15)
         else:
@@ -156,126 +150,96 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 "threshold_low": min_v_mem,
                 "monitor_enable": False,
                 "neurons_initial_value": neurons_state.int().tolist(),
-                # "neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
             }
         )
-        # Update parameters from pooling
-        if layer.pool_layer is not None:
-            config_dict["destinations"][0]["pooling"] = expand_to_pair(
-                layer.pool_layer.kernel_size
-            )[0]
-            config_dict["destinations"][0]["enable"] = True
-        else:
-            pass
+
+        # setting destinations config. based on destinations destination nodes of the nodes withing this `dcnnl`.
+        destinations = []
+        for node_id, destination_nodes in layer.nodes_destinations.items():
+            for dest_node in destination_nodes:
+                core_id = DynapcnnLayer.find_nodes_core_id(dest_node, layers_mapper)
+                kernel_size = layer.get_pool_kernel_size(node_id)
+
+                dest_data = {
+                    'layer': core_id,
+                    'enable': True,
+                    'pooling': kernel_size if kernel_size else 1
+                }
+
+                destinations.append(dest_data)
+        config_dict["destinations"] = destinations
 
         # Set kill bits
         config_dict = cls.set_kill_bits(layer=layer, config_dict=config_dict)
 
         return config_dict
-
+            
     @classmethod
-    def write_dynapcnn_layer_config(
-        cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig"
-    ):
-        """Write a single layer configuration to the dynapcnn conf object.
+    def write_dynapcnn_layer_config(cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig", layers_mapper: Dict[int, DynapcnnLayer]) -> None:
+        """ Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be 
+        deployed on chip.
 
         Parameters
         ----------
-            layer:
-                The dynapcnn layer to write the configuration for
-            chip_layer: CNNLayerConfig
-                DYNAPCNN configuration object representing the layer to which
-                configuration is written.
+        - layer (DynapcnnLayer): the layer for which the condiguration will be written.
+        - chip_layer (CNNLayerConfig): configuration object representing the layer to which configuration is written.
+        - layers_mapper (dict): a dictionary with keys being the ID of each `DynapcnnLayer` and values being the layer 
+            instance. This is used to retrieve the `.assigned_core` for each of the layers in `.dynapcnnlayer_destination` 
+            such that `chip_layer.destinations` can be configured.
         """
-        config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer)
 
-        # Update configuration of the DYNAPCNN layer
+        # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
+        config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer, layers_mapper=layers_mapper)
+
+        # update configuration of the DYNAPCNN layer.
         chip_layer.dimensions = config_dict["dimensions"]
         config_dict.pop("dimensions")
 
-        for i in range(len(config_dict["destinations"])):
-            if "pooling" in config_dict["destinations"][i]:
-                chip_layer.destinations[i].pooling = config_dict["destinations"][i][
-                    "pooling"
-                ]
-        config_dict.pop("destinations")
+        # set the destinations configuration.
+        for i in range(len(config_dict['destinations'])):
+            chip_layer.destinations[i].layer = config_dict['destinations'][i]['layer']
+            chip_layer.destinations[i].enable = config_dict['destinations'][i]['enable']
+            chip_layer.destinations[i].pooling = config_dict['destinations'][i]['pooling']
+
+        config_dict.pop('destinations')
+
+        # set remaining configuration.
         for param, value in config_dict.items():
             try:
                 setattr(chip_layer, param, value)
             except TypeError as e:
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
-            
-    @classmethod
-    def write_dynapcnn_layer_config_graph(cls, dcnnl: DynapcnnLayer, chip_layer: "CNNLayerConfig", forward_map: dict) -> None:
-        """ Uses the data in `dcnnl` to configure a `CNNLayerConfig` to be deployed on chip.
-
-        Parameters
-        ----------
-            dcnnl (DynapcnnLayer): the layer for which the condiguration will be written.
-            chip_layer (CNNLayerConfig): used to represent/configure `dcnnl` onto the chip.
-            forward_map (dict): a dictionary with keys being the ID of each DynapcnnLayer and values being the layer 
-                itself. This is used to retrieve the `.assigned_core` for each of the layers in `.dynapcnnlayer_destination` 
-                such that `chip_layer.destinations` can be configured.
-        """
-
-        # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
-        config_dict = dcnnl.get_layer_config_dict()
-
-        # use core indexing instead of DynapcnnLayer indexing for destinations.
-        for dest_config in config_dict['destinations']:
-            dcnnl_idx = dest_config['layer']
-
-            # get the core the destination DynapcnnLayer is using.
-            dcnnl_core_idx = forward_map[dcnnl_idx].assigned_core
-
-            dest_config['layer'] = dcnnl_core_idx
-
-        # set the destinations configuration.
-        for i in range(len(config_dict['destinations'])):
-            chip_layer.destinations[i] = config_dict['destinations'][i]
-        config_dict.pop("destinations")
-
-        # set remaining configuration.
-        for param, value in config_dict.items():                                                      # set remaining attributes.
-            try:
-                setattr(chip_layer, param, value)
-            except TypeError as e:
-                raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: Union["DynapcnnNetwork"], chip_layers: Union[List[int], None]) -> DynapcnnConfiguration:
+    def build_config(cls, model: Union["DynapcnnNetwork"]) -> DynapcnnConfiguration:
         """ Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
         using using the `DynapcnnLayer` properties. 
 
         Parameters
         ----------
-            model:
-                either a `DynapcnnNetwork` or a `DynapcnnNetworkGraph` instance where the model (DynapcnnLayer) layers can be found.
-            chip_layers:
-                a list containing the core indexes where each `DynapcnnLayer` will be mapped to (if `model` is an instance of `DynapcnnNetwork`, otherwise `None`).
+        - model (DynapcnnNetwork): network instance used to read out `DynapcnnLayer` instances.
 
         Returns
         ----------
-            config:
-                an instance of a `DynapcnnConfiguration`.
+        - config (DynapcnnConfiguration): an instance of a `DynapcnnConfiguration`.
         """
         config = cls.get_default_config()
 
         if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-            """ Loops through `DynapcnnNetworkGraph._forward_map`, containing all `DynapcnnLayer`s in the model, their
-            core ID to be loaded onto and their target destinations. Each `ith_dcnnl` has all the info. necessary to config.
+            """ Loops through `DynapcnnNetworkGraph._layers_mapper`, containing all `DynapcnnLayer`s in the model, their
+            core ID (where they are configured onto) and their target destinations. Each `ith_dcnnl` has all the info. necessary to config.
             their respective `CNNLayerConfig` object.
             """
             has_dvs_layer = False   # TODO DVSLayer not supported yet.
 
-            for layer_index, ith_dcnnl in model.forward_map.items():
+            for layer_index, ith_dcnnl in model.layers_mapper.items():
                 if isinstance(ith_dcnnl, DVSLayer):
                     # TODO DVSLayer not supported yet.
                     pass
 
                 elif isinstance(ith_dcnnl, DynapcnnLayer):
                     chip_layer = config.cnn_layers[ith_dcnnl.assigned_core]
-                    cls.write_dynapcnn_layer_config_graph(ith_dcnnl, chip_layer, model.forward_map)
+                    cls.write_dynapcnn_layer_config(ith_dcnnl, chip_layer, model.layers_mapper)
 
                 else:
                     # shouldn't happen since type checks are made previously.
@@ -355,6 +319,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             monitor_layers.remove("dvs")
         for lyr_indx in monitor_layers:
             config.cnn_layers[lyr_indx].monitor_enable = True
+
             if any(
                 dest.pooling != 1 for dest in config.cnn_layers[lyr_indx].destinations
             ):

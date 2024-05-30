@@ -120,6 +120,8 @@ class DynapcnnLayer(nn.Module):
 
         # input shape of conv layer.
         self.conv_in_shape = dcnnl_data[self.conv_node_id]['input_shape']
+        # input shape of the `DynapcnnLayer` instance.
+        self.input_shape = self.conv_in_shape
 
         # this weight rescale comes from the node projecting into this 'conv' node.
         if len(dcnnl_data['conv_rescale_factor']):
@@ -157,6 +159,16 @@ class DynapcnnLayer(nn.Module):
 
     ####################################################### Public Methods #######################################################
 
+    def get_neuron_shape(self) -> Tuple[int, int, int]:
+        """Return the output shape of the neuron layer.
+
+        Returns
+        -------
+        features, height, width
+        """
+        # same as the convolution's output.
+        return self.conv_out_shape
+
     def get_destination_dcnnl_index(self, dcnnl_id: int) -> int:
         """ The `forward` method will return as many tensors as there are elements in `self.dynapcnnlayer_destination`. Since the i-th returned tensor is to be
         fed to the i-th destionation in `self.dynapcnnlayer_destination`, the return of this method can be used to index a tensor returned in the `forward` method.
@@ -181,16 +193,14 @@ class DynapcnnLayer(nn.Module):
         
         Example
         ----------
+        TODO this example needs to be revised because the spiking layer only appears if it is projecting to outside this layer.
+
         - With `self.nodes_destinations = {1: [5, 8], 2: [4], 3: [7]}` this method will return 4 tensors (each to be sent to a different DynapcnnLayer): the 1st 
             and 2nd are the outputs of the spiking layer (`node 1`); the 3rd is the output of the first pooling layer (`node 2`, receiving the output of node 1) appearing 
             right after the spiking layer as defined in the original `nn.Module` being converted to a `DynapcnnNetwork`; the 4th is the output of the second pooling 
             layer (`node 3`) to appear after the spiking layer. Thus, the return will be `return node_1_out, node_1_out, node_2_out, node_3_out`. This means the edges 
             in the computational graph involved in this mapping were:
-            
-            - 1 --> 2     # `2` is one of the pooling layers of this DynapcnnLayer.
-            - 1 --> 3     # `3` is one of the pooling layers of this DynapcnnLayer.
-            - 1 --> 5     # `5` is a conv layer belonging to another DynapcnnLayer U.
-            - 1 --> 8     # `8` is a conv layer belonging to another DynapcnnLayer V.
+
             - 2 --> 4     # `4` is a conv layer belonging to another DynapcnnLayer X.
             - 3 --> 7     # `7` is a conv layer belonging to another DynapcnnLayer Y.
         """
@@ -301,108 +311,6 @@ class DynapcnnLayer(nn.Module):
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self.conv_out_shape,                          # neuron layer output has the same shape as the convolution layer ouput.
         }
-
-    def get_layer_config_dict(self) -> dict:
-        """ Returns a dict containing the properties required to configure a `CNNLayerConfig` instance that
-        will map this DynapcnnLayer onto the chip.
-
-        Returns
-        ----------
-        - config_dict (dict): a nested dictionary containing of the variables necessary to configure a `CNNLayerConfig` instance.
-        """
-        config_dict = {}
-
-        # configures `CNNLayerConfig.dimensions` (instance of `CNNLayerDimensions`).
-        dimensions = {}
-
-        # input shape of convolution.
-        dimensions['input_shape'] = {
-            'size': {'x': self.conv_in_shape[2], 'y': self.conv_in_shape[1]},
-            'feature_count': self.conv_in_shape[0]
-            }
-        
-        # ouput shape of convolution.
-        dimensions['output_shape'] = {
-            'size': {'x': self.conv_out_shape[2], 'y': self.conv_out_shape[1]},
-            'feature_count': self.conv_out_shape[0]
-            }
-        
-        # convolution padding, stride and kernel sizes.
-        dimensions['padding']       = {'x': self.conv_layer.padding[1], 'y': self.conv_layer.padding[0]}
-        dimensions['stride']        = {'x': self.conv_layer.stride[1], 'y': self.conv_layer.stride[0]}
-        dimensions['kernel_size']   = self.conv_layer.kernel_size[0]
-
-        config_dict['dimensions'] = dimensions              # update config dict.
-
-        # update parameters from convolution.
-        if self.conv_layer.bias is not None:
-            (weights, biases) = self.conv_layer.parameters()
-        else:
-            (weights,) = self.conv_layer.parameters()
-            biases = torch.zeros(self.conv_layer.out_channels)
-
-        # parameters of the convolution in the DynapcnnLayer.
-
-        weights = weights.transpose(2, 3)                   # need this to match samna convention.
-        config_dict['weights'] = weights.int().tolist()     # 4-D list of lists representing kernel parameters.
-        config_dict['biases'] = biases.int().tolist()
-        config_dict['leak_enable'] = biases.bool().any()
-
-        # parameters of the neurons in the DynapcnnLayer.
-
-        # set neuron states.                                # TODO coppied from the old implementation.
-        if not self.spk_layer.is_state_initialised():
-            # then we assign no initial neuron state to DYNAP-CNN.
-            f, h, w = self.conv_out_shape                   # same as the convolution layer.
-            neurons_state = torch.zeros(f, w, h)
-
-        elif self.spk_layer.v_mem.dim() == 4:
-            # 4-D states should be the norm when there is a batch dim.
-            neurons_state = self.spk_layer.v_mem.transpose(2, 3)[0]
-
-        else:
-            raise ValueError(f"Current v_mem (shape: {self.spk_layer.v_mem.shape}) of spiking layer not understood.")
-            # TODO error here: find where `self.spk_layer.v_mem` is being initialized.
-        
-        # resetting vs returning to 0.                       # TODO coppied from the old implementation.
-        if isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneReset):
-            return_to_zero = True                            # neurons in this layer will return to 0 when firing.
-        elif isinstance(self.spk_layer.reset_fn, sinabs.activation.MembraneSubtract):
-            return_to_zero = False                           # threshold will be subtracted from the value their membrane potential reached before firing.
-        else:
-            raise Exception("Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood.")
-        
-        if self.spk_layer.min_v_mem is None:
-            min_v_mem = -(2**15)
-        else:
-            min_v_mem = int(self.spk_layer.min_v_mem)
-
-        # set neuron configuration for this DynapcnnLayer.
-        config_dict.update(
-            {
-                "return_to_zero": return_to_zero,
-                "threshold_high": int(self.spk_layer.spike_threshold),
-                "threshold_low": min_v_mem,
-                "monitor_enable": False,
-                "neurons_initial_value": neurons_state.int().tolist()
-            }
-        )
-
-        # set pooling configuration for each destinaition. This configures a `CNNLayerConfig.destinations` (instance of `CNNLayerDimensions`).
-        config_dict['destinations'] = []
-        if len(self.pool_layer) != 0:
-            for i in range(len(self.pool_layer)):
-                dest_config = {
-                    'layer': self.dynapcnnlayer_destination[i],# TODO this destination index is not the core index yet, just the index of the DynapcnnLayers themselves.
-                    'enable': True, 
-                    'pooling': self.pool_layer[i].kernel_size[0] if isinstance(self.pool_layer[i].kernel_size, tuple) else self.pool_layer[i].kernel_size    # TODO make sure the kernel is a square.
-                    }
-                
-                config_dict['destinations'].append(dest_config)
-
-        # setting of the kill bits need to be done outside this method.
-
-        return config_dict
     
     def memory_summary(self):
         """Computes the amount of memory required for each of the components. Note that this is not
@@ -569,3 +477,22 @@ class DynapcnnLayer(nn.Module):
                     destinations_input_source[id].append(edge[1])
 
         return destinations_input_source
+    
+    def get_pool_kernel_size(self, node: int):
+        """ Returns the pooling kernel size if `node` is a pooling layer."""
+
+        if node in self.pool_node_id:
+            i = self.pool_node_id.index(node)
+            return self.pool_layer[i].kernel_size[0] if isinstance(self.pool_layer[i].kernel_size, tuple) else self.pool_layer[i].kernel_size
+        else:
+            return None
+    
+    @staticmethod
+    def find_nodes_core_id(node: int, forward_map: dict) -> int:
+
+        for _, dcnnl in forward_map.items():
+
+            if node == dcnnl.conv_node_id or node == dcnnl.spk_node_id or node in dcnnl.pool_node_id:
+                return dcnnl.assigned_core
+            
+        raise ValueError(f'Node {node} not found in any of the cores.')

@@ -5,6 +5,8 @@ from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 from .dynapcnn import DynapcnnConfigBuilder
 
+from typing import Dict
+
 # Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
 
@@ -30,6 +32,6 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
         return config_dict
 
     @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
-        config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
+    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer, layers_mapper: Dict[int, DynapcnnLayer]) -> dict:
+        config_dict = super().get_dynapcnn_layer_config_dict(layer=layer, layers_mapper=layers_mapper)
         return config_dict
