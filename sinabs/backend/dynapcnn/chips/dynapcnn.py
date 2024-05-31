@@ -194,7 +194,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         # update configuration of the DYNAPCNN layer.
         chip_layer.dimensions = config_dict["dimensions"]
         config_dict.pop("dimensions")
-
+        
         # set the destinations configuration.
         for i in range(len(config_dict['destinations'])):
             chip_layer.destinations[i].layer = config_dict['destinations'][i]['layer']

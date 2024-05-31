@@ -1,8 +1,9 @@
-from .dynapcnn_network import (  # second one for compatibility purposes
-    DynapcnnCompatibleNetwork,
+from .dynapcnn_network import (
     DynapcnnNetwork,
 )
-from .dynapcnn_network_graph import (
-    DynapcnnNetworkGraph,
+
+from .dynapcnn_layer import (
+    DynapcnnLayer,
 )
+
 from .dynapcnn_visualizer import DynapcnnVisualizer
