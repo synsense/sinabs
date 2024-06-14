@@ -1,5 +1,9 @@
+from itertools import product
+from typing import Callable, Union
+
 import pytest
 import samna
+from custom_jit_filters import majority_readout_filter as custom_filter
 from hw_utils import find_open_devices, is_any_samna_device_connected
 
 from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
@@ -13,17 +17,31 @@ def X_available() -> bool:
     return p.returncode == 0
 
 
+vis_init_args = product(
+    (True, False),
+    (True, False),
+    ("JitMajorityReadout", custom_filter),
+)
+
+
 @pytest.mark.skipif(
     True,
     reason="A window needs to pop. Needs UI. Makes sense to check this test manually",
 )
-def test_visualizer_initialization():
+@pytest.mark.parametrize("spike_count_plot,readout_plot", vis_init_args)
+def test_visualizer_initialization(
+    spike_count_plot: bool, readout_plot: bool, readout_filter: Union[str, Callable]
+):
     dvs_shape = (128, 128)
     spike_collection_interval = 500
     visualizer_id = 3
 
     visualizer = DynapcnnVisualizer(
-        dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
+        dvs_shape=dvs_shape,
+        spike_collection_interval=spike_collection_interval,
+        add_spike_count_plot=spike_count_plot,
+        add_readout_plot=spike_readout_plot,
+        readout_filter=readout_filter,
     )
     visualizer.create_visualizer_process(
         f"tcp://0.0.0.0:{visualizer.samna_visualizer_port}"
