@@ -1,3 +1,5 @@
+from itertools import product
+
 import pytest
 import samna
 from hw_utils import find_open_devices, is_any_samna_device_connected
@@ -17,13 +19,16 @@ def X_available() -> bool:
     True,
     reason="A window needs to pop. Needs UI. Makes sense to check this test manually",
 )
-def test_visualizer_initialization():
+@pytest.mark.parametrize("spike_count_plot", (True, False))
+def test_visualizer_initialization(spike_count_plot: bool):
     dvs_shape = (128, 128)
     spike_collection_interval = 500
     visualizer_id = 3
 
     visualizer = DynapcnnVisualizer(
-        dvs_shape=dvs_shape, spike_collection_interval=spike_collection_interval
+        dvs_shape=dvs_shape,
+        spike_collection_interval=spike_collection_interval,
+        add_spike_count_plot=spike_count_plot,
     )
     visualizer.create_visualizer_process(
         f"tcp://0.0.0.0:{visualizer.samna_visualizer_port}"
