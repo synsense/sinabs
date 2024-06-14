@@ -15,6 +15,7 @@ class DynapcnnVisualizer:
     # (tlx, tly, brx, bry)
     DEFAULT_LAYOUT_DS = [(0, 0, 0.5, 1), (0.5, 0, 1, 1), None, None]
     DEFAULT_LAYOUT_DSP = [(0, 0, 0.5, 0.66), (0.5, 0, 1, 0.66), None, (0, 0.66, 1, 1)]
+    DEFAULT_LAYOUT_DRP = [(0, 0, 0.5, 0.66), None, (0.5, 0, 1, 0.66), (0, 0.66, 1, 1)]
     DEFAULT_LAYOUT_DSR = [(0, 0, 0.33, 1), (0.33, 0, 0.66, 1), (0.66, 0, 1, 1), None]
 
     DEFAULT_LAYOUT_DSRP = [
@@ -27,6 +28,7 @@ class DynapcnnVisualizer:
     LAYOUTS_DICT = {
         "ds": DEFAULT_LAYOUT_DS,
         "dsp": DEFAULT_LAYOUT_DSP,
+        "drp": DEFAULT_LAYOUT_DRP,
         "dsr": DEFAULT_LAYOUT_DSR,
         "dsrp": DEFAULT_LAYOUT_DSRP,
     }
@@ -36,6 +38,7 @@ class DynapcnnVisualizer:
         window_scale: Tuple[int, int] = (4, 8),
         dvs_shape: Tuple[int, int] = (128, 128),  # height, width
         add_readout_plot: bool = False,
+        add_spike_count_plot: bool = True,
         add_power_monitor_plot: bool = False,
         spike_collection_interval: int = 500,
         readout_prediction_threshold: int = 10,
@@ -58,6 +61,10 @@ class DynapcnnVisualizer:
                 Defaults to (128, 128) -- Speck sensor resolution.
             add_readout_plot: bool (defaults to False)
                 If set true adds a readout plot to the GUI
+                It displays an icon for the currently predicted class.
+            add_spike_count_plot: bool (defaults to True)
+                If set true adds a spike count plot to the GUI.
+                A line chart indicating the number of spikes over time.
             add_power_monitor_plot: bool (defaults to False)
                 If set true adds a power monitor plot to the GUI.
             spike_collection_interval: int (defaults to 500) (in milliseconds)
@@ -112,7 +119,9 @@ class DynapcnnVisualizer:
         self.dvs_shape = dvs_shape
 
         # Modify the GUI type based on the parameters
-        self.gui_type = "ds"
+        self.gui_type = "d"
+        if add_spike_count_plot:
+            self.gui_type += "s"
         if add_readout_plot:
             self.gui_type += "r"
         if add_power_monitor_plot:
@@ -338,13 +347,14 @@ class DynapcnnVisualizer:
         plots = []
 
         plots.append(self.add_dvs_plot(shape=self.dvs_shape, layout=layout[0]))
-        if self.extra_arguments and "spike_count" in self.extra_argument.keys():
-            spike_count_plot_args = self.extra_arguments["spike_count"]
-        else:
-            spike_count_plot_args = {}
-        plots.append(
-            self.add_spike_count_plot(layout=layout[1], **spike_count_plot_args)
-        )
+        if "s" in self.gui_type:
+            if self.extra_arguments and "spike_count" in self.extra_argument.keys():
+                spike_count_plot_args = self.extra_arguments["spike_count"]
+            else:
+                spike_count_plot_args = {}
+            plots.append(
+                self.add_spike_count_plot(layout=layout[1], **spike_count_plot_args)
+            )
         if "r" in self.gui_type:
             try:
                 if self.extra_arguments and "readout" in self.extra_arguments.keys():

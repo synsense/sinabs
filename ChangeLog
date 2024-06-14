@@ -1,6 +1,8 @@
 CHANGES
 =======
 
+* Spike count plot in 'DynapcnnVisualizer' is optional 
+
 v2.0.0
 ------
 
