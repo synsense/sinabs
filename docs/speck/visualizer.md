@@ -131,6 +131,7 @@ hardware_compatible_model.to(
 In order to visualize the class outputs as images, we need to get the images. The images should be passed in the same order as the output layer of the network. Important! <br>
 - If you want to visualize power measurements during streaming inference, set `add_power_monitor_plot`=`True`.
 - If you want to visualize readout images as class predictions during streaming you need to pass `add_readout_plot`=`True`.
+- If you don't want to visualize spike counts of output classes as line graphs over time during streaming you need to pass `add_spike_count_plot`=`False`.
 - In order to show a prediction for each `N` milliseconds, set the parameter `spike_collection_interval`=`N`.
 - In order to show the images, the paths of these images should be passed to `readout_images` parameter.
 - In order to show a prediction only if there are more than a `threshold` number of events from that output, set the `readout_prediction_threshold`=`threshold`.
