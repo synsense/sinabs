@@ -109,7 +109,7 @@ class DynapcnnVisualizer:
                 - `power_measurement`: Arguments that can be passed `power_measurement` plot.
         """
         # Checks if the configuration passed is valid
-        if add_readout_plot and not readout_images:
+        if add_readout_plot and readout_images is None:
             raise ValueError(
                 "If a readout plot is to be displayed image paths should be passed as a list."
                 + "The order of the images, should match the model output."

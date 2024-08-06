@@ -28,9 +28,9 @@ vis_init_args = product(
     True,
     reason="A window needs to pop. Needs UI. Makes sense to check this test manually",
 )
-@pytest.mark.parametrize("spike_count_plot,readout_plot", vis_init_args)
+@pytest.mark.parametrize("spike_count_plot,readout_plot,readout_node", vis_init_args)
 def test_visualizer_initialization(
-    spike_count_plot: bool, readout_plot: bool, readout_filter: Union[str, Callable]
+    spike_count_plot: bool, readout_plot: bool, readout_node: Union[str, Callable]
 ):
     dvs_shape = (128, 128)
     spike_collection_interval = 500
@@ -40,8 +40,9 @@ def test_visualizer_initialization(
         dvs_shape=dvs_shape,
         spike_collection_interval=spike_collection_interval,
         add_spike_count_plot=spike_count_plot,
-        add_readout_plot=spike_readout_plot,
-        readout_filter=readout_filter,
+        add_readout_plot=readout_plot,
+        readout_node=readout_node,
+        readout_images=[],
     )
     visualizer.create_visualizer_process(
         f"tcp://0.0.0.0:{visualizer.samna_visualizer_port}"
