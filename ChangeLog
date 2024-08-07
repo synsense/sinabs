@@ -2,6 +2,7 @@ CHANGES
 =======
 
 * Spike count plot in 'DynapcnnVisualizer' is optional 
+* `DynapcnnVisualizer` allows custom JIT filters to make readout predictions
 
 v2.0.0
 ------
