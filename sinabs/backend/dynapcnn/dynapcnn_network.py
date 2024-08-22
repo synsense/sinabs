@@ -143,7 +143,6 @@ class DynapcnnNetwork(nn.Module):
     
     @property
     def layers_handlers(self):
-        # @TODO this will be removed after a success call to `.to()` so need to check if it exists before return.
         return self._dynapcnnlayers_handlers
     
     @property
@@ -220,7 +219,7 @@ class DynapcnnNetwork(nn.Module):
 
         for i in self._topological_order:
 
-            if self._layers_mapper[i].entry_point:
+            if self._dynapcnnlayers_handlers[i].entry_point:
                 # `DynapcnnLayer i` is an entry point of the network.
                 layers_outputs[i] = self._layers_mapper[i](x)
 
@@ -235,8 +234,8 @@ class DynapcnnNetwork(nn.Module):
 
                     #   find which returned tensor from the `forward` call of DynapcnnLayers `arg1` and `arg2` are to be fed
                     # to the target DynapcnnLayer `i`.
-                    return_index_arg1 = self._layers_mapper[arg1].get_destination_dcnnl_index(i)
-                    return_index_arg2 = self._layers_mapper[arg2].get_destination_dcnnl_index(i)
+                    return_index_arg1 = self._dynapcnnlayers_handlers[arg1].get_destination_dcnnl_index(i)
+                    return_index_arg2 = self._dynapcnnlayers_handlers[arg2].get_destination_dcnnl_index(i)
 
                     # retrieve input tensors to `Merge`.
                     _arg1 = layers_outputs[arg1][return_index_arg1]
@@ -256,7 +255,7 @@ class DynapcnnNetwork(nn.Module):
 
                     #   find which returned tensor from the `forward` call of the source DynapcnnLayer `src_dcnnl` is to be fed
                     # to the target DynapcnnLayer `i`.
-                    return_index = self._layers_mapper[src_dcnnl].get_destination_dcnnl_index(i)
+                    return_index = self._dynapcnnlayers_handlers[src_dcnnl].get_destination_dcnnl_index(i)
 
                     # call the forward.
                     layers_outputs[i] = self._layers_mapper[i](layers_outputs[src_dcnnl][return_index])
@@ -523,9 +522,6 @@ class DynapcnnNetwork(nn.Module):
         if config_builder.validate_configuration(config):
             # validate config.
             print("Network is valid: \n")
-
-            # successfull chip configuration: information from handlers no longer necessary.
-            del self._dynapcnnlayers_handlers
             
             return config
         else:
