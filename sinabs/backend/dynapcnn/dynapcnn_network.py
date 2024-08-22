@@ -104,7 +104,7 @@ class DynapcnnNetwork(nn.Module):
         self._populate_nodes_io()
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
-        self._dynapcnn_layers = build_from_graph(
+        self._dynapcnn_layers, self._dynapcnnlayers_handlers = build_from_graph(
             discretize          = discretize,
             edges               = self._sinabs_edges,
             nodes_to_dcnnl_map  = self._nodes_to_dcnnl_map,
@@ -541,7 +541,7 @@ class DynapcnnNetwork(nn.Module):
         # get connections between `DynapcnnLayer`s.
         dcnnl_edges = self._get_dynapcnnlayers_edges()
 
-        dcnnnet_module = DynapcnnNetworkModule(dcnnl_edges, self._dynapcnn_layers)
+        dcnnnet_module = DynapcnnNetworkModule(dcnnl_edges, self._dynapcnn_layers, self._dynapcnnlayers_handlers)
 
         return dcnnnet_module.dcnnl_edges, dcnnnet_module.forward_map, dcnnnet_module.merge_points, topological_sorting(dcnnl_edges)
     
