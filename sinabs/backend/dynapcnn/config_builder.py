@@ -90,14 +90,14 @@ class ConfigBuilder(ABC):
                 pass
 
             for (dcnnl_idx, core_idx) in mapping:
-                # save the core index information directly in the `DynapcnnLayer` object assigned to it.
-                model.layers_mapper[dcnnl_idx].assigned_core = core_idx
+                # save the core index information on the handler of this `DynapcnnLayer` instance.
+                model.layers_handlers[dcnnl_idx]['layer_handler'].assigned_core = core_idx
                 chip_layers_ordering.append(core_idx)
 
         else:
             raise InvalidModel(model)
 
-        # return kept but its information is not used beyond this point (core indices already part of each `DynapcnnLayer` instance).
+        # return kept but its information is not used beyond this point (core indices already part of each `DynapcnnLayerHandler` instance).
         return chip_layers_ordering
 
     @classmethod
