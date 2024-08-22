@@ -120,7 +120,7 @@ def build_from_graph(
         edges: List[Tuple[int, int]],
         nodes_to_dcnnl_map: dict,
         weight_rescaling_fn: Callable,
-        entry_nodes: List[int]) -> dict:
+        entry_nodes: List[int]) -> Union[Dict[int, Dict[DynapcnnLayer, List]], Dict[int, Dict[DynapcnnLayerHandler, List]]]:
     """ Parses each edge in `edges`, where each node is a set of layer that will compose a `DynapcnnLayer`. The 
     target destination of each `DynapcnnLayer` is computed via edges connecting nodes in different `DynapcnnLayer` 
     instances.
@@ -138,25 +138,26 @@ def build_from_graph(
     Returns
     ----------
     - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
+    - dynapcnnlayers_handlers (dict): `DynapcnnLayerHandler` instances, gathering network-level info. for each of the `DynapcnnLayer` instances in `dynapcnn_layers`.
     """
 
     # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
-    dynapcnn_layers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, entry_nodes)
+    dynapcnn_layers, dynapcnnlayers_handlers = construct_dynapcnnlayers_from_mapper(discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, entry_nodes)
     
-    # initialize attribute holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
-    for idx, layer_data in dynapcnn_layers.items():
+    # initialize key holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
+    for idx, layer_data in dynapcnnlayers_handlers.items():
         if 'core_idx' not in layer_data:
             # a `DynapcnnLayer` gets assigned a core index when `DynapcnnNetworkGraph.to()`` is called.
             layer_data['core_idx'] = -1
     
-    return dynapcnn_layers
+    return dynapcnn_layers, dynapcnnlayers_handlers
 
 def construct_dynapcnnlayers_from_mapper(
         discretize: bool,
         nodes_to_dcnnl_map: dict,
         edges: List[Tuple[int, int]],
         weight_rescaling_fn: Callable,
-        entry_nodes: List[int]) -> Dict[int, Dict[DynapcnnLayer, List]]:
+        entry_nodes: List[int]) -> Union[Dict[int, Dict[DynapcnnLayer, List]], Dict[int, Dict[DynapcnnLayerHandler, List]]]:
     """ Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
 
     Parameters
@@ -172,31 +173,40 @@ def construct_dynapcnnlayers_from_mapper(
     Returns
     ----------
     - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
+    - dynapcnnlayers_handlers (dict): `DynapcnnLayerHandler` instances, gathering network-level info. for each of the `DynapcnnLayer` instances in `dynapcnn_layers`.
     """
 
     dynapcnn_layers = {}
+    dynapcnnlayers_handlers = {}
     
     for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
-        # create a `DynapcnnLayerHandler` from the set of layers in `dcnnl_data`.
+        # create a `DynapcnnLayerHandler` from the set of layers in `dcnnl_data` - this holds network-level data required to instantiate a `DynapcnnLayer`.
         layerhandler = construct_layerhandler(
             dpcnnl_idx, discretize, edges, nodes_to_dcnnl_map, weight_rescaling_fn, entry_nodes)
         
         # create a `DynapcnnLayer` from the handler.
         dynapcnnlayer = construct_dynapcnnlayer(layerhandler)
         
+        # holds the layers themselvs.
         dynapcnn_layers[dpcnnl_idx] = {
             'layer': dynapcnnlayer, 
             'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
             }
+        
+        # holds the handlers of each layer for later use (e.g., creation of the forward pass for the `DynapcnnNetwork`).
+        dynapcnnlayers_handlers[dpcnnl_idx] = {
+            'layer_handler': layerhandler, 
+            'destinations': nodes_to_dcnnl_map[dpcnnl_idx]['destinations']
+            }
 
         # check if a `nn.Linear` in `dynapcnnlayer` has been  turned into a `nn.Conv2d`.
-        node, output_shape = dynapcnnlayer.get_modified_node_io(dcnnl_data)
+        node, output_shape = layerhandler.get_modified_node_io(dcnnl_data)
 
         if isinstance(node, int) and isinstance(output_shape, tuple):
             # a `nn.Linear` has been converted into a `nn.Conv2d`: update input shape of nodes receiving from the spiking layer after it.
             update_nodes_io(node, output_shape, nodes_to_dcnnl_map, edges)
 
-    return dynapcnn_layers
+    return dynapcnn_layers, dynapcnnlayers_handlers
 
 def update_nodes_io(updated_node: int, output_shape: tuple, nodes_to_dcnnl_map: dict, edges: List[Tuple[int, int]]) -> None:
     """ Updates the `input_shape` entries of each node in `nodes_to_dcnnl_map` receiving as input the output of the spiking 
