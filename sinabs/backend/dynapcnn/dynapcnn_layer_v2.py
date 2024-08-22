@@ -62,7 +62,6 @@ class DynapcnnLayer(nn.Module):
         self.discretize         = discretize
         self.rescale_weights    = rescale_weights
         self.conv_out_shape     = self._get_conv_output_shape()
-
         self._pool_lyrs         = self._make_pool_layers()                                 # creates SumPool2d layers from `pool`.
         
 
@@ -95,10 +94,61 @@ class DynapcnnLayer(nn.Module):
 
         Returns
         -------
-        features, height, width
+        - conv_out_shape (tuple): formatted as (features, height, width).
         """
         # same as the convolution's output.
         return self.conv_out_shape
+
+    def summary(self) -> dict:
+        """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
+        # TODO I can't see pooling being used in checking memory constraints by the builder so I'm ignoring for now the fact that multiple pooling could exist.
+        
+        _pool = None
+
+        # @TODO POSSIBLE INCONSISTENCY: if the `SumPool2d` is the result of a conversion from `AvgPool2d` then `SumPool2d.kernel_size` 
+        # is of type tuple, otherwise it is an int. 
+        if self._pool_lyrs:
+            # @TODO ignoring for now that there could be multiple poolings (just use the first one).
+            if isinstance(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, tuple):
+                _pool = list(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size)
+            elif isinstance(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, int):
+                _pool = [self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size]
+            else:
+                raise ValueError('Type of `self.pool_layer[0].kernel_size` not understood.')
+
+        return {
+            "pool": (_pool),
+            "kernel": list(self.conv_layer.weight.data.shape),
+            "neuron": self.conv_out_shape,                          # neuron layer output has the same shape as the convolution layer ouput.
+        }
+    
+    def memory_summary(self):
+        """Computes the amount of memory required for each of the components. Note that this is not
+        necessarily the same as the number of parameters due to some architecture design
+        constraints.
+
+        .. math::
+
+            K_{MT} = c \\cdot 2^{\\lceil \\log_2\\left(k_xk_y\\right) \\rceil + \\lceil \\log_2\\left(f\\right) \\rceil}
+
+        .. math::
+
+            N_{MT} = f \\cdot 2^{ \\lceil \\log_2\\left(f_y\\right) \\rceil + \\lceil \\log_2\\left(f_x\\right) \\rceil }
+
+        Returns
+        -------
+        A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
+        """
+        summary = self.summary()
+        f, c, h, w = summary["kernel"]
+        f, neuron_height, neuron_width = self.conv_out_shape        # neuron layer output has the same shape as the convolution layer ouput.
+
+        return {
+            "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
+            "neuron": f
+            * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
+            "bias": 0 if self.conv.bias is None else len(self.conv.bias),
+        }
     
     ####################################################### Private Methods #######################################################
 
