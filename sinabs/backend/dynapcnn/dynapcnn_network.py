@@ -109,7 +109,7 @@ class DynapcnnNetwork(nn.Module):
             edges               = self._sinabs_edges,
             nodes_to_dcnnl_map  = self._nodes_to_dcnnl_map,
             weight_rescaling_fn = weight_rescaling_fn,
-            entry_nodes = self._entry_nodes)
+            entry_nodes         = self._entry_nodes)
         
         # these gather all data necessay to implement the forward method for this class.
         self._dcnnl_edges, self._layers_mapper, self._merge_points, self._topological_order = self._get_network_module()
@@ -140,6 +140,11 @@ class DynapcnnNetwork(nn.Module):
     @property
     def layers_mapper(self) -> Dict[int, DynapcnnLayer]:
         return self._layers_mapper
+    
+    @property
+    def layers_handlers(self):
+        # @TODO this will be removed after a success call to `.to()` so need to check if it exists before return.
+        return self._dynapcnnlayers_handlers
     
     @property
     def chip_layers_ordering(self):
@@ -470,7 +475,7 @@ class DynapcnnNetwork(nn.Module):
         has_dvs_layer = isinstance(self._layers_mapper[0], DVSLayer)
 
         if chip_layers_ordering == "auto":
-            # figure out mapping of each DynapcnnLayer into one core (core ID will be set in the layer instance via `layer.assigned_core`).
+            # figure out mapping of each `DynapcnnLayer` into one core (core ID will be set in the layer's handler instance via `.assigned_core`).
             _ = config_builder.get_valid_mapping(self)
 
         else:
@@ -479,7 +484,7 @@ class DynapcnnNetwork(nn.Module):
                 # TODO not handling DVSLayer yet.
                 pass
 
-        # update config.
+        # update config (config. DynapcnnLayer instances into their assigned core).
         config = config_builder.build_config(self)
 
         # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
@@ -493,16 +498,16 @@ class DynapcnnNetwork(nn.Module):
             for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
 
                 # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
-                if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
+                if len(self._dynapcnnlayers_handlers[dcnnl_index].dynapcnnlayer_destination) == 0:
                     # a DynapcnnLayer without destinations is taken to be the output layer of the network.
-                    monitor_chip_layers.append(ith_dcnnl.assigned_core)
+                    monitor_chip_layers.append(self._dynapcnnlayers_handlers[dcnnl_index].assigned_core)
 
         elif monitor_layers == "all":
             for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
                 # TODO not handling DVSLayer yet
                 # monitor each chip core (if not a DVSLayer).
                 if not isinstance(ith_dcnnl, DVSLayer):
-                    monitor_chip_layers.append(ith_dcnnl.assigned_core)
+                    monitor_chip_layers.append(self._dynapcnnlayers_handlers[dcnnl_index].assigned_core)
         
         if monitor_layers:
             if "dvs" in monitor_layers:
@@ -518,6 +523,9 @@ class DynapcnnNetwork(nn.Module):
         if config_builder.validate_configuration(config):
             # validate config.
             print("Network is valid: \n")
+
+            # successfull chip configuration: information from handlers no longer necessary.
+            del self._dynapcnnlayers_handlers
             
             return config
         else:
