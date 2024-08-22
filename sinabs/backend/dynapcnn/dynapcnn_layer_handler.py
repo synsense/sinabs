@@ -389,11 +389,13 @@ class DynapcnnLayerHandler():
             raise ValueError(f'Node {node} does not belong to DynapcnnLayer {self.dpcnnl_index}.')
     
     @staticmethod
-    def find_nodes_core_id(node: int, forward_map: dict) -> int:
+    def find_nodes_core_id(node: int, all_handlers: dict) -> int:
+        """ Loops through all handlers in `all_handlers` to find to which core a `DynapcnnLayer` containing
+        `node` has been assigned to. """
 
-        for _, dcnnl in forward_map.items():
+        for _, dcnnl in all_handlers.items():
 
-            if node == dcnnl.conv_node_id or node == dcnnl.spk_node_id or node in dcnnl.pool_node_id:
-                return dcnnl.assigned_core
+            if node == dcnnl['layer_handler'].conv_node_id or node == dcnnl['layer_handler'].spk_node_id or node in dcnnl['layer_handler'].pool_node_id:
+                return dcnnl['layer_handler'].assigned_core
             
         raise ValueError(f'Node {node} not found in any of the cores.')
