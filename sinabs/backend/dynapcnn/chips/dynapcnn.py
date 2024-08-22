@@ -10,6 +10,7 @@ import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
+from sinabs.backend.dynapcnn.dynapcnn_layer_handler import DynapcnnLayerHandler
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 import sinabs
@@ -45,26 +46,26 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
         config_dict = copy.deepcopy(config_dict)
 
-        if layer.conv_layer.bias is not None:
-            (weights, biases) = layer.conv_layer.parameters()
+        if layer.conv.bias is not None:
+            (weights, biases) = layer.conv.parameters()
         else:
-            (weights,) = layer.conv_layer.parameters()
-            biases = torch.zeros(layer.conv_layer.out_channels)
+            (weights,) = layer.conv.parameters()
+            biases = torch.zeros(layer.conv.out_channels)
 
         config_dict["weights_kill_bit"] = (~weights.bool()).tolist()
         config_dict["biases_kill_bit"] = (~biases.bool()).tolist()
 
         # - Neuron states
-        if not layer.spk_layer.is_state_initialised():
+        if not layer.spk.is_state_initialised():
             # then we assign no initial neuron state to DYNAP-CNN.
             f, h, w = layer.get_neuron_shape()
             neurons_state = torch.zeros(f, w, h)
-        elif layer.spk_layer.v_mem.dim() == 4:
+        elif layer.spk.v_mem.dim() == 4:
             # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = layer.spk_layer.v_mem.transpose(2, 3)[0]
+            neurons_state = layer.spk.v_mem.transpose(2, 3)[0]
         else:
             raise ValueError(
-                f"Current v_mem (shape: {layer.spk_layer.v_mem.shape}) of spiking layer not understood."
+                f"Current v_mem (shape: {layer.spk.v_mem.shape}) of spiking layer not understood."
             )
 
         config_dict["neurons_value_kill_bit"] = (
@@ -74,12 +75,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config_dict
 
     @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer, layers_mapper: Dict[int, DynapcnnLayer]) -> dict:
+    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer, layer_handler: DynapcnnLayerHandler, all_handlers: dict) -> dict:
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
 
         # Update the dimensions
-        channel_count, input_size_y, input_size_x = layer.input_shape
+        channel_count, input_size_y, input_size_x = layer.in_shape
         dimensions = {"input_shape": {}, "output_shape": {}}
         dimensions["input_shape"]["size"] = {"x": input_size_x, "y": input_size_y}
         dimensions["input_shape"]["feature_count"] = channel_count
@@ -91,24 +92,24 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         dimensions["output_shape"]["size"]["x"] = w
         dimensions["output_shape"]["size"]["y"] = h
         dimensions["padding"] = {
-            "x": layer.conv_layer.padding[1],
-            "y": layer.conv_layer.padding[0],
+            "x": layer.conv.padding[1],
+            "y": layer.conv.padding[0],
         }
         dimensions["stride"] = {
-            "x": layer.conv_layer.stride[1],
-            "y": layer.conv_layer.stride[0],
+            "x": layer.conv.stride[1],
+            "y": layer.conv.stride[0],
         }
-        dimensions["kernel_size"] = layer.conv_layer.kernel_size[0]
+        dimensions["kernel_size"] = layer.conv.kernel_size[0]
 
-        if dimensions["kernel_size"] != layer.conv_layer.kernel_size[1]:
+        if dimensions["kernel_size"] != layer.conv.kernel_size[1]:
             raise ValueError("Conv2d: Kernel must have same height and width.")
         config_dict["dimensions"] = dimensions
         # Update parameters from convolution
-        if layer.conv_layer.bias is not None:
-            (weights, biases) = layer.conv_layer.parameters()
+        if layer.conv.bias is not None:
+            (weights, biases) = layer.conv.parameters()
         else:
-            (weights,) = layer.conv_layer.parameters()
-            biases = torch.zeros(layer.conv_layer.out_channels)
+            (weights,) = layer.conv.parameters()
+            biases = torch.zeros(layer.conv.out_channels)
         weights = weights.transpose(2, 3)  # Need this to match samna convention
         config_dict["weights"] = weights.int().tolist()
         config_dict["biases"] = biases.int().tolist()
@@ -117,36 +118,36 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         # Update parameters from the spiking layer
 
         # - Neuron states
-        if not layer.spk_layer.is_state_initialised():
+        if not layer.spk.is_state_initialised():
             # then we assign no initial neuron state to DYNAP-CNN.
             f, h, w = layer.get_neuron_shape()
             neurons_state = torch.zeros(f, w, h)
-        elif layer.spk_layer.v_mem.dim() == 4:
+        elif layer.spk.v_mem.dim() == 4:
             # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = layer.spk_layer.v_mem.transpose(2, 3)[0]
+            neurons_state = layer.spk.v_mem.transpose(2, 3)[0]
         else:
             raise ValueError(
-                f"Current v_mem (shape: {layer.spk_layer.v_mem.shape}) of spiking layer not understood."
+                f"Current v_mem (shape: {layer.spk.v_mem.shape}) of spiking layer not understood."
             )
 
         # - Resetting vs returning to 0
-        if isinstance(layer.spk_layer.reset_fn, sinabs.activation.MembraneReset):
+        if isinstance(layer.spk.reset_fn, sinabs.activation.MembraneReset):
             return_to_zero = True
-        elif isinstance(layer.spk_layer.reset_fn, sinabs.activation.MembraneSubtract):
+        elif isinstance(layer.spk.reset_fn, sinabs.activation.MembraneSubtract):
             return_to_zero = False
         else:
             raise Exception(
                 "Unknown reset mechanism. Only MembraneReset and MembraneSubtract are currently understood."
             )
 
-        if layer.spk_layer.min_v_mem is None:
+        if layer.spk.min_v_mem is None:
             min_v_mem = -(2**15)
         else:
-            min_v_mem = int(layer.spk_layer.min_v_mem)
+            min_v_mem = int(layer.spk.min_v_mem)
         config_dict.update(
             {
                 "return_to_zero": return_to_zero,
-                "threshold_high": int(layer.spk_layer.spike_threshold),
+                "threshold_high": int(layer.spk.spike_threshold),
                 "threshold_low": min_v_mem,
                 "monitor_enable": False,
                 "neurons_initial_value": neurons_state.int().tolist(),
@@ -155,10 +156,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
         # setting destinations config. based on destinations destination nodes of the nodes withing this `dcnnl`.
         destinations = []
-        for node_id, destination_nodes in layer.nodes_destinations.items():
+        for node_id, destination_nodes in layer_handler.nodes_destinations.items():
             for dest_node in destination_nodes:
-                core_id = DynapcnnLayer.find_nodes_core_id(dest_node, layers_mapper)
-                kernel_size = layer.get_pool_kernel_size(node_id)
+                core_id = DynapcnnLayerHandler.find_nodes_core_id(dest_node, all_handlers)
+                kernel_size = layer_handler.get_pool_kernel_size(node_id)
 
                 dest_data = {
                     'layer': core_id,
@@ -175,7 +176,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config_dict
             
     @classmethod
-    def write_dynapcnn_layer_config(cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig", layers_mapper: Dict[int, DynapcnnLayer]) -> None:
+    def write_dynapcnn_layer_config(cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig", layer_handler: DynapcnnLayerHandler, all_handlers: dict) -> None:
         """ Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be 
         deployed on chip.
 
@@ -183,13 +184,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         ----------
         - layer (DynapcnnLayer): the layer for which the condiguration will be written.
         - chip_layer (CNNLayerConfig): configuration object representing the layer to which configuration is written.
-        - layers_mapper (dict): a dictionary with keys being the ID of each `DynapcnnLayer` and values being the layer 
-            instance. This is used to retrieve the `.assigned_core` for each of the layers in `.dynapcnnlayer_destination` 
-            such that `chip_layer.destinations` can be configured.
+        - layer_handler (DynapcnnLayerHandler): ...
+        - all_handlers (dict): ...
         """
 
         # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
-        config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer, layers_mapper=layers_mapper)
+        config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer, layer_handler=layer_handler, all_handlers=all_handlers)
 
         # update configuration of the DYNAPCNN layer.
         chip_layer.dimensions = config_dict["dimensions"]
@@ -238,8 +238,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     pass
 
                 elif isinstance(ith_dcnnl, DynapcnnLayer):
-                    chip_layer = config.cnn_layers[ith_dcnnl.assigned_core]
-                    cls.write_dynapcnn_layer_config(ith_dcnnl, chip_layer, model.layers_mapper)
+                    # retrieve assigned core from the handler of this DynapcnnLayer (`ith_dcnnl`) instance.
+                    chip_layer = config.cnn_layers[model.layers_handlers[layer_index].assigned_core]
+                    # write core configuration.
+                    cls.write_dynapcnn_layer_config(ith_dcnnl, chip_layer, model.layers_handlers[layer_index], model.layers_handlers)
 
                 else:
                     # shouldn't happen since type checks are made previously.
