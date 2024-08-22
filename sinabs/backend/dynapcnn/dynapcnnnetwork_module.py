@@ -9,17 +9,18 @@ from .dynapcnn_layer import DynapcnnLayer
 
 class DynapcnnNetworkModule():
     """
-    Uses the set of `DynapcnnLayer` instances and how they address each other to define what the `forward` method of the model should do.
+    Uses the set of `DynapcnnLayer`\`DynapcnnLayerHandler` instances and how they address each other to define what the `forward` method of the model should do.
 
     Parameters
     ----------
     - dcnnl_edges (list): tuples representing the output->input mapping between `DynapcnnLayer` instances
         that have been used as configuration for each core `CNNLayerConifg`.
-    - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances along with their supporting metadata (e.g. assigned core,
-        destination layers, etc.).
+    - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
+    - dynapcnnlayers_handlers (dict): a mapper containing `DynapcnnLayerHandler` instances (hold network-level 
+        data that was used to create the respective `DynapcnnLayer` instances in `dynapcnn_layers`).
     """
 
-    def __init__(self, dcnnl_edges: List[Tuple[int, int]], dynapcnn_layers: Dict):
+    def __init__(self, dcnnl_edges: List[Tuple[int, int]], dynapcnn_layers: Dict[int, dict], dynapcnnlayers_handlers: Dict[int, dict]):
 
         self.dcnnl_edges = dcnnl_edges
 
@@ -27,19 +28,19 @@ class DynapcnnNetworkModule():
         self.forward_map, self.merge_points = self._build_module_forward_from_graph(dcnnl_edges, dynapcnn_layers)
 
         # add extra edges marking which nodes are input to the network.
-        self._add_entry_points_edges(dynapcnn_layers)
+        self._add_entry_points_edges(dynapcnnlayers_handlers)
 
-    def _add_entry_points_edges(self, dynapcnn_layers: dict) -> None:
+    def _add_entry_points_edges(self, dynapcnnlayers_handlers: dict) -> None:
         """ Addes an extra edge `('input', X)` to `self.dcnnl_edges` if `X` is an entry point of the `DynapcnnNetwork` 
-        (i.e., `dynapcnn_layers[X]['layer'].entry_point = True`).
+        (i.e., `dynapcnnlayers_handlers[X]['layer_handler'].entry_point = True`).
 
         Parameters
         ----------
-        - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances along with their supporting metadata (e.g. assigned core,
+        - dynapcnnlayers_handlers (dict): a mapper containing `DynapcnnLayerHandler` instances along with their supporting metadata (e.g. assigned core,
             destination layers, etc.).
         """
-        for indx, dcnnl_data in dynapcnn_layers.items():
-            if dcnnl_data['layer'].entry_point:
+        for indx, dcnnl_data in dynapcnnlayers_handlers.items():
+            if dcnnl_data['layer_handler'].entry_point:
                 self.dcnnl_edges.append(('input', indx))
     
     def _spot_merging_points(self, dcnnl_edges: list) -> Dict[int, Dict[Tuple, sl.Merge]]:
