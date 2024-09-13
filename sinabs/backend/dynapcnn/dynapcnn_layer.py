@@ -52,9 +52,9 @@ class DynapcnnLayer(nn.Module):
         super().__init__()
 
         self.in_shape           = in_shape
-        self.pool               = pool
-        self.discretize         = discretize
-        self.rescale_weights    = rescale_weights
+        self._pool              = pool
+        self._discretize        = discretize
+        self._rescale_weights    = rescale_weights
 
         spk = deepcopy(spk)
 
@@ -66,12 +66,12 @@ class DynapcnnLayer(nn.Module):
         else:
             conv = deepcopy(conv)
 
-        if self.rescale_weights != 1:
+        if self._rescale_weights != 1:
             # this has to be done after copying but before discretizing
-            conv.weight.data = (conv.weight / self.rescale_weights).clone().detach()
+            conv.weight.data = (conv.weight / self._rescale_weights).clone().detach()
 
         # int conversion is done while writing the config.
-        if self.discretize:
+        if self._discretize:
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
         if discretize:
@@ -80,11 +80,25 @@ class DynapcnnLayer(nn.Module):
 
         self.conv               = conv
         self.spk                = spk
-        
-        self.conv_out_shape     = self._get_conv_output_shape()
-        self._pool_lyrs         = self._make_pool_layers()                                 # creates SumPool2d layers from `pool`.
-        
 
+        self._pool_lyrs         = self._make_pool_layers()                                 # creates SumPool2d layers from `pool`.
+    
+    @property
+    def pool(self):
+        return self._pool
+
+    @property
+    def discretize(self):
+        return self._discretize
+
+    @property
+    def rescale_weights(self):
+        return self._rescale_weights
+    
+    @property
+    def conv_out_shape(self):
+        return self._get_conv_output_shape()
+        
     ####################################################### Public Methods #######################################################
     
     def forward(self, x):
@@ -98,7 +112,7 @@ class DynapcnnLayer(nn.Module):
         x = self.conv(x)
         x = self.spk(x)
 
-        for pool in self.pool:
+        for pool in self._pool:
             if pool == 1:
                 # no pooling is applied.
                 returns.append(x)
@@ -134,7 +148,7 @@ class DynapcnnLayer(nn.Module):
             elif isinstance(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, int):
                 _pool = [self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size]
             else:
-                raise ValueError('Type of `self.pool_layer[0].kernel_size` not understood.')
+                raise ValueError('Type of `self._pool_layer[0].kernel_size` not understood.')
 
         return {
             "pool": (_pool),
@@ -214,24 +228,24 @@ class DynapcnnLayer(nn.Module):
         return layer, input_shape
 
     def _make_pool_layers(self) -> Dict[int, sl.SumPool2d]:
-        """ Creates a `sl.SumPool2d` for each entry in `self.pool` greater than one.
+        """ Creates a `sl.SumPool2d` for each entry in `self._pool` greater than one.
 
-        Note: the "kernel size" (values > 1) in self.pool is by default used to set the stride of the pooling layer.
+        Note: the "kernel size" (values > 1) in self._pool is by default used to set the stride of the pooling layer.
 
         Returns
         -------
-        - pool_lyrs (dict): the `key` is a value grather than 1 in `self.pool`, with the `value` being the `sl.SumPool2d` it represents.
+        - pool_lyrs (dict): the `key` is a value grather than 1 in `self._pool`, with the `value` being the `sl.SumPool2d` it represents.
         """
 
         pool_lyrs = {}
 
         # validating if pool are integers
-        for item in self.pool:
+        for item in self._pool:
             if not isinstance(item, int):
                 raise ValueError(f"Item '{item}' in `pool` is not an integer.")
 
         # create layers form pool list.
-        for kernel_s in self.pool:
+        for kernel_s in self._pool:
 
             if kernel_s != 1:
 
