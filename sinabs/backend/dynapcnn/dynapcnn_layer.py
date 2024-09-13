@@ -135,23 +135,9 @@ class DynapcnnLayer(nn.Module):
 
     def summary(self) -> dict:
         """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
-        # TODO I can't see pooling being used in checking memory constraints by the builder so I'm ignoring for now the fact that multiple pooling could exist.
-        
-        _pool = None
-
-        # @TODO POSSIBLE INCONSISTENCY: if the `SumPool2d` is the result of a conversion from `AvgPool2d` then `SumPool2d.kernel_size` 
-        # is of type tuple, otherwise it is an int. 
-        if self._pool_lyrs:
-            # @TODO ignoring for now that there could be multiple poolings (just use the first one).
-            if isinstance(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, tuple):
-                _pool = list(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size)
-            elif isinstance(self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, int):
-                _pool = [self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size, self._pool_lyrs[next(iter(self._pool_lyrs))].kernel_size]
-            else:
-                raise ValueError('Type of `self._pool_layer[0].kernel_size` not understood.')
 
         return {
-            "pool": (_pool),
+            "pool": (self._pool),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self.conv_out_shape,                          # neuron layer output has the same shape as the convolution layer ouput.
         }
