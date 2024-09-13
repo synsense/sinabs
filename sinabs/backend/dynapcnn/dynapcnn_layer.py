@@ -250,7 +250,6 @@ class DynapcnnLayer(nn.Module):
             if kernel_s != 1:
 
                 pooling = (kernel_s, kernel_s)
-                cumulative_pooling = (1, 1)
 
                 # compute cumulative pooling.
                 cumulative_pooling = (
