@@ -283,18 +283,12 @@ def construct_dynapcnnlayer(handler: DynapcnnLayerHandler) -> DynapcnnLayer:
     """...
     """
 
-    # retrieve required data from handler.
-    conv = deepcopy(handler.conv_layer)
-    spk = deepcopy(handler.spk_layer)
-    in_shape = handler.conv_in_shape
-    pool = handler.get_pool_list()
-
-    # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
+    # instantiate a DynapcnnLayer from the data in the handler.
     dynapcnnlayer = DynapcnnLayer(
-        conv                = conv,
-        spk                 = spk,
-        in_shape            = in_shape,
-        pool                = pool,
+        conv                = handler.conv_layer,
+        spk                 = handler.spk_layer,
+        in_shape            = handler.conv_in_shape,
+        pool                = handler.get_pool_list(),
         discretize          = False,
     )
 
