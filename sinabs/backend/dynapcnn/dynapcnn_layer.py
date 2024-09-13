@@ -131,7 +131,7 @@ class DynapcnnLayer(nn.Module):
         - conv_out_shape (tuple): formatted as (features, height, width).
         """
         # same as the convolution's output.
-        return self.conv_out_shape
+        return self._get_conv_output_shape()
 
     def summary(self) -> dict:
         """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
@@ -139,7 +139,7 @@ class DynapcnnLayer(nn.Module):
         return {
             "pool": (self._pool),
             "kernel": list(self.conv_layer.weight.data.shape),
-            "neuron": self.conv_out_shape,                          # neuron layer output has the same shape as the convolution layer ouput.
+            "neuron": self._get_conv_output_shape(),                          # neuron layer output has the same shape as the convolution layer ouput.
         }
     
     def memory_summary(self):
@@ -161,7 +161,7 @@ class DynapcnnLayer(nn.Module):
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        f, neuron_height, neuron_width = self.conv_out_shape        # neuron layer output has the same shape as the convolution layer ouput.
+        f, neuron_height, neuron_width = self._get_conv_output_shape()        # neuron layer output has the same shape as the convolution layer ouput.
 
         return {
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
