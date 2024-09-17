@@ -130,6 +130,10 @@ class DynapcnnLayer(nn.Module):
                 returns.append(pool_out)
 
         return tuple(returns)
+
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        """ Call `zero_grad` method of spiking layer """
+        return self._spk.zero_grad(set_to_none)
     
     def get_neuron_shape(self) -> Tuple[int, int, int]:
         """Return the output shape of the neuron layer.
@@ -140,6 +144,25 @@ class DynapcnnLayer(nn.Module):
         """
         # same as the convolution's output.
         return self._get_conv_output_shape()
+
+    def get_output_shape(self) -> List[Tuple[int, int, int]]:
+        """Return the output shapes of the layer, including pooling.
+
+        Returns
+        -------
+        - output_shape (list of tuples): 
+            One entry per destination, each formatted as (features, height, width).
+        """
+        neuron_shape = self.get_neuron_shape()
+        # this is the actual output shape, including pooling
+        output_shape = []
+        for pool in self._pool:
+            output_shape.append(
+                neuron_shape[0],
+                neuron_shape[1] // pool,
+                neuron_shape[2] // pool,
+            )
+        return output_shape
 
     def summary(self) -> dict:
         """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
