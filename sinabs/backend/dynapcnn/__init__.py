@@ -1,4 +1,5 @@
 from .dynapcnn_network import (
+    DynapcnnCompatibleNetwork,
     DynapcnnNetwork,
 )
 
