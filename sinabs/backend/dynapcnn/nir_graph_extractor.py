@@ -157,26 +157,21 @@ class NIRtoDynapcnnNetworkGraph():
         """
         edges_list = []
         name_2_indx_map = {}
-        idx_counter = 0                                         # TODO maybe make sure the input node from nir always gets assined `0`.
-
-        nodes_IDs = [0]
-
+        
+        # TODO maybe make sure the input node from nir always gets assined `0`.
+        
         for src_node in nir_graph.node_list:
-            # source node.
+            # Make sure current node is in `name_2_indx_map`
             if src_node.name not in name_2_indx_map:
-                name_2_indx_map[src_node.name] = idx_counter
-                idx_counter += 1
-
-                nodes_IDs.append(idx_counter)
+                # Assign unique index by taking current length of `name_2_indx_map`
+                name_2_indx_map[src_node.name] = len(name_2_indx_map)
 
             for trg_node in src_node.outgoing_nodes:
-                # target node.
+                # Make sure all targets of current node are in `name_2_indx_map`
                 if trg_node.name not in name_2_indx_map:
-                    name_2_indx_map[trg_node.name] = idx_counter
-                    idx_counter += 1
+                    name_2_indx_map[trg_node.name] = len(name_2_indx_map)
 
-                    nodes_IDs.append(idx_counter)
-
+                # Store the edge of current node to the target
                 edges_list.append((name_2_indx_map[src_node.name], name_2_indx_map[trg_node.name]))
 
         # finding entry/exits nodes of the graph.
