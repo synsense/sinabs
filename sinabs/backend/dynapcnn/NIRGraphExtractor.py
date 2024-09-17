@@ -1,9 +1,14 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-import torch, sinabs, nirtorch, copy
+import copy
+from typing import Tuple, Dict, List
+
+import nirtorch
+import sinabs
+import torch
 import torch.nn as nn
-from typing import Tuple, Dict, List, Union
+
 from .utils import topological_sorting
 
 class NIRtoDynapcnnNetworkGraph():
@@ -18,6 +23,19 @@ class NIRtoDynapcnnNetworkGraph():
         - dummy_input (torch.tensor): a random input sample to be fed through the model to acquire both
             the computational graph (via `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
             with `(batch, channels, heigh, width)`.
+
+        Attributes
+        ----------
+        - edges_list (list of 2-tuples of integers):
+            Tuples describing the connections between layers in `spiking_model`.
+            Each layer (node) is identified by a unique integer ID.
+        - name_2_index_map (dict):
+            Keys are original variable names of layers in `spiking_model`.
+            Values are unique integer IDs.
+        - entry_nodes (list of ints):
+            IDs of nodes acting as entry points for the network, i.e. receiving external input.
+        - modules_map (dict):
+            Map from layer ID to the corresponding nn.Module instance.
         """
 
         # extract computational graph.
@@ -39,7 +57,7 @@ class NIRtoDynapcnnNetworkGraph():
         return self._entry_nodes
 
     @property
-    def get_edges_list(self):
+    def edges_list(self):
         return self._edges_list
     
     @property
@@ -199,7 +217,6 @@ class NIRtoDynapcnnNetworkGraph():
 
         return modules_map
     
-    # TODO - it would be good if I/O shapes were returned by the NIR graph.
     def _get_nodes_io_shapes(self, input_dummy: torch.tensor) -> Dict[int, Dict[str, torch.Size]]:
         """ Iteratively calls the forward method of each `nn.Module` (i.e., a layer/node in the graph) using the topologically
         sorted nodes extracted from the computational graph of the model being parsed.
