@@ -2,7 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 import copy
-from typing import Tuple, Dict, List
+from typing import Tuple, Dict, List, Type
 
 import nirtorch
 import sinabs
@@ -26,13 +26,13 @@ class NIRtoDynapcnnNetworkGraph():
 
         Attributes
         ----------
-        - edges_list (list of 2-tuples of integers):
+        - edges (set of 2-tuples of integers):
             Tuples describing the connections between layers in `spiking_model`.
             Each layer (node) is identified by a unique integer ID.
         - name_2_index_map (dict):
             Keys are original variable names of layers in `spiking_model`.
             Values are unique integer IDs.
-        - entry_nodes (list of ints):
+        - entry_nodes (set of ints):
             IDs of nodes acting as entry points for the network, i.e. receiving external input.
         - modules_map (dict):
             Map from layer ID to the corresponding nn.Module instance.
@@ -42,7 +42,7 @@ class NIRtoDynapcnnNetworkGraph():
         nir_graph = nirtorch.extract_torch_graph(spiking_model, dummy_input, model_name=None).ignore_tensors()
 
         # converts the NIR representation into a list of edges with nodes represented as integers.
-        self._edges_list, self._name_2_indx_map, self._entry_nodes = self._get_edges_from_nir(nir_graph)
+        self._edges, self._name_2_indx_map, self._entry_nodes = self._get_edges_from_nir(nir_graph)
         
         # recovers the associated `nn.Module` (layer) of each node.
         self.modules_map = self._get_named_modules(spiking_model)
@@ -53,81 +53,60 @@ class NIRtoDynapcnnNetworkGraph():
     ####################################################### Publich Methods #######################################################
 
     @property
-    def entry_nodes(self) -> List[int]:
+    def entry_nodes(self) -> Set[int]:
         return self._entry_nodes
 
     @property
-    def edges_list(self):
-        return self._edges_list
+    def edges(self) -> Set[Tuple[int, int]]:
+        return self._edges
     
     @property
-    def name_2_indx_map(self):
+    def name_2_indx_map(self) -> Dict[str, int]:
         return self._name_2_indx_map
     
     @property
-    def nodes_io_shapes(self):
+    def nodes_io_shapes(self) -> Dict[int, torch.Size]:
         return self._nodes_io_shapes
+    
+    @property
+    def sorted_nodes(self) -> List[int]:
+        return self._sort_graph_nodes()
 
-    def remove_ignored_nodes(self, default_ignored_nodes: tuple) -> Tuple[list, dict]:
-        """ Recreates the edges list based on layers that `DynapcnnNetwork` will ignore. This
+    def remove_ignored_nodes(self, ignored_node_classes: Tuple[Type]) -> Tuple[Set[int], Dict[int, int]]:
+        """ Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
         will be dropped as the node that originally targeted this node to be dropped.
 
         Parameters
         ----------
-        - default_ignored_nodes (tuple): a set of layers (`nn.Module`) that should be ignored from the graph.
+        - ignored_node_classes (tuple of types):
+            Layer classes that should be ignored from the graph.
 
         Returns
         ----------
-        - remapped_edges (list): the new list of edges after nodes flagged by `default_ignored_nodes` have been removed.
-        - remapped_nodes (dict): updated nodes' IDs after nodes flagged by `default_ignored_nodes` have been removed.
+        - new_edges (set): the new set of edges after nodes flagged by `ignored_node_classes` have been removed.
+        - remapped_nodes (dict): updated nodes' IDs after nodes flagged by `ignored_node_classes` have been removed.
         """
-        edges = copy.deepcopy(self._edges_list)
-        parsed_edges = []
-        removed_nodes = []
+        # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
+        source2target: Dict[int, Set[int]] = {
+            node: self._find_valid_targets(node, ignored_node_classes)
+            for node in self.sorted_nodes
+            # Skip ignored nodes
+            if not isinstance(self.modules_map[node], ignored_node_classes)
+        }
 
-        # removing ignored nodes from edges.
-        for edge_idx in range(len(edges)):
-            _src = edges[edge_idx][0]
-            _trg = edges[edge_idx][1]
+        # remapping nodes indices contiguously starting from 0
+        remapped_nodes = {old_idx: new_idx for new_idx, old_idx in enumerate(sorted(source2target.keys()))}
 
-            if isinstance(self.modules_map[_src], default_ignored_nodes):
-                removed_nodes.append(_src)
-                # all edges where node '_src' is target change it to node '_trg' as their target.
-                for edge in edges:
-                    if edge[1] == _src:
-                        new_edge = (edge[0], _trg)
-            elif isinstance(self.modules_map[_trg], default_ignored_nodes):
-                removed_nodes.append(_trg)
-                # all edges where node '_trg' is source change it to node '_src' as their source.
-                for edge in edges:
-                    if edge[0] == _trg:
-                        new_edge = (_src, edge[1])
-            else:
-                new_edge = (_src, _trg)
-            
-            if new_edge not in parsed_edges:
-                parsed_edges.append(new_edge)
+        # Parse new set of edges based on remapped node IDs
+        new_edges = {
+            (remapped_nodes[src], remapped_nodes[tgt])
+            for src, targets in source2target.items()
+            for tgt in targets
+        }
 
-        removed_nodes = list(set(removed_nodes))
-
-        # remapping nodes indexes.
-        remapped_nodes = {}
-        for node_indx, __ in self.modules_map.items():
-            _ = [x for x in removed_nodes if node_indx > x]
-            remapped_nodes[node_indx] = node_indx - len(_)
-            
-        for x in removed_nodes:
-            del remapped_nodes[x]
-
-        # remapping nodes names in parsed edges.
-        remapped_edges = []
-        for edge in parsed_edges:
-            remapped_edges.append((remapped_nodes[edge[0]], remapped_nodes[edge[1]]))
-
-        return remapped_edges, remapped_nodes
+        return new_edges, remapped_nodes
     
-    # TODO - it would be good if I/O shapes were returned by the NIR graph.
     def get_node_io_shapes(self, node: int) -> Tuple[torch.Size, torch.Size]:
         """ Returns the I/O tensors' shapes of `node`.
 
@@ -150,12 +129,12 @@ class NIRtoDynapcnnNetworkGraph():
         
         Returns
         ----------
-        - edges_list (list): tuples describing the connections between layers in `spiking_model`.
+        - edges (set): tuples describing the connections between layers in `spiking_model`.
         - name_2_indx_map (dict): `key` is the original variable name for a layer in `spiking_model` and `value
             is an integer representing the layer in a standard format.
-        - entry_nodes (list): IDs of nodes acting as entry points for the network (i.e., receiving external input).
+        - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
         """
-        edges_list = []
+        edges = set()
         name_2_indx_map = {}
         
         # TODO maybe make sure the input node from nir always gets assined `0`.
@@ -172,15 +151,14 @@ class NIRtoDynapcnnNetworkGraph():
                     name_2_indx_map[trg_node.name] = len(name_2_indx_map)
 
                 # Store the edge of current node to the target
-                edges_list.append((name_2_indx_map[src_node.name], name_2_indx_map[trg_node.name]))
+                edges.add((name_2_indx_map[src_node.name], name_2_indx_map[trg_node.name]))
 
         # finding entry/exits nodes of the graph.
-        all_sources = [x[0] for x in edges_list]
-        all_targets = [x[1] for x in edges_list]
+        all_sources, all_targets = zip(*edges)
 
-        entry_nodes = list(set(all_sources) - set(all_targets))
+        entry_nodes = set(all_sources) - set(all_targets)
 
-        return edges_list, name_2_indx_map, entry_nodes
+        return edges, name_2_indx_map, entry_nodes
     
     def _get_named_modules(self, model: nn.Module) -> Dict[int, nn.Module]:
         """ Find for each node in the graph what its associated layer in `model` is.
@@ -212,6 +190,20 @@ class NIRtoDynapcnnNetworkGraph():
 
         return modules_map
     
+    def _sort_graph_nodes(self) -> List[int]:
+        """ Sort graph nodes topologically.
+
+        Returns
+        -------
+        - sorted_nodes (list of integers): IDs of nodes, sorted.
+        """
+        # Make a temporary copy of edges and include inputs
+        temp_edges = {(src, tgt) for src, tgt in self.edges}
+        for node in self._entry_nodes:
+            temp_edges.add(('input', node))
+        return topological_sorting(temp_edges)
+        
+    
     def _get_nodes_io_shapes(self, input_dummy: torch.tensor) -> Dict[int, Dict[str, torch.Size]]:
         """ Iteratively calls the forward method of each `nn.Module` (i.e., a layer/node in the graph) using the topologically
         sorted nodes extracted from the computational graph of the model being parsed.
@@ -226,24 +218,18 @@ class NIRtoDynapcnnNetworkGraph():
         """
         nodes_io_map = {}
 
-        # topological sorting of the graph.
-        temp_edges_list = copy.deepcopy(self._edges_list)
-        for node in self._entry_nodes:
-            temp_edges_list.append(('input', node))
-        sorted_nodes = topological_sorting(temp_edges_list)
-
         # propagate inputs through the nodes.
-        for node in sorted_nodes:
+        for node in self.sorted_nodes:
 
             if isinstance(self.modules_map[node], sinabs.layers.merge.Merge):
-                # find `Merge` arguments (at this point the output of Merge has to have been calculated).
+                # find `Merge` arguments (at this point the inputs to Merge should have been calculated).
                 arg1, arg2 = self._find_merge_arguments(node)
 
                 # retrieve arguments output tensors.
                 arg1_out = nodes_io_map[arg1]['output']
                 arg2_out = nodes_io_map[arg2]['output']
 
-                # TODO - this is currently a limitation inpused by the validation checks done by Speck once a configuration: it wants two 
+                # TODO - this is currently a limitation imposed by the validation checks done by Speck once a configuration: it wants two 
                 # different input sources to a core to have the same output shapes.
                 if arg1_out.shape != arg2_out.shape:
                     raise ValueError(f'Layer `sinabs.layers.merge.Merge` (node {node}) require two input tensors with the same shape: arg1.shape {arg1_out.shape} differs from arg2.shape {arg2_out.shape}.')
@@ -281,6 +267,20 @@ class NIRtoDynapcnnNetworkGraph():
 
         return nodes_io_map
 
+    def _find_all_sources_of_input_to(self, node: int) -> Set[int]:
+        """ Finds all source nodes to `node`.
+
+        Parameters
+        ----------
+        - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
+            graph or the original input itself to the network).
+        
+        Returns
+        ----------
+        - input sources (set of int): IDs of the nodes in the computational graph providing the input to `node`.
+        """
+        return set(src for (src, tgt) in self._edges if tgt == node)
+
     def _find_source_of_input_to(self, node: int) -> int:
         """ Finds the first edge `(X, node)` returns `X`.
 
@@ -295,11 +295,12 @@ class NIRtoDynapcnnNetworkGraph():
             receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case 
             when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
         """
-        for edge in self._edges_list:
-            if edge[1] == node:
-                return edge[0]
-
-        return -1
+        sources = self._find_all_sources_of_input_to(node)
+        if len(sources) == 0:
+            return -1
+        if len(sources) > 1:
+            raise RuntimeError(f"Node {node} has more than 1 input")
+        return sources.pop()
 
     def _find_merge_arguments(self, merge_node: int) -> Tuple[int, int]:
         """ A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer.
@@ -308,13 +309,38 @@ class NIRtoDynapcnnNetworkGraph():
         ----------
         - args (tuple): the IDs of the nodes that provice the input arguments to a `Merge` layer.
         """
-        args = []
-
-        for edge in self._edges_list:
-            if edge[1] == merge_node:
-                args.append(edge[0])
+        sources = self._find_all_sources_of_input_to(node)
         
-        if len(args) == 2:
-            return tuple(args)
-        else:
+        if len(sources) != 2:
             raise ValueError(f'Number of arguments found for `Merge` node {merge_node} is {len(args)} (should be 2).')
+        
+        return tuple(sources)
+
+    def _find_valid_targets(self, node: int, ignored_node_classes: Tuple[Type]) -> Set[int]:
+        """ Find all targets of a node that are not ignored classes
+
+        Return a set of all target nodes that are not of an ignored class.
+        For target nodes of ignored classes, recursively return their valid
+        targets.
+
+        Parameters
+        ----------
+        - node (int): ID of node whose targets should be found
+        - ignored_node_classes (tuple of types): Classes of which nodes should be skiped
+
+        Returns
+        -------
+        - valid_targets (set of int): Set of all recursively found target IDs
+        """
+        targets = set()
+        for (src, tgt) in self.edges:
+            # Search for all edges with node as source
+            if src == node:
+                if isinstance(self.modules_map[tgt], ignored_node_classes):
+                    # Find valid targets of target
+                    targets.join(self._find_valid_targets(tgt, ignored_node_classes))
+                else:
+                    # Target is valid, add it to `targets`
+                    targets.add(tgt)
+        return targets
+

@@ -395,13 +395,13 @@ def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
 
     return lyr_pool, rescale_factor
 
-def topological_sorting(edges: List[Tuple[int, int]]) -> List[int]:
+def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:
     """ Performs a topological sorting (using Kahn's algorithm) of a graph descrobed by a list edges. An entry node `X`
     of the graph have to be flagged inside `edges` by a tuple `('input', X)`.
 
     Parameters
     ----------
-    - edges (list): the edges describing the *acyclic* graph.
+    - edges (set): the edges describing the *acyclic* graph.
 
     Returns
     ----------
