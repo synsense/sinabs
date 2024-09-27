@@ -17,7 +17,9 @@ from .sinabs_edges_utils import *
 
 
 def process_edge(
-    layers: Dict[int, nn.Module], edge: Tuple[int, int], mapper: dict
+    layers: Dict[int, nn.Module],
+    edge: Tuple[int, int],
+    mapper: Dict[int, Dict[int, Dict]],
 ) -> None:
     """Read in an edge describing the connection between two layers (nodes in the computational graph). If `edge`
     is a valid connection between two layers, update `mapper` to incorporate these layers into a new or existing dictonary
@@ -73,7 +75,10 @@ def get_valid_edge_type(
 
 
 def update_dynapcnnlayer_mapper(
-    edge_type: int, edge: Tuple[int, int], mapper: dict, layers: Dict[int, nn.Module]
+    edge_type: int,
+    edge: Tuple[int, int],
+    mapper: Dict[int, Dict[int, Dict]],
+    layers: Dict[int, nn.Module],
 ) -> None:
     """Parses the nodes within an edge and incorporate them either into a **new** or an **already existing** DynapcnnLayer represented
     in 'mapper'.
@@ -93,7 +98,9 @@ def update_dynapcnnlayer_mapper(
 
 
 def init_xor_complete_new_dynapcnnlayer_blk(
-    mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]
+    mapper: Dict[int, Dict[int, Dict]],
+    edge: Tuple[int, int],
+    layers: Dict[int, nn.Module],
 ) -> None:
     """Incorporates nodes from either a `(conv, neuron)` or a `(linear, neuron)` edge. These are either initiating a new `dict` mapping
     into a future `DynapcnnLayer` or completing a `conv->neuron` sequence (in the case the node for `conv` as already been incorporated
@@ -125,7 +132,9 @@ def init_xor_complete_new_dynapcnnlayer_blk(
 
 
 def connect_dynapcnnlayer_blks(
-    mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]
+    mapper: Dict[int, Dict[int, Dict]],
+    edge: Tuple[int, int],
+    layers: Dict[int, nn.Module],
 ) -> None:
     """Incorporates nodes from either a `(neuron, conv)/(neuron, lin)` or `(pool, conv)/(pool, lin)` edge. These represent connections between an existing
     `dict` in `mapper` that will be mapped into a `DynapcnnLayer` and a new one yet to be represented in `mapper`. Obs.: `nn.Linear` layers are converted
@@ -157,7 +166,9 @@ def connect_dynapcnnlayer_blks(
 
 
 def add_pool_to_dynapcnnlayer_blk(
-    mapper: dict, edge: Tuple[int, int], layers: Dict[int, nn.Module]
+    mapper: Dict[int, Dict[int, Dict]],
+    edge: Tuple[int, int],
+    layers: Dict[int, nn.Module],
 ) -> None:
     """Incorporating a `(neuron, pool)` edge. Node `pool` has to be part of an already existing `dict` mapping into a `DynapcnnLaye` in `mapper`."""
     # Search for edge[0] (neuron layer) in DynapcnnLayers
@@ -172,7 +183,7 @@ def add_pool_to_dynapcnnlayer_blk(
         raise UnmatchedNode(edge, node)
 
 
-def find_initialized_node(node: int, mapper: dict) -> bool:
+def find_initialized_node(node: int, mapper: Dict[int, Dict[int, Dict]]) -> bool:
     """Finds if 'node' existis within 'mapper' and returns layer index."""
     for index, dynapcnnlayer in mapper.items():
         if node in dynapcnnlayer:
@@ -181,7 +192,9 @@ def find_initialized_node(node: int, mapper: dict) -> bool:
 
 
 def get_dynapcnnlayers_destinations(
-    layers: Dict[int, nn.Module], edges: List[Tuple[int, int]], mapper: dict
+    layers: Dict[int, nn.Module],
+    edges: List[Tuple[int, int]],
+    mapper: Dict[int, Dict[int, Dict]],
 ) -> dict:
     """Loops over the edges list describing the computational graph. It will access each node in the graph and find to which
     DynapcnnLayer they belong to. If source and target belong to different DynapcnnLayers (described as a dictionary in 'mapper')
@@ -247,7 +260,7 @@ def get_dynapcnnlayers_destinations(
         mapper[dcnnl_idx]["conv_rescale_factor"] = []
 
 
-def get_dynapcnnlayer_index(node: int, mapper: dict) -> int:
+def get_dynapcnnlayer_index(node: int, mapper: Dict[int, Dict[int, Dict]]) -> int:
     """Returns the DynapcnnLayer index to which 'node' belongs to."""
     for indx, dynapcnnlayer in mapper.items():
         if node in dynapcnnlayer:
