@@ -3,7 +3,7 @@
 
 from copy import deepcopy
 from functools import partial
-from typing import Tuple, List
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -12,7 +12,6 @@ from torch import nn
 import sinabs.layers as sl
 
 from .discretize import discretize_conv_spike_
-
 
 # Define sum pooling functional as power-average pooling with power 1
 sum_pool2d = partial(nn.functional.lp_pool2d, norm_type=1)
@@ -56,10 +55,10 @@ class DynapcnnLayer(nn.Module):
     ):
         super().__init__()
 
-        self.in_shape           = in_shape
-        self._pool              = pool
-        self._discretize        = discretize
-        self._rescale_weights    = rescale_weights
+        self.in_shape = in_shape
+        self._pool = pool
+        self._discretize = discretize
+        self._rescale_weights = rescale_weights
 
         spk = deepcopy(spk)
 
@@ -79,9 +78,9 @@ class DynapcnnLayer(nn.Module):
         if self._discretize:
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self._conv               = conv
-        self._spk                = spk
-    
+        self._conv = conv
+        self._spk = spk
+
     @property
     def conv(self):
         return self._conv
@@ -101,13 +100,13 @@ class DynapcnnLayer(nn.Module):
     @property
     def rescale_weights(self):
         return self._rescale_weights
-    
+
     @property
     def conv_out_shape(self):
         return self._get_conv_output_shape()
-        
+
     ####################################################### Public Methods #######################################################
-    
+
     def forward(self, x) -> List[torch.Tensor]:
         """Torch forward pass.
 
@@ -115,7 +114,7 @@ class DynapcnnLayer(nn.Module):
         """
 
         returns = []
-        
+
         x = self.conv(x)
         x = self.spk(x)
 
@@ -132,9 +131,9 @@ class DynapcnnLayer(nn.Module):
         return tuple(returns)
 
     def zero_grad(self, set_to_none: bool = False) -> None:
-        """ Call `zero_grad` method of spiking layer """
+        """Call `zero_grad` method of spiking layer"""
         return self._spk.zero_grad(set_to_none)
-    
+
     def get_neuron_shape(self) -> Tuple[int, int, int]:
         """Return the output shape of the neuron layer.
 
@@ -150,7 +149,7 @@ class DynapcnnLayer(nn.Module):
 
         Returns
         -------
-        - output_shape (list of tuples): 
+        - output_shape (list of tuples):
             One entry per destination, each formatted as (features, height, width).
         """
         neuron_shape = self.get_neuron_shape()
@@ -165,14 +164,14 @@ class DynapcnnLayer(nn.Module):
         return output_shape
 
     def summary(self) -> dict:
-        """ Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
+        """Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
 
         return {
             "pool": (self._pool),
             "kernel": list(self.conv_layer.weight.data.shape),
-            "neuron": self._get_conv_output_shape(),                          # neuron layer output has the same shape as the convolution layer ouput.
+            "neuron": self._get_conv_output_shape(),  # neuron layer output has the same shape as the convolution layer ouput.
         }
-    
+
     def memory_summary(self):
         """Computes the amount of memory required for each of the components. Note that this is not
         necessarily the same as the number of parameters due to some architecture design
@@ -192,7 +191,9 @@ class DynapcnnLayer(nn.Module):
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        f, neuron_height, neuron_width = self._get_conv_output_shape()        # neuron layer output has the same shape as the convolution layer ouput.
+        f, neuron_height, neuron_width = (
+            self._get_conv_output_shape()
+        )  # neuron layer output has the same shape as the convolution layer ouput.
 
         return {
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
@@ -200,11 +201,13 @@ class DynapcnnLayer(nn.Module):
             * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
             "bias": 0 if self.conv.bias is None else len(self.conv.bias),
         }
-    
+
     ####################################################### Private Methods #######################################################
 
-    def _convert_linear_to_conv(self, lin: nn.Linear, layer_data: dict) -> Tuple[nn.Conv2d, Tuple[int, int, int]]:
-        """ Convert Linear layer to Conv2d.
+    def _convert_linear_to_conv(
+        self, lin: nn.Linear, layer_data: dict
+    ) -> Tuple[nn.Conv2d, Tuple[int, int, int]]:
+        """Convert Linear layer to Conv2d.
 
         Parameters
         ----------
@@ -218,7 +221,7 @@ class DynapcnnLayer(nn.Module):
         # this flags the necessity to update the I/O shape pre-computed for each of the original layers being compressed within a `DynapcnnLayer` instance.
         self._lin_to_conv_conversion = True
 
-        input_shape = layer_data['input_shape']
+        input_shape = layer_data["input_shape"]
 
         in_chan, in_h, in_w = input_shape
 
@@ -243,9 +246,9 @@ class DynapcnnLayer(nn.Module):
         )
 
         return layer, input_shape
-    
+
     def _get_conv_output_shape(self) -> Tuple[int, int, int]:
-        """ Computes the output dimensions of `conv_layer`.
+        """Computes the output dimensions of `conv_layer`.
 
         Returns
         ----------
@@ -260,7 +263,13 @@ class DynapcnnLayer(nn.Module):
         dilation = self.conv.dilation
 
         # compute the output height and width.
-        out_height = ((self.in_shape[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1) // stride[0]) + 1
-        out_width = ((self.in_shape[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1) // stride[1]) + 1
+        out_height = (
+            (self.in_shape[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1)
+            // stride[0]
+        ) + 1
+        out_width = (
+            (self.in_shape[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1)
+            // stride[1]
+        ) + 1
 
         return (out_channels, out_height, out_width)

@@ -1,12 +1,14 @@
 # author    : Willian Soares Girao
 # contact   : williansoaresgirao@gmail.com
 
-import numpy as np
 import statistics
+
+import numpy as np
+
 
 def rescale_method_1(rescaling_from_sumpool: list, lambda_: float = 0.5) -> float:
     """
-        This method will use the average (scaled by `lambda_`) of the computed re-scaling factor 
+        This method will use the average (scaled by `lambda_`) of the computed re-scaling factor
     for the pooling layer(s) feeding into a convolutional layer.
 
     Arguments
@@ -21,13 +23,14 @@ def rescale_method_1(rescaling_from_sumpool: list, lambda_: float = 0.5) -> floa
     """
 
     if len(rescaling_from_sumpool):
-        return np.round(np.mean(rescaling_from_sumpool)*lambda_, 2)
+        return np.round(np.mean(rescaling_from_sumpool) * lambda_, 2)
     else:
         return 1.0
 
+
 def rescale_method_2(rescaling_from_sumpool: list, lambda_: float = 0.5) -> float:
     """
-        This method will use the harmonic mean (scaled by `lambda_`) of the computed re-scaling factor 
+        This method will use the harmonic mean (scaled by `lambda_`) of the computed re-scaling factor
     for the pooling layer(s) feeding into a convolutional layer.
 
     Arguments
@@ -47,6 +50,6 @@ def rescale_method_2(rescaling_from_sumpool: list, lambda_: float = 0.5) -> floa
     """
 
     if len(rescaling_from_sumpool):
-        return np.round(statistics.harmonic_mean(rescaling_from_sumpool)*lambda_, 2)
+        return np.round(statistics.harmonic_mean(rescaling_from_sumpool) * lambda_, 2)
     else:
         return 1.0

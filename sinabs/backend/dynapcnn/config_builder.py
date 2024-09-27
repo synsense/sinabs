@@ -3,13 +3,15 @@ from abc import ABC, abstractmethod
 from typing import List
 
 import samna
+
+import sinabs
 import sinabs.backend
 import sinabs.backend.dynapcnn
 
 from .dvs_layer import DVSLayer
-from .mapping import LayerConstraints, get_valid_mapping
-import sinabs
 from .exceptions import InvalidModel
+from .mapping import LayerConstraints, get_valid_mapping
+
 
 class ConfigBuilder(ABC):
     @classmethod
@@ -89,9 +91,11 @@ class ConfigBuilder(ABC):
                 # thi check will be wrong since it assumes the network has a single input node `model.layers_mapper[0]`.
                 pass
 
-            for (dcnnl_idx, core_idx) in mapping:
+            for dcnnl_idx, core_idx in mapping:
                 # save the core index information on the handler of this `DynapcnnLayer` instance.
-                model.layers_handlers[dcnnl_idx]['layer_handler'].assigned_core = core_idx
+                model.layers_handlers[dcnnl_idx][
+                    "layer_handler"
+                ].assigned_core = core_idx
                 chip_layers_ordering.append(core_idx)
 
         else:

@@ -1,15 +1,19 @@
-import torch
-import torch.nn as nn
-import re, copy
-import numpy as np
-import networkx as nx
+import copy
+import re
 from typing import Union
 
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
+import torch
+import torch.nn as nn
 
-class GraphTracer():
-    def __init__(self, model: Union[nn.Sequential, nn.Module], dummy_input: np.array) -> None:
-        """ ."""
+
+class GraphTracer:
+    def __init__(
+        self, model: Union[nn.Sequential, nn.Module], dummy_input: np.array
+    ) -> None:
+        """."""
 
         trace = torch.jit.trace(model, dummy_input)
         _ = trace(dummy_input)
@@ -17,10 +21,10 @@ class GraphTracer():
 
         self.graph = __.graph
 
-        self.modules_map, self.name_2_indx_map  = self.get_named_modules(model)
-        self.forward_edges                      = self.get_foward_edges()
-        self.ATens                              = self.get_ATen_operations()
-        self.edges_list                         = self.get_graph_edges()
+        self.modules_map, self.name_2_indx_map = self.get_named_modules(model)
+        self.forward_edges = self.get_foward_edges()
+        self.ATens = self.get_ATen_operations()
+        self.edges_list = self.get_graph_edges()
 
     def from_name_2_indx(self, name):
         if name in self.name_2_indx_map:
@@ -29,11 +33,11 @@ class GraphTracer():
             last_indx = None
             for _name, indx in self.name_2_indx_map.items():
                 last_indx = indx
-            self.name_2_indx_map[name] = last_indx+1
+            self.name_2_indx_map[name] = last_indx + 1
             return self.name_2_indx_map[name]
 
     def get_named_modules(self, module: nn.Module):
-        """ ."""
+        """."""
         modules_map = {}
         name_2_indx_map = {}
         indx = 0
@@ -43,24 +47,29 @@ class GraphTracer():
                 name_2_indx_map[name] = indx
                 indx += 1
         return modules_map, name_2_indx_map
-    
+
     def get_foward_edges(self):
-        """ ."""
+        """."""
         forward_edges = {}
         for node in self.graph.nodes():
             node = str(node)
-            regex = re.compile(r'%(.*?) :.*prim::CallMethod\[name="forward"\]\(%(.*?), %(.*?)\)')
+            regex = re.compile(
+                r'%(.*?) :.*prim::CallMethod\[name="forward"\]\(%(.*?), %(.*?)\)'
+            )
             match = regex.search(node)
             if match:
-                source = match.group(3).replace('_', '')
-                target = match.group(2).replace('_', '')
-                result = match.group(1).replace('_', '')
-                forward_edges[self.from_name_2_indx(result)] = (self.from_name_2_indx(source), self.from_name_2_indx(target))
-                
+                source = match.group(3).replace("_", "")
+                target = match.group(2).replace("_", "")
+                result = match.group(1).replace("_", "")
+                forward_edges[self.from_name_2_indx(result)] = (
+                    self.from_name_2_indx(source),
+                    self.from_name_2_indx(target),
+                )
+
         return forward_edges
 
     def get_graph_edges(self):
-        """ ."""
+        """."""
         edges = []
         last_result = None
 
@@ -70,7 +79,7 @@ class GraphTracer():
 
             if not last_result:
                 last_result = result_node
-                edges.append(('input', trg))
+                edges.append(("input", trg))
             elif src == last_result:
                 edges.append((edges[-1][1], trg))
                 last_result = result_node
@@ -79,29 +88,30 @@ class GraphTracer():
                 edges.append((scr1, trg))
                 edges.append((scr2, trg))
                 last_result = result_node
-    
-        edges.append((edges[-1][1], 'output'))
+
+        edges.append((edges[-1][1], "output"))
 
         return edges[1:-1]
-    
+
     def get_ATen_operands(self, node):
-        """ ."""
+        """."""
         if node in self.ATens:
-            src1 = self.ATens[node]['args'][1]
-            src2 = self.ATens[node]['args'][0]
+            src1 = self.ATens[node]["args"][1]
+            src2 = self.ATens[node]["args"][0]
             return self.forward_edges[src1][1], self.forward_edges[src2][1]
         else:
             # throw error
             return None, None
-        
+
     def get_ATen_operations(self):
-        """ ATen is PyTorch's tensor library backend, which provides a set of operations that operate on 
-        tensors directly. These include arithmetic operations (add, mul, etc.), mathematical 
-        functions (sin, cos, etc.), and tensor manipulation operations (view, reshape, etc.)."""
+        """ATen is PyTorch's tensor library backend, which provides a set of operations that operate on
+        tensors directly. These include arithmetic operations (add, mul, etc.), mathematical
+        functions (sin, cos, etc.), and tensor manipulation operations (view, reshape, etc.).
+        """
         ATens = {}
         for node in self.graph.nodes():
             node = str(node)
-            regex = re.compile(r'%(.*?) :.*aten::(.*?)\(%(.*?), %(.*?), %(.*?)\)')
+            regex = re.compile(r"%(.*?) :.*aten::(.*?)\(%(.*?), %(.*?), %(.*?)\)")
 
             match = regex.search(node)
 
@@ -111,11 +121,14 @@ class GraphTracer():
                 operator1 = self.from_name_2_indx(match.group(3))
                 operator2 = self.from_name_2_indx(match.group(4))
                 const_operator = match.group(5)
-                ATens[result_node] = {'op': operation, 'args': (operator1, operator2, const_operator)}
+                ATens[result_node] = {
+                    "op": operation,
+                    "args": (operator1, operator2, const_operator),
+                }
         return ATens
-    
+
     def remove_ignored_nodes(self, default_ignored_nodes):
-        """ Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This
+        """Recreates the edges list based on layers that 'DynapcnnNetwork' will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
         will be dropped as the node that originally targeted this node to be dropped.
         """
@@ -142,7 +155,7 @@ class GraphTracer():
                         new_edge = (_src, edge[1])
             else:
                 new_edge = (_src, _trg)
-            
+
             if new_edge not in parsed_edges:
                 parsed_edges.append(new_edge)
 
@@ -153,7 +166,7 @@ class GraphTracer():
         for node_indx, __ in self.modules_map.items():
             _ = [x for x in removed_nodes if node_indx > x]
             remapped_nodes[node_indx] = node_indx - len(_)
-            
+
         for x in removed_nodes:
             del remapped_nodes[x]
 
@@ -163,11 +176,11 @@ class GraphTracer():
             remapped_edges.append((remapped_nodes[edge[0]], remapped_nodes[edge[1]]))
 
         return remapped_edges
-    
+
     @staticmethod
     def plot_graph(edges_list):
-        """ ."""
+        """."""
         G = nx.DiGraph(edges_list)
         layout = nx.spring_layout(G)
-        nx.draw(G, pos = layout, with_labels=True, node_size=800)
+        nx.draw(G, pos=layout, with_labels=True, node_size=800)
         plt.show()

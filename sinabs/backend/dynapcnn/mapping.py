@@ -3,10 +3,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import List, Optional, Tuple, Union
 
+import sinabs
+
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
-
-import sinabs
 from .exceptions import InvalidModel
 
 
@@ -68,7 +68,9 @@ def get_valid_mapping(
             if isinstance(ith_dcnnl, DynapcnnLayer):
                 layer_mapping.append(find_chip_layers(ith_dcnnl, constraints))
             else:
-                raise ValueError(f'Layer {dcnnl_index} is not an instance of `DynapcnnLayer`.')
+                raise ValueError(
+                    f"Layer {dcnnl_index} is not an instance of `DynapcnnLayer`."
+                )
 
         graph = make_flow_graph(layer_mapping, len(constraints))
 
