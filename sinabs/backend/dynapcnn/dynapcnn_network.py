@@ -85,6 +85,9 @@ class DynapcnnNetwork(nn.Module):
             snn, torch.randn((batch_size, *self.input_shape))
         )  # needs the batch dimension.
 
+        # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
+        self._graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+
         # get list of nodes from graph tracer that act as entry points to the network.
         self._entry_nodes = copy.deepcopy(self._graph_tracer.entry_nodes)
 
@@ -611,16 +614,6 @@ class DynapcnnNetwork(nn.Module):
         - remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self._graph_tracer`) and `value` is
             the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
         """
-
-        # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
-        sinabs_edges, remapped_nodes = self._graph_tracer.remove_ignored_nodes(
-            DEFAULT_IGNORED_LAYER_TYPES
-        )
-
-        # nodes (layers' "names") need remapping in case some layers have been removed (e.g. a `nn.Flattern` is ignored).
-        sinabs_modules_map = {}
-        for orig_name, new_name in remapped_nodes.items():
-            sinabs_modules_map[new_name] = self._graph_tracer.modules_map[orig_name]
 
         # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
         edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)

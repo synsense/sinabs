@@ -51,7 +51,7 @@ class NIRtoDynapcnnNetworkGraph:
         )
 
         # recovers the associated `nn.Module` (layer) of each node.
-        self.modules_map = self._get_named_modules(spiking_model)
+        self._modules_map = self._get_named_modules(spiking_model)
 
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
@@ -78,22 +78,27 @@ class NIRtoDynapcnnNetworkGraph:
     def sorted_nodes(self) -> List[int]:
         return [n for n in self._sort_graph_nodes()]
 
+    @property
+    def modules_map(self) -> Dict[int, nn.Module]:
+        return {n: module for n, module in self._modules_map.items()}
+
     def remove_ignored_nodes(
         self, ignored_node_classes: Tuple[Type]
     ) -> Tuple[Set[int], Dict[int, int]]:
-        """Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
+        """Remove nodes of given classes from graph in place.
+
+        Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
         is done by setting the source (target) node of an edge where the source (target) node
         will be dropped as the node that originally targeted this node to be dropped.
+
+        Will change internal attributes `self._edges`, `self._entry_nodes`,
+        `self._name_2_indx_map`, and `self._nodes_io_shapes` to reflect the changes.
 
         Parameters
         ----------
         - ignored_node_classes (tuple of types):
-            Layer classes that should be ignored from the graph.
+            Layer classes that should be removed from the graph.
 
-        Returns
-        ----------
-        - new_edges (set): the new set of edges after nodes flagged by `ignored_node_classes` have been removed.
-        - remapped_nodes (dict): updated nodes' IDs after nodes flagged by `ignored_node_classes` have been removed.
         """
         # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
         source2target: Dict[int, Set[int]] = {
@@ -110,13 +115,39 @@ class NIRtoDynapcnnNetworkGraph:
         }
 
         # Parse new set of edges based on remapped node IDs
-        new_edges = {
+        self._edges = {
             (remapped_nodes[src], remapped_nodes[tgt])
             for src, targets in source2target.items()
             for tgt in targets
         }
 
-        return new_edges, remapped_nodes
+        # Update name-to-index map based on new node indices
+        self._name_2_indx_map = {
+            name: remapped_nodes[old_idx]
+            for name, old_idx in self._name_2_indx_map.items()
+            if old_idx in remapped_nodes
+        }
+
+        # Update entry nodes based on new node indices
+        self._entry_nodes = {
+            remapped_nodes[old_idx]
+            for old_idx in self._entry_nodes
+            if old_idx in remapped_nodes
+        }
+
+        # Update io-shapes based on new node indices
+        self._nodes_io_shapes = {
+            remapped_nodes[old_idx]: shape
+            for old_idx, shape in self._nodes_io_shapes.items()
+            if old_idx in remapped_nodes
+        }
+
+        # Update sinabs module map based on new node indices
+        self._nodes_io_shapes = {
+            remapped_nodes[old_idx]: shape
+            for old_idx, shape in self._nodes_io_shapes.items()
+            if old_idx in remapped_nodes
+        }
 
     def get_node_io_shapes(self, node: int) -> Tuple[torch.Size, torch.Size]:
         """Returns the I/O tensors' shapes of `node`.
@@ -136,8 +167,7 @@ class NIRtoDynapcnnNetworkGraph:
     def _get_edges_from_nir(
         self, nir_graph: nirtorch.graph.Graph
     ) -> Tuple[List[Tuple[int, int]], Dict[str, int], List[int]]:
-        """Standardize the representation of `nirtorch.graph.Graph` into a list of edges (`Tuple[int, int]`) where
-        each node in `nir_graph` is represented by an interger (with the source node starting as `0`).
+        """Standardize the representation of `nirtorch.graph.Graph` into a list of edges (`Tuple[int, int]`) where each node in `nir_graph` is represented by an interger (with the source node starting as `0`).
 
         Parameters
         ----------
@@ -146,8 +176,7 @@ class NIRtoDynapcnnNetworkGraph:
         Returns
         ----------
         - edges (set): tuples describing the connections between layers in `spiking_model`.
-        - name_2_indx_map (dict): `key` is the original variable name for a layer in `spiking_model` and `value
-            is an integer representing the layer in a standard format.
+        - name_2_indx_map (dict): `key` is the original variable name for a layer in `spiking_model` and `value is an integer representing the layer in a standard format.
         - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
         """
         edges = set()
