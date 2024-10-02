@@ -13,7 +13,7 @@ import sinabs
 from .utils import topological_sorting
 
 
-class NIRtoDynapcnnNetworkGraph:
+class GraphExtractor:
     def __init__(self, spiking_model: nn.Module, dummy_input: torch.tensor):
         """Class implementing the extraction of the computational graph from `spiking_model`, where
         each node represents a layer in the model and the list of edges represents how the data flow between

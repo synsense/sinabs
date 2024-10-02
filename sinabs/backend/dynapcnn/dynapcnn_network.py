@@ -17,7 +17,7 @@ from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
-from .nir_graph_extractor import NIRtoDynapcnnNetworkGraph
+from .nir_graph_extractor import GraphExtractor
 from .sinabs_edges_handler import merge_handler
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
@@ -62,7 +62,7 @@ class DynapcnnNetwork(nn.Module):
         (the connectivity between each `DynapcnnLayer`/core), `self._layers_mapper` (every `DynapcnnLayer` in the network) and `self._merge_points`
         (the `DynapcnnLayer`s that need a `Merge` input). Thus, the following private properties are delted as last step of the constructor:
 
-        - self._graph_tracer
+        - self._graph_extractor
         - self._sinabs_edges
         - self._sinabs_modules_map
         - self._nodes_to_dcnnl_map
@@ -79,12 +79,12 @@ class DynapcnnNetwork(nn.Module):
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
         # computational graph from original PyTorch module.
-        self._graph_tracer = NIRtoDynapcnnNetworkGraph(
+        self._graph_extractor = GraphExtractor(
             snn, torch.randn((batch_size, *self.input_shape))
         )  # needs the batch dimension.
 
         # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
-        self._graph_tracer.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
+        self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
         # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
         self._sinabs_edges, self._sinabs_modules_map = (
@@ -105,7 +105,7 @@ class DynapcnnNetwork(nn.Module):
             edges=self._sinabs_edges,
             nodes_to_dcnnl_map=self._nodes_to_dcnnl_map,
             weight_rescaling_fn=weight_rescaling_fn,
-            entry_nodes=self._graph_tracer._entry_nodes,
+            entry_nodes=self._graph_extractor._entry_nodes,
         )
 
         # these gather all data necessay to implement the forward method for this class.
@@ -117,7 +117,7 @@ class DynapcnnNetwork(nn.Module):
         ) = self._get_network_module()
 
         # all necessary `DynapcnnLayer` data held in `self._layers_mapper`: removing intermediary data structures no longer necessary.
-        del self._graph_tracer
+        del self._graph_extractor
         del self._sinabs_edges
         del self._sinabs_modules_map
         del self._nodes_to_dcnnl_map
@@ -608,10 +608,10 @@ class DynapcnnNetwork(nn.Module):
 
         # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
         edges_without_merge = merge_handler(
-            self._graph_tracer.edges, self._graph_tracer.modules_map
+            self._graph_extractor.edges, self._graph_extractor.modules_map
         )
 
-        return edges_without_merge, self._graph_tracer.modules_map
+        return edges_without_merge, self._graph_extractor.modules_map
 
     def _populate_nodes_io(self):
         """Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
@@ -639,12 +639,12 @@ class DynapcnnNetwork(nn.Module):
                     return edge[0]
             return -1
 
-        # access the I/O shapes for each node in `self._sinabs_edges` from the original graph in `self._graph_tracer`.
+        # access the I/O shapes for each node in `self._sinabs_edges` from the original graph in `self._graph_extractor`.
         for dcnnl_idx, dcnnl_data in self._nodes_to_dcnnl_map.items():
             for node, node_data in dcnnl_data.items():
                 # node dictionary with layer data.
                 if isinstance(node, int):
-                    _in, _out = self._graph_tracer.get_node_io_shapes(node)
+                    _in, _out = self._graph_extractor.get_node_io_shapes(node)
 
                     # update node I/O shape in the mapper (drop batch dimension).
                     if node != 0:
@@ -659,7 +659,7 @@ class DynapcnnNetwork(nn.Module):
                         else:
                             # input comes from another node in the graph.
                             _, _input_source_shape = (
-                                self._graph_tracer.get_node_io_shapes(input_node)
+                                self._graph_extractor.get_node_io_shapes(input_node)
                             )
                             node_data["input_shape"] = tuple(
                                 list(_input_source_shape)[1:]
