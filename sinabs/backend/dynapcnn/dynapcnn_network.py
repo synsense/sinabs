@@ -720,21 +720,22 @@ class DynapcnnNetwork(nn.Module):
             pretty_print += f"{layer_data}\n\n"
 
         return pretty_print
+    
+    
+class DynapcnnCompatibleNetwork(DynapcnnNetwork):
+    """Deprecated class, use DynapcnnNetwork instead."""
 
-    class DynapcnnCompatibleNetwork(DynapcnnNetwork):
-        """Deprecated class, use DynapcnnNetwork instead."""
+    def __init__(
+        self,
+        snn: Union[nn.Sequential, sinabs.Network],
+        input_shape: Optional[Tuple[int, int, int]] = None,
+        dvs_input: bool = False,
+        discretize: bool = True,
+    ):
+        from warnings import warn
 
-        def __init__(
-            self,
-            snn: Union[nn.Sequential, sinabs.Network],
-            input_shape: Optional[Tuple[int, int, int]] = None,
-            dvs_input: bool = False,
-            discretize: bool = True,
-        ):
-            from warnings import warn
-
-            warn(
-                "DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork "
-                + "and will be removed in a future release."
-            )
-            super().__init__(snn, input_shape, dvs_input, discretize)
+        warn(
+            "DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork "
+            + "and will be removed in a future release."
+        )
+        super().__init__(snn, input_shape, dvs_input, discretize)
