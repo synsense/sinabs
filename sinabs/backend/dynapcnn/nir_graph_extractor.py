@@ -179,30 +179,23 @@ class GraphExtractor:
         - name_2_indx_map (dict): `key` is the original variable name for a layer in `spiking_model` and `value is an integer representing the layer in a standard format.
         - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
         """
-        edges = set()
-        name_2_indx_map = {}
-
         # TODO maybe make sure the input node from nir always gets assined `0`.
 
-        for src_node in nir_graph.node_list:
-            # Make sure current node is in `name_2_indx_map`
-            if src_node.name not in name_2_indx_map:
-                # Assign unique index by taking current length of `name_2_indx_map`
-                name_2_indx_map[src_node.name] = len(name_2_indx_map)
+        # Assign a unique index to each node
+        name_2_indx_map = {
+            node.name: node_idx
+            for node_idx, node in enumerate(nir_graph.node_list)
+        }
 
-            for trg_node in src_node.outgoing_nodes:
-                # Make sure all targets of current node are in `name_2_indx_map`
-                if trg_node.name not in name_2_indx_map:
-                    name_2_indx_map[trg_node.name] = len(name_2_indx_map)
+        # Extract edges for each node
+        edges = {
+            (name_2_indx_map[src.name], name_2_indx_map[tgt.name])
+            for src, src_idx in name_2_indx_map.items()
+            for tgt in src.outgoing_nodes
+        }
 
-                # Store the edge of current node to the target
-                edges.add(
-                    (name_2_indx_map[src_node.name], name_2_indx_map[trg_node.name])
-                )
-
-        # finding entry/exits nodes of the graph.
+        # find entry nodes of the graph.
         all_sources, all_targets = zip(*edges)
-
         entry_nodes = set(all_sources) - set(all_targets)
 
         return edges, name_2_indx_map, entry_nodes
