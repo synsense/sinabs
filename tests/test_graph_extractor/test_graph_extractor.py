@@ -2,7 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 import pytest
-from sinabs.backend.dynapcnn.NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
+from sinabs.backend.dynapcnn.nir_graph_extractor import NIRtoDynapcnnNetworkGraph
 
 from conftest_graph_extractor import args_GraphExtractor
 
@@ -15,7 +15,7 @@ def test_GraphExtractor(snn, input_dummy, expected_output):
 
     graph_tracer = NIRtoDynapcnnNetworkGraph(snn, input_dummy)
 
-    assert expected_output['edges_list'] == graph_tracer.get_edges_list, \
+    assert expected_output['edges'] == graph_tracer.edges, \
         f'wrong list of edges extracted from the SNN.'
     assert expected_output['name_2_indx_map'] == graph_tracer.name_2_indx_map, \
         f'wrong mapping from layer variable name to node ID.'

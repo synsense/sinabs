@@ -43,7 +43,7 @@ VALID_SINABS_EDGES = {
     8: (sl.SumPool2d, nn.Conv2d),  # same as key `4` but with `sl.SumPool2d` instead.
     9: (sl.SumPool2d, nn.Linear),  # same as key `5` but with `sl.SumPool2d` instead.
 }
-VALID_SINABS_EDGE_TYPE_IDS = {v: k for k, v in VALID_SINABS_EDGES}
+VALID_SINABS_EDGE_TYPE_IDS = {v: k for k, v in VALID_SINABS_EDGES.items()}
 
 VALID_DYNAPCNNLAYER_EDGES = [
     (sl.iaf.IAFSqueeze, nn.Conv2d),

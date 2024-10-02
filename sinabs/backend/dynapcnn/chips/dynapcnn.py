@@ -10,7 +10,6 @@ import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_layer_handler import DynapcnnLayerHandler
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
@@ -210,7 +209,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: DynapcnnNetwork) -> DynapcnnConfiguration:
+    def build_config(cls, model: "DynapcnnNetwork") -> DynapcnnConfiguration:
         """ Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
         using using the `DynapcnnLayer` properties. 
 
@@ -224,9 +223,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
         config = cls.get_default_config()
 
-        if not isinstance(model, DynapcnnNetwork):
-            raise ValueError(f"`model` has to be of type DynapcnnNetwork, but is {type(model)}.")
-        
         has_dvs_layer = False   # TODO DVSLayer not supported yet.
 
         # Loop over layers in network and write corresponding configurations
