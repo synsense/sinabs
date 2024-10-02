@@ -67,7 +67,6 @@ class DynapcnnNetwork(nn.Module):
         - self._sinabs_modules_map
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
-        - self._entry_nodes
         """
         super().__init__()
 
@@ -86,9 +85,6 @@ class DynapcnnNetwork(nn.Module):
 
         # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
         self._graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
-
-        # get list of nodes from graph tracer that act as entry points to the network.
-        self._entry_nodes = copy.deepcopy(self._graph_tracer.entry_nodes)
 
         # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
         self._sinabs_edges, self._sinabs_modules_map = (
@@ -109,7 +105,7 @@ class DynapcnnNetwork(nn.Module):
             edges=self._sinabs_edges,
             nodes_to_dcnnl_map=self._nodes_to_dcnnl_map,
             weight_rescaling_fn=weight_rescaling_fn,
-            entry_nodes=self._entry_nodes,
+            entry_nodes=self._graph_tracer._entry_nodes,
         )
 
         # these gather all data necessay to implement the forward method for this class.
@@ -126,7 +122,6 @@ class DynapcnnNetwork(nn.Module):
         del self._sinabs_modules_map
         del self._nodes_to_dcnnl_map
         del self._dynapcnn_layers
-        del self._entry_nodes
 
     ####################################################### Public Methods #######################################################
 
