@@ -190,8 +190,7 @@ class GraphExtractor:
         # Extract edges for each node
         edges = {
             (name_2_indx_map[src.name], name_2_indx_map[tgt.name])
-            for src, src_idx in name_2_indx_map.items()
-            for tgt in src.outgoing_nodes
+            for src in nir_graph.node_list for tgt in src.outgoing_nodes
         }
 
         # find entry nodes of the graph.
