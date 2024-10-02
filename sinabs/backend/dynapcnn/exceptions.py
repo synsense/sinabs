@@ -58,5 +58,5 @@ class InvalidTorchModel(Exception):
 
     def __init__(self, network_type):
         super().__init__(
-            f"A {network_type} needs to be either of type nn.Sequential or nn.Module."
+            f"A {network_type} needs to be of type nn.Module."
         )
