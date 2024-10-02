@@ -212,25 +212,11 @@ class GraphExtractor:
         - modules_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
         modules_map = {}
-
-        if isinstance(
-            model, nn.Sequential
-        ):  # TODO shouldn't accept `nn.Sequential` any longer.
-            # access modules via `.named_modules()`.
-            for name, module in model.named_modules():
-                if name != "":
-                    # skip the module itself.
-                    modules_map[self._name_2_indx_map[name]] = module
-
-        elif isinstance(model, nn.Module):
-            # access modules via `.named_children()`.
-            for name, module in model.named_children():
-                modules_map[self._name_2_indx_map[name]] = module
-
-        else:
-            raise ValueError("Either a nn.Sequential or a nn.Module is required.")
-
-        return modules_map
+        return {
+            self._name_2_indx_map[name]: module
+            for name, module in model.named_modules()
+            if name in self._name_2_indx_map
+        }
 
     def _sort_graph_nodes(self) -> List[int]:
         """Sort graph nodes topologically.
