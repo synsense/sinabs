@@ -2,7 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 import copy
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, Set
 
 import nirtorch
 import torch
@@ -354,7 +354,7 @@ class NIRtoDynapcnnNetworkGraph:
             raise RuntimeError(f"Node {node} has more than 1 input")
         return sources.pop()
 
-    def _find_merge_arguments(self, merge_node: int) -> Tuple[int, int]:
+    def _find_merge_arguments(self, node: int) -> Tuple[int, int]:
         """A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer.
 
         Returns

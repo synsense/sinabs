@@ -102,7 +102,7 @@ torch.manual_seed(0)
 input_dummy = torch.randn(input_shape)
 
 expected_output = {
-    'edges_list': [
+    'edges': {
         (0, 1),
         (1, 2),
         (2, 3),
@@ -127,7 +127,7 @@ expected_output = {
         (21, 22),
         (22, 23),
         (23, 24),
-    ],
+    },
     'name_2_indx_map': {
         'conv_A': 0,
         'iaf_A': 1,
@@ -155,7 +155,7 @@ expected_output = {
         'fc3': 23,
         'iaf3_fc': 24,
     },
-    'entry_nodes': [0, 9],
+    'entry_nodes': {0, 9},
     'nodes_io_shapes': {
         0: {'input': torch.Size([2, 2, 34, 34]), 'output': torch.Size([2, 4, 33, 33])},
         9: {'input': torch.Size([2, 2, 34, 34]), 'output': torch.Size([2, 4, 33, 33])},

@@ -10,7 +10,6 @@ import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.dynapcnn_network import "DynapcnnNetwork"
 from sinabs.backend.dynapcnn.dynapcnn_layer_handler import DynapcnnLayerHandler
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 

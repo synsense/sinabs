@@ -17,7 +17,7 @@ from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
-from .NIRGraphExtractor import NIRtoDynapcnnNetworkGraph
+from .nir_graph_extractor import NIRtoDynapcnnNetworkGraph
 from .sinabs_edges_handler import merge_handler
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
