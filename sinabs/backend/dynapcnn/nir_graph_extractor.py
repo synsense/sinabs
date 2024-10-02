@@ -394,7 +394,7 @@ class NIRtoDynapcnnNetworkGraph:
             if src == node:
                 if isinstance(self.modules_map[tgt], ignored_node_classes):
                     # Find valid targets of target
-                    targets.join(self._find_valid_targets(tgt, ignored_node_classes))
+                    targets.update(self._find_valid_targets(tgt, ignored_node_classes))
                 else:
                     # Target is valid, add it to `targets`
                     targets.add(tgt)
