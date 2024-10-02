@@ -65,7 +65,6 @@ class DynapcnnNetwork(nn.Module):
         - self._graph_tracer
         - self._sinabs_edges
         - self._sinabs_modules_map
-        - self._nodes_name_remap
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
         - self._entry_nodes
@@ -92,7 +91,7 @@ class DynapcnnNetwork(nn.Module):
         self._entry_nodes = copy.deepcopy(self._graph_tracer.entry_nodes)
 
         # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
-        self._sinabs_edges, self._sinabs_modules_map, self._nodes_name_remap = (
+        self._sinabs_edges, self._sinabs_modules_map = (
             self._get_sinabs_edges_and_modules()
         )
 
@@ -125,7 +124,6 @@ class DynapcnnNetwork(nn.Module):
         del self._graph_tracer
         del self._sinabs_edges
         del self._sinabs_modules_map
-        del self._nodes_name_remap
         del self._nodes_to_dcnnl_map
         del self._dynapcnn_layers
         del self._entry_nodes
@@ -611,38 +609,18 @@ class DynapcnnNetwork(nn.Module):
             remapped to connect the nodes involved in the merging directly.
         - sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and
             their associated module as `value`.
-        - remapped_nodes (dict): a dict where `key` is the original node name (as extracted by `self._graph_tracer`) and `value` is
-            the new node name (after ignored layers have been dropped and `Merge` layers have be processed before being removed).
         """
 
         # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
-        edges_without_merge = merge_handler(sinabs_edges, sinabs_modules_map)
+        edges_without_merge = merge_handler(
+            self._graph_tracer.edges, self._graph_tracer.modules_map
+        )
 
-        # original nodes flagged as input nodes (i.e., entry points of the network) might have been renamed: update list flaggind them.
-        temp = []
-        for i in range(len(self._entry_nodes)):
-            temp.append(remapped_nodes[self._entry_nodes[i]])
-        self._entry_nodes = temp
-
-        return edges_without_merge, sinabs_modules_map, remapped_nodes
+        return edges_without_merge, self._graph_tracer.modules_map
 
     def _populate_nodes_io(self):
         """Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
         representations in `self._nodes_to_dcnnl_map`."""
-
-        def find_original_node_name(name_mapper: dict, node: int) -> str:
-            """Find what a node is originally named when built in `self._graph_tracer`.
-
-            Returns
-            ----------
-            - orig_name (str): a string with the original variable name given to `node`.
-            """
-            for orig_name, new_name in name_mapper.items():
-                if new_name == node:
-                    return orig_name
-            raise ValueError(
-                f"Node {node} could not be found within the name remapping done by self._get_sinabs_edges_and_modules()."
-            )
 
         def find_my_input(edges_list: list, node: int) -> int:
             """Returns the node `X` in the first edge `(X, node)`.
@@ -671,9 +649,7 @@ class DynapcnnNetwork(nn.Module):
             for node, node_data in dcnnl_data.items():
                 # node dictionary with layer data.
                 if isinstance(node, int):
-                    # some nodes might have been renamed (e.g. after droppping a `nn.Flatten`), so find how node was originally named.
-                    orig_name = find_original_node_name(self._nodes_name_remap, node)
-                    _in, _out = self._graph_tracer.get_node_io_shapes(orig_name)
+                    _in, _out = self._graph_tracer.get_node_io_shapes(node)
 
                     # update node I/O shape in the mapper (drop batch dimension).
                     if node != 0:
@@ -687,13 +663,8 @@ class DynapcnnNetwork(nn.Module):
                             node_data["input_shape"] = tuple(list(_in)[1:])
                         else:
                             # input comes from another node in the graph.
-                            input_node_orig_name = find_original_node_name(
-                                self._nodes_name_remap, input_node
-                            )
                             _, _input_source_shape = (
-                                self._graph_tracer.get_node_io_shapes(
-                                    input_node_orig_name
-                                )
+                                self._graph_tracer.get_node_io_shapes(input_node)
                             )
                             node_data["input_shape"] = tuple(
                                 list(_input_source_shape)[1:]
