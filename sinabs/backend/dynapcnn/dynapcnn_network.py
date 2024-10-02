@@ -84,7 +84,7 @@ class DynapcnnNetwork(nn.Module):
         )  # needs the batch dimension.
 
         # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
-        self._graph_tracer.remove_ignored_nodes(DEFAULT_IGNORED_LAYER_TYPES)
+        self._graph_tracer.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
         # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
         self._sinabs_edges, self._sinabs_modules_map = (

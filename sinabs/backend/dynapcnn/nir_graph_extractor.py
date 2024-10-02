@@ -82,8 +82,8 @@ class NIRtoDynapcnnNetworkGraph:
     def modules_map(self) -> Dict[int, nn.Module]:
         return {n: module for n, module in self._modules_map.items()}
 
-    def remove_ignored_nodes(
-        self, ignored_node_classes: Tuple[Type]
+    def remove_nodes_by_class(
+        self, node_classes: Tuple[Type]
     ) -> Tuple[Set[int], Dict[int, int]]:
         """Remove nodes of given classes from graph in place.
 
@@ -96,16 +96,16 @@ class NIRtoDynapcnnNetworkGraph:
 
         Parameters
         ----------
-        - ignored_node_classes (tuple of types):
+        - node_classes (tuple of types):
             Layer classes that should be removed from the graph.
 
         """
         # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
         source2target: Dict[int, Set[int]] = {
-            node: self._find_valid_targets(node, ignored_node_classes)
+            node: self._find_valid_targets(node, node_classes)
             for node in self.sorted_nodes
-            # Skip ignored nodes
-            if not isinstance(self.modules_map[node], ignored_node_classes)
+            # Skip nodes that are to be removed
+            if not isinstance(self.modules_map[node], node_classes)
         }
 
         # remapping nodes indices contiguously starting from 0
