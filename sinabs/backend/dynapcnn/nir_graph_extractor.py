@@ -143,9 +143,9 @@ class NIRtoDynapcnnNetworkGraph:
         }
 
         # Update sinabs module map based on new node indices
-        self._nodes_io_shapes = {
-            remapped_nodes[old_idx]: shape
-            for old_idx, shape in self._nodes_io_shapes.items()
+        self._modules_map = {
+            remapped_nodes[old_idx]: module
+            for old_idx, module in self._modules_map.items()
             if old_idx in remapped_nodes
         }
 
