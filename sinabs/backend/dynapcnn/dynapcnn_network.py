@@ -84,14 +84,9 @@ class DynapcnnNetwork(nn.Module):
         # Remove nodes of ignored classes (including merge nodes)
         self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
-        # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
-        self._sinabs_edges, self._sinabs_modules_map = (
-            self._get_sinabs_edges_and_modules()
-        )
-
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
-            layers=self._sinabs_modules_map, edges=self._sinabs_edges
+            layers=self._graph_extractor.modules_map, edges=self._graph_extractor.edges
         )
 
         # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.

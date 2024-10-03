@@ -9,12 +9,13 @@ import torch.nn as nn
 
 import sinabs
 
-from .exceptions import InvalidGraphStructure
-from .utils import (
+from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
     LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
-    topological_sorting,
 )
+from .exceptions import InvalidGraphStructure
+from .utils import topological_sorting
+
 
 
 class GraphExtractor:
