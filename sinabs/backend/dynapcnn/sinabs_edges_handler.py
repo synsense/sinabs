@@ -60,7 +60,7 @@ def collect_dynapcnn_layer_info(
             edges_by_type[edge_type].add(edge)
         else:
             edges_by_type[edge_type] = {edge}
-
+    
     # Dict to collect information for each future dynapcnn layer 
     dynapcnn_layer_info = dict()
     # Map node IDs to dynapcnn layer ID
@@ -71,12 +71,19 @@ def collect_dynapcnn_layer_info(
         edge = edges_by_type["weight-neuron"].pop()
         init_new_dynapcnnlayer_entry(dynapcnn_layer_info, edge, indx_2_module_map, node_2_layer_map)
     
+    # "pooling-pooling" edges are optional. Unlike other types, missing entry would cause exception.
+    # Therefore add empty set if not existing
+    if "pooling-pooling" not in edges_by_type:
+        edges_by_type["pooling-pooling"] = set()
+
     # Add pooling based on neuron->pooling connections
     while(edges_by_type["neuron-pooling"]):
         edge = edges_by_type["neuron-pooling"].pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
         pooling_chains, edges_used = trace_paths(edge[1], edges_by_type["pooling-pooling"])
-        add_pooling_to_entry(dynapcnn_layer_info, pooling_chains, indx_2_module_map, node_2_layer_map)
+        add_pooling_to_entry(
+             dynapcnn_layer_info, edge, pooling_chains, indx_2_module_map, node_2_layer_map
+        )
         # Remove handled pooling-pooling edges
         edges_by_type["pooling-pooling"].difference_update(edges_used)
     # After adding pooling make sure all pooling-pooling edges have been handled
@@ -93,7 +100,7 @@ def collect_dynapcnn_layer_info(
         set_pooling_layer_destination(dynapcnn_layer_info, edge, node_2_layer_map)
 
     # Make sure we have taken care of all edges
-    assert all(len(edges) == 0 for edges in edges_by_type)
+    assert all(len(edges) == 0 for edges in edges_by_type.values())
 
     return dynapcnn_layer_info
 
@@ -265,7 +272,6 @@ def set_neuron_layer_destination(
 def set_pooling_layer_destination(
     dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
     edge: Edge,
-    indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
 ) -> None:
     """ Set destination layer with pooling.

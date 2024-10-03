@@ -10,11 +10,11 @@ import torch.nn as nn
 
 import sinabs.layers as sl
 
-Pooling = Union[sl.SumPool2d, nn.AvgPool2d]
-Weight = Union[nn.Conv2d, nn.Linear]
-Neuron = sl.IAFSqueeze
+Pooling = (sl.SumPool2d, nn.AvgPool2d)
+Weight = (nn.Conv2d, nn.Linear)
+Neuron = (sl.IAFSqueeze, )
 
-VALID_SINABS_EDGE_TYPES = {
+VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # convoluion is always followed by a neuron layer.
     (Weight, Neuron): "weight-neuron",
     # Neuron layer can be followed by pooling
@@ -27,12 +27,16 @@ VALID_SINABS_EDGE_TYPES = {
     (Pooling, Weight): "pooling-weight",
 }
 
-# Between two cores only neuron->weight or pooling->weight connections are possible
-VALID_DYNAPCNNLAYER_EDGES = [(Neuron, Weight), (Pooling, Weight)]
+# Unpack dict
+VALID_SINABS_EDGE_TYPES = {
+    (source_type, target_type): name
+    for types, name in VALID_SINABS_EDGE_TYPES_ABSTRACT.items()
+    for source_type in types[0]
+    for target_type in types[1]
+}
 
 # Only `Merge` layers are allowed to join multiple inputs
 LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
 
 # Neuron and pooling layers can have their output sent to multiple cores
-LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[Neuron, Pooling]
-
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[*Neuron, *Pooling]
