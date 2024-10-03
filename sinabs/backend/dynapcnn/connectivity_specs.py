@@ -1,15 +1,14 @@
 """
-functionality : implementation of exceptions and constraints regarding the processing of edges from a network
-                computational graph.
+functionality : list device-independent supported connections between layers on chip
 author        : Willian Soares Girao
 contact       : williansoaresgirao@gmail.com
 """
 
+from typing import Union
+
 import torch.nn as nn
 
 import sinabs.layers as sl
-
-# Constraints.                                   # @TODO constraints are ideally device-dependent.
 
 VALID_SINABS_EDGES = {
     0: (
@@ -58,6 +57,9 @@ VALID_DYNAPCNNLAYER_EDGES = [
     (sl.SumPool2d, nn.Linear),
 ]
 
-VALID_SINABS_NODE_FAN_IN = []
-VALID_SINABS_NODE_FAN_OUT = []
+LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
+
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[
+    sl.IAFSqueeze, sl.SumPool2d, nn.AvgPool2d
+]
 

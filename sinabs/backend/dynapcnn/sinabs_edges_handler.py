@@ -18,7 +18,7 @@ from .exceptions import (
     UnknownNode,
     UnmatchedNode,
 )
-from .sinabs_edges_utils import (
+from .connectivity_specs import (
     VALID_DYNAPCNNLAYER_EDGES,
     VALID_SINABS_EDGE_TYPE_IDS,
 )
