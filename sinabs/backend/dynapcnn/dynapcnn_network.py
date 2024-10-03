@@ -1,7 +1,6 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-import copy
 import time
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 

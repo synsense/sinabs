@@ -5,8 +5,6 @@ author        : Willian Soares Girao
 contact       : williansoaresgirao@gmail.com
 """
 
-from typing import Tuple
-
 import torch.nn as nn
 
 import sinabs.layers as sl
@@ -63,69 +61,3 @@ VALID_DYNAPCNNLAYER_EDGES = [
 VALID_SINABS_NODE_FAN_IN = []
 VALID_SINABS_NODE_FAN_OUT = []
 
-# Edge exceptions.
-
-
-class InvalidEdge(Exception):
-    edge: Tuple[int, int]
-    source: type
-    target: type
-
-    def __init__(self, edge, source, target):
-        super().__init__(f"Invalid edge {edge}: {source} can not target {target}.")
-
-
-class InvalidEdgeType(Exception):
-    edge: Tuple[int, int]
-    type: int
-
-    def __init__(self, edge, type):
-        super().__init__(f"Invalid edge type {type} for edge {edge}.")
-
-
-class UnmatchedNode(Exception):
-    edge: Tuple[int, int]
-    node: int
-
-    def __init__(self, edge, node):
-        super().__init__(
-            f"Node {node} in edge {edge} can not found in previously processed edges."
-        )
-
-
-class UnknownNode(Exception):
-    node: int
-
-    def __init__(self, node):
-        super().__init__(
-            f"Node {node} can not be found within any DynapcnnLayer mapper."
-        )
-
-
-class MaxDestinationsReached(Exception):
-    dynapcnnlayer_index: int
-
-    def __init__(self, dynapcnnlayer_index):
-        super().__init__(
-            f"DynapcnnLayer with index {dynapcnnlayer_index} has more than 2 destinations."
-        )
-
-
-class InvalidLayerLoop(Exception):
-    dynapcnnlayerA_index: int
-    dynapcnnlayerB_index: int
-
-    def __init__(self, dynapcnnlayerA_index, dynapcnnlayerB_index):
-        super().__init__(
-            f"DynapcnnLayer {dynapcnnlayerA_index} can not connect to {dynapcnnlayerB_index} since reverse edge already exists."
-        )
-
-
-class InvalidLayerDestination(Exception):
-    dynapcnnlayerA: type
-    dynapcnnlayerB: type
-
-    def __init__(self, dynapcnnlayerA, dynapcnnlayerB):
-        super().__init__(
-            f"DynapcnnLayer {dynapcnnlayerA} in one core can not connect to {dynapcnnlayerB} in another core."
-        )

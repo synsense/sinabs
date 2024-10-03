@@ -5,15 +5,23 @@ author        : Willian Soares Girao
 contact       : williansoaresgirao@gmail.com
 """
 
-import copy
 from typing import Dict, List, Tuple, Type
 
 import torch.nn as nn
 
-import sinabs
-import sinabs.layers
-
-from .sinabs_edges_utils import *
+from .exceptions import (
+    InvalidEdge,
+    InvalidEdgeType,
+    InvalidLayerDestination,
+    InvalidLayerLoop,
+    MaxDestinationsReached,
+    UnknownNode,
+    UnmatchedNode,
+)
+from .sinabs_edges_utils import (
+    VALID_DYNAPCNNLAYER_EDGES,
+    VALID_SINABS_EDGE_TYPE_IDS,
+)
 
 
 def process_edge(
@@ -174,13 +182,13 @@ def add_pool_to_dynapcnnlayer_blk(
     # Search for edge[0] (neuron layer) in DynapcnnLayers
     if (indx := find_initialized_node(edge[0], mapper)) is not None:
         # Add edge[1] (pooling layer) to the same dynapcnn layer
-        mapped[indx][edge[1]] = {
+        mapper[indx][edge[1]] = {
             "layer": layers[edge[1]],
             "input_shape": None,
             "output_shape": None,
         }
     else:
-        raise UnmatchedNode(edge, node)
+        raise UnmatchedNode(edge, edge[1])
 
 
 def find_initialized_node(node: int, mapper: Dict[int, Dict[int, Dict]]) -> bool:
