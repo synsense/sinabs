@@ -41,7 +41,7 @@ class GraphExtractor:
             Values are unique integer IDs.
         - entry_nodes (set of ints):
             IDs of nodes acting as entry points for the network, i.e. receiving external input.
-        - modules_map (dict):
+        - indx_2_module_map (dict):
             Map from layer ID to the corresponding nn.Module instance.
         """
 
@@ -56,7 +56,7 @@ class GraphExtractor:
         )
 
         # Store the associated `nn.Module` (layer) of each node.
-        self._modules_map = self._get_named_modules(spiking_model)
+        self._indx_2_module_map = self._get_named_modules(spiking_model)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -87,8 +87,8 @@ class GraphExtractor:
         return [n for n in self._sort_graph_nodes()]
 
     @property
-    def modules_map(self) -> Dict[int, nn.Module]:
-        return {n: module for n, module in self._modules_map.items()}
+    def indx_2_module_map(self) -> Dict[int, nn.Module]:
+        return {n: module for n, module in self._indx_2_module_map.items()}
 
     def remove_nodes_by_class(
         self, node_classes: Tuple[Type]
@@ -113,7 +113,7 @@ class GraphExtractor:
             node: self._find_valid_targets(node, node_classes)
             for node in self.sorted_nodes
             # Skip nodes that are to be removed
-            if not isinstance(self.modules_map[node], node_classes)
+            if not isinstance(self.indx_2_module_map[node], node_classes)
         }
 
         # remapping nodes indices contiguously starting from 0
@@ -153,7 +153,7 @@ class GraphExtractor:
         future to implement stricter formal verification.
         """
         # Iterate over all nodes, and count its sources and targets
-        for node, module in self.modules_map.items():
+        for node, module in self.indx_2_module_map.items():
             # Check sources
             if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_INPUTS):
                 sources = self._find_all_sources_of_input_to(node)
@@ -219,7 +219,7 @@ class GraphExtractor:
 
         Returns
         ----------
-        - modules_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+        - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
         return {
             self._name_2_indx_map[name]: module
@@ -258,9 +258,9 @@ class GraphExtractor:
         }
 
         # Update sinabs module map based on new node indices
-        self._modules_map = {
+        self._indx_2_module_map = {
             remapped_nodes[old_idx]: module
-            for old_idx, module in self._modules_map.items()
+            for old_idx, module in self._indx_2_module_map.items()
             if old_idx in remapped_nodes
         }
 
@@ -296,7 +296,7 @@ class GraphExtractor:
         # propagate inputs through the nodes.
         for node in self.sorted_nodes:
 
-            if isinstance(self.modules_map[node], sinabs.layers.merge.Merge):
+            if isinstance(self.indx_2_module_map[node], sinabs.layers.merge.Merge):
                 # find `Merge` arguments (at this point the inputs to Merge should have been calculated).
                 arg1, arg2 = self._find_merge_arguments(node)
 
@@ -312,7 +312,7 @@ class GraphExtractor:
                     )
 
                 # forward input through the node.
-                _output = self.modules_map[node](arg1_out, arg2_out)
+                _output = self.indx_2_module_map[node](arg1_out, arg2_out)
 
                 # save node's I/O tensors.
                 nodes_io_map[node] = {"input": arg1_out, "output": _output}
@@ -321,7 +321,7 @@ class GraphExtractor:
 
                 if node in self._entry_nodes:
                     # forward input dummy through node.
-                    _output = self.modules_map[node](input_dummy)
+                    _output = self.indx_2_module_map[node](input_dummy)
 
                     # save node's I/O tensors.
                     nodes_io_map[node] = {"input": input_dummy, "output": _output}
@@ -332,7 +332,7 @@ class GraphExtractor:
                     _input = nodes_io_map[input_node]["output"]
 
                     # forward input through the node.
-                    _output = self.modules_map[node](_input)
+                    _output = self.indx_2_module_map[node](_input)
 
                     # save node's I/O tensors.
                     nodes_io_map[node] = {"input": _input, "output": _output}
@@ -417,7 +417,7 @@ class GraphExtractor:
         for src, tgt in self.edges:
             # Search for all edges with node as source
             if src == node:
-                if isinstance(self.modules_map[tgt], ignored_node_classes):
+                if isinstance(self.indx_2_module_map[tgt], ignored_node_classes):
                     # Find valid targets of target
                     targets.update(self._find_valid_targets(tgt, ignored_node_classes))
                 else:

@@ -62,7 +62,7 @@ class DynapcnnNetwork(nn.Module):
 
         - self._graph_extractor
         - self._sinabs_edges
-        - self._sinabs_modules_map
+        - self._sinabs_indx_2_module_map
         - self._nodes_to_dcnnl_map
         - self._dynapcnn_layers
         """
@@ -86,7 +86,7 @@ class DynapcnnNetwork(nn.Module):
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
-            layers=self._graph_extractor.modules_map, edges=self._graph_extractor.edges
+            layers=self._graph_extractor.indx_2_module_map, edges=self._graph_extractor.edges
         )
 
         # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
@@ -112,7 +112,7 @@ class DynapcnnNetwork(nn.Module):
         # all necessary `DynapcnnLayer` data held in `self._layers_mapper`: removing intermediary data structures no longer necessary.
         del self._graph_extractor
         del self._sinabs_edges
-        del self._sinabs_modules_map
+        del self._sinabs_indx_2_module_map
         del self._nodes_to_dcnnl_map
         del self._dynapcnn_layers
 
