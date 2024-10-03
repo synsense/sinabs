@@ -92,16 +92,20 @@ def update_dynapcnnlayer_mapper(
     in 'mapper'.
     """
 
-    if edge_type in [0, 6]:
+    if edge_type  == 0:  # Weight-to-neuron edge, within one core
         init_xor_complete_new_dynapcnnlayer_blk(mapper, edge, layers)
 
-    elif edge_type in [1, 7]:
+    elif edge_type == 1:  # Neuron-to-pooling edge, within one core
         add_pool_to_dynapcnnlayer_blk(mapper, edge, layers)
 
-    elif edge_type in [2, 3, 4, 5, 8, 9]:
+    elif edge_type == 2:  # Pooling-to-pooling edge, will be consolidated within one core
+        # TODO
+        NotImplemented
+
+    elif edge_type in [3, 4]:  # Neuron-to-weight or Pooling-to-weight edge, connecting two cores
         connect_dynapcnnlayer_blks(mapper, edge, layers)
 
-    else:
+    else:  # This should never happen
         raise InvalidEdgeType(edge, edge_type)
 
 
