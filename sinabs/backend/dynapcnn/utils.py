@@ -18,7 +18,12 @@ from .sinabs_edges_handler import get_dynapcnnlayers_destinations, process_edge
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
-DEFAULT_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge)
+DEFAULT_IGNORED_LAYER_TYPES = Union[nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge]
+LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[
+    sl.IAFSqueeze, sl.SumPool2d, nn.AvgPool2d
+]
+
 
 ####################################################### Device Related #######################################################
 

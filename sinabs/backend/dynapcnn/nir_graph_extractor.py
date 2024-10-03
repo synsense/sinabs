@@ -1,7 +1,6 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-import copy
 from typing import Dict, List, Set, Tuple, Type
 
 import nirtorch
@@ -10,7 +9,12 @@ import torch.nn as nn
 
 import sinabs
 
-from .utils import topological_sorting
+from .exceptions import InvalidGraphStructure
+from .utils import (
+    LAYER_TYPES_WITH_MULTIPLE_INPUTS,
+    LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
+    topological_sorting,
+)
 
 
 class GraphExtractor:
@@ -50,8 +54,11 @@ class GraphExtractor:
             self._get_edges_from_nir(nir_graph)
         )
 
-        # recovers the associated `nn.Module` (layer) of each node.
+        # Store the associated `nn.Module` (layer) of each node.
         self._modules_map = self._get_named_modules(spiking_model)
+
+        # Verify that graph is compatible
+        self.verify_graph_integrity()
 
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
@@ -114,6 +121,13 @@ class GraphExtractor:
             for new_idx, old_idx in enumerate(sorted(source2target.keys()))
         }
 
+        # Parse new set of edges based on remapped node IDs
+        self._edges = {
+            (remapped_nodes[src], remapped_nodes[tgt])
+            for src, targets in source2target.items()
+            for tgt in targets
+        }
+
         # Update internal graph representation according to changes
         self._update_internal_representation(remapped_nodes)
 
@@ -129,6 +143,34 @@ class GraphExtractor:
             self._nodes_io_shapes[node]["input"],
             self._nodes_io_shapes[node]["output"],
         )
+    
+    def verify_graph_integrity(self):
+        """ Apply checks to verify that graph is supported 
+        
+        Currently this checks that only nodes of specific classes have
+        multiple sources or targets. This method might be extended in the
+        future to implement stricter formal verification.
+        """
+        # Iterate over all nodes, and count its sources and targets
+        for node, module in self.modules_map.items():
+            # Check sources
+            if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_INPUTS):
+                sources = self._find_all_sources_of_input_to(node)
+                if len(sources) > 1:
+                    raise InvalidGraphStructure(
+                        f"Only nodes of type {LAYER_TYPES_WITH_MULTIPLE_INPUTS} "
+                        f"can have more than one input. Node {node} is of type "
+                        f"{type(module)} and has {len(sources)} inputs."
+                    )
+            # Check targets
+            if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_OUTPUTS):
+                targets = self._find_valid_targets(node)
+                if len(targets) > 1:
+                    raise InvalidGraphStructure(
+                        f"Only nodes of type {LAYER_TYPES_WITH_MULTIPLE_OUTPUTS} "
+                        f"can have more than one output. Node {node} is of type "
+                        f"{type(module)} and has {len(targets)} outputs."
+                    )
 
     ####################################################### Pivate Methods #######################################################
 
@@ -178,7 +220,6 @@ class GraphExtractor:
         ----------
         - modules_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
-        modules_map = {}
         return {
             self._name_2_indx_map[name]: module
             for name, module in model.named_modules()
@@ -193,13 +234,6 @@ class GraphExtractor:
         remapped_nodes (dict): Maps previous (key) to new (value) node
             indices. Nodes that were removed are not included.
         """
-
-        # Parse new set of edges based on remapped node IDs
-        self._edges = {
-            (remapped_nodes[src], remapped_nodes[tgt])
-            for src, targets in source2target.items()
-            for tgt in targets
-        }
 
         # Update name-to-index map based on new node indices
         self._name_2_indx_map = {
@@ -355,13 +389,13 @@ class GraphExtractor:
 
         if len(sources) != 2:
             raise ValueError(
-                f"Number of arguments found for `Merge` node {merge_node} is {len(args)} (should be 2)."
+                f"Number of arguments found for `Merge` node {node} is {len(sources)} (should be 2)."
             )
 
         return tuple(sources)
 
     def _find_valid_targets(
-        self, node: int, ignored_node_classes: Tuple[Type]
+        self, node: int, ignored_node_classes: Tuple[Type] = ()
     ) -> Set[int]:
         """Find all targets of a node that are not ignored classes
 
