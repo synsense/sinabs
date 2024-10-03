@@ -17,10 +17,11 @@ from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
+from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import (
-    DEFAULT_IGNORED_LAYER_TYPES,
     build_from_graph,
-    build_nodes_to_dcnnl_map,
+    DEFAULT_IGNORED_LAYER_TYPES,
+    Edge,
     parse_device_id,
     topological_sorting,
 )
@@ -85,7 +86,7 @@ class DynapcnnNetwork(nn.Module):
         self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self._nodes_to_dcnnl_map = build_nodes_to_dcnnl_map(
+        self._nodes_to_dcnnl_map = collect_dynapcnn_layer_info(
             layers=self._graph_extractor.indx_2_module_map, edges=self._graph_extractor.edges
         )
 
@@ -568,7 +569,7 @@ class DynapcnnNetwork(nn.Module):
             topological_sorting(dcnnl_edges),
         )
 
-    def _get_dynapcnnlayers_edges(self) -> List[Tuple[int, int]]:
+    def _get_dynapcnnlayers_edges(self) -> List[Edge]:
         """Create edges representing connections between `DynapcnnLayer` instances.
 
         Returns

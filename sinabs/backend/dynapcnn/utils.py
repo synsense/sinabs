@@ -13,12 +13,13 @@ from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnn_layer_handler import DynapcnnLayerHandler
 from .exceptions import WrongPoolingModule
 from .flipdims import FlipDims
-from .sinabs_edges_handler import get_dynapcnnlayers_destinations, process_edge
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
 DEFAULT_IGNORED_LAYER_TYPES = Union[nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge]
+
+Edge = Tuple[int, int]  # Define edge-type alias
 
 
 ####################################################### Device Related #######################################################
@@ -75,53 +76,6 @@ def standardize_device_id(device_id: str) -> str:
 
 
 ####################################################### DynapcnnNetwork Related #######################################################
-
-
-def build_nodes_to_dcnnl_map(
-    layers: Dict[int, nn.Module], edges: List[Tuple[int, int]]
-) -> dict:
-    """Initializes and populates a `dict` that will map data into a future `DynapcnnLayer` instance. The call
-    to `process_edge()` initializes a `key` (the index of a `DynapcnnLayer`) and assigns to it a dict containing the
-    nodes (layers in a `nn.Module`) that should belong to the same `DynapcnnLayer`. The call to `get_dynapcnnlayers_destinations()`
-    further incorporates to each "DynapcnnLayer dictionary" a `destinations` attribute, which is a list of integers indicating the
-    the target destinations of a `DynapcnnLayer` instance.
-
-    Parameters
-    ---------
-    - layers (dict): contains the node IDs of a graph as `key` and their associated module as `value`.
-    - edges (list): edges describing how nodes connect to each other.
-
-    Returns
-    ---------
-    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
-    """
-    # @TODO the graph extraction is not yet considering DVS input.
-
-    # dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
-    #     layers,
-    #     input_shape=in_shape,
-    #     idx_start=0,
-    #     dvs_input=False)
-
-    dvs_layer = None
-
-    # mapper from nodes to sets of layers that populate a DynapcnnLayer.
-    nodes_to_dcnnl_map = {}
-
-    if dvs_layer is not None:
-        # TODO the graph extraction is not yet considering DVS input.
-        pass
-    else:
-        for edge in edges:
-            # Figure out to which (future) DynapcnnLayer each node will belong to.
-            process_edge(layers, edge, nodes_to_dcnnl_map)
-
-    # look for edges between connecting nodes in different (future) DynapcnnLayer.
-    get_dynapcnnlayers_destinations(layers, edges, nodes_to_dcnnl_map)
-
-    return nodes_to_dcnnl_map
-
 
 def build_from_graph(
     discretize: bool,

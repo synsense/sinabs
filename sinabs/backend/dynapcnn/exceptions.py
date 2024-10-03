@@ -1,4 +1,4 @@
-from typing import Tuple, Type
+from typing import Set, Tuple, Type
 
 
 class MissingLayer(Exception):
@@ -94,6 +94,14 @@ class UnmatchedNode(Exception):
     def __init__(self, edge, node):
         super().__init__(
             f"Node {node} in edge {edge} can not found in previously processed edges."
+        )
+
+
+class UnmatchedPoolingEdges(Exception):
+    def __init__(self, edges: Set[int]):
+        super().__init__(
+            "The following edges between pooling layers could not be processed: "
+            f"{edges}. The computational graph is likely invalid."
         )
 
 

@@ -14,7 +14,7 @@ from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
 )
 from .exceptions import InvalidGraphStructure
-from .utils import topological_sorting
+from .utils import Edge, topological_sorting
 
 
 
@@ -71,7 +71,7 @@ class GraphExtractor:
         return {n for n in self._entry_nodes}
 
     @property
-    def edges(self) -> Set[Tuple[int, int]]:
+    def edges(self) -> Set[Edge]:
         return {(src, tgt) for src, tgt in self._edges}
 
     @property
@@ -177,8 +177,8 @@ class GraphExtractor:
 
     def _get_edges_from_nir(
         self, nir_graph: nirtorch.graph.Graph
-    ) -> Tuple[List[Tuple[int, int]], Dict[str, int], List[int]]:
-        """Standardize the representation of `nirtorch.graph.Graph` into a list of edges (`Tuple[int, int]`) where each node in `nir_graph` is represented by an interger (with the source node starting as `0`).
+    ) -> Tuple[List[Edge], Dict[str, int], List[int]]:
+        """Standardize the representation of `nirtorch.graph.Graph` into a list of edges (`Edge`) where each node in `nir_graph` is represented by an interger (with the source node starting as `0`).
 
         Parameters
         ----------
@@ -379,7 +379,7 @@ class GraphExtractor:
             raise RuntimeError(f"Node {node} has more than 1 input")
         return sources.pop()
 
-    def _find_merge_arguments(self, node: int) -> Tuple[int, int]:
+    def _find_merge_arguments(self, node: int) -> Edge:
         """A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer.
 
         Returns

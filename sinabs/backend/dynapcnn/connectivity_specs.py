@@ -14,19 +14,18 @@ Pooling = Union[sl.SumPool2d, nn.AvgPool2d]
 Weight = Union[nn.Conv2d, nn.Linear]
 Neuron = sl.IAFSqueeze
 
-VALID_SINABS_EDGES = {
+VALID_SINABS_EDGE_TYPES = {
     # convoluion is always followed by a neuron layer.
-    0: (Weight, Neuron),
+    (Weight, Neuron): "weight-neuron",
     # Neuron layer can be followed by pooling
-    1: (Neuron, Pooling),
+    (Neuron, Pooling): "neuron-pooling",
     # Pooling can be followed by another pooling (will be consolidated)
-    2: (Pooling, Pooling),
+     (Pooling, Pooling): "pooling-pooling",
     # Neuron layer can be followed by weight layer of next core
-    3: (Neuron, Weight),
+    (Neuron, Weight): "neuron-weight",
     # Pooling can be followed by weight layer of next core
-    4: (Pooling, Weight),
+    (Pooling, Weight): "pooling-weight",
 }
-VALID_SINABS_EDGE_TYPE_IDS = {v: k for k, v in VALID_SINABS_EDGES.items()}
 
 # Between two cores only neuron->weight or pooling->weight connections are possible
 VALID_DYNAPCNNLAYER_EDGES = [(Neuron, Weight), (Pooling, Weight)]
