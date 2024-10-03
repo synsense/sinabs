@@ -18,7 +18,6 @@ from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
-from .sinabs_edges_handler import merge_handler
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     build_from_graph,
@@ -83,7 +82,7 @@ class DynapcnnNetwork(nn.Module):
             snn, torch.randn((batch_size, *self.input_shape))
         )  # needs the batch dimension.
 
-        # remap `(A, X)` and `(X, B)` into `(A, B)` if `X` is a layer in the original `snn` to be ignored.
+        # Remove nodes of ignored classes (including merge nodes)
         self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
         # pre-process and group original nodes/edges from the graph tracer into data structures used to later create `DynapcnnLayer` instance.
@@ -590,28 +589,6 @@ class DynapcnnNetwork(nn.Module):
                 dcnnl_edges.append((dcnnl_idx, dest))
 
         return dcnnl_edges
-
-    def _get_sinabs_edges_and_modules(
-        self,
-    ) -> Tuple[List[Tuple[int, int]], Dict[int, nn.Module], Dict[int, int]]:
-        """The computational graph extracted from `snn` might contain layers that are ignored (e.g. a `nn.Flatten` will be
-        ignored when creating a `DynapcnnLayer` instance). Thus the list of edges from such model need to be rebuilt such that if there are
-        edges `(A, X)` and `(X, B)`, and `X` is an ignored layer, an edge `(A, B)` is created.
-
-        Returns
-        ----------
-        - edges_without_merge (list): a list of edges based on `sinabs_edges` but where edges involving a `Merge` layer have been
-            remapped to connect the nodes involved in the merging directly.
-        - sinabs_modules_map (dict): a dict containing the nodes of the graph (described now by `edges_without_merge`) as `key` and
-            their associated module as `value`.
-        """
-
-        # bypass merging layers to connect the nodes involved in them directly to the node where the merge happens.
-        edges_without_merge = merge_handler(
-            self._graph_extractor.edges, self._graph_extractor.modules_map
-        )
-
-        return edges_without_merge, self._graph_extractor.modules_map
 
     def _populate_nodes_io(self):
         """Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
