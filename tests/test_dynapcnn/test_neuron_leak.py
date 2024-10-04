@@ -3,13 +3,16 @@ import time
 import pytest
 import samna
 import torch
-from hw_utils import (find_open_devices, get_ones_network,
-                      is_any_samna_device_connected, is_device_connected)
+from hw_utils import (
+    find_open_devices,
+    get_ones_network,
+    is_any_samna_device_connected,
+    is_device_connected,
+)
 from torch import nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from sinabs.backend.dynapcnn.io import (calculate_neuron_address,
-                                        neuron_address_to_cxy)
+from sinabs.backend.dynapcnn.io import calculate_neuron_address, neuron_address_to_cxy
 from sinabs.layers import IAFSqueeze
 
 

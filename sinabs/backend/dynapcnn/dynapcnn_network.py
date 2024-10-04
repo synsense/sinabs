@@ -15,12 +15,16 @@ from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
-from .io import (disable_timestamps, enable_timestamps, open_device,
-                 reset_timestamps)
+from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
 from .sinabs_edges_handler import collect_dynapcnn_layer_info
-from .utils import (DEFAULT_IGNORED_LAYER_TYPES, Edge, build_from_graph,
-                    parse_device_id, topological_sorting)
+from .utils import (
+    DEFAULT_IGNORED_LAYER_TYPES,
+    Edge,
+    build_from_graph,
+    parse_device_id,
+    topological_sorting,
+)
 from .weight_rescaling_methods import rescale_method_1
 
 

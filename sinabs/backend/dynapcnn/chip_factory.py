@@ -3,9 +3,14 @@ from typing import List, Optional, Tuple
 import numpy as np
 import torch
 
-from .chips import (DynapcnnConfigBuilder, Speck2BConfigBuilder,
-                    Speck2CMiniConfigBuilder, Speck2DMiniConfigBuilder,
-                    Speck2EConfigBuilder, Speck2FConfigBuilder)
+from .chips import (
+    DynapcnnConfigBuilder,
+    Speck2BConfigBuilder,
+    Speck2CMiniConfigBuilder,
+    Speck2DMiniConfigBuilder,
+    Speck2EConfigBuilder,
+    Speck2FConfigBuilder,
+)
 from .config_builder import ConfigBuilder
 from .utils import parse_device_id
 

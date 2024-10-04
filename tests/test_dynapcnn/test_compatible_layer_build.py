@@ -171,8 +171,7 @@ def test_incorrect_model_start():
 
 
 def test_conversion_to_layer_list():
-    from sinabs.backend.dynapcnn.utils import \
-        DEFAULT_IGNORED_LAYER_TYPES as DEF_IGNORE
+    from sinabs.backend.dynapcnn.utils import DEFAULT_IGNORED_LAYER_TYPES as DEF_IGNORE
     from sinabs.backend.dynapcnn.utils import convert_model_to_layer_list
 
     model = nn.Sequential(

@@ -9,8 +9,10 @@ import torch.nn as nn
 
 import sinabs
 
-from .connectivity_specs import (LAYER_TYPES_WITH_MULTIPLE_INPUTS,
-                                 LAYER_TYPES_WITH_MULTIPLE_OUTPUTS)
+from .connectivity_specs import (
+    LAYER_TYPES_WITH_MULTIPLE_INPUTS,
+    LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
+)
 from .exceptions import InvalidGraphStructure
 from .utils import Edge, topological_sorting
 

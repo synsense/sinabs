@@ -4,9 +4,11 @@
 import pytest
 from conftest_dynapcnnlayer import args_DynapcnnLayer
 
-from sinabs.backend.dynapcnn.utils import (construct_dynapcnnlayer,
-                                           construct_layerhandler,
-                                           update_nodes_io)
+from sinabs.backend.dynapcnn.utils import (
+    construct_dynapcnnlayer,
+    construct_layerhandler,
+    update_nodes_io,
+)
 from sinabs.backend.dynapcnn.weight_rescaling_methods import rescale_method_1
 
 
