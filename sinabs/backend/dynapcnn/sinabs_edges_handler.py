@@ -166,15 +166,17 @@ def init_new_dynapcnnlayer_entry(
     assert layer_id not in dynapcnn_layer_info
 
     dynapcnn_layer_info[layer_id] = {
+        "input_shape": nodes_io_shapes[edge[0]],
         "conv": {
             "module": indx_2_module_map[edge[0]],
             "node_id": edge[0],
-            "input_shape": nodes_io_shapes[edge[0]],
         },
         "neuron": {
             "module": indx_2_module_map[edge[1]],
             "node_id": edge[1],
         },
+        # This will be used later to account for average pooling in preceding layers
+        "rescale_factors": {},
     }
     node_2_layer_map[edge[0]] = layer_id
     node_2_layer_map[edge[1]] = layer_id
@@ -315,7 +317,7 @@ def set_pooling_layer_destination(
     if not matched:
         raise UnmatchedNode(edge, edge[0])
     
-    # Set destination layer
+    # Set destination layer within destination dict that holds current source node
     destination["destination_layer"] = destination_layer_idx
 
 def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:

@@ -273,20 +273,118 @@ def construct_layerhandler(
     return layerhandler
 
 
-def construct_dynapcnnlayer(handler: DynapcnnLayerHandler) -> DynapcnnLayer:
+def construct_all_dynapcnnlayers(dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None) -> Dict[int, DynapcnnLayer]:
     """..."""
 
+    # Extract construction arguments from dcnnl_map
+    # -conv layer
+    # -neuron layer
+    # -pooling -> requires consolidation
+    # -input shape
+    # -discretize
+    # -weight rescale factor
+
+    # Consolidate pooling information for each destination
+    for layer_info in dcnnl_map.values():
+        for destination in layer_info["destinations"]:
+            pool, scale = consolidate_pooling(destination["pooling_modules"])
+            destination["cumulative_pooling"] = pool
+            destination["cumulative_scaling"] = scale
+            dest_lyr_idx = destination["destination_layer"]
+            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(layer_rescaling)
+    
+    dynapcnn_layer = {
+        layer_idx: construct_single_dynapcnn_layer(layer_info, discretize, rescale_fn)
+        for layer_idx, layer_info in dcnnl_map.items()
+    }
+
+    dynapcnn_layer_handler = {
+        layer_idx: construct_single_dynapcnn_layer_handler(layer_info)
+        for layer_idx, layer_info in dcnnl_map.items()
+    }
+
+def construct_single_dynapcnn_layer(layer_info: Dict, rescale_fn: Optional[Callable] = None) -> DynapcnnLayer:
+
+    if len(layer_info["rescale_factors"]) == 0:
+        rescale_factor = 1
+    elif len(layer_info["rescale_factors"]) == 1:
+        rescale_factor = layer_info["rescale_factors"].pop()
+    else:
+        if rescale_fn is None:
+            # TODO: Custom Exception class?
+            raise ValueError(
+                "Average pooling layers of conflicting sizes pointing to "
+                "same destination. Either replace them by SumPool2d layers "
+                "or provide a `rescale_fn` to resolve this"
+            )
+        else:
+            rescale_factor = rescale_fn(layer_info["rescale_factors"])
+
     # instantiate a DynapcnnLayer from the data in the handler.
-    dynapcnnlayer = DynapcnnLayer(
-        conv=handler.conv_layer,
-        spk=handler.spk_layer,
-        in_shape=handler.conv_in_shape,
-        pool=handler.get_pool_list(),
-        discretize=False,
+    return DynapcnnLayer(
+        conv=layer_info["conv"]["module"],
+        spk=layer_info["neuron"]["module"],
+        in_shape=layer_info["input_shape"],
+        pool=[dest["cumulative_pooling"] for dest in layer_info["destinations"],
+        discretize=discretize,
+        rescale_weights=rescale_factor,
     )
 
-    return dynapcnnlayer
+def consolidate_pooling(modules: Iterable[nn.Module]) -> Tuple[Tuple[int, int], float]:
+    """ Consolidate pooling information for consecutive pooling modules.
 
+    Parameters
+    ----------
+    modules: Iteravle of pooling modules
+
+    Returns
+    -------
+    cumulative_pooling: Tuple of two ints, indicating pooling along
+        vertical and horizontal dimensions for all modules together
+    cumulative_scaling: float, indicating by how much subsequent weights
+        need to be rescaled to account for average pooling being converted
+        to sum pooling, considering all provided modules.
+    """
+    cumulative_pooling = [1, 1]
+    cumulative_scaling = 1.
+
+    for pooling_layer in modules:
+        pooling, rescale_factor = extract_pooling_from_module(pooling_layer)
+        cumulative_pooling[0] *= pooling[0]
+        cumulative_pooling[1] *= pooling[1]
+        cumulative_scaling *= rescale_factor
+    
+    return cumulative_pooling, cumulative_scaling
+
+def extract_pooling_from_module(module: Union[nn.AvgPool2d, sl.SumPool2d]) -> Tuple[Tuple[int, int], float]:
+    """ Extract pooling size and required rescaling factor from pooling module
+
+    Parameters
+    ----------
+    module: pooling module
+
+    Returns
+    -------
+    pooling: Tuple of two ints, indicating pooling along vertical and horizontal dimensions
+    scale_factor: float, indicating by how much subsequent weights need to be rescaled to
+        account for average pooling being converted to sum pooling.
+    """
+        pooling = expand_to_pair(module.kernel_size)
+
+        if module.stride is not None:
+            stride = expand_to_pair(module.stride)
+            if pooling != stride:
+                raise ValueError(
+                    f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
+                )
+        if isinstance(pooling_layer, nn.AvgPool2d):
+            scale_factor = 1. / (pooling[0] * pooling[1])
+        elif isinstance(pooling_layer, sl.SumPool2d):
+            scale_factor = 1.
+        else:
+            raise ValueError(f"Unsupported type {type(module)} for pooling layer")
+
+        return pooling, scale_factor
 
 def convert_Avg_to_Sum_pooling(
     dcnnl_data: Dict[
