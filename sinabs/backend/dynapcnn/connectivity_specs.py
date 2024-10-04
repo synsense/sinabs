@@ -39,4 +39,4 @@ VALID_SINABS_EDGE_TYPES = {
 LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
 
 # Neuron and pooling layers can have their output sent to multiple cores
-LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[*Neuron, *Pooling]
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling)]
