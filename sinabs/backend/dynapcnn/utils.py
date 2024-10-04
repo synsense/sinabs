@@ -372,22 +372,22 @@ def extract_pooling_from_module(module: Union[nn.AvgPool2d, sl.SumPool2d]) -> Tu
     scale_factor: float, indicating by how much subsequent weights need to be rescaled to
         account for average pooling being converted to sum pooling.
     """
-        pooling = expand_to_pair(module.kernel_size)
+    pooling = expand_to_pair(module.kernel_size)
 
-        if module.stride is not None:
-            stride = expand_to_pair(module.stride)
-            if pooling != stride:
-                raise ValueError(
-                    f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
-                )
-        if isinstance(pooling_layer, nn.AvgPool2d):
-            scale_factor = 1. / (pooling[0] * pooling[1])
-        elif isinstance(pooling_layer, sl.SumPool2d):
-            scale_factor = 1.
-        else:
-            raise ValueError(f"Unsupported type {type(module)} for pooling layer")
+    if module.stride is not None:
+        stride = expand_to_pair(module.stride)
+        if pooling != stride:
+            raise ValueError(
+                f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
+            )
+    if isinstance(pooling_layer, nn.AvgPool2d):
+        scale_factor = 1. / (pooling[0] * pooling[1])
+    elif isinstance(pooling_layer, sl.SumPool2d):
+        scale_factor = 1.
+    else:
+        raise ValueError(f"Unsupported type {type(module)} for pooling layer")
 
-        return pooling, scale_factor
+    return pooling, scale_factor
 
 def convert_Avg_to_Sum_pooling(
     dcnnl_data: Dict[
