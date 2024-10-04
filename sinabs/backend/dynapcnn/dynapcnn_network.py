@@ -87,11 +87,15 @@ class DynapcnnNetwork(nn.Module):
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self._nodes_to_dcnnl_map = collect_dynapcnn_layer_info(
-            self._graph_extractor.indx_2_module_map, self._graph_extractor.edges
+            self._graph_extractor.indx_2_module_map,
+            self._graph_extractor.edges,
+            self._graph_extractor.nodes_io_shapes,
         )
 
-        # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
-        self._populate_nodes_io()
+        # TODO: Try avoiding this step by only retrieving input shapes of conv layers
+        # while constractung dcnnl_map
+        # # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
+        # self._populate_nodes_io()
 
         # build `DynapcnnLayer` instances from graph edges and mapper.
         self._dynapcnn_layers, self._dynapcnnlayers_handlers = build_from_graph(

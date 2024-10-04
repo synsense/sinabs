@@ -43,6 +43,8 @@ class GraphExtractor:
             IDs of nodes acting as entry points for the network, i.e. receiving external input.
         - indx_2_module_map (dict):
             Map from layer ID to the corresponding nn.Module instance.
+        - nodes_io_shapes (dict):
+            Map from node ID to dict containing node's in- and output shapes
         """
 
         # extract computational graph.
@@ -79,7 +81,7 @@ class GraphExtractor:
         return {name: idx for name, idx in self._name_2_indx_map.items()}
 
     @property
-    def nodes_io_shapes(self) -> Dict[int, torch.Size]:
+    def nodes_io_shapes(self) -> Dict[int, Tuple[torch.Size]]:
         return {n: size for n, size in self._nodes_io_shapes.items()}
 
     @property

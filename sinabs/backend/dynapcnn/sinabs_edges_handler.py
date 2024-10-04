@@ -8,7 +8,7 @@ contact       : williansoaresgirao@gmail.com
 from collections import deque
 from typing import Dict, List, Set, Tuple, Type
 
-import torch.nn as nn
+from torch import nn, Size
 
 from .exceptions import (
     InvalidEdge,
@@ -22,6 +22,7 @@ from .utils import Edge
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
     edges: Set[Edge],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
 ) -> Dict[int, Dict]:
     """Collect information to construct DynapcnnLayer instances.
     
@@ -34,14 +35,15 @@ def collect_dynapcnn_layer_info(
 
     Parameters
     ----------
-        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-        edges (set of tuples): Represent connections between two nodes in computational graph
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    edges (set of tuples): Represent connections between two nodes in computational graph
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     
     Returns
     -------
-        dynapcnn_layer_info (dict): Each 'key' is the index of a future 'DynapcnnLayer' and
-            'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
-            containing corresponding node ids and modules required to build the layer
+    dynapcnn_layer_info (dict): Each 'key' is the index of a future 'DynapcnnLayer' and
+        'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
+        containing corresponding node ids and modules required to build the layer
     """
     # TODO: Handle DVS layer
     
@@ -69,7 +71,13 @@ def collect_dynapcnn_layer_info(
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
     while(edges_by_type["weight-neuron"]):
         edge = edges_by_type["weight-neuron"].pop()
-        init_new_dynapcnnlayer_entry(dynapcnn_layer_info, edge, indx_2_module_map, node_2_layer_map)
+        init_new_dynapcnnlayer_entry(
+            dynapcnn_layer_info, 
+            edge,
+            indx_2_module_map,
+            nodes_io_shapes,
+            node_2_layer_map
+        )
     
     # "pooling-pooling" edges are optional. Unlike other types, missing entry would cause exception.
     # Therefore add empty set if not existing
@@ -131,6 +139,7 @@ def init_new_dynapcnnlayer_entry(
     dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
     edge: Edge,
     indx_2_module_map: Dict[int, nn.Module],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
     node_2_layer_map: Dict[int, int],
 ) -> None:
     """ Initiate dict to hold information for new dynapcnn layer based on a "weight->neuron" edge.
@@ -144,6 +153,7 @@ def init_new_dynapcnnlayer_entry(
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
         Edge source has to be within an existing entry of `dynapcnn_layer_info`.
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     """
@@ -159,14 +169,11 @@ def init_new_dynapcnnlayer_entry(
         "conv": {
             "module": indx_2_module_map[edge[0]],
             "node_id": edge[0],
-            "input_shape": None,
-            "output_shape": None,
+            "input_shape": nodes_io_shapes[edge[0]],
         },
         "neuron": {
             "module": indx_2_module_map[edge[1]],
             "node_id": edge[1],
-            "input_shape": None,
-            "output_shape": None,
         },
     }
     node_2_layer_map[edge[0]] = layer_id
