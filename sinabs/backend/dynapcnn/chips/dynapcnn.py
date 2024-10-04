@@ -13,6 +13,7 @@ from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer_handler import DynapcnnLayerHandler
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
+
 class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_samna_module(cls):
@@ -73,7 +74,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config_dict
 
     @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer, layer_handler: DynapcnnLayerHandler, all_handlers: dict) -> dict:
+    def get_dynapcnn_layer_config_dict(
+        cls,
+        layer: DynapcnnLayer,
+        layer_handler: DynapcnnLayerHandler,
+        all_handlers: dict,
+    ) -> dict:
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
 
@@ -156,13 +162,15 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         destinations = []
         for node_id, destination_nodes in layer_handler.nodes_destinations.items():
             for dest_node in destination_nodes:
-                core_id = DynapcnnLayerHandler.find_nodes_core_id(dest_node, all_handlers)
+                core_id = DynapcnnLayerHandler.find_nodes_core_id(
+                    dest_node, all_handlers
+                )
                 kernel_size = layer_handler.get_pool_kernel_size(node_id)
 
                 dest_data = {
-                    'layer': core_id,
-                    'enable': True,
-                    'pooling': expand_to_pair(kernel_size if kernel_size else 1),
+                    "layer": core_id,
+                    "enable": True,
+                    "pooling": expand_to_pair(kernel_size if kernel_size else 1),
                 }
 
                 destinations.append(dest_data)
@@ -172,10 +180,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict = cls.set_kill_bits(layer=layer, config_dict=config_dict)
 
         return config_dict
-            
+
     @classmethod
-    def write_dynapcnn_layer_config(cls, layer: DynapcnnLayer, chip_layer: "CNNLayerConfig", layer_handler: DynapcnnLayerHandler, all_handlers: dict) -> None:
-        """ Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be 
+    def write_dynapcnn_layer_config(
+        cls,
+        layer: DynapcnnLayer,
+        chip_layer: "CNNLayerConfig",
+        layer_handler: DynapcnnLayerHandler,
+        all_handlers: dict,
+    ) -> None:
+        """Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be
         deployed on chip.
 
         Parameters
@@ -187,19 +201,23 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
 
         # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
-        config_dict = cls.get_dynapcnn_layer_config_dict(layer=layer, layer_handler=layer_handler, all_handlers=all_handlers)
+        config_dict = cls.get_dynapcnn_layer_config_dict(
+            layer=layer, layer_handler=layer_handler, all_handlers=all_handlers
+        )
 
         # update configuration of the DYNAPCNN layer.
         chip_layer.dimensions = config_dict["dimensions"]
         config_dict.pop("dimensions")
-        
-        # set the destinations configuration.
-        for i in range(len(config_dict['destinations'])):
-            chip_layer.destinations[i].layer = config_dict['destinations'][i]['layer']
-            chip_layer.destinations[i].enable = config_dict['destinations'][i]['enable']
-            chip_layer.destinations[i].pooling = config_dict['destinations'][i]['pooling']
 
-        config_dict.pop('destinations')
+        # set the destinations configuration.
+        for i in range(len(config_dict["destinations"])):
+            chip_layer.destinations[i].layer = config_dict["destinations"][i]["layer"]
+            chip_layer.destinations[i].enable = config_dict["destinations"][i]["enable"]
+            chip_layer.destinations[i].pooling = config_dict["destinations"][i][
+                "pooling"
+            ]
+
+        config_dict.pop("destinations")
 
         # set remaining configuration.
         for param, value in config_dict.items():
@@ -210,8 +228,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
     @classmethod
     def build_config(cls, model: "DynapcnnNetwork") -> DynapcnnConfiguration:
-        """ Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
-        using using the `DynapcnnLayer` properties. 
+        """Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
+        using using the `DynapcnnLayer` properties.
 
         Parameters
         ----------
@@ -223,7 +241,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
         config = cls.get_default_config()
 
-        has_dvs_layer = False   # TODO DVSLayer not supported yet.
+        has_dvs_layer = False  # TODO DVSLayer not supported yet.
 
         # Loop over layers in network and write corresponding configurations
         for layer_index, ith_dcnnl in model.layers_mapper.items():
@@ -233,14 +251,23 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
             elif isinstance(ith_dcnnl, DynapcnnLayer):
                 # retrieve assigned core from the handler of this DynapcnnLayer (`ith_dcnnl`) instance.
-                chip_layer = config.cnn_layers[model.layers_handlers[layer_index].assigned_core]
+                chip_layer = config.cnn_layers[
+                    model.layers_handlers[layer_index].assigned_core
+                ]
                 # write core configuration.
-                cls.write_dynapcnn_layer_config(ith_dcnnl, chip_layer, model.layers_handlers[layer_index], model.layers_handlers)
+                cls.write_dynapcnn_layer_config(
+                    ith_dcnnl,
+                    chip_layer,
+                    model.layers_handlers[layer_index],
+                    model.layers_handlers,
+                )
 
             else:
                 # shouldn't happen since type checks are made previously.
-                raise TypeError(f"Layer (index {layer_index}) is unexpected in the model: \n{ith_dcnnl}")
-            
+                raise TypeError(
+                    f"Layer (index {layer_index}) is unexpected in the model: \n{ith_dcnnl}"
+                )
+
         if not has_dvs_layer:
             # TODO DVSLayer not supported yet.
             config.dvs_layer.pass_sensor_events = False

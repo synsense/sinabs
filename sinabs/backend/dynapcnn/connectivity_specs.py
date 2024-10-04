@@ -12,7 +12,7 @@ import sinabs.layers as sl
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
-Neuron = (sl.IAFSqueeze, )
+Neuron = (sl.IAFSqueeze,)
 
 VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # convoluion is always followed by a neuron layer.
@@ -20,7 +20,7 @@ VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # Neuron layer can be followed by pooling
     (Neuron, Pooling): "neuron-pooling",
     # Pooling can be followed by another pooling (will be consolidated)
-     (Pooling, Pooling): "pooling-pooling",
+    (Pooling, Pooling): "pooling-pooling",
     # Neuron layer can be followed by weight layer of next core
     (Neuron, Weight): "neuron-weight",
     # Pooling can be followed by weight layer of next core

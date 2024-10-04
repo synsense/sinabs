@@ -1,51 +1,97 @@
-
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 # implementing "two networks with merging outputs" in https://github.com/synsense/sinabs/issues/181
 
 import torch
 import torch.nn as nn
-from sinabs.layers import IAFSqueeze, SumPool2d, Merge
+
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
+from sinabs.layers import IAFSqueeze, Merge, SumPool2d
+
 
 class SNN(nn.Module):
     def __init__(self, batch_size) -> None:
         super().__init__()
 
         self.conv_A = nn.Conv2d(2, 4, 2, 1, bias=False)
-        self.iaf_A = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf_A = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.conv_B = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_B = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_B = SumPool2d(2,2)
+        self.iaf_B = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_B = SumPool2d(2, 2)
 
         self.conv_C = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_C = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_C = SumPool2d(2,2)
+        self.iaf_C = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_C = SumPool2d(2, 2)
 
         self.conv_D = nn.Conv2d(2, 4, 2, 1, bias=False)
-        self.iaf_D = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf_D = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.conv_E = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_E = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_E = SumPool2d(2,2)
+        self.iaf_E = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_E = SumPool2d(2, 2)
 
         self.conv_F = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_F = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_F = SumPool2d(2,2)
+        self.iaf_F = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_F = SumPool2d(2, 2)
 
         self.flat_brach1 = nn.Flatten()
         self.flat_brach2 = nn.Flatten()
         self.merge = Merge()
 
         self.fc1 = nn.Linear(196, 100, bias=False)
-        self.iaf1_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf1_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.fc2 = nn.Linear(100, 100, bias=False)
-        self.iaf2_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf2_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.fc3 = nn.Linear(100, 10, bias=False)
-        self.iaf3_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf3_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
     def forward(self, x):
         # conv 1 - A
@@ -91,7 +137,8 @@ class SNN(nn.Module):
         iaf3_fc_out = self.iaf3_fc(fc3_out)
 
         return iaf3_fc_out
-    
+
+
 channels = 2
 height = 34
 width = 34
@@ -101,7 +148,7 @@ input_shape = (channels, height, width)
 snn = SNN(batch_size)
 
 expected_output = {
-    'dcnnl_edges': [
+    "dcnnl_edges": [
         (0, 1),
         (1, 2),
         (2, 3),
@@ -110,11 +157,11 @@ expected_output = {
         (5, 6),
         (6, 3),
         (7, 8),
-        ('input', 0),
-        ('input', 4),
+        ("input", 0),
+        ("input", 4),
     ],
-    'merge_points': {3: {'sources': (2, 6), 'merge': Merge()}},
-    'topological_order': [0, 4, 1, 5, 2, 6, 3, 7, 8],
-    'output_shape': torch.Size([2, 10, 1, 1]),
-    'entry_point': [0, 4],
+    "merge_points": {3: {"sources": (2, 6), "merge": Merge()}},
+    "topological_order": [0, 4, 1, 5, 2, 6, 3, 7, 8],
+    "output_shape": torch.Size([2, 10, 1, 1]),
+    "entry_point": [0, 4],
 }

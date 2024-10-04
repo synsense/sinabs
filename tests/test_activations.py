@@ -1,14 +1,8 @@
 import pytest
 import torch
 
-from sinabs.activation import (
-    MaxSpike,
-    MembraneReset,
-    MembraneSubtract,
-    MultiSpike,
-    SingleExponential,
-    SingleSpike,
-)
+from sinabs.activation import (MaxSpike, MembraneReset, MembraneSubtract,
+                               MultiSpike, SingleExponential, SingleSpike)
 
 
 @pytest.mark.parametrize(

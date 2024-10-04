@@ -9,13 +9,10 @@ import torch.nn as nn
 
 import sinabs
 
-from .connectivity_specs import (
-    LAYER_TYPES_WITH_MULTIPLE_INPUTS,
-    LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
-)
+from .connectivity_specs import (LAYER_TYPES_WITH_MULTIPLE_INPUTS,
+                                 LAYER_TYPES_WITH_MULTIPLE_OUTPUTS)
 from .exceptions import InvalidGraphStructure
 from .utils import Edge, topological_sorting
-
 
 
 class GraphExtractor:
@@ -146,10 +143,10 @@ class GraphExtractor:
             self._nodes_io_shapes[node]["input"],
             self._nodes_io_shapes[node]["output"],
         )
-    
+
     def verify_graph_integrity(self):
-        """ Apply checks to verify that graph is supported 
-        
+        """Apply checks to verify that graph is supported
+
         Currently this checks that only nodes of specific classes have
         multiple sources or targets. This method might be extended in the
         future to implement stricter formal verification.

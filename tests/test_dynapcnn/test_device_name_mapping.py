@@ -1,4 +1,5 @@
-from sinabs.backend.dynapcnn.utils import parse_device_id, standardize_device_id
+from sinabs.backend.dynapcnn.utils import (parse_device_id,
+                                           standardize_device_id)
 
 
 def test_device_id_no_index():

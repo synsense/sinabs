@@ -60,12 +60,12 @@ class InvalidTorchModel(Exception):
     network_type: str
 
     def __init__(self, network_type):
-        super().__init__(
-            f"A {network_type} needs to be of type nn.Module."
-        )
+        super().__init__(f"A {network_type} needs to be of type nn.Module.")
+
 
 class InvalidGraphStructure(Exception):
     pass
+
 
 # Edge exceptions.
 

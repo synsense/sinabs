@@ -1,6 +1,7 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union, Set
+from typing import (TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple,
+                    Union)
 
 import torch
 import torch.nn as nn
@@ -17,7 +18,9 @@ from .flipdims import FlipDims
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
-DEFAULT_IGNORED_LAYER_TYPES = Union[nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge]
+DEFAULT_IGNORED_LAYER_TYPES = Union[
+    nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge
+]
 
 Edge = Tuple[int, int]  # Define edge-type alias
 
@@ -76,6 +79,7 @@ def standardize_device_id(device_id: str) -> str:
 
 
 ####################################################### DynapcnnNetwork Related #######################################################
+
 
 def build_from_graph(
     discretize: bool,
@@ -273,7 +277,9 @@ def construct_layerhandler(
     return layerhandler
 
 
-def construct_all_dynapcnnlayers(dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None) -> Dict[int, DynapcnnLayer]:
+def construct_all_dynapcnnlayers(
+    dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
+) -> Dict[int, DynapcnnLayer]:
     """..."""
 
     # Extract construction arguments from dcnnl_map
@@ -292,7 +298,7 @@ def construct_all_dynapcnnlayers(dcnnl_map: Dict, discretize: bool, rescale_fn: 
             destination["cumulative_scaling"] = scale
             dest_lyr_idx = destination["destination_layer"]
             dcnnl_map[dest_lyr_idx]["rescale_factors"].add(layer_rescaling)
-    
+
     dynapcnn_layer = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize, rescale_fn)
         for layer_idx, layer_info in dcnnl_map.items()
@@ -303,7 +309,10 @@ def construct_all_dynapcnnlayers(dcnnl_map: Dict, discretize: bool, rescale_fn: 
         for layer_idx, layer_info in dcnnl_map.items()
     }
 
-def construct_single_dynapcnn_layer(layer_info: Dict, rescale_fn: Optional[Callable] = None) -> DynapcnnLayer:
+
+def construct_single_dynapcnn_layer(
+    layer_info: Dict, rescale_fn: Optional[Callable] = None
+) -> DynapcnnLayer:
 
     if len(layer_info["rescale_factors"]) == 0:
         rescale_factor = 1
@@ -333,8 +342,9 @@ def construct_single_dynapcnn_layer(layer_info: Dict, rescale_fn: Optional[Calla
         rescale_weights=rescale_factor,
     )
 
+
 def consolidate_pooling(modules: Iterable[nn.Module]) -> Tuple[Tuple[int, int], float]:
-    """ Consolidate pooling information for consecutive pooling modules.
+    """Consolidate pooling information for consecutive pooling modules.
 
     Parameters
     ----------
@@ -349,18 +359,21 @@ def consolidate_pooling(modules: Iterable[nn.Module]) -> Tuple[Tuple[int, int], 
         to sum pooling, considering all provided modules.
     """
     cumulative_pooling = [1, 1]
-    cumulative_scaling = 1.
+    cumulative_scaling = 1.0
 
     for pooling_layer in modules:
         pooling, rescale_factor = extract_pooling_from_module(pooling_layer)
         cumulative_pooling[0] *= pooling[0]
         cumulative_pooling[1] *= pooling[1]
         cumulative_scaling *= rescale_factor
-    
+
     return cumulative_pooling, cumulative_scaling
 
-def extract_pooling_from_module(module: Union[nn.AvgPool2d, sl.SumPool2d]) -> Tuple[Tuple[int, int], float]:
-    """ Extract pooling size and required rescaling factor from pooling module
+
+def extract_pooling_from_module(
+    module: Union[nn.AvgPool2d, sl.SumPool2d]
+) -> Tuple[Tuple[int, int], float]:
+    """Extract pooling size and required rescaling factor from pooling module
 
     Parameters
     ----------
@@ -381,13 +394,14 @@ def extract_pooling_from_module(module: Union[nn.AvgPool2d, sl.SumPool2d]) -> Tu
                 f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
             )
     if isinstance(pooling_layer, nn.AvgPool2d):
-        scale_factor = 1. / (pooling[0] * pooling[1])
+        scale_factor = 1.0 / (pooling[0] * pooling[1])
     elif isinstance(pooling_layer, sl.SumPool2d):
-        scale_factor = 1.
+        scale_factor = 1.0
     else:
         raise ValueError(f"Unsupported type {type(module)} for pooling layer")
 
     return pooling, scale_factor
+
 
 def convert_Avg_to_Sum_pooling(
     dcnnl_data: Dict[

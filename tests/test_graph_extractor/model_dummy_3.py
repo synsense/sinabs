@@ -1,51 +1,97 @@
-
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 # implementing "two networks with merging outputs" in https://github.com/synsense/sinabs/issues/181
 
 import torch
 import torch.nn as nn
-from sinabs.layers import IAFSqueeze, SumPool2d, Merge
+
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
+from sinabs.layers import IAFSqueeze, Merge, SumPool2d
+
 
 class SNN(nn.Module):
     def __init__(self, batch_size) -> None:
         super().__init__()
 
         self.conv_A = nn.Conv2d(2, 4, 2, 1, bias=False)
-        self.iaf_A = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf_A = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.conv_B = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_B = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_B = SumPool2d(2,2)
+        self.iaf_B = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_B = SumPool2d(2, 2)
 
         self.conv_C = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_C = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_C = SumPool2d(2,2)
+        self.iaf_C = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_C = SumPool2d(2, 2)
 
         self.conv_D = nn.Conv2d(2, 4, 2, 1, bias=False)
-        self.iaf_D = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf_D = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.conv_E = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_E = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_E = SumPool2d(2,2)
+        self.iaf_E = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_E = SumPool2d(2, 2)
 
         self.conv_F = nn.Conv2d(4, 4, 2, 1, bias=False)
-        self.iaf_F = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
-        self.pool_F = SumPool2d(2,2)
+        self.iaf_F = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        self.pool_F = SumPool2d(2, 2)
 
         self.flat_brach1 = nn.Flatten()
         self.flat_brach2 = nn.Flatten()
         self.merge = Merge()
 
         self.fc1 = nn.Linear(196, 100, bias=False)
-        self.iaf1_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf1_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.fc2 = nn.Linear(100, 100, bias=False)
-        self.iaf2_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf2_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
         self.fc3 = nn.Linear(100, 10, bias=False)
-        self.iaf3_fc = IAFSqueeze(batch_size=batch_size, min_v_mem=-1.0, spike_threshold=1.0, surrogate_grad_fn=PeriodicExponential())
+        self.iaf3_fc = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
 
     def forward(self, x):
         # conv 1 - A
@@ -91,7 +137,8 @@ class SNN(nn.Module):
         iaf3_fc_out = self.iaf3_fc(fc3_out)
 
         return iaf3_fc_out
-    
+
+
 channels = 2
 height = 34
 width = 34
@@ -102,7 +149,7 @@ torch.manual_seed(0)
 input_dummy = torch.randn(input_shape)
 
 expected_output = {
-    'edges': {
+    "edges": {
         (0, 1),
         (1, 2),
         (2, 3),
@@ -128,60 +175,60 @@ expected_output = {
         (22, 23),
         (23, 24),
     },
-    'name_2_indx_map': {
-        'conv_A': 0,
-        'iaf_A': 1,
-        'conv_B': 2,
-        'iaf_B': 3,
-        'pool_B': 4,
-        'conv_C': 5,
-        'iaf_C': 6,
-        'pool_C': 7,
-        'flat_brach1': 8,
-        'conv_D': 9,
-        'iaf_D': 10,
-        'conv_E': 11,
-        'iaf_E': 12,
-        'pool_E': 13,
-        'conv_F': 14,
-        'iaf_F': 15,
-        'pool_F': 16,
-        'flat_brach2': 17,
-        'merge': 18,
-        'fc1': 19,
-        'iaf1_fc': 20,
-        'fc2': 21,
-        'iaf2_fc': 22,
-        'fc3': 23,
-        'iaf3_fc': 24,
+    "name_2_indx_map": {
+        "conv_A": 0,
+        "iaf_A": 1,
+        "conv_B": 2,
+        "iaf_B": 3,
+        "pool_B": 4,
+        "conv_C": 5,
+        "iaf_C": 6,
+        "pool_C": 7,
+        "flat_brach1": 8,
+        "conv_D": 9,
+        "iaf_D": 10,
+        "conv_E": 11,
+        "iaf_E": 12,
+        "pool_E": 13,
+        "conv_F": 14,
+        "iaf_F": 15,
+        "pool_F": 16,
+        "flat_brach2": 17,
+        "merge": 18,
+        "fc1": 19,
+        "iaf1_fc": 20,
+        "fc2": 21,
+        "iaf2_fc": 22,
+        "fc3": 23,
+        "iaf3_fc": 24,
     },
-    'entry_nodes': {0, 9},
-    'nodes_io_shapes': {
-        0: {'input': torch.Size([2, 2, 34, 34]), 'output': torch.Size([2, 4, 33, 33])},
-        9: {'input': torch.Size([2, 2, 34, 34]), 'output': torch.Size([2, 4, 33, 33])},
-        1: {'input': torch.Size([2, 4, 33, 33]), 'output': torch.Size([2, 4, 33, 33])},
-        10: {'input': torch.Size([2, 4, 33, 33]), 'output': torch.Size([2, 4, 33, 33])},
-        2: {'input': torch.Size([2, 4, 33, 33]), 'output': torch.Size([2, 4, 32, 32])},
-        11: {'input': torch.Size([2, 4, 33, 33]), 'output': torch.Size([2, 4, 32, 32])},
-        3: {'input': torch.Size([2, 4, 32, 32]), 'output': torch.Size([2, 4, 32, 32])},
-        12: {'input': torch.Size([2, 4, 32, 32]), 'output': torch.Size([2, 4, 32, 32])},
-        4: {'input': torch.Size([2, 4, 32, 32]), 'output': torch.Size([2, 4, 16, 16])},
-        13: {'input': torch.Size([2, 4, 32, 32]), 'output': torch.Size([2, 4, 16, 16])},
-        5: {'input': torch.Size([2, 4, 16, 16]), 'output': torch.Size([2, 4, 15, 15])},
-        14: {'input': torch.Size([2, 4, 16, 16]), 'output': torch.Size([2, 4, 15, 15])},
-        6: {'input': torch.Size([2, 4, 15, 15]), 'output': torch.Size([2, 4, 15, 15])},
-        15: {'input': torch.Size([2, 4, 15, 15]), 'output': torch.Size([2, 4, 15, 15])},
-        7: {'input': torch.Size([2, 4, 15, 15]), 'output': torch.Size([2, 4, 7, 7])},
-        16: {'input': torch.Size([2, 4, 15, 15]), 'output': torch.Size([2, 4, 7, 7])},
-        8: {'input': torch.Size([2, 4, 7, 7]), 'output': torch.Size([2, 196])},
-        17: {'input': torch.Size([2, 4, 7, 7]), 'output': torch.Size([2, 196])},
-        18: {'input': torch.Size([2, 196]), 'output': torch.Size([2, 196])},
-        19: {'input': torch.Size([2, 196]), 'output': torch.Size([2, 100])},
-        20: {'input': torch.Size([2, 100]), 'output': torch.Size([2, 100])},
-        21: {'input': torch.Size([2, 100]), 'output': torch.Size([2, 100])},
-        22: {'input': torch.Size([2, 100]), 'output': torch.Size([2, 100])},
-        23: {'input': torch.Size([2, 100]), 'output': torch.Size([2, 10])},
-        24: {'input': torch.Size([2, 10]), 'output': torch.Size([2, 10])},
+    "entry_nodes": {0, 9},
+    "nodes_io_shapes": {
+        0: {"input": torch.Size([2, 2, 34, 34]), "output": torch.Size([2, 4, 33, 33])},
+        9: {"input": torch.Size([2, 2, 34, 34]), "output": torch.Size([2, 4, 33, 33])},
+        1: {"input": torch.Size([2, 4, 33, 33]), "output": torch.Size([2, 4, 33, 33])},
+        10: {"input": torch.Size([2, 4, 33, 33]), "output": torch.Size([2, 4, 33, 33])},
+        2: {"input": torch.Size([2, 4, 33, 33]), "output": torch.Size([2, 4, 32, 32])},
+        11: {"input": torch.Size([2, 4, 33, 33]), "output": torch.Size([2, 4, 32, 32])},
+        3: {"input": torch.Size([2, 4, 32, 32]), "output": torch.Size([2, 4, 32, 32])},
+        12: {"input": torch.Size([2, 4, 32, 32]), "output": torch.Size([2, 4, 32, 32])},
+        4: {"input": torch.Size([2, 4, 32, 32]), "output": torch.Size([2, 4, 16, 16])},
+        13: {"input": torch.Size([2, 4, 32, 32]), "output": torch.Size([2, 4, 16, 16])},
+        5: {"input": torch.Size([2, 4, 16, 16]), "output": torch.Size([2, 4, 15, 15])},
+        14: {"input": torch.Size([2, 4, 16, 16]), "output": torch.Size([2, 4, 15, 15])},
+        6: {"input": torch.Size([2, 4, 15, 15]), "output": torch.Size([2, 4, 15, 15])},
+        15: {"input": torch.Size([2, 4, 15, 15]), "output": torch.Size([2, 4, 15, 15])},
+        7: {"input": torch.Size([2, 4, 15, 15]), "output": torch.Size([2, 4, 7, 7])},
+        16: {"input": torch.Size([2, 4, 15, 15]), "output": torch.Size([2, 4, 7, 7])},
+        8: {"input": torch.Size([2, 4, 7, 7]), "output": torch.Size([2, 196])},
+        17: {"input": torch.Size([2, 4, 7, 7]), "output": torch.Size([2, 196])},
+        18: {"input": torch.Size([2, 196]), "output": torch.Size([2, 196])},
+        19: {"input": torch.Size([2, 196]), "output": torch.Size([2, 100])},
+        20: {"input": torch.Size([2, 100]), "output": torch.Size([2, 100])},
+        21: {"input": torch.Size([2, 100]), "output": torch.Size([2, 100])},
+        22: {"input": torch.Size([2, 100]), "output": torch.Size([2, 100])},
+        23: {"input": torch.Size([2, 100]), "output": torch.Size([2, 10])},
+        24: {"input": torch.Size([2, 10]), "output": torch.Size([2, 10])},
     },
 }
 

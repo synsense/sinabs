@@ -119,10 +119,14 @@ def from_model(
                 )
 
             else:
-                warn("Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added.")
+                warn(
+                    "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
+                )
 
         else:
-            warn("Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added.")
+            warn(
+                "Spiking output can only be added to sequential models that do not end in a ReLU. No layer has been added."
+            )
 
     for module in snn.modules():
         if bias_rescaling != 1.0 and isinstance(module, (nn.Linear, nn.Conv2d)):
