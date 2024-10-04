@@ -320,12 +320,15 @@ def construct_single_dynapcnn_layer(layer_info: Dict, rescale_fn: Optional[Calla
         else:
             rescale_factor = rescale_fn(layer_info["rescale_factors"])
 
+    # Collect pooling in a list
+    [dest["cumulative_pooling"] for dest in layer_info["destinations"]]
+
     # instantiate a DynapcnnLayer from the data in the handler.
     return DynapcnnLayer(
         conv=layer_info["conv"]["module"],
         spk=layer_info["neuron"]["module"],
         in_shape=layer_info["input_shape"],
-        pool=[dest["cumulative_pooling"] for dest in layer_info["destinations"],
+        pool=pooling_list,
         discretize=discretize,
         rescale_weights=rescale_factor,
     )
