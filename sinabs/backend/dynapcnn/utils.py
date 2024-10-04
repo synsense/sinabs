@@ -1,7 +1,16 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import (TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple,
-                    Union)
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import torch
 import torch.nn as nn
