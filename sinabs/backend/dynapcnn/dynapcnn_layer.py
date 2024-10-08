@@ -116,6 +116,16 @@ class DynapcnnLayer(nn.Module):
             # this has to be done after copying but before discretizing
             conv.weight.data = (conv.weight / self._rescale_weights).clone().detach()
 
+        # TODO: Does this really need to be enforced here or upon deployment?
+        # check if convolution kernel is a square.
+        if conv.kernel_size[0] != conv.kernel_size[1]:
+            raise ValueError(
+                "The kernel of a `nn.Conv2d` must have the same height and width."
+            )
+        for pool_size in pool:
+            if pool_size[0] != pool_size[1]:
+                raise ValueError("Only square pooling kernels are supported")
+
         # int conversion is done while writing the config.
         if self._discretize:
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
