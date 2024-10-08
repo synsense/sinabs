@@ -1,5 +1,6 @@
 from collections import defaultdict, deque
 from copy import deepcopy
+from math import prod
 from typing import (
     TYPE_CHECKING,
     Callable,
@@ -11,6 +12,7 @@ from typing import (
     Tuple,
     Union,
 )
+from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -291,14 +293,6 @@ def construct_all_dynapcnnlayers(
 ) -> Dict[int, DynapcnnLayer]:
     """..."""
 
-    # Extract construction arguments from dcnnl_map
-    # -conv layer
-    # -neuron layer
-    # -pooling -> requires consolidation
-    # -input shape
-    # -discretize
-    # -weight rescale factor
-
     # Consolidate pooling information for each destination
     for layer_info in dcnnl_map.values():
         for destination in layer_info["destinations"]:
@@ -306,7 +300,7 @@ def construct_all_dynapcnnlayers(
             destination["cumulative_pooling"] = pool
             destination["cumulative_scaling"] = scale
             dest_lyr_idx = destination["destination_layer"]
-            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(layer_rescaling)
+            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
 
     dynapcnn_layer = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize, rescale_fn)
@@ -320,9 +314,10 @@ def construct_all_dynapcnnlayers(
 
 
 def construct_single_dynapcnn_layer(
-    layer_info: Dict, rescale_fn: Optional[Callable] = None
+    layer_info: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
 ) -> DynapcnnLayer:
 
+    # Handle rescaling after average pooling
     if len(layer_info["rescale_factors"]) == 0:
         rescale_factor = 1
     elif len(layer_info["rescale_factors"]) == 1:
@@ -338,14 +333,41 @@ def construct_single_dynapcnn_layer(
         else:
             rescale_factor = rescale_fn(layer_info["rescale_factors"])
 
+    # Handle input dimensions
+    # For each dimension find larges inferred input size
+    max_inferred_input_shape = [
+        max(sizes) for sizes in zip(layer_info["inferred_input_shapes"])
+    ]
+
+    if isinstance(layer_info["conv"]["module"], nn.Linear):
+        if prod(max_inferred_input_shape) > prod(layer_info["input_shape"]):
+            raise ValueError(
+                "Combined output of some layers projecting to a linear layer is "
+                "larger than expected by destination layer. "
+            )
+        # Take shape before flattening, to convert linear to conv layer
+        in_shape = max_inferred_input_shape
+    else:
+        if any(
+            inferred > expected
+            for inferred, expected in zip(
+                max_inferred_input_shape, layer_info["input_shape"]
+            )
+        ):
+            raise ValueError(
+                "Output of some layers is larger than expected by destination "
+                "layer along some dimensions."
+            )
+        in_shape = layer_info["input_shape"]
+
     # Collect pooling in a list
-    [dest["cumulative_pooling"] for dest in layer_info["destinations"]]
+    pooling_list = [dest["cumulative_pooling"] for dest in layer_info["destinations"]]
 
     # instantiate a DynapcnnLayer from the data in the handler.
     return DynapcnnLayer(
         conv=layer_info["conv"]["module"],
         spk=layer_info["neuron"]["module"],
-        in_shape=layer_info["input_shape"],
+        in_shape=in_shape,
         pool=pooling_list,
         discretize=discretize,
         rescale_weights=rescale_factor,
@@ -380,13 +402,13 @@ def consolidate_pooling(modules: Iterable[nn.Module]) -> Tuple[Tuple[int, int], 
 
 
 def extract_pooling_from_module(
-    module: Union[nn.AvgPool2d, sl.SumPool2d]
+    pooling_layer: Union[nn.AvgPool2d, sl.SumPool2d]
 ) -> Tuple[Tuple[int, int], float]:
     """Extract pooling size and required rescaling factor from pooling module
 
     Parameters
     ----------
-    module: pooling module
+    pooling_layer: pooling module
 
     Returns
     -------
@@ -394,20 +416,20 @@ def extract_pooling_from_module(
     scale_factor: float, indicating by how much subsequent weights need to be rescaled to
         account for average pooling being converted to sum pooling.
     """
-    pooling = expand_to_pair(module.kernel_size)
+    pooling = expand_to_pair(pooling_layer.kernel_size)
 
-    if module.stride is not None:
-        stride = expand_to_pair(module.stride)
+    if pooling_layer.stride is not None:
+        stride = expand_to_pair(pooling_layer.stride)
         if pooling != stride:
             raise ValueError(
-                f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
+                f"Stride length {pooling_layer.stride} should be the same as pooling kernel size {pooling_layer.kernel_size}"
             )
     if isinstance(pooling_layer, nn.AvgPool2d):
         scale_factor = 1.0 / (pooling[0] * pooling[1])
     elif isinstance(pooling_layer, sl.SumPool2d):
         scale_factor = 1.0
     else:
-        raise ValueError(f"Unsupported type {type(module)} for pooling layer")
+        raise ValueError(f"Unsupported type {type(pooling_layer)} for pooling layer")
 
     return pooling, scale_factor
 

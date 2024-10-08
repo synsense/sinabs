@@ -105,11 +105,15 @@ def collect_dynapcnn_layer_info(
     # Process all edges connecting two dynapcnn layers
     while edges_by_type["neuron-weight"]:
         edge = edges_by_type["neuron-weight"].pop()
-        set_neuron_layer_destination(dynapcnn_layer_info, edge, node_2_layer_map)
+        set_neuron_layer_destination(
+            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
+        )
 
     while edges_by_type["pooling-weight"]:
         edge = edges_by_type["pooling-weight"].pop()
-        set_pooling_layer_destination(dynapcnn_layer_info, edge, node_2_layer_map)
+        set_pooling_layer_destination(
+            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
+        )
 
     # Make sure we have taken care of all edges
     assert all(len(edges) == 0 for edges in edges_by_type.values())
@@ -173,6 +177,9 @@ def init_new_dynapcnnlayer_entry(
 
     dynapcnn_layer_info[layer_id] = {
         "input_shape": nodes_io_shapes[edge[0]],
+        # Collect output shapes (before possible flattening) of layers with this layer as their destination
+        # This will allow infering shapes when converting linear to conv layers
+        "inferred_input_shapes": set(),
         "conv": {
             "module": indx_2_module_map[edge[0]],
             "node_id": edge[0],
@@ -182,7 +189,7 @@ def init_new_dynapcnnlayer_entry(
             "node_id": edge[1],
         },
         # This will be used later to account for average pooling in preceding layers
-        "rescale_factors": {},
+        "rescale_factors": set(),
     }
     node_2_layer_map[edge[0]] = layer_id
     node_2_layer_map[edge[1]] = layer_id
@@ -249,6 +256,7 @@ def set_neuron_layer_destination(
     dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
     edge: Edge,
     node_2_layer_map: Dict[int, int],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
 ) -> None:
     """Set destination layer without pooling.
 
@@ -261,6 +269,7 @@ def set_neuron_layer_destination(
         Edge source has to be within an existing entry of `dynapcnn_layer_info`.
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     """
     # Make sure both source (neuron layer) and target (weight layer) have been previously processed
     try:
@@ -278,12 +287,19 @@ def set_neuron_layer_destination(
         layer_info["destinations"] = []
 
     # Add new destination
+    output_shape = nodes_io_shapes[edge[0]]["output"]
     layer_info["destinations"].append(
         {
             "pooling_ids": [],
             "pooling_modules": [],
             "destination_layer": destination_layer_idx,
+            "output_shape": output_shape,
         }
+    )
+
+    # Add output shape of this layer to input shapes of destination
+    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
+        output_shape
     )
 
 
@@ -291,6 +307,7 @@ def set_pooling_layer_destination(
     dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
     edge: Edge,
     node_2_layer_map: Dict[int, int],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
 ) -> None:
     """Set destination layer with pooling.
 
@@ -303,6 +320,7 @@ def set_pooling_layer_destination(
         Edge source has to be within an existing entry of `dynapcnn_layer_info`.
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     """
     # Make sure both source (pooling layer) and target (weight layer) have been previously processed
     try:
@@ -328,6 +346,13 @@ def set_pooling_layer_destination(
 
     # Set destination layer within destination dict that holds current source node
     destination["destination_layer"] = destination_layer_idx
+    output_shape = nodes_io_shapes[edge[0]]["output"]
+    destination["output_shape"] = output_shape
+
+    # Add output shape of this layer to input shapes of destination
+    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
+        output_shape
+    )
 
 
 def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:

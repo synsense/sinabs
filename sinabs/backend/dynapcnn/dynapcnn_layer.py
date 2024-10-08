@@ -17,6 +17,46 @@ from .discretize import discretize_conv_spike_
 sum_pool2d = partial(nn.functional.lp_pool2d, norm_type=1)
 
 
+def convert_linear_to_conv(
+    lin: nn.Linear, input_shape: Tuple[int, int, int]
+) -> nn.Conv2d:
+    """Convert Linear layer to Conv2d.
+
+    Parameters
+    ----------
+    - lin (nn.Linear): linear layer to be converted.
+    - input_shape (tuple): the tensor shape the layer expects.
+
+    Returns
+    -------
+    - nn.Conv2d: convolutional layer equivalent to `lin`.
+    """
+    in_chan, in_h, in_w = input_shape
+    if lin.in_features != in_chan * in_h * in_w:
+        raise ValueError(
+            "Shape of linear layer weight does not match provided input shape"
+        )
+
+    layer = nn.Conv2d(
+        in_channels=in_chan,
+        kernel_size=(in_h, in_w),
+        out_channels=lin.out_features,
+        padding=0,
+        bias=lin.bias is not None,
+    )
+
+    if lin.bias is not None:
+        layer.bias.data = lin.bias.data.clone().detach()
+
+    layer.weight.data = (
+        lin.weight.data.clone()
+        .detach()
+        .reshape((lin.out_features, in_chan, in_h, in_w))
+    )
+
+    return layer
+
+
 class DynapcnnLayer(nn.Module):
     """Create a DynapcnnLayer object representing a layer on DynapCNN or Speck.
 
@@ -62,11 +102,13 @@ class DynapcnnLayer(nn.Module):
 
         spk = deepcopy(spk)
 
+        # Convert `nn.Linear` to `nn.Conv2d`.
         if isinstance(conv, nn.Linear):
-            conv = self._convert_linear_to_conv(conv)
-            if spk.is_state_initialised():
-                # Expand dims
-                spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)
+            conv = convert_linear_to_conv(conv)
+            if spk.is_state_initialised() and (ndim := spk.ndim) < 4:
+                for __ in range(4 - ndim):
+                    # Expand spatial dimensions
+                    spk.v_mem = spk.v_mem.data.unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
@@ -203,49 +245,6 @@ class DynapcnnLayer(nn.Module):
         }
 
     ####################################################### Private Methods #######################################################
-
-    def _convert_linear_to_conv(
-        self, lin: nn.Linear, layer_data: dict
-    ) -> Tuple[nn.Conv2d, Tuple[int, int, int]]:
-        """Convert Linear layer to Conv2d.
-
-        Parameters
-        ----------
-        - lin (nn.Linear): linear layer to be converted.
-
-        Returns
-        -------
-        - nn.Conv2d: convolutional layer equivalent to `lin`.
-        - input_shape (tuple): the tensor shape the layer expects.
-        """
-        # this flags the necessity to update the I/O shape pre-computed for each of the original layers being compressed within a `DynapcnnLayer` instance.
-        self._lin_to_conv_conversion = True
-
-        input_shape = layer_data["input_shape"]
-
-        in_chan, in_h, in_w = input_shape
-
-        if lin.in_features != in_chan * in_h * in_w:
-            raise ValueError("Shapes don't match.")
-
-        layer = nn.Conv2d(
-            in_channels=in_chan,
-            kernel_size=(in_h, in_w),
-            out_channels=lin.out_features,
-            padding=0,
-            bias=lin.bias is not None,
-        )
-
-        if lin.bias is not None:
-            layer.bias.data = lin.bias.data.clone().detach()
-
-        layer.weight.data = (
-            lin.weight.data.clone()
-            .detach()
-            .reshape((lin.out_features, in_chan, in_h, in_w))
-        )
-
-        return layer, input_shape
 
     def _get_conv_output_shape(self) -> Tuple[int, int, int]:
         """Computes the output dimensions of `conv_layer`.
