@@ -196,6 +196,8 @@ def init_new_dynapcnnlayer_entry(
         # This will be used later to account for average pooling in preceding layers
         "rescale_factors": set(),
         "is_entry_node": edge[0] in entry_nodes,
+        # Will be populated by `set_[pooling/neuron]_layer_destination`
+        "destinations": [],
     }
     node_2_layer_map[edge[0]] = layer_id
     node_2_layer_map[edge[1]] = layer_id
@@ -234,15 +236,11 @@ def add_pooling_to_entry(
     # Make sure all pooling chains start with expected node
     assert all(chain[0] == edge[1] for chain in pooling_chains)
 
-    # Layer entry might already have `destinations` key (if neuron layer has fanout > 1)
-    layer_info = dynapcnn_layer_info[layer_idx]
-    if "destinations" not in layer_info:
-        layer_info["destinations"] = []
-
     # Keep track of all nodes that have been added
     new_nodes = set()
 
     # For each pooling chain initialize new destination
+    layer_info = dynapcnn_layer_info[layer_idx]
     for chain in pooling_chains:
         layer_info["destinations"].append(
             {
@@ -287,13 +285,9 @@ def set_neuron_layer_destination(
     except KeyError:
         raise UnmatchedNode(edge, edge[1])
 
-    # Source layer entry might already have `destinations` key (if neuron layer has fanout > 1)
-    layer_info = dynapcnn_layer_info[source_layer_idx]
-    if "destinations" not in layer_info:
-        layer_info["destinations"] = []
-
     # Add new destination
     output_shape = nodes_io_shapes[edge[0]]["output"]
+    layer_info = dynapcnn_layer_info[source_layer_idx]
     layer_info["destinations"].append(
         {
             "pooling_ids": [],
@@ -338,10 +332,8 @@ def set_pooling_layer_destination(
     except KeyError:
         raise UnmatchedNode(edge, edge[1])
 
-    # Source layer entry should already have `destinations` key
-    layer_info = dynapcnn_layer_info[source_layer_idx]
-
     # Find current source node within destinations
+    layer_info = dynapcnn_layer_info[source_layer_idx]
     matched = False
     for destination in layer_info["destinations"]:
         if destination["pooling_ids"][-1] == edge[0]:
