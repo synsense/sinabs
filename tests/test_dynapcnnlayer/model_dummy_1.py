@@ -5,190 +5,184 @@
 import torch.nn as nn
 
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
-from sinabs.layers import IAFSqueeze, SumPool2d
+from sinabs.layers import IAFSqueeze
 
-nodes_to_dcnnl_map_1 = {
+dcnnl_map_1 = {
     0: {
-        0: {
-            "layer": nn.Conv2d(2, 10, kernel_size=(2, 2), stride=(1, 1), bias=False),
-            "input_shape": (2, 34, 34),
-            "output_shape": (10, 33, 33),
+        "input_shape": (2, 34, 34),
+        "inferred_input_shapes": set(),
+        "rescale_factors": set(),
+        "is_entry_node": True,
+        "conv": {
+            "module": nn.Conv2d(2, 10, kernel_size=(2, 2), stride=[1, 1], bias=False),
+            "node_id": 0,
         },
-        1: {
-            "layer": IAFSqueeze(
+        "neuron": {
+            "module": IAFSqueeze(
                 batch_size=3,
                 min_v_mem=-1.0,
                 spike_threshold=1.0,
                 surrogate_grad_fn=PeriodicExponential(),
             ),
-            "input_shape": (10, 33, 33),
-            "output_shape": (10, 33, 33),
+            "node_id": 1,
         },
-        2: {
-            "layer": nn.AvgPool2d(kernel_size=3, stride=3, padding=0),
-            "input_shape": (10, 33, 33),
-            "output_shape": (10, 11, 11),
-        },
-        3: {
-            "layer": nn.AvgPool2d(kernel_size=4, stride=4, padding=0),
-            "input_shape": (10, 33, 33),
-            "output_shape": (10, 8, 8),
-        },
-        "destinations": [1, 2],
-        "conv_rescale_factor": [],
+        "destinations": [
+            {
+                "pooling_ids": [2],
+                "pooling_modules": [nn.AvgPool2d(kernel_size=3, stride=3, padding=0)],
+                "destination_layer": 1,
+                "output_shape": (10, 11, 11),
+            },
+            {
+                "pooling_ids": [3],
+                "pooling_modules": [nn.AvgPool2d(kernel_size=4, stride=4, padding=0),],
+                "destination_layer": 2,
+                "output_shape": (10, 8, 8),
+            },
+        ],
     },
     1: {
-        4: {
-            "layer": nn.Conv2d(10, 10, kernel_size=(4, 4), stride=(1, 1), bias=False),
-            "input_shape": (10, 11, 11),
-            "output_shape": (10, 8, 8),
+        "input_shape": (10, 11, 11),
+        "inferred_input_shapes": set(((10, 11, 11),)),
+        "rescale_factors": set(),
+        "is_entry_node": False,
+        "conv": {
+            "module": nn.Conv2d(10, 10, kernel_size=(4, 4), stride=[1, 1], bias=False),
+            "node_id": 4,
         },
-        6: {
-            "layer": IAFSqueeze(
+        "neuron": {
+            "module": IAFSqueeze(
                 batch_size=3,
                 min_v_mem=-1.0,
                 spike_threshold=1.0,
                 surrogate_grad_fn=PeriodicExponential(),
             ),
-            "input_shape": (10, 8, 8),
-            "output_shape": (10, 8, 8),
+            "node_id": 6,
         },
-        "destinations": [2],
-        "conv_rescale_factor": [9],
+        "destinations": [
+            {
+                "pooling_ids": [],
+                "pooling_modules": [],
+                "destination_layer": 3,
+                "output_shape": (10, 7, 7),
+            },
+        ],
     },
     2: {
-        7: {
-            "layer": nn.Conv2d(10, 1, kernel_size=(2, 2), stride=(1, 1), bias=False),
-            "input_shape": (10, 8, 8),
-            "output_shape": (1, 7, 7),
+        "input_shape": (10, 8, 8),
+        "inferred_input_shapes": set(((10, 8, 8),)),
+        "rescale_factors": set(),
+        "is_entry_node": False,
+        "conv": {
+            "module": nn.Conv2d(10, 1, kernel_size=(2, 2), stride=[1, 1], bias=False),
+            "node_id": 7,
         },
-        8: {
-            "layer": IAFSqueeze(
+        "neuron": {
+            "module": IAFSqueeze(
                 batch_size=3,
                 min_v_mem=-1.0,
                 spike_threshold=1.0,
                 surrogate_grad_fn=PeriodicExponential(),
             ),
-            "input_shape": (1, 7, 7),
-            "output_shape": (1, 7, 7),
+            "node_id": 8,
         },
-        "destinations": [3],
-        "conv_rescale_factor": [16],
+        "destinations": [
+            {
+                "pooling_ids": [],
+                "pooling_modules": [],
+                "destination_layer": 3,
+                "output_shape": (1, 7, 7),
+            },
+        ],
     },
     3: {
-        9: {
-            "layer": nn.Linear(in_features=49, out_features=500, bias=False),
-            "input_shape": (1, 7, 7),
-            "output_shape": (500,),
+        "input_shape": (49, 1, 1),
+        "inferred_input_shapes": set(((1, 7, 7),)),
+        "rescale_factors": set(),
+        "is_entry_node": False,
+        "conv": {
+            "module": nn.Linear(in_features=49, out_features=500, bias=False),
+            "node_id": 9,
         },
-        10: {
-            "layer": IAFSqueeze(
+        "neuron": {
+            "module": IAFSqueeze(
                 batch_size=3,
                 min_v_mem=-1.0,
                 spike_threshold=1.0,
                 surrogate_grad_fn=PeriodicExponential(),
             ),
-            "input_shape": (500,),
-            "output_shape": (500,),
+            "node_id": 10,
         },
-        "destinations": [4],
-        "conv_rescale_factor": [],
+        "destinations": [
+            {
+                "pooling_ids": [],
+                "pooling_modules": [],
+                "destination_layer": 4,
+                "output_shape": (500, 1, 1),
+            },
+        ],
     },
     4: {
-        11: {
-            "layer": nn.Linear(in_features=500, out_features=10, bias=False),
-            "input_shape": (500,),
-            "output_shape": (10,),
+        "input_shape": (500, 1, 1),
+        "inferred_input_shapes": set(((500, 1, 1),)),
+        "rescale_factors": set(),
+        "is_entry_node": False,
+        "conv": {
+            "module": nn.Linear(in_features=500, out_features=10, bias=False),
+            "node_id": 11,
         },
-        12: {
-            "layer": IAFSqueeze(
+        "neuron": {
+            "module": IAFSqueeze(
                 batch_size=3,
                 min_v_mem=-1.0,
                 spike_threshold=1.0,
                 surrogate_grad_fn=PeriodicExponential(),
             ),
-            "input_shape": (10,),
-            "output_shape": (10,),
+            "node_id": 12,
         },
         "destinations": [],
-        "conv_rescale_factor": [],
     },
 }
 
-sinabs_edges_1 = [
-    (0, 1),
-    (1, 2),
-    (1, 3),
-    (2, 4),
-    (3, 7),
-    (4, 6),
-    (6, 7),
-    (7, 8),
-    (8, 9),
-    (9, 10),
-    (10, 11),
-    (11, 12),
-]
-
 expected_output_1 = {
     0: {
-        "dpcnnl_index": 0,
-        "conv_node_id": 0,
-        "conv_in_shape": (2, 34, 34),
-        "conv_out_shape": (10, 33, 33),
-        "spk_node_id": 1,
-        "pool_node_id": [2, 3],
-        "conv_rescaling_factor": None,
-        "dynapcnnlayer_destination": [1, 2],
-        "nodes_destinations": {2: [4], 3: [7]},
-        "entry_point": True,
+        "input_shape": (2, 34, 34),
+        "pool": [[3, 3], [4, 4]],
+        "rescale_factor": 1,
+        "rescale_factors": set(),
+        "destination_indices": [1, 2],
+        "entry_node": True,
     },
     1: {
-        "dpcnnl_index": 1,
-        "conv_node_id": 4,
-        "conv_in_shape": (10, 11, 11),
-        "conv_out_shape": (10, 8, 8),
-        "spk_node_id": 6,
-        "pool_node_id": [],
-        "conv_rescaling_factor": 4.5,
-        "dynapcnnlayer_destination": [2],
-        "nodes_destinations": {6: [7]},
-        "entry_point": False,
+        "input_shape": (10, 11, 11),
+        "pool": [[1, 1]],
+        "rescale_factor": 1./9,
+        "rescale_factors": set(),  # Single factor will be popped from list
+        "destination_indices": [3],
+        "entry_node": False,
     },
     2: {
-        "dpcnnl_index": 2,
-        "conv_node_id": 7,
-        "conv_in_shape": (10, 8, 8),
-        "conv_out_shape": (1, 7, 7),
-        "spk_node_id": 8,
-        "pool_node_id": [],
-        "conv_rescaling_factor": 8.0,
-        "dynapcnnlayer_destination": [3],
-        "nodes_destinations": {8: [9]},
-        "entry_point": False,
+        "input_shape": (10, 8, 8),
+        "pool": [[1, 1]],
+        "rescale_factor": 1./16,
+        "rescale_factors": set(),  # Single factor will be popped from list
+        "destination_indices": [3],
+        "entry_node": False,
     },
     3: {
-        "dpcnnl_index": 3,
-        "conv_node_id": 9,
-        "conv_in_shape": (1, 7, 7),
-        "conv_out_shape": (500, 1, 1),
-        "spk_node_id": 10,
-        "pool_node_id": [],
-        "conv_rescaling_factor": None,
-        "dynapcnnlayer_destination": [4],
-        "nodes_destinations": {10: [11]},
-        "entry_point": False,
+        "input_shape": (1, 7, 7),
+        "pool": [[1, 1]],
+        "rescale_factor": 1,
+        "rescale_factors": set(),
+        "destination_indices": [4],
+        "entry_node": False,
     },
     4: {
-        "dpcnnl_index": 4,
-        "conv_node_id": 11,
-        "conv_in_shape": (500, 1, 1),
-        "conv_out_shape": (10, 1, 1),
-        "spk_node_id": 12,
-        "pool_node_id": [],
-        "conv_rescaling_factor": None,
-        "dynapcnnlayer_destination": [],
-        "nodes_destinations": {},
-        "entry_point": False,
+        "input_shape": (500, 1, 1),
+        "pool": [],
+        "rescale_factor": 1,
+        "rescale_factors": set(),
+        "destination_indices": [],
+        "entry_node": False,
     },
 }

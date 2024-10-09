@@ -4,20 +4,15 @@
 import pytest
 from conftest_dynapcnnlayer import args_DynapcnnLayer
 
-from sinabs.backend.dynapcnn.utils import (
-    construct_dynapcnnlayer,
-    construct_layerhandler,
-    update_nodes_io,
-)
-from sinabs.backend.dynapcnn.weight_rescaling_methods import rescale_method_1
+from sinabs.backend.dynapcnn.utils import construct_dynapcnnlayers_from_mapper
 
 
 @pytest.mark.parametrize(
-    "nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, entry_point, expected_output",
+    "dcnnl_map, discretize, rescale_fn, expected_output",
     args_DynapcnnLayer,
 )
 def test_DynapcnnLayer(
-    nodes_to_dcnnl_map, dpcnnl_idx, sinabs_edges, entry_point, expected_output
+    dcnnl_map, discretize, rescale_fn, expected_output
 ):
     """Tests the instantiation of a set of `DynapcnnLayer` belonging to the same SNN and the data computed
     within their constructors and shared among the differntly interacting instances (according to the graph
@@ -25,66 +20,54 @@ def test_DynapcnnLayer(
     """
 
     # create a `DynapcnnLayer` from the set of layers in `nodes_to_dcnnl_map[dpcnnl_idx]`.
-    layerhandler = construct_layerhandler(
-        dpcnnl_idx,
-        True,
-        sinabs_edges,
-        nodes_to_dcnnl_map,
-        rescale_method_1,
-        entry_point,
+    dynapcnn_layers, layer_handlers = construct_dynapcnnlayers_from_mapper(
+        dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=rescale_fn
     )
-    dynapcnnlayer = construct_dynapcnnlayer(layerhandler)
+    
+    for layer_index, dynapcnn_layer in dynapcnn_layers.items():
+        
+        # Test layer instance
+        in_shape = expected_output[layer_index]["input_shape"]
+        pool = expected_output[layer_index]["pool"]
+        rescale_weights = expected_output[layer_index]["rescale_factor"]
 
-    # check if any node (layer) in `dynapcnnlayer` has been modified (e.g. `nn.Linear` turned `nn.Conv2d`).
-    node, output_shape = layerhandler.get_modified_node_io(
-        nodes_to_dcnnl_map[dpcnnl_idx]
-    )
+        assert (
+            tuple(dynapcnn_layer.in_shape) == in_shape
+        ), f"wrong 'DynapcnnLayer.in_shape': Should be {in_shape}."
+        assert (
+            dynapcnn_layer.discretize == discretize
+        ), f"wrong 'DynapcnnLayer.discretize': Should be {discretize}."
+        in_shape = expected_output[layer_index]["input_shape"]
+        assert (
+            dynapcnn_layer.pool == pool
+        ), f"wrong 'DynapcnnLayer.pool': Should be {pool}."
+        in_shape = expected_output[layer_index]["input_shape"]
+        assert (
+            dynapcnn_layer.rescale_weights == rescale_weights
+        ), f"wrong 'DynapcnnLayer.in_shape': Should be {rescale_weights}."
 
-    # one of the layers in `dynapcnnlayer` had its type modified (update input shape of nodes receiving from it).
-    if isinstance(node, int) and isinstance(output_shape, tuple):
-        update_nodes_io(node, output_shape, nodes_to_dcnnl_map, sinabs_edges)
 
-    dpcnnl_index = expected_output[dpcnnl_idx]["dpcnnl_index"]
-    conv_node_id = expected_output[dpcnnl_idx]["conv_node_id"]
-    conv_in_shape = expected_output[dpcnnl_idx]["conv_in_shape"]
-    conv_out_shape = expected_output[dpcnnl_idx]["conv_out_shape"]
-    spk_node_id = expected_output[dpcnnl_idx]["spk_node_id"]
-    pool_node_id = expected_output[dpcnnl_idx]["pool_node_id"]
-    conv_rescaling_factor = expected_output[dpcnnl_idx]["conv_rescaling_factor"]
-    dynapcnnlayer_destination = expected_output[dpcnnl_idx]["dynapcnnlayer_destination"]
-    nodes_destinations = expected_output[dpcnnl_idx]["nodes_destinations"]
-    entry_point = expected_output[dpcnnl_idx]["entry_point"]
+        # Test entries in layer info that are not directly repeated in layer or handler instances
+        layer_info = dcnnl_map[layer_index]
+        rescale_factors = expected_output[layer_index]["rescale_factors"]
 
-    assert (
-        layerhandler.dpcnnl_index == expected_output[dpcnnl_idx]["dpcnnl_index"]
-    ), f"wrong 'DynapcnnLayer.dpcnnl_index': ID of the instance should be {dpcnnl_index}."
-    assert (
-        layerhandler.conv_node_id == expected_output[dpcnnl_idx]["conv_node_id"]
-    ), f"wrong 'DynapcnnLayer.conv_node_id': convolution layer should be node {conv_node_id}."
-    assert (
-        layerhandler.conv_in_shape == expected_output[dpcnnl_idx]["conv_in_shape"]
-    ), f"wrong 'DynapcnnLayer.conv_in_shape': input tensor shape of convolution should be {conv_in_shape}."
-    assert (
-        layerhandler.conv_out_shape == expected_output[dpcnnl_idx]["conv_out_shape"]
-    ), f"wrong 'DynapcnnLayer.conv_out_shape': output tensor shape of convolution should be {conv_out_shape}."
-    assert (
-        layerhandler.spk_node_id == expected_output[dpcnnl_idx]["spk_node_id"]
-    ), f"wrong 'DynapcnnLayer.spk_node_id': spiking layer should be node {spk_node_id}."
-    assert (
-        layerhandler.pool_node_id == expected_output[dpcnnl_idx]["pool_node_id"]
-    ), f"wrong 'DynapcnnLayer.pool_node_id': pooling layer node(s) should be {pool_node_id}."
-    assert (
-        layerhandler.conv_rescaling_factor
-        == expected_output[dpcnnl_idx]["conv_rescaling_factor"]
-    ), f"wrong 'DynapcnnLayer.conv_rescaling_factor': computed re-scaling factor should be {conv_rescaling_factor}."
-    assert (
-        layerhandler.dynapcnnlayer_destination
-        == expected_output[dpcnnl_idx]["dynapcnnlayer_destination"]
-    ), f"wrong 'DynapcnnLayer.dynapcnnlayer_destination': the DynapcnnLayer(s) set as destination(s) should be {dynapcnnlayer_destination}."
-    assert (
-        layerhandler.nodes_destinations
-        == expected_output[dpcnnl_idx]["nodes_destinations"]
-    ), f"wrong 'DynapcnnLayer.nodes_destinations': the targeted nodes within other DynapcnnLayer instance(s) should be {nodes_destinations}."
-    assert (
-        layerhandler.entry_point == expected_output[dpcnnl_idx]["entry_point"]
-    ), f"wrong 'DynapcnnLayer.entry_point': its value should be {entry_point}."
+        assert (
+            layer_info["rescale_factors"] == rescale_factors
+        ), f"wrong 'rescale_factors' entry: Should be {rescale_factors}."
+
+        # Test layer handler instance
+        layerhandler = layer_handlers[layer_index]
+        destination_indices = expected_output[layer_index]["destination_indices"]
+        entry_node = expected_output[layer_index]["entry_node"]
+
+        assert (
+            layerhandler.layer_index == layer_index
+        ), f"wrong 'DynapcnnLayerHandler.layer_index': ID of the instance should be {layer_index}."
+        assert (
+            layerhandler.destination_indices
+            == expected_output[layer_index]["destination_indices"]
+        ), f"wrong 'DynapcnnLayerHandler.destination_indices': the DynapcnnLayer(s) set as destination(s) should be {destination_indices}."
+        assert (
+            layerhandler.entry_node == expected_output[layer_index]["entry_node"]
+        ), f"wrong 'DynapcnnLayerHandler.entry_node': its value should be {entry_node}."
+        assert layerhandler.assigned_core is None
