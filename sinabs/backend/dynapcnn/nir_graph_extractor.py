@@ -91,9 +91,7 @@ class GraphExtractor:
     def indx_2_module_map(self) -> Dict[int, nn.Module]:
         return {n: module for n, module in self._indx_2_module_map.items()}
 
-    def remove_nodes_by_class(
-        self, node_classes: Tuple[Type]
-    ) -> Tuple[Set[int], Dict[int, int]]:
+    def remove_nodes_by_class(self, node_classes: Tuple[Type]):
         """Remove nodes of given classes from graph in place.
 
         Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
