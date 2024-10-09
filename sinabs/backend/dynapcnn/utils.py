@@ -108,7 +108,7 @@ def construct_dynapcnnlayers_from_mapper(
     finalize_dcnnl_map(dcnnl_map, rescale_fn)
 
     dynapcnn_layers = {
-        layer_idx: construct_single_dynapcnn_layer(layer_info, discretize, rescale_fn)
+        layer_idx: construct_single_dynapcnn_layer(layer_info, discretize)
         for layer_idx, layer_info in dcnnl_map.items()
     }
 
@@ -178,7 +178,8 @@ def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
 def consolidate_dest_pooling(
     modules: Iterable[nn.Module],
 ) -> Tuple[Tuple[int, int], float]:
-    """Consolidate pooling information for consecutive pooling modules.
+    """Consolidate pooling information for consecutive pooling modules
+    for single destination.
 
     Parameters
     ----------
@@ -272,7 +273,7 @@ def determine_layer_input_shape(layer_info: Dict):
     """Determine input shape of single layer
 
     Update "input_shape" entry of `layer_info`.
-    If weight layer is convolutional,  only verify that output shapes
+    If weight layer is convolutional, only verify that output shapes
     of preceding layer are not greater than input shape in any dimension.
 
     If weight layer is linear, the current "input_shape" entry will
@@ -289,7 +290,7 @@ def determine_layer_input_shape(layer_info: Dict):
     """
     # For each dimension find largest inferred input size
     max_inferred_input_shape = [
-        max(sizes) for sizes in zip(layer_info["inferred_input_shapes"])
+        max(sizes) for sizes in zip(*layer_info["inferred_input_shapes"])
     ]
 
     if isinstance(layer_info["conv"]["module"], nn.Linear):

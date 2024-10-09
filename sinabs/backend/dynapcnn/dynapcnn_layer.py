@@ -104,8 +104,8 @@ class DynapcnnLayer(nn.Module):
 
         # Convert `nn.Linear` to `nn.Conv2d`.
         if isinstance(conv, nn.Linear):
-            conv = convert_linear_to_conv(conv)
-            if spk.is_state_initialised() and (ndim := spk.ndim) < 4:
+            conv = convert_linear_to_conv(conv, in_shape)
+            if spk.is_state_initialised() and (ndim := spk.v_mem.ndim) < 4:
                 for __ in range(4 - ndim):
                     # Expand spatial dimensions
                     spk.v_mem = spk.v_mem.data.unsqueeze(-1)

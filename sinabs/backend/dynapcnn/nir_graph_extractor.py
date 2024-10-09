@@ -297,24 +297,23 @@ class GraphExtractor:
 
             if isinstance(self.indx_2_module_map[node], sinabs.layers.merge.Merge):
                 # find `Merge` arguments (at this point the inputs to Merge should have been calculated).
-                arg1, arg2 = self._find_merge_arguments(node)
+                input_nodes = self._find_merge_arguments(node)
 
                 # retrieve arguments output tensors.
-                arg1_out = nodes_io_map[arg1]["output"]
-                arg2_out = nodes_io_map[arg2]["output"]
+                inputs = [nodes_io_map[n]["output"] for n in input_nodes]
 
-                # TODO - this is currently a limitation imposed by the validation checks done by Speck once a configuration: it wants two
+                # TODO - this is currently a limitation imposed by the validation checks done by Speck once a configuration: it wants
                 # different input sources to a core to have the same output shapes.
-                if arg1_out.shape != arg2_out.shape:
+                if any(inp.shape != inputs[0].shape for inp in inputs): 
                     raise ValueError(
-                        f"Layer `sinabs.layers.merge.Merge` (node {node}) require two input tensors with the same shape: arg1.shape {arg1_out.shape} differs from arg2.shape {arg2_out.shape}."
+                        f"Layer `sinabs.layers.merge.Merge` (node {node}) requires input tensors with the same shape"
                     )
 
                 # forward input through the node.
-                _output = self.indx_2_module_map[node](arg1_out, arg2_out)
+                _output = self.indx_2_module_map[node](*inputs)
 
                 # save node's I/O tensors.
-                nodes_io_map[node] = {"input": arg1_out, "output": _output}
+                nodes_io_map[node] = {"input": inputs[0], "output": _output}
 
             else:
 
@@ -336,10 +335,19 @@ class GraphExtractor:
                     # save node's I/O tensors.
                     nodes_io_map[node] = {"input": _input, "output": _output}
 
-        # replace the I/O tensor information by its shape information.
+        # replace the I/O tensor information by its shape information, ignoring the batch/time axis
         for node, io in nodes_io_map.items():
-            nodes_io_map[node]["input"] = io["input"].shape
-            nodes_io_map[node]["output"] = io["output"].shape
+            input_shape = io["input"].shape[1:] 
+            output_shape = io["output"].shape[1:] 
+            # Linear layers have fewer in/out dimensions. Extend by appending 1's
+            if (length := len(input_shape)) < 3:
+                input_shape = (*input_shape, *(1 for __ in range(3 - length)))
+            assert len(input_shape) == 3
+            if (length := len(output_shape)) < 3:
+                output_shape = (*output_shape, *(1 for __ in range(3 - length)))
+            assert len(output_shape) == 3
+            nodes_io_map[node]["input"] = input_shape
+            nodes_io_map[node]["output"] = output_shape
 
         return nodes_io_map
 

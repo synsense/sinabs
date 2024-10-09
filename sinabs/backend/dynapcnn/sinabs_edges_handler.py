@@ -181,7 +181,7 @@ def init_new_dynapcnnlayer_entry(
     assert layer_id not in dynapcnn_layer_info
 
     dynapcnn_layer_info[layer_id] = {
-        "input_shape": nodes_io_shapes[edge[0]],
+        "input_shape": nodes_io_shapes[edge[0]]["input"],
         # Collect output shapes (before possible flattening) of layers with this layer as their destination
         # This will allow infering shapes when converting linear to conv layers
         "inferred_input_shapes": set(),
