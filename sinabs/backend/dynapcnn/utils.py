@@ -12,7 +12,6 @@ from typing import (
     Tuple,
     Union,
 )
-from warnings import warn
 
 import torch
 import torch.nn as nn
@@ -23,7 +22,6 @@ from .crop2d import Crop2d
 from .dvs_layer import DVSLayer, expand_to_pair
 from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnn_layer_handler import DynapcnnLayerHandler
-from .exceptions import WrongPoolingModule
 from .flipdims import FlipDims
 
 if TYPE_CHECKING:
@@ -92,289 +90,94 @@ def standardize_device_id(device_id: str) -> str:
 ####################################################### DynapcnnNetwork Related #######################################################
 
 
-def build_from_graph(
-    discretize: bool,
-    edges: List[Tuple[int, int]],
-    nodes_to_dcnnl_map: dict,
-    weight_rescaling_fn: Callable,
-    entry_nodes: List[int],
-) -> Union[
-    Dict[int, Dict[DynapcnnLayer, List]], Dict[int, Dict[DynapcnnLayerHandler, List]]
-]:
-    """Parses each edge in `edges`, where each node is a set of layer that will compose a `DynapcnnLayer`. The
-    target destination of each `DynapcnnLayer` is computed via edges connecting nodes in different `DynapcnnLayer`
-    instances.
-
-    Parameters
-    ----------
-    - discretize (bool): if `True` the weights of all convolutional layers are discretized.
-    - edges (list): edges describing how nodes connect to each other.
-    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
-    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-        the same convolutional layer are combined/re-scaled before applying them.
-    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
-
-    Returns
-    ----------
-    - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
-    - dynapcnnlayers_handlers (dict): `DynapcnnLayerHandler` instances, gathering network-level info. for each of the `DynapcnnLayer` instances in `dynapcnn_layers`.
-    """
-
-    # turn each entry in `nodes_to_dcnnl_map` into a `DynapcnnLayer` instance.
-    dynapcnn_layers, dynapcnnlayers_handlers = construct_dynapcnnlayers_from_mapper(
-        discretize, nodes_to_dcnnl_map, edges, weight_rescaling_fn, entry_nodes
-    )
-
-    # initialize key holding to which core a `DynapcnnLayer` instance in `dynapcnn_layers` will be mapped to.
-    for idx, layer_data in dynapcnnlayers_handlers.items():
-        if "core_idx" not in layer_data:
-            # a `DynapcnnLayer` gets assigned a core index when `DynapcnnNetworkGraph.to()`` is called.
-            layer_data["core_idx"] = -1
-
-    return dynapcnn_layers, dynapcnnlayers_handlers
-
-
 def construct_dynapcnnlayers_from_mapper(
-    discretize: bool,
-    nodes_to_dcnnl_map: dict,
-    edges: List[Tuple[int, int]],
-    weight_rescaling_fn: Callable,
-    entry_nodes: List[int],
-) -> Union[
-    Dict[int, Dict[DynapcnnLayer, List]], Dict[int, Dict[DynapcnnLayerHandler, List]]
-]:
-    """Consumes a dictionaries containing sets of layers to be used to populate a DynapcnnLayer object.
-
-    Parameters
-    ----------
-    - discretize (bool): if `True` the weights of all convolutional layers are discretized.
-    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
-    - edges (list): edges describing how nodes connect to each other.
-    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-        the same convolutional layer are combined/re-scaled before applying them.
-    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
-
-    Returns
-    ----------
-    - dynapcnn_layers (dict): `DynapcnnLayer` instances, each created from an entry in `nodes_to_dcnnl_map`.
-    - dynapcnnlayers_handlers (dict): `DynapcnnLayerHandler` instances, gathering network-level info. for each of the `DynapcnnLayer` instances in `dynapcnn_layers`.
-    """
-
-    dynapcnn_layers = {}
-    dynapcnnlayers_handlers = {}
-
-    for dpcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
-        # create a `DynapcnnLayerHandler` from the set of layers in `dcnnl_data` - this holds network-level data required to instantiate a `DynapcnnLayer`.
-        layerhandler = construct_layerhandler(
-            dpcnnl_idx,
-            discretize,
-            edges,
-            nodes_to_dcnnl_map,
-            weight_rescaling_fn,
-            entry_nodes,
-        )
-
-        # create a `DynapcnnLayer` from the handler.
-        dynapcnnlayer = construct_dynapcnnlayer(layerhandler)
-
-        # holds the layers themselvs.
-        dynapcnn_layers[dpcnnl_idx] = {
-            "layer": dynapcnnlayer,
-            "destinations": nodes_to_dcnnl_map[dpcnnl_idx]["destinations"],
-        }
-
-        # holds the handlers of each layer for later use (e.g., creation of the forward pass for the `DynapcnnNetwork`).
-        dynapcnnlayers_handlers[dpcnnl_idx] = {
-            "layer_handler": layerhandler,
-            "destinations": nodes_to_dcnnl_map[dpcnnl_idx]["destinations"],
-        }
-
-        # check if a `nn.Linear` in `dynapcnnlayer` has been  turned into a `nn.Conv2d`.
-        node, output_shape = layerhandler.get_modified_node_io(dcnnl_data)
-
-        if isinstance(node, int) and isinstance(output_shape, tuple):
-            # a `nn.Linear` has been converted into a `nn.Conv2d`: update input shape of nodes receiving from the spiking layer after it.
-            update_nodes_io(node, output_shape, nodes_to_dcnnl_map, edges)
-
-    return dynapcnn_layers, dynapcnnlayers_handlers
-
-
-def update_nodes_io(
-    updated_node: int,
-    output_shape: tuple,
-    nodes_to_dcnnl_map: dict,
-    edges: List[Tuple[int, int]],
-) -> None:
-    """Updates the `input_shape` entries of each node in `nodes_to_dcnnl_map` receiving as input the output of the spiking
-    layer `updated_node` that had its I/O shapes updated following a `nn.Linear` to `nn.Conv2d` conversion.
-
-    Parameters
-    ----------
-    - updated_node (int): the ID of the spiking layer that had its I/O shapes updated following a `nn.Linear` to `nn.Conv2d` conversion.
-    - output_shape (tuple): the updated shape of the spiking layer with node ID `updated_node`.
-    - nodes_to_dcnnl_map (dict): each entry represents the gathered data necessary to instantiate a `DynapcnnLayer` object (e.g. nodes,
-        their I/O shapes, the list of `DynapcnnLayer` that are to be targeted, etc).
-    - edges (list): edges describing how nodes connect to each other.
-    """
-
-    for edge in edges:
-        if edge[0] == updated_node:
-            # found source node where output shape has been modified.
-
-            # accessing every single node ID within the set of layers composing each `DynapcnnLayer` instance.
-            for _, dcnnl_data in nodes_to_dcnnl_map.items():
-                for key, val in dcnnl_data.items():
-                    if isinstance(key, int):
-                        # accessing node data (`layer`, `input_shape` and `output_shape`).
-                        if key == edge[1]:
-                            # accessing node targeted by `updated_node` (its input shape becomes `updated_node.output_shape`).
-                            val["input_shape"] = output_shape
-
-
-def construct_layerhandler(
-    dpcnnl_idx: int,
-    discretize: bool,
-    edges: List[Tuple[int, int]],
-    nodes_to_dcnnl_map: Dict[
-        int,
-        Dict[
-            Union[int, str],
-            Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]],
-        ],
-    ],
-    weight_rescaling_fn: Callable,
-    entry_nodes: List[int],
-) -> DynapcnnLayerHandler:
-    """Extract the modules (layers) in a dictionary and uses them to instantiate a `DynapcnnLayerHandler` object.
-
-    Parameters
-    ----------
-    - dpcnnl_idx (int): the index/ID that will be associated with a `DynapcnnLayerHandler` instance. This integer indexes a `dict` within `nodes_to_dcnnl_map`
-        containing the data required to create the instance returned by this function.
-    - discretize (bool): whether or not the weights/neuron parameters of the model will be quantized.
-    - edges (list): each `nn.Module` within `nodes_to_dcnnl_map[dpcnnl_idx]` is a node in the original computational graph describing a spiking network
-        being converted to a `DynapcnnNetwork`. An edge `(A, B)` describes how modules forward data amongst themselves. This list is used by a `DynapcnnLayerHandler`
-        to figure out the number and sequence of output tesnors its forward method needs to return.
-    - nodes_to_dcnnl_map (dict): contains all layers (`nn.Module`) in the original spiking network grouped into dictionaries gathering the data necessary
-        to instantiate a `DynapcnnLayerHandler`. A `nodes_to_dcnnl_map[dpcnnl_idx]` will contain `int` keys (whose value corresponds to a `dict` with a `nn.Module`
-        instance and its associated I/O shapes, i.e., one layer within the `DynapcnnLayerHandler` instance) or `str` keys (whose values correspond to a list of
-        integers corresponding to either destinations IDs or re-scaling factors).
-    - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-        the same convolutional layer are combined/re-scaled before being applied.
-    - entry_nodes (list): node IDs corresponding to layers in the original network that are input nodes (i.e., a "point of entry" for the external data).
-
-    Returns
-    ----------
-    - layerhandler (DynapcnnLayerHandler): the a `DynapcnnLayer` instance made up by all the layers (`nn.Module`) in `dcnnl_data`.
-    """
-
-    # convert all AvgPool2d in 'dcnnl_data' into SumPool2d.
-    convert_Avg_to_Sum_pooling(
-        nodes_to_dcnnl_map[dpcnnl_idx], edges, nodes_to_dcnnl_map
-    )
-
-    # instantiate a DynapcnnLayer from the data in 'dcnnl_data'.
-    layerhandler = DynapcnnLayerHandler(
-        dpcnnl_index=dpcnnl_idx,
-        dcnnl_data=nodes_to_dcnnl_map[dpcnnl_idx],
-        discretize=discretize,
-        sinabs_edges=edges,
-        weight_rescaling_fn=weight_rescaling_fn,
-        entry_nodes=entry_nodes,
-    )
-
-    return layerhandler
-
-
-def construct_all_dynapcnnlayers(
     dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
-) -> Dict[int, DynapcnnLayer]:
-    """..."""
+) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, DynapcnnLayerHandler]]:
+    """Construct DynapcnnLayer and DynapcnnLayerHandler instances from
+    `dcnnl_map`
 
-    # Consolidate pooling information for each destination
-    for layer_info in dcnnl_map.values():
-        for destination in layer_info["destinations"]:
-            pool, scale = consolidate_pooling(destination["pooling_modules"])
-            destination["cumulative_pooling"] = pool
-            destination["cumulative_scaling"] = scale
-            dest_lyr_idx = destination["destination_layer"]
-            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
+    Paramters
+    ---------
 
-    dynapcnn_layer = {
+    Returns
+    -------
+    - Dict of new DynapcnnLayer instances, with keys corresponding to `dcnnl_map`
+    - Dict of new DynapcnnLayerHandler instances, with keys corresponding
+        to `dcnnl_map`
+    """
+    finalize_dcnnl_map(dcnnl_map, rescale_fn)
+
+    dynapcnn_layers = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize, rescale_fn)
         for layer_idx, layer_info in dcnnl_map.items()
     }
 
-    dynapcnn_layer_handler = {
-        layer_idx: construct_single_dynapcnn_layer_handler(layer_info)
+    dynapcnn_layer_handlers = {
+        layer_idx: construct_single_dynapcnn_layer_handler(layer_idx, layer_info)
         for layer_idx, layer_info in dcnnl_map.items()
     }
 
-
-def construct_single_dynapcnn_layer(
-    layer_info: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
-) -> DynapcnnLayer:
-
-    # Handle rescaling after average pooling
-    if len(layer_info["rescale_factors"]) == 0:
-        rescale_factor = 1
-    elif len(layer_info["rescale_factors"]) == 1:
-        rescale_factor = layer_info["rescale_factors"].pop()
-    else:
-        if rescale_fn is None:
-            # TODO: Custom Exception class?
-            raise ValueError(
-                "Average pooling layers of conflicting sizes pointing to "
-                "same destination. Either replace them by SumPool2d layers "
-                "or provide a `rescale_fn` to resolve this"
-            )
-        else:
-            rescale_factor = rescale_fn(layer_info["rescale_factors"])
-
-    # Handle input dimensions
-    # For each dimension find larges inferred input size
-    max_inferred_input_shape = [
-        max(sizes) for sizes in zip(layer_info["inferred_input_shapes"])
-    ]
-
-    if isinstance(layer_info["conv"]["module"], nn.Linear):
-        if prod(max_inferred_input_shape) > prod(layer_info["input_shape"]):
-            raise ValueError(
-                "Combined output of some layers projecting to a linear layer is "
-                "larger than expected by destination layer. "
-            )
-        # Take shape before flattening, to convert linear to conv layer
-        in_shape = max_inferred_input_shape
-    else:
-        if any(
-            inferred > expected
-            for inferred, expected in zip(
-                max_inferred_input_shape, layer_info["input_shape"]
-            )
-        ):
-            raise ValueError(
-                "Output of some layers is larger than expected by destination "
-                "layer along some dimensions."
-            )
-        in_shape = layer_info["input_shape"]
-
-    # Collect pooling in a list
-    pooling_list = [dest["cumulative_pooling"] for dest in layer_info["destinations"]]
-
-    # instantiate a DynapcnnLayer from the data in the handler.
-    return DynapcnnLayer(
-        conv=layer_info["conv"]["module"],
-        spk=layer_info["neuron"]["module"],
-        in_shape=in_shape,
-        pool=pooling_list,
-        discretize=discretize,
-        rescale_weights=rescale_factor,
-    )
+    return dynapcnn_layers, dynapcnn_layer_handlers
 
 
-def consolidate_pooling(modules: Iterable[nn.Module]) -> Tuple[Tuple[int, int], float]:
+def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None):
+    """Finalize dcnnl map by consolidating information
+
+    Update dcnnl_map in-place
+    - Consolidate chained pooling layers
+    - Determine rescaling of layer weights
+    - Fix input shapes
+
+    Parameters
+    ----------
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer
+        and DynapcnnLayerHandler instances
+    - rescale_fn: Optional callable that is used to determine layer
+        rescaling in case of conflicting preceeding average pooling
+    """
+    # Consolidate pooling information for each destination
+    for layer_info in dcnnl_map.values():
+        consolidate_layer_pooling(layer_info, dcnnl_map)
+
+    for layer_info in dcnnl_map.values():
+        # Consolidate scale factors
+        consolidate_layer_scaling(layer_info, rescale_fn)
+        # Handle input dimensions
+        determine_layer_input_shape(layer_info)
+
+
+def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
+    """Consolidate pooling information for individual layer
+
+    Update `layer_info` and `dcnnl_map` in place.
+    - Extract pooling and scale factor of consecutive pooling operations
+    - To each "destination" add entries "cumulative_pooling" and
+        "cumulative_scaling"
+    - Add "pooling_list" to `layer_info` with all poolings of a layer
+        in order of its "destination"s.
+    - For each destination, add cumulative rescale factor to "rescale_factors"
+        entry in corresponding entry of `dcnnl_map`.
+
+    Parameters
+    ----------
+    - layer_info: Dict holding info of single layer. Corresponds to
+        single entry in `dcnnl_map`
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer
+        and DynapcnnLayerHandler instances
+    """
+    layer_info["pooling_list"] = []
+    for destination in layer_info["destinations"]:
+        pool, scale = consolidate_dest_pooling(destination["pooling_modules"])
+        destination["cumulative_pooling"] = pool
+        layer_info["pooling_list"].append(pool)
+        destination["cumulative_scaling"] = scale
+        dest_lyr_idx = destination["destination_layer"]
+        dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
+
+
+def consolidate_dest_pooling(
+    modules: Iterable[nn.Module],
+) -> Tuple[Tuple[int, int], float]:
     """Consolidate pooling information for consecutive pooling modules.
 
     Parameters
@@ -434,124 +237,131 @@ def extract_pooling_from_module(
     return pooling, scale_factor
 
 
-def convert_Avg_to_Sum_pooling(
-    dcnnl_data: Dict[
-        Union[int, str],
-        Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]],
-    ],
-    edges: List[Tuple[int, int]],
-    nodes_to_dcnnl_map: Dict[
-        int,
-        Dict[
-            Union[int, str],
-            Union[Dict[str, Union[nn.Module, Tuple[int, int, int]]], List[int]],
-        ],
-    ],
-) -> None:
-    """Converts every `AvgPool2d` node within `dcnnl_data` into a `SumPool2d` and update their respective `rescale_factor` (to
-    be used when creating the `DynapcnnLayer` instance for this layer's destinations).
+def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] = None):
+    """Dertermine scale factor of single layer
+
+    Add "rescale_factor" entry to `layer_info`. If more than one
+    different rescale factors have been determined due to conflicting
+    average pooling in preceding layers, requrie `rescale_fn` to
+    resolve.
 
     Parameters
     ----------
-    - dcnnl_data (dict): contains the nodes to be merged into a `DynapcnnLayer`, their I/O shapes and the index of the other `DynapcnnLayer`s to
-        be set as destinations. The `int` keys correspond to the nodes IDs associated `nn.Module`s (a single layer in the original network) becoming
-        part of a single `DynapcnnLayer` instance, while the `str` keys correspond to the instance's destinations and re-scaling factors.
-    - edges (list): each node is a `nn.Module` in the original computational graph describing a spiking network being converted to a `DynapcnnNetwork`. The
-        list is used to find the targets of a `SumPool2d` (part of the `DynapcnnLayer` instance being created) and update the re-scaling factor they will
-        require.
-    - nodes_to_dcnnl_map (dict): contains all layers (`nn.Module`) in the original spiking network grouped into dictionaries gathering the data necessary
-        to instantiate a `DynapcnnLayer`. A `nodes_to_dcnnl_map[dpcnnl_idx]` will contain `int` keys (whose value corresponds to a `dict` with a `nn.Module`
-        instance and its associated I/O shapes, i.e., one layer within the `DynapcnnLayer` instance) or `str` keys (whose values correspond to a list of
-        integers corresponding to either destinations IDs or re-scaling factors).
+    - layer_info: Dict holding info of single layer.
+    - rescale_fn: Optional callable that is used to determine layer
+        rescaling in case of conflicting preceeding average pooling
     """
-    for key, value in dcnnl_data.items():
-        if isinstance(key, int):
-            # accessing the node `key` dictionary.
-
-            if isinstance(value["layer"], nn.AvgPool2d):
-                # convert AvgPool2d into SumPool2d.
-                lyr_pool, rescale_factor = build_SumPool2d(value["layer"])
-
-                # turn avg into sum pool.
-                value["layer"] = lyr_pool
-
-                # find which node `key` will target.
-                for edge in edges:
-                    if edge[0] == key:
-                        # find index of `DynapcnnLayer` where the target of `edge[0]` is.
-                        trg_dcnnl_idx = find_nodes_dcnnl_idx(
-                            edge[1], nodes_to_dcnnl_map
-                        )
-
-                        # update the rescale factor for the target of node `key`.
-                        nodes_to_dcnnl_map[trg_dcnnl_idx]["conv_rescale_factor"].append(
-                            rescale_factor
-                        )
-
-
-def find_nodes_dcnnl_idx(node: int, nodes_to_dcnnl_map: dict) -> int:
-    """Find the ID of the (future) `DynapcnnLayer` instance to which `node` belongs to."""
-
-    # looping over sets of layers (nodes) that will be used to instantiate `DynapcnnLayer`s.
-    for dcnnl_idx, dcnnl_data in nodes_to_dcnnl_map.items():
-        for key, value in dcnnl_data.items():
-            if isinstance(key, int):
-                # `key` is a node.
-                if key == node:
-                    # node belongs to DynapcnnLayer index `dcnnl_idx`.
-                    return dcnnl_idx
-
-    # this exception should never happen.
-    raise ValueError(
-        f"Node {node} is not part of any dictionary mapping into a DynapcnnLayer."
-    )
-
-
-def build_SumPool2d(module: nn.AvgPool2d) -> Tuple[sl.SumPool2d, int]:
-    """Converts a `nn.AvgPool2d` into a `sl.SumPool2d` layer.
-
-    Parameters
-    ----------
-    - module (torch.nn.AvgPool2d): the average pooling layer being converted into a sum pooling layer.
-
-    Returns
-    ----------
-    - lyr_pool (sinabs.layers.SumPool2d): the equivalent sum pooling layer.
-        rescale_factor (int): the weight re-scaling computed for the weights of the convolution layer targeted by the pooling.
-    """
-
-    if isinstance(module, nn.AvgPool2d):
-        if module.padding != 0:
-            raise ValueError("Padding is not supported for the pooling layers.")
-    elif isinstance(module, sl.SumPool2d):
-        pass
+    if len(layer_info["rescale_factors"]) == 0:
+        rescale_factor = 1
+    elif len(layer_info["rescale_factors"]) == 1:
+        rescale_factor = layer_info["rescale_factors"].pop()
     else:
-        raise WrongPoolingModule(type(module))
-
-    rescale_factor = 1
-    cumulative_pooling = expand_to_pair(1)
-    pooling = expand_to_pair(module.kernel_size)
-
-    if module.stride is not None:
-        stride = expand_to_pair(module.stride)
-        if pooling != stride:
+        if rescale_fn is None:
+            # TODO: Custom Exception class?
             raise ValueError(
-                f"Stride length {module.stride} should be the same as pooling kernel size {module.kernel_size}"
+                "Average pooling layers of conflicting sizes pointing to "
+                "same destination. Either replace them by SumPool2d layers "
+                "or provide a `rescale_fn` to resolve this"
+            )
+        else:
+            rescale_factor = rescale_fn(layer_info["rescale_factors"])
+    layer_info["rescale_factor"] = rescale_factor
+
+
+def determine_layer_input_shape(layer_info: Dict):
+    """Determine input shape of single layer
+
+    Update "input_shape" entry of `layer_info`.
+    If weight layer is convolutional,  only verify that output shapes
+    of preceding layer are not greater than input shape in any dimension.
+
+    If weight layer is linear, the current "input_shape" entry will
+    correspond to the shape after flattening, which might not match
+    the shape of the actual input to the layer. Therefore the new input
+    shape is the largest size across all output shapes of preceding
+    layers, for each dimension individually.
+    Verify that total number of elements (product of entries in new
+    input shape) does not exceed that of original input shape.
+
+    Parameters
+    ----------
+    - layer_info: Dict holding info of single layer.
+    """
+    # For each dimension find largest inferred input size
+    max_inferred_input_shape = [
+        max(sizes) for sizes in zip(layer_info["inferred_input_shapes"])
+    ]
+
+    if isinstance(layer_info["conv"]["module"], nn.Linear):
+        if prod(max_inferred_input_shape) > prod(layer_info["input_shape"]):
+            raise ValueError(
+                "Combined output of some layers projecting to a linear layer is "
+                "larger than expected by destination layer. "
+            )
+        # Take shape before flattening, to convert linear to conv layer
+        layer_info["input_shape"] = max_inferred_input_shape
+    else:
+        if any(
+            inferred > expected
+            for inferred, expected in zip(
+                max_inferred_input_shape, layer_info["input_shape"]
+            )
+        ):
+            raise ValueError(
+                "Output of some layers is larger than expected by destination "
+                "layer along some dimensions."
             )
 
-    # compute cumulative pooling.
-    cumulative_pooling = (
-        cumulative_pooling[0] * pooling[0],
-        cumulative_pooling[1] * pooling[1],
+
+def construct_single_dynapcnn_layer(
+    layer_info: Dict, discretize: bool
+) -> DynapcnnLayer:
+    """Instantiate a DynapcnnLayer instance from the information
+    in `layer_info'
+
+    Parameters
+    ----------
+    - layer_info: Dict holding info of single layer.
+    - discretize: bool indicating whether layer parameters should be
+        discretized (weights, biases, thresholds)
+
+    Returns
+    -------
+    """
+    return DynapcnnLayer(
+        conv=layer_info["conv"]["module"],
+        spk=layer_info["neuron"]["module"],
+        in_shape=layer_info["input_shape"],
+        pool=layer_info["pooling_list"],
+        discretize=discretize,
+        rescale_weights=layer_info["rescale_factor"],
     )
 
-    if isinstance(module, nn.AvgPool2d):
-        # update rescaling factor.
-        rescale_factor *= pooling[0] * pooling[1]
 
-    lyr_pool = sl.SumPool2d(cumulative_pooling)
+def construct_single_dynapcnn_layer_handler(
+    layer_index: int, layer_info: Dict
+) -> DynapcnnLayerHandler:
+    """Instantiate a DynapcnnLayerHandler instance from the
+    information in `layer_info'
 
-    return lyr_pool, rescale_factor
+    Parameters
+    ----------
+    - layer_index: Global index of the layer
+    - layer_info: Dict holding info of single layer.
+
+    Returns
+    -------
+    New DynapcnnLayerHandler instance
+    """
+    destination_indices = [
+        dest["destination_layer"] for dest in layer_info["destinations"]
+    ]
+    return DynapcnnLayerHandler(
+        layer_index=layer_index,
+        is_entry_node=layer_info["is_entry_node"],
+        destination_indices=destination_indices,
+        assigned_core=None,
+    )
 
 
 def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:

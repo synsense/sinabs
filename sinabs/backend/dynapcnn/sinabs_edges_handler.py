@@ -19,6 +19,7 @@ def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
     edges: Set[Edge],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
+    entry_nodes: Set[int],
 ) -> Dict[int, Dict]:
     """Collect information to construct DynapcnnLayer instances.
 
@@ -34,6 +35,7 @@ def collect_dynapcnn_layer_info(
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     edges (set of tuples): Represent connections between two nodes in computational graph
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    entry_nodes (set of int): IDs of nodes that receive external input
 
     Returns
     -------
@@ -75,6 +77,7 @@ def collect_dynapcnn_layer_info(
             indx_2_module_map,
             nodes_io_shapes,
             node_2_layer_map,
+            entry_nodes,
         )
 
     # "pooling-pooling" edges are optional. Unlike other types, missing entry would cause exception.
@@ -151,6 +154,7 @@ def init_new_dynapcnnlayer_entry(
     indx_2_module_map: Dict[int, nn.Module],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
     node_2_layer_map: Dict[int, int],
+    entry_nodes: Set[int],
 ) -> None:
     """Initiate dict to hold information for new dynapcnn layer based on a "weight->neuron" edge.
     Change `dynapcnn_layer_info` in-place.
@@ -166,6 +170,7 @@ def init_new_dynapcnnlayer_entry(
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
+    entry_nodes (set of int): IDs of nodes that receive external input
     """
     # Make sure there are no existing entries holding any of the modules connected by `edge`
     assert edge[0] not in node_2_layer_map
@@ -190,6 +195,7 @@ def init_new_dynapcnnlayer_entry(
         },
         # This will be used later to account for average pooling in preceding layers
         "rescale_factors": set(),
+        "is_entry_node": edge[0] in entry_nodes,
     }
     node_2_layer_map[edge[0]] = layer_id
     node_2_layer_map[edge[1]] = layer_id

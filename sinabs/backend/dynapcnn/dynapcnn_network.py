@@ -21,7 +21,7 @@ from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     Edge,
-    build_from_graph,
+    construct_dynapcnnlayers_from_mapper,
     parse_device_id,
     topological_sorting,
 )
@@ -64,7 +64,7 @@ class DynapcnnNetwork(nn.Module):
         - self._graph_extractor
         - self._sinabs_edges
         - self._sinabs_indx_2_module_map
-        - self._nodes_to_dcnnl_map
+        - self._dcnnl_map
         - self._dynapcnn_layers
         """
         super().__init__()
@@ -86,24 +86,20 @@ class DynapcnnNetwork(nn.Module):
         self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self._nodes_to_dcnnl_map = collect_dynapcnn_layer_info(
+        self._dcnnl_map = collect_dynapcnn_layer_info(
             self._graph_extractor.indx_2_module_map,
             self._graph_extractor.edges,
             self._graph_extractor.nodes_io_shapes,
+            self._graph_extractor.entry_nodes,
         )
 
-        # TODO: Try avoiding this step by only retrieving input shapes of conv layers
-        # while constractung dcnnl_map
-        # # updates 'self._nodes_to_dcnnl_map' to include the I/O shape for each node.
-        # self._populate_nodes_io()
-
-        # build `DynapcnnLayer` instances from graph edges and mapper.
-        self._dynapcnn_layers, self._dynapcnnlayers_handlers = build_from_graph(
-            discretize=discretize,
-            edges=self._graph_extractor.edges,
-            nodes_to_dcnnl_map=self._nodes_to_dcnnl_map,
-            weight_rescaling_fn=weight_rescaling_fn,
-            entry_nodes=self._graph_extractor._entry_nodes,
+        # build `DynapcnnLayer` instances from mapper.
+        self._dynapcnn_layers, self._dynapcnnlayers_handlers = (
+            construct_dynapcnnlayers_from_mapper(
+                dcnnl_map=self._dcnnl_map,
+                discretize=discretize,
+                rescale_fn=weight_rescaling_fn,
+            )
         )
 
         # these gather all data necessay to implement the forward method for this class.
@@ -118,7 +114,7 @@ class DynapcnnNetwork(nn.Module):
         del self._graph_extractor
         del self._sinabs_edges
         del self._sinabs_indx_2_module_map
-        del self._nodes_to_dcnnl_map
+        del self._dcnnl_map
         del self._dynapcnn_layers
 
     ####################################################### Public Methods #######################################################
@@ -588,63 +584,6 @@ class DynapcnnNetwork(nn.Module):
                 dcnnl_edges.append((dcnnl_idx, dest))
 
         return dcnnl_edges
-
-    def _populate_nodes_io(self):
-        """Loops through the nodes in the original graph to retrieve their I/O tensor shapes and add them to their respective
-        representations in `self._nodes_to_dcnnl_map`."""
-
-        def find_my_input(edges_list: list, node: int) -> int:
-            """Returns the node `X` in the first edge `(X, node)`.
-
-            Parameters
-            ----------
-            - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
-                graph or the original input itself to the network).
-
-            Returns
-            ----------
-            - input source (int): this indicates the node in the computational graph providing the input to `node`. If `node` is
-                receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case
-                when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
-            """
-            for edge in edges_list:
-                if edge[1] == node:
-                    #   TODO nodes originally receiving input from merge will appear twice in the list of edges, one
-                    # edge per input to the merge layer. For now both inputs to a `Merge` have the same dimensions
-                    # necessarily so this works for now but later will have to be revised.
-                    return edge[0]
-            return -1
-
-        # access the I/O shapes for each node in `self._sinabs_edges` from the original graph in `self._graph_extractor`.
-        for dcnnl_idx, dcnnl_data in self._nodes_to_dcnnl_map.items():
-            for node, node_data in dcnnl_data.items():
-                # node dictionary with layer data.
-                if isinstance(node, int):
-                    _in, _out = self._graph_extractor.get_node_io_shapes(node)
-
-                    # update node I/O shape in the mapper (drop batch dimension).
-                    if node != 0:
-                        #   Find node outputing into the current node being processed (this will be the input shape). This is
-                        # necessary cuz if a node originally receives input from a `nn.Flatten` for instance, when mapped into
-                        # a `DynapcnnLayer` it will be receiving the input from a privious `sl.SumPool2d`.
-                        input_node = find_my_input(self._sinabs_edges, node)
-
-                        if input_node == -1:
-                            # node does not have an input source within the graph (it consumes the original input to the model).
-                            node_data["input_shape"] = tuple(list(_in)[1:])
-                        else:
-                            # input comes from another node in the graph.
-                            _, _input_source_shape = (
-                                self._graph_extractor.get_node_io_shapes(input_node)
-                            )
-                            node_data["input_shape"] = tuple(
-                                list(_input_source_shape)[1:]
-                            )
-                    else:
-                        # first node does not have an input source within the graph.
-                        node_data["input_shape"] = tuple(list(_in)[1:])
-
-                    node_data["output_shape"] = tuple(list(_out)[1:])
 
     def _to_device(self, device: torch.device) -> None:
         """Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""

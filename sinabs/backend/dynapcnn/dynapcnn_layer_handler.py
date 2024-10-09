@@ -1,9 +1,7 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-from typing import Dict, List, Tuple, Union
-
-from torch import nn
+from typing import List, Optional
 
 
 class DynapcnnLayerHandler:
@@ -28,37 +26,23 @@ class DynapcnnLayerHandler:
 
     def __init__(
         self,
-        dpcnnl_index: int,
-        dcnnl_data: Dict[
-            Union[int, str],
-            Union[
-                Dict[str, Union[nn.Module, Tuple[int, int, int], Tuple[int, int, int]]],
-                List[int],
-            ],
-        ],
-        sinabs_edges: List[Tuple[int, int]],
-        entry_nodes: List[int],
+        layer_index: int,
+        is_entry_node: bool,
+        destination_indices: List[int],
+        assigned_core: Optional[int] = None,
     ):
-        self.dpcnnl_index = dpcnnl_index
-        self.entry_point = False
+        self.layer_index = layer_index
+        self.entry_node = is_entry_node
+        self.destination_indices = destination_indices
+        self.assigned_core = assigned_core
 
-        if "core_idx" in dcnnl_data:
-            self.assigned_core = dcnnl_data["core_idx"]
-        else:
-            self.assigned_core = None
-
-        self.dynapcnnlayer_destination = dcnnl_data["destinations"]
-
+        # TODO: Still needed?
         # map destination nodes for each layer in this instance.
-        self.nodes_destinations = self._get_destinations_input_source(sinabs_edges)
-
-        # TODO: Move detection of entry points to dcnnl_info generation
-        # flag if the instance is an entry point (i.e., an input node of the network).
-        if self.conv_node_id in entry_nodes:
-            self.entry_point = True
+        # self.nodes_destinations = self._get_destinations_input_source(sinabs_edges)
 
     ####################################################### Public Methods #######################################################
 
+    # TODO: Still needed?
     def get_destination_dcnnl_index(self, dcnnl_id: int) -> int:
         """The `forward` method will return as many tensors as there are elements in `self.dynapcnnlayer_destination`. Since the i-th returned tensor is to be
         fed to the i-th destionation in `self.dynapcnnlayer_destination`, the return of this method can be used to index a tensor returned in the `forward` method.
@@ -101,6 +85,7 @@ class DynapcnnLayerHandler:
 
     ####################################################### Private Methods #######################################################
 
+    # TODO: Still needed?
     def _get_destinations_input_source(self, sinabs_edges: list) -> dict:
         """Creates a mapping between each layer in this `DynapcnnLayer` instance and its targe nodes that are part of different
         `DynapcnnLayer` instances. This mapping is used to figure out how many tensors the `forward` method needs to return.
@@ -138,6 +123,7 @@ class DynapcnnLayerHandler:
 
         return destinations_input_source
 
+    # TODO: Still needed?
     @staticmethod
     def find_nodes_core_id(node: int, all_handlers: dict) -> int:
         """Loops through all handlers in `all_handlers` to find to which core a `DynapcnnLayer` containing
