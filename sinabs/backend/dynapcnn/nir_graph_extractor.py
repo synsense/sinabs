@@ -304,7 +304,7 @@ class GraphExtractor:
 
                 # TODO - this is currently a limitation imposed by the validation checks done by Speck once a configuration: it wants
                 # different input sources to a core to have the same output shapes.
-                if any(inp.shape != inputs[0].shape for inp in inputs): 
+                if any(inp.shape != inputs[0].shape for inp in inputs):
                     raise ValueError(
                         f"Layer `sinabs.layers.merge.Merge` (node {node}) requires input tensors with the same shape"
                     )
@@ -337,8 +337,8 @@ class GraphExtractor:
 
         # replace the I/O tensor information by its shape information, ignoring the batch/time axis
         for node, io in nodes_io_map.items():
-            input_shape = io["input"].shape[1:] 
-            output_shape = io["output"].shape[1:] 
+            input_shape = io["input"].shape[1:]
+            output_shape = io["output"].shape[1:]
             # Linear layers have fewer in/out dimensions. Extend by appending 1's
             if (length := len(input_shape)) < 3:
                 input_shape = (*input_shape, *(1 for __ in range(3 - length)))

@@ -115,7 +115,7 @@ expected_output = {
         "pool1a": 3,
         "conv2": 4,
         "adder": 5,
-       "iaf2": 6,
+        "iaf2": 6,
         "conv3": 7,
         "iaf3": 8,
         "flat": 9,

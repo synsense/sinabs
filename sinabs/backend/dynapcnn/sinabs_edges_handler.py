@@ -337,6 +337,12 @@ def set_pooling_layer_destination(
     matched = False
     for destination in layer_info["destinations"]:
         if destination["pooling_ids"][-1] == edge[0]:
+            if "destination_layer" in destination:
+                # Destination is already linked to a postsynaptic layer. This happens when
+                # pooling nodes have outgoing edges to different weight layer.
+                # Copy the destination
+                destination = {k: v for k, v in destination.items()}
+                layer_info["destinations"].append(destination)
             matched = True
             break
     if not matched:
@@ -393,3 +399,10 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
         paths = [deque([node])]
 
     return paths, processed_edges
+
+
+# TODO:
+""" Add verification tools to ensure that:
+- there are as many destinations as there are edges from pool/neuron to weight
+- there are as many layers as there are edges from weight to neuron
+"""

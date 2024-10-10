@@ -11,9 +11,7 @@ from sinabs.backend.dynapcnn.utils import construct_dynapcnnlayers_from_mapper
     "dcnnl_map, discretize, rescale_fn, expected_output",
     args_DynapcnnLayer,
 )
-def test_DynapcnnLayer(
-    dcnnl_map, discretize, rescale_fn, expected_output
-):
+def test_DynapcnnLayer(dcnnl_map, discretize, rescale_fn, expected_output):
     """Tests the instantiation of a set of `DynapcnnLayer` belonging to the same SNN and the data computed
     within their constructors and shared among the differntly interacting instances (according to the graph
     described by `sinabs_edges`).
@@ -23,9 +21,9 @@ def test_DynapcnnLayer(
     dynapcnn_layers, layer_handlers = construct_dynapcnnlayers_from_mapper(
         dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=rescale_fn
     )
-    
+
     for layer_index, dynapcnn_layer in dynapcnn_layers.items():
-        
+
         # Test layer instance
         in_shape = expected_output[layer_index]["input_shape"]
         pool = expected_output[layer_index]["pool"]
@@ -45,7 +43,6 @@ def test_DynapcnnLayer(
         assert (
             dynapcnn_layer.rescale_weights == rescale_weights
         ), f"wrong 'DynapcnnLayer.in_shape': Should be {rescale_weights}."
-
 
         # Test entries in layer info that are not directly repeated in layer or handler instances
         layer_info = dcnnl_map[layer_index]

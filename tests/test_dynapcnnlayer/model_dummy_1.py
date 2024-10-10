@@ -35,7 +35,9 @@ dcnnl_map_1 = {
             },
             {
                 "pooling_ids": [3],
-                "pooling_modules": [nn.AvgPool2d(kernel_size=4, stride=4, padding=0),],
+                "pooling_modules": [
+                    nn.AvgPool2d(kernel_size=4, stride=4, padding=0),
+                ],
                 "destination_layer": 2,
                 "output_shape": (10, 8, 8),
             },
@@ -156,7 +158,7 @@ expected_output_1 = {
     1: {
         "input_shape": (10, 11, 11),
         "pool": [[1, 1]],
-        "rescale_factor": 1./9,
+        "rescale_factor": 1.0 / 9,
         "rescale_factors": set(),  # Single factor will be popped from list
         "destination_indices": [3],
         "entry_node": False,
@@ -164,7 +166,7 @@ expected_output_1 = {
     2: {
         "input_shape": (10, 8, 8),
         "pool": [[1, 1]],
-        "rescale_factor": 1./16,
+        "rescale_factor": 1.0 / 16,
         "rescale_factors": set(),  # Single factor will be popped from list
         "destination_indices": [3],
         "entry_node": False,

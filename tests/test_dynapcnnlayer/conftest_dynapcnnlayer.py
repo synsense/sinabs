@@ -2,7 +2,9 @@
 # contact   : wsoaresgirao@gmail.com
 
 from model_dummy_1 import expected_output_1, dcnnl_map_1
-# from model_dummy_2 import expected_output_2, nodes_to_dcnnl_map_2, sinabs_edges_2
+from model_dummy_2 import expected_output_2, dcnnl_map_2
+from model_dummy_3 import expected_output_3, dcnnl_map_3
+
 # from model_dummy_3 import expected_output_3, nodes_to_dcnnl_map_3, sinabs_edges_3
 # from model_dummy_4 import expected_output_4, nodes_to_dcnnl_map_4, sinabs_edges_4
 
@@ -10,6 +12,10 @@ from model_dummy_1 import expected_output_1, dcnnl_map_1
 args_DynapcnnLayer = [
     (dcnnl_map_1, True, None, expected_output_1),
     (dcnnl_map_1, False, None, expected_output_1),
+    (dcnnl_map_2, True, None, expected_output_2),
+    (dcnnl_map_2, False, None, expected_output_2),
+    (dcnnl_map_3, True, None, expected_output_3),
+    (dcnnl_map_3, False, None, expected_output_3),
     # (nodes_to_dcnnl_map_2, 0, sinabs_edges_2, [0], expected_output_2),
     # (nodes_to_dcnnl_map_2, 1, sinabs_edges_2, [0], expected_output_2),
     # (nodes_to_dcnnl_map_2, 2, sinabs_edges_2, [0], expected_output_2),
