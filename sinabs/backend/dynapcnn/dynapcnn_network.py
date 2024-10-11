@@ -14,6 +14,7 @@ import sinabs.layers as sl
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
+from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
@@ -21,7 +22,6 @@ from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     Edge,
-    construct_dynapcnnlayers_from_mapper,
     parse_device_id,
     topological_sorting,
 )

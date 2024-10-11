@@ -337,6 +337,7 @@ def set_pooling_layer_destination(
     matched = False
     for destination in layer_info["destinations"]:
         if destination["pooling_ids"][-1] == edge[0]:
+            # TODO: Add unit test for such a case
             if "destination_layer" in destination:
                 # Destination is already linked to a postsynaptic layer. This happens when
                 # pooling nodes have outgoing edges to different weight layer.
