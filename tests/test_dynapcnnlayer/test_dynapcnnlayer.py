@@ -8,10 +8,10 @@ from sinabs.backend.dynapcnn.utils import construct_dynapcnnlayers_from_mapper
 
 
 @pytest.mark.parametrize(
-    "dcnnl_map, discretize, rescale_fn, expected_output",
+    "dcnnl_map, discretize, expected_output",
     args_DynapcnnLayer,
 )
-def test_DynapcnnLayer(dcnnl_map, discretize, rescale_fn, expected_output):
+def test_DynapcnnLayer(dcnnl_map, discretize, expected_output):
     """Tests the instantiation of a set of `DynapcnnLayer` belonging to the same SNN and the data computed
     within their constructors and shared among the differntly interacting instances (according to the graph
     described by `sinabs_edges`).
@@ -19,7 +19,7 @@ def test_DynapcnnLayer(dcnnl_map, discretize, rescale_fn, expected_output):
 
     # create a `DynapcnnLayer` from the set of layers in `nodes_to_dcnnl_map[dpcnnl_idx]`.
     dynapcnn_layers, layer_handlers = construct_dynapcnnlayers_from_mapper(
-        dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=rescale_fn
+        dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=None
     )
 
     for layer_index, dynapcnn_layer in dynapcnn_layers.items():
