@@ -7,6 +7,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 import samna
 import torch
 import torch.nn as nn
+from torch import Tensor
 
 import sinabs
 import sinabs.layers as sl
@@ -177,7 +178,9 @@ class DynapcnnNetwork(nn.Module):
 
         return received_evts
 
-    def forward(self, x, return_complete: bool = False):
+    def forward(
+        self, x, return_complete: bool = False
+    ) -> Union[List["event"], Tensor, Dict[int, Dict[int, Tensor]]]:
         """Forwards data through the `DynapcnnNetwork` instance.
 
         If the network has been deployed on a Dynapcnn/Speck device the forward
