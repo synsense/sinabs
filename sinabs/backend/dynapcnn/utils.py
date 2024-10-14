@@ -84,6 +84,7 @@ def standardize_device_id(device_id: str) -> str:
 
 ####################################################### DynapcnnNetwork Related #######################################################
 
+
 def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:
     """Performs a topological sorting (using Kahn's algorithm) of a graph descrobed by a list edges. An entry node `X`
     of the graph have to be flagged inside `edges` by a tuple `('input', X)`.

@@ -62,7 +62,9 @@ dcnnl_map_4 = {
         "destinations": [
             {
                 "pooling_ids": [5],
-                "pooling_modules": [SumPool2d(kernel_size=2, stride=2, ceil_mode=False)],
+                "pooling_modules": [
+                    SumPool2d(kernel_size=2, stride=2, ceil_mode=False)
+                ],
                 "destination_layer": 3,
                 "output_shape": (1, 16, 16),
             },
@@ -89,13 +91,17 @@ dcnnl_map_4 = {
         "destinations": [
             {
                 "pooling_ids": [8],
-                "pooling_modules": [SumPool2d(kernel_size=2, stride=2, ceil_mode=False)],
+                "pooling_modules": [
+                    SumPool2d(kernel_size=2, stride=2, ceil_mode=False)
+                ],
                 "destination_layer": 3,
                 "output_shape": (1, 16, 16),
             },
             {
                 "pooling_ids": [9],
-                "pooling_modules": [SumPool2d(kernel_size=5, stride=5, ceil_mode=False)],
+                "pooling_modules": [
+                    SumPool2d(kernel_size=5, stride=5, ceil_mode=False)
+                ],
                 "destination_layer": 4,
                 "output_shape": (1, 6, 6),
             },
@@ -122,11 +128,13 @@ dcnnl_map_4 = {
         "destinations": [
             {
                 "pooling_ids": [13],
-                "pooling_modules": [SumPool2d(kernel_size=3, stride=3, ceil_mode=False)],
+                "pooling_modules": [
+                    SumPool2d(kernel_size=3, stride=3, ceil_mode=False)
+                ],
                 "destination_layer": 5,
                 "output_shape": (1, 5, 5),
             },
-        ]
+        ],
     },
     4: {
         "input_shape": (1, 6, 6),
@@ -153,7 +161,7 @@ dcnnl_map_4 = {
                 "destination_layer": 5,
                 "output_shape": (1, 5, 5),
             },
-        ]
+        ],
     },
     5: {
         "input_shape": (25, 1, 1),
@@ -173,7 +181,7 @@ dcnnl_map_4 = {
             ),
             "node_id": 17,
         },
-        "destinations": []
+        "destinations": [],
     },
 }
 
