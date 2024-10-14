@@ -80,6 +80,13 @@ def collect_dynapcnn_layer_info(
             entry_nodes,
         )
 
+    # Process all edges connecting two dynapcnn layers that do not include pooling
+    while edges_by_type["neuron-weight"]:
+        edge = edges_by_type["neuron-weight"].pop()
+        set_neuron_layer_destination(
+            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
+        )
+
     # "pooling-pooling" edges are optional. Unlike other types, missing entry would cause exception.
     # Therefore add empty set if not existing
     if "pooling-pooling" not in edges_by_type:
@@ -101,17 +108,12 @@ def collect_dynapcnn_layer_info(
         )
         # Remove handled pooling-pooling edges
         edges_by_type["pooling-pooling"].difference_update(edges_used)
+
     # After adding pooling make sure all pooling-pooling edges have been handled
     if len(edges_by_type["pooling-pooling"]) > 0:
         raise UnmatchedPoolingEdges(edges_by_type["pooling-pooling"])
 
-    # Process all edges connecting two dynapcnn layers
-    while edges_by_type["neuron-weight"]:
-        edge = edges_by_type["neuron-weight"].pop()
-        set_neuron_layer_destination(
-            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
-        )
-
+    # Add all edges connecting pooling to a new dynapcnn layer
     while edges_by_type["pooling-weight"]:
         edge = edges_by_type["pooling-weight"].pop()
         set_pooling_layer_destination(
@@ -246,6 +248,7 @@ def add_pooling_to_entry(
             {
                 "pooling_ids": chain,
                 "pooling_modules": [indx_2_module_map[idx] for idx in chain],
+                "destination_layer": None,
             }
         )
         new_nodes.update(set(chain))
@@ -337,11 +340,11 @@ def set_pooling_layer_destination(
     matched = False
     for destination in layer_info["destinations"]:
         if destination["pooling_ids"][-1] == edge[0]:
-            # TODO: Add unit test for such a case
-            if "destination_layer" in destination:
+            if destination["destination_layer"] is not None:
                 # Destination is already linked to a postsynaptic layer. This happens when
                 # pooling nodes have outgoing edges to different weight layer.
                 # Copy the destination
+                # TODO: Add unit test for this case
                 destination = {k: v for k, v in destination.items()}
                 layer_info["destinations"].append(destination)
             matched = True

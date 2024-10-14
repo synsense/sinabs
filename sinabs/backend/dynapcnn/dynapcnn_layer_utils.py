@@ -91,8 +91,8 @@ def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
         destination["cumulative_pooling"] = pool
         layer_info["pooling_list"].append(pool)
         destination["cumulative_scaling"] = scale
-        dest_lyr_idx = destination["destination_layer"]
-        dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
+        if (dest_lyr_idx := destination["destination_layer"]) is not None:
+            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
 
 
 def consolidate_dest_pooling(
