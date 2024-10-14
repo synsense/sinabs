@@ -274,9 +274,16 @@ def construct_single_dynapcnn_layer_handler(
     -------
     New DynapcnnLayerHandler instance
     """
-    destination_indices = [
-        dest["destination_layer"] for dest in layer_info["destinations"]
-    ]
+    destination_indices = []
+    none_counter = 0
+    for dest in layer_info["destinations"]:
+        if (dest_idx := dest["destination_layer"]) is None:
+            # For `None` destinations use unique negative index
+            none_counter += 1
+            destination_indices.append(-none_counter)
+        else:
+            destination_indices.append(dest_idx)
+
     return DynapcnnLayerHandler(
         layer_index=layer_index,
         is_entry_node=layer_info["is_entry_node"],
