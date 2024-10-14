@@ -180,7 +180,10 @@ class DynapcnnLayer(nn.Module):
                 pool_out = sum_pool2d(x, kernel_size=pool)
                 returns.append(pool_out)
 
-        return tuple(returns)
+        if len(returns) == 1:
+            return returns[0]
+        else:
+            return tuple(returns)
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         """Call `zero_grad` method of spiking layer"""
