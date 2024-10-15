@@ -14,11 +14,8 @@ import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
-from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
-from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
-from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
     parse_device_id,
@@ -83,28 +80,11 @@ class DynapcnnNetwork(nn.Module):
         # Remove nodes of ignored classes (including merge nodes)
         self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
 
-        # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self._dcnnl_map = collect_dynapcnn_layer_info(
-            self._graph_extractor.indx_2_module_map,
-            self._graph_extractor.edges,
-            self._graph_extractor.nodes_io_shapes,
-            self._graph_extractor.entry_nodes,
-        )
-
-        # build `DynapcnnLayer` instances from mapper.
-        dynapcnn_layers, destination_map, entry_points = (
-            construct_dynapcnnlayers_from_mapper(
-                dcnnl_map=self._dcnnl_map,
-                discretize=discretize,
-                rescale_fn=weight_rescaling_fn,
-            )
-        )
-
         # Module to execute forward pass through network
-        self._dynapcnn_module = DynapcnnNetworkModule(
-            dynapcnn_layers, destination_map, entry_points
+        self._dynapcnn_module = self._graph_extractor.get_dynapcnn_network_module(
+            discretize=discretize, weight_rescaling_fn=weight_rescaling_fn
         )
-        self.dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
+        self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
     ####################################################### Public Methods #######################################################
 
@@ -115,6 +95,10 @@ class DynapcnnNetwork(nn.Module):
     @property
     def dynapcnn_module(self):
         return self._dynapcnn_module
+
+    @property
+    def layer_destination_map(self):
+        return self._dynapcnn_module.destination_map
 
     @property
     def chip_layers_ordering(self):
