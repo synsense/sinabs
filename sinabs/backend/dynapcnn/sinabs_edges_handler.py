@@ -123,6 +123,9 @@ def collect_dynapcnn_layer_info(
     # Make sure we have taken care of all edges
     assert all(len(edges) == 0 for edges in edges_by_type.values())
 
+    # Set minimal destination entries for layers without child nodes, to act as network outputs
+    set_exit_destinations(dynapcnn_layer_info)
+
     return dynapcnn_layer_info
 
 
@@ -206,7 +209,7 @@ def init_new_dynapcnnlayer_entry(
 
 
 def add_pooling_to_entry(
-    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    dynapcnn_layer_info: Dict[int, Dict],
     edge: Edge,
     pooling_chains: List[deque[int]],
     indx_2_module_map: Dict[int, nn.Module],
@@ -248,6 +251,8 @@ def add_pooling_to_entry(
             {
                 "pooling_ids": chain,
                 "pooling_modules": [indx_2_module_map[idx] for idx in chain],
+                # Setting `destination_layer` to `None` allows for this layer
+                # to act as network exit point if not destination is added later
                 "destination_layer": None,
             }
         )
@@ -259,8 +264,34 @@ def add_pooling_to_entry(
         node_2_layer_map[node] = layer_idx
 
 
+def set_exit_destinations(dynapcnn_layer: Dict) -> None:
+    """Set minimal destination entries for layers that don't have any.
+     
+    This ensures that the forward methods of the resulting DynapcnnLayer
+    instances return an output, letting these layers act as exit points
+    of the network.
+    The destination layer will be `None`, and no pooling applied.
+
+    Parameters
+    ----------
+    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
+        key is unique dynapcnn layer ID, value is dict with nodes of the layer
+        Will be updated in-place.
+    """
+    for layer_info in dynapcnn_layer.values():
+        if not (destinations := layer_info["destinations"]):
+            # Add `None` destination to empty destination lists
+                destinations.append(
+                    {
+                        "pooling_ids": [],
+                        "pooling_modules": [],
+                        "destination_layer": None,
+                    }
+                )
+
+
 def set_neuron_layer_destination(
-    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    dynapcnn_layer_info: Dict[int, Dict],
     edge: Edge,
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
@@ -307,7 +338,7 @@ def set_neuron_layer_destination(
 
 
 def set_pooling_layer_destination(
-    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    dynapcnn_layer_info: Dict[int, Dict],
     edge: Edge,
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
