@@ -48,12 +48,16 @@ class DynapcnnNetworkModule(nn.Module):
     ):
         super().__init__()
 
-        self.dynapcnn_layers = dynapcnn_layers
+        # Unfortunately ModuleDict does not allow for integer keys
+        # TODO: Consider using list instead of dict
+        self.dynapcnn_layers = nn.ModuleDict(
+            {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
+        )
         self._destination_map = destination_map
         self._entry_points = entry_points
 
         # `Merge` layers are stateless. One instance can be used for all merge points during forward pass
-        self._merge_layer = sl.Merge()
+        self.merge_layer = sl.Merge()
     
     @property
     def destination_map(self):
@@ -188,13 +192,13 @@ class DynapcnnNetworkModule(nn.Module):
             if len(sources := self._node_source_map[idx_curr]) > 1:
                 # Layer has multiple inputs
                 inputs = [layers_outputs[idx_src][idx_curr] for idx_src in sources]
-                current_input = self._merge_layer(*inputs)
+                current_input = self.merge_layer(*inputs)
             else:
                 idx_src = sources[0]
                 current_input = layers_outputs[idx_src][idx_curr]
 
             # Get current layer instance and destinations
-            layer = self.dynapcnn_layers[idx_curr]
+            layer = self.dynapcnn_layers[str(idx_curr)]
             destinations = self._destination_map[idx_curr]
 
             # Forward pass through layer
@@ -271,7 +275,9 @@ class DynapcnnNetworkModule(nn.Module):
                 return mapping[key]
 
         # Remap all internal objects
-        self.dynapcnn_layers = {remap(idx): lyr for idx, lyr in self.dynapcnn_layers.items()}
+        self.dynapcnn_layers = nn.ModuleDict(
+            {str(remap(int(idx))): lyr for idx, lyr in self.dynapcnn_layers.items()}
+        )
         self._entry_points = {remap(idx) for idx in self._entry_points}
         self._destination_map = {
             remap(idx): [remap(dest) for dest in destinations]
