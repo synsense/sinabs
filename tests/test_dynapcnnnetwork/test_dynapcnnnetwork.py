@@ -24,27 +24,31 @@ def test_DynapcnnNetwork(snn, input_shape, batch_size, expected_output):
     x = torch.randn((batch_size, *input_shape))
     output = dcnnnet(x)
 
+    module = dcnnnet.dynapcnn_module
     assert (
-        expected_output["dcnnl_edges"] == dcnnnet.dcnnl_edges
-    ), f"wrong list of edges describing DynapcnnLayer connectivity."
+        expected_output["dcnnl_edges"] == module._dynapcnnlayer_edges
+    ), "wrong list of edges describing DynapcnnLayer connectivity."
 
-    for node, args in dcnnnet.merge_points.items():
+    # Convert source lists to sets to ignore order
+    source_map = {node: set(sources) for node, sources in module._node_source_map.items()}
+    assert(
+        expected_output["node_source_map"] == source_map
+    ), "wrong node source map"
 
-        assert (
-            node in expected_output["merge_points"]
-        ), f"DynapcnnLayer {node} is not a merge point."
-        assert (
-            args["sources"] == expected_output["merge_points"][node]["sources"]
-        ), f"DynapcnnLayer {node} has wrong input sources ({args})."
+    # Convert destination lists to sets to ignore order
+    destination_map = {node: set(dests) for node, dests in module._destination_map.items()}
+    assert(
+        expected_output["destination_map"] == destination_map
+    ), "wrong destination map"
 
-    for entry_point in expected_output["entry_point"]:
-        assert dcnnnet.layers_mapper[
-            entry_point
-        ].entry_point, f"DynapcnnLayer {entry_point} should be an entry point."
+    assert(
+        expected_output["entry_points"] == module._entry_points
+    ), "wrong entry points"
 
-    assert (
-        expected_output["topological_order"] == dcnnnet.topological_order
-    ), f"wrong topological ordering between DynapcnnLayers."
+    assert(
+        expected_output["sorted_nodes"] == module._sorted_nodes
+    ), "wrong node sorting"
+
     assert (
         expected_output["output_shape"] == output.shape
-    ), f"wrong model output tensor shape."
+    ), "wrong model output tensor shape."

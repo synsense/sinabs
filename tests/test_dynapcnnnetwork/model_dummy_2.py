@@ -127,18 +127,35 @@ input_shape = (channels, height, width)
 snn = SNN(batch_size)
 
 expected_output = {
-    "dcnnl_edges": [
+    "dcnnl_edges": {
         (0, 1),
         (1, 2),
         (1, 3),
         (2, 4),
-        (3, 6),
-        (4, 5),
-        (6, 5),
+        (3, 5),
+        (4, 6),
+        (5, 6),
         ("input", 0),
-    ],
-    "merge_points": {5: {"sources": (4, 6), "merge": Merge()}},
-    "topological_order": [0, 1, 2, 3, 4, 6, 5],
+    },
+    "node_source_map": {
+        0: {"input"},
+        1: {0},
+        2: {1},
+        3: {1},
+        4: {2},
+        5: {3},
+        6: {4, 5},
+    },
+    "destination_map": {
+        0: {1},
+        1: {2, 3},
+        2: {4},
+        3: {5},
+        4: {6},
+        5: {6},
+        6: {-1},
+    },
+    "sorted_nodes": [0, 1, 2, 3, 4, 5, 6],
     "output_shape": torch.Size([8, 10, 1, 1]),
-    "entry_point": [0],
+    "entry_points": {0},
 }

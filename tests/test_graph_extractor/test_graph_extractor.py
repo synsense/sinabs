@@ -55,13 +55,13 @@ def test_GraphExtractor(snn, input_dummy, expected_output):
 
     assert (
         expected_output["edges"] == graph_tracer.edges
-    ), f"wrong list of edges extracted from the SNN."
+    ), "wrong list of edges extracted from the SNN."
     assert (
         expected_output["name_2_indx_map"] == graph_tracer.name_2_indx_map
-    ), f"wrong mapping from layer variable name to node ID."
+    ), "wrong mapping from layer variable name to node ID."
     assert (
         expected_output["entry_nodes"] == graph_tracer.entry_nodes
-    ), f"wrong list with entry node's IDs (i.e., layers serving as input to the SNN)."
+    ), "wrong list with entry node's IDs (i.e., layers serving as input to the SNN)."
     assert (
         expected_output["nodes_io_shapes"] == graph_tracer.nodes_io_shapes
-    ), f"wrong I/O shapes computed for one or more nodes."
+    ), "wrong I/O shapes computed for one or more nodes."
