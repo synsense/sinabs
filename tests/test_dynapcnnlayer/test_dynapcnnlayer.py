@@ -20,7 +20,7 @@ def test_DynapcnnLayer(dcnnl_map, discretize, expected_output):
     """
 
     # create a `DynapcnnLayer` from the set of layers in `nodes_to_dcnnl_map[dpcnnl_idx]`.
-    dynapcnn_layers, layer_handlers = construct_dynapcnnlayers_from_mapper(
+    dynapcnn_layers, destination_map, entry_points = construct_dynapcnnlayers_from_mapper(
         dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=None
     )
 
@@ -54,19 +54,14 @@ def test_DynapcnnLayer(dcnnl_map, discretize, expected_output):
             layer_info["rescale_factors"] == rescale_factors
         ), f"wrong 'rescale_factors' entry: Should be {rescale_factors}."
 
-        # Test layer handler instance
-        layerhandler = layer_handlers[layer_index]
-        destination_indices = expected_output[layer_index]["destination_indices"]
-        entry_node = expected_output[layer_index]["entry_node"]
+    # # Convert destination lists to sets to ignore order
+    # destination_map = {node: set(dests) for node, dests in destination_map.items()}
+    # Test destination map
+    assert (
+        destination_map == expected_output["destination_map"]
+    ), "wrong destination map"
 
-        assert (
-            layerhandler.layer_index == layer_index
-        ), f"wrong 'DynapcnnLayerHandler.layer_index': ID of the instance should be {layer_index}."
-        assert (
-            layerhandler.destination_indices
-            == expected_output[layer_index]["destination_indices"]
-        ), f"wrong 'DynapcnnLayerHandler.destination_indices': the DynapcnnLayer(s) set as destination(s) should be {destination_indices}."
-        assert (
-            layerhandler.entry_node == expected_output[layer_index]["entry_node"]
-        ), f"wrong 'DynapcnnLayerHandler.entry_node': its value should be {entry_node}."
-        assert layerhandler.assigned_core is None
+    # Test entry point
+    assert (
+        entry_points == expected_output["entry_points"]
+    ), "wrong entry points"

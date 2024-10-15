@@ -142,7 +142,13 @@ dcnnl_map_1 = {
             ),
             "node_id": 12,
         },
-        "destinations": [],
+        "destinations": [
+            {
+                "pooling_ids": [],
+                "pooling_modules": [],
+                "destination_layer": None,
+            }
+        ]
     },
 }
 
@@ -152,7 +158,6 @@ expected_output_1 = {
         "pool": [[3, 3], [4, 4]],
         "rescale_factor": 1,
         "rescale_factors": set(),
-        "destination_indices": [1, 2],
         "entry_node": True,
     },
     1: {
@@ -160,7 +165,6 @@ expected_output_1 = {
         "pool": [[1, 1]],
         "rescale_factor": 1.0 / 9,
         "rescale_factors": set(),  # Single factor will be popped from list
-        "destination_indices": [3],
         "entry_node": False,
     },
     2: {
@@ -168,7 +172,6 @@ expected_output_1 = {
         "pool": [[1, 1]],
         "rescale_factor": 1.0 / 16,
         "rescale_factors": set(),  # Single factor will be popped from list
-        "destination_indices": [3],
         "entry_node": False,
     },
     3: {
@@ -176,15 +179,21 @@ expected_output_1 = {
         "pool": [[1, 1]],
         "rescale_factor": 1,
         "rescale_factors": set(),
-        "destination_indices": [4],
         "entry_node": False,
     },
     4: {
         "input_shape": (500, 1, 1),
-        "pool": [],
+        "pool": [[1, 1]],
         "rescale_factor": 1,
         "rescale_factors": set(),
-        "destination_indices": [],
         "entry_node": False,
     },
+    "entry_points": {0},
+    "destination_map": {
+        0: [1, 2],
+        1: [3],
+        2: [3],
+        3: [4],
+        4: [-1],
+    }
 }
