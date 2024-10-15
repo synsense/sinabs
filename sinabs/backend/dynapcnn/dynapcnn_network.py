@@ -14,7 +14,6 @@ import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
-from .dynapcnn_layer import DynapcnnLayer
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
@@ -22,9 +21,7 @@ from .nir_graph_extractor import GraphExtractor
 from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import (
     DEFAULT_IGNORED_LAYER_TYPES,
-    Edge,
     parse_device_id,
-    topological_sorting,
 )
 from .weight_rescaling_methods import rescale_method_1
 
@@ -95,7 +92,7 @@ class DynapcnnNetwork(nn.Module):
         )
 
         # build `DynapcnnLayer` instances from mapper.
-        self._dynapcnn_layers, self._dynapcnnlayer_handlers = (
+        dynapcnn_layers, destination_map, entry_points = (
             construct_dynapcnnlayers_from_mapper(
                 dcnnl_map=self._dcnnl_map,
                 discretize=discretize,
@@ -105,19 +102,15 @@ class DynapcnnNetwork(nn.Module):
 
         # Module to execute forward pass through network
         self._dynapcnn_module = DynapcnnNetworkModule(
-            self._dynapcnn_layers, self._dynapcnnlayer_handlers
+            dynapcnn_layers, destination_map, entry_points
         )
-        self.dynapcnn_module.setup_dynapcnnlayer_graph()
+        self.dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
     ####################################################### Public Methods #######################################################
 
     @property
     def dynapcnn_layers(self):
-        return self._dynapcnn_layers
-
-    @property
-    def dynapcnnlayer_handlers(self):
-        return self._dynapcnnlayer_handlers
+        return self._dynapcnn_module.dynapcnn_layers
 
     @property
     def dynapcnn_module(self):

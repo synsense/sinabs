@@ -2,8 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 from collections import defaultdict
-import copy
-from typing import Dict, List, Set, Tuple, Union
+from typing import Dict, List, Set, Union
 from warnings import warn
 
 import torch.nn as nn
@@ -12,28 +11,28 @@ from torch import Tensor
 import sinabs.layers as sl
 
 from .dynapcnn_layer import DynapcnnLayer
-from .dynapcnn_layer_handler import DynapcnnLayerHandler
 from .utils import Edge, topological_sorting
 
 
 class DynapcnnNetworkModule(nn.Module):
     """Allow forward (and backward) passing through a network of `DynapcnnLayer`s.
 
-    Internally constructs a graph representation based on the provided
-    `DynapcnnLayer` and `DynapcnnLayerHandler` instances and uses this
-    to pass data through all layers in correct order.
+    Internally constructs a graph representation based on the provided arguments
+    and uses this to pass data through all layers in correct order.
 
     Parameters
     ----------
     - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
-    - dynapcnnlayers_handlers (dict): a mapper containing `DynapcnnLayerHandler` instances
+    - destination_map (dict): Maps layer indices to list of destination indices.
+        Exit destinations are marked by negative integers    
+    - entry_points (set): Set of layer indices that act as network entry points
 
     Attributes
     ----------
     This class internally builds a graph with `DynapcnnLayer` as nodes and their
     connections as edges. Several data structures help efficient retrieval of
     information required for the forward pass:
-    - `self._dynapcnnlayer_edges`: Set of edges connecting dynapcnn layers. Tuples
+    - _dynapcnnlayer_edges: Set of edges connecting dynapcnn layers. Tuples
         of indices of source and target layers.
     - _sorted_nodes: List of layer indices in topological order, to ensure forward
         calls to layers only happen when required inputs are available.
@@ -43,31 +42,51 @@ class DynapcnnNetworkModule(nn.Module):
 
     def __init__(
         self,
-        dynapcnn_layers: Dict[int, DynapcnnLayerHandler],
-        dynapcnnlayers_handlers: Dict[int, DynapcnnLayerHandler],
+        dynapcnn_layers: Dict[int, DynapcnnLayer],
+        destination_map: Dict[int, List[int]],
+        entry_points: Set[int],
     ):
         super().__init__()
 
-        self._dynapcnn_layers = dynapcnn_layers
-        self._dynapcnnlayer_handlers = dynapcnnlayers_handlers
+        self.dynapcnn_layers = dynapcnn_layers
+        self._destination_map = destination_map
+        self._entry_points = entry_points
 
-    def setup_dynapcnnlayer_graph(self):
-        """Set up data structures to run forward pass through dynapcnn layers"""
+        # `Merge` layers are stateless. One instance can be used for all merge points during forward pass
+        self._merge_layer = sl.Merge()
+    
+    @property
+    def destination_map(self):
+        return self._destination_map
+    
+    @property
+    def entry_points(self):
+        return self._entry_points
+
+    @property
+    def sorted_nodes(self):
+        return self._sorted_nodes
+    
+    @property
+    def node_source_map(self):
+        return self._node_source_map
+
+    def setup_dynapcnnlayer_graph(self, index_layers_topologically: bool = False):
+        """ Set up data structures to run forward pass through dynapcnn layers
+        
+        Parameters
+        ----------
+        - index_layers_topologically (bool): If True, will assign new indices to
+            dynapcnn layers such that they match their topological order within the
+            network graph. This is not necessary but can help understand the network
+            more easily when inspecting it.
+        """
         self._dynapcnnlayer_edges = self.get_dynapcnnlayers_edges()
         self.add_entry_points_edges(self._dynapcnnlayer_edges)
         self._sorted_nodes = topological_sorting(self._dynapcnnlayer_edges)
         self._node_source_map = self.get_node_source_map(self._dynapcnnlayer_edges)
-        # `Merge` layers are stateless. One instance can be used for all merge points.
-        self._merge_layer = sl.Merge()
-
-        # TODO: Probably not needed.
-        # Collect layers with multiple inputs and instantiate `Merge` layers
-        # self._merge_points = self._get_merging_points(self._node_source_map)
-
-        # # create mappers to handle `DynapcnnLayer` instances' forward calling.
-        # self.forward_map, self.merge_points = self._build_module_forward_from_graph(
-        #     dcnnl_edges, dynapcnn_layers
-        # )
+        if index_layers_topologically:
+            self.reindex_layers(self._sorted_nodes)
 
     def get_dynapcnnlayers_edges(self) -> Set[Edge]:
         """Create edges representing connections between `DynapcnnLayer` instances.
@@ -79,9 +98,10 @@ class DynapcnnNetworkModule(nn.Module):
         """
         dcnnl_edges = set()
 
-        for dcnnl_idx, handler in self._dynapcnnlayer_handlers.items():
-            for dest in handler.destination_indices:
-                dcnnl_edges.add((dcnnl_idx, dest))
+        for dcnnl_idx, destination_indices in self._destination_map.items():
+            for dest in destination_indices:
+                if dest >= 0:  # Ignore negative destinations (network exit points)
+                    dcnnl_edges.add((dcnnl_idx, dest))
 
         return dcnnl_edges
 
@@ -93,11 +113,10 @@ class DynapcnnNetworkModule(nn.Module):
         Parameters
         ----------
         - dcnnl_edges (Set): tuples representing the output->input mapping between
-        `DynapcnnLayer` instances. Will be changed in place.
+            `DynapcnnLayer` instances. Will be changed in place.
         """
-        for indx, handler in self._dynapcnnlayer_handlers.items():
-            if handler.entry_node:
-                dcnnl_edges.add(("input", indx))
+        for indx in self._entry_points:
+            dcnnl_edges.add(("input", indx))
 
     def get_node_source_map(self, dcnnl_edges: Set[Edge]) -> Dict[int, List[int]]:
         """From a set of edges, create a dict that maps to each node its sources
@@ -121,30 +140,6 @@ class DynapcnnNetworkModule(nn.Module):
                 sources[trg] = [src]
 
         return sources
-
-    # TODO: Probably not needed
-    def get_merging_points(
-        self, node_source_map: Dict[int, List[int]]
-    ) -> Dict[int, Dict[Tuple, sl.Merge]]:
-        """Find nodes within `dcnnl_edges` that have multiple sources.
-
-        Parameters
-        ----------
-        - node_source_map: Dict that maps to each layer index (int) a list of
-            indices of layers that act as input source to this node
-
-        Returns
-        -------
-        - Dict that for each layer with more than one input source maps its index
-            (int) to a nested dict with two entries:
-                * "sources": Set of indices of all source layers to this layer
-                * "merge_layer": A `Merge` layer instance
-        """
-        return {
-            tgt: {"sources": sources, "merge_layer": sl.Merge()}
-            for tgt, sources in node_source_map
-            if len(sources) > 1
-        }
 
     def forward(
         self, x, return_complete: bool = False
@@ -199,8 +194,8 @@ class DynapcnnNetworkModule(nn.Module):
                 current_input = layers_outputs[idx_src][idx_curr]
 
             # Get current layer instance and destinations
-            layer = self._dynapcnn_layers[idx_curr]
-            destinations = self._dynapcnnlayer_handlers[idx_curr].destination_indices
+            layer = self.dynapcnn_layers[idx_curr]
+            destinations = self._destination_map[idx_curr]
 
             # Forward pass through layer
             output = layer(current_input)
@@ -214,7 +209,7 @@ class DynapcnnNetworkModule(nn.Module):
                 layers_outputs[idx_curr] = {
                     idx_dest: out for idx_dest, out in zip(destinations, output)
                 }
-
+      
         if return_complete:
             return layers_outputs
 
@@ -232,8 +227,8 @@ class DynapcnnNetworkModule(nn.Module):
             warn(
                 "No final outputs have been found. Try setting `return_complete` "
                 "`True` to get all outputs, or mark final outputs by setting "
-                "corresponding destination layer indices in DynapcnnLayerHandler "
-                " instance to negative integer values"
+                "corresponding destination layer indices in destination_map "
+                " to negative integer values"
             )
             return
 
@@ -242,49 +237,51 @@ class DynapcnnNetworkModule(nn.Module):
             len(network_outputs) == 1
             and len(out := (next(iter(network_outputs.values())))) == 1
         ):
-            return out
+            return next(iter(out.values()))
 
         # If there is output from multiple layers return all of them in a dict
         return network_outputs
 
-    # TODO: Necessary?
-    def _build_module_forward_from_graph(
-        self, dcnnl_edges: list, dynapcnn_layers: dict
-    ) -> Union[Dict[int, DynapcnnLayer], Dict[Tuple, sl.Merge]]:
-        """Creates two mappers, one indexing each `DynapcnnLayer` by its index (a node in `dcnnl_edges`) and another
-        indexing the `DynapcnnLayer` instances (also by the index) that need their input being the output of a
-        `Merge` layer (i.e., they are nodes in the graph where two different layer outputs converge to).
+    def reindex_layers(self, index_order: List[int]):
+        """ Reindex layers based on provided order
+        
+        Will assign new index to dynapcnn layers and update all internal
+        attributes accordingly.
 
         Parameters
         ----------
-        - dcnnl_edges (list): tuples representing the output->input mapping between `DynapcnnLayer` instances
-            that have been used as configuration for each core `CNNLayerConifg`.
-        - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances along with their supporting metadata (e.g. assigned core,
-            destination layers, etc.).
-
-        Returns
-        ----------
-        - forward_map (dict): a mapper where each `key` is the layer index (`DynapcnnLayer.dpcnnl_index`) and the `value` the layer instance itself.
-        - merge_points (dict): a mapper where each `key` is the layer index and the `value` is a dictionary with a `Merge` layer (`merge_points[key]['merge'] = Merge()`,
-            computing the input tensor to layer `key`) and its arguments (`merge_points[key]['sources'] = (int A, int B)`, where `A` and `B` are the `DynapcnnLayer`
-            instances for which the ouput is to be used as the `Merge` arguments).
+        index_order: List of integers indicating new order of layers:
+            Position of layer index within this list indicates new index
         """
+        def negative_default(key):
+            if isinstance(key, int) and key < 0:
+                return key
+            else:
+                raise KeyError(key)
 
-        # this dict. will be used to call the `forward` methods of each `DynapcnnLayer`.
-        forward_map = {}
+        mapping = {old: new for new, old in enumerate(index_order)}
 
-        for edge in dcnnl_edges:
-            src_dcnnl = edge[0]  # source layer
-            trg_dcnnl = edge[1]  # target layer
+        def remap(key):
+            if key == "input":
+                return "input"
+            if isinstance(key, int) and key < 0:
+                # maintain negative indices
+                return key
+            else:
+                return mapping[key]
 
-            if src_dcnnl not in forward_map:
-                forward_map[src_dcnnl] = copy.deepcopy(
-                    dynapcnn_layers[src_dcnnl]["layer"]
-                )
-
-            if trg_dcnnl not in forward_map:
-                forward_map[trg_dcnnl] = copy.deepcopy(
-                    dynapcnn_layers[trg_dcnnl]["layer"]
-                )
-
-        return forward_map
+        # Remap all internal objects
+        self.dynapcnn_layers = {remap(idx): lyr for idx, lyr in self.dynapcnn_layers.items()}
+        self._entry_points = {remap(idx) for idx in self._entry_points}
+        self._destination_map = {
+            remap(idx): [remap(dest) for dest in destinations]
+            for idx, destinations in self._destination_map.items()
+        }
+        self._dynapcnnlayer_edges = {
+            (remap(src), remap(trg)) for (src, trg) in self._dynapcnnlayer_edges
+        }
+        self._sorted_nodes = [remap(idx) for idx in self._sorted_nodes]
+        self._node_source_map = {
+            remap(node): [remap(src) for src in sources]
+            for node, sources in self._node_source_map.items()
+        }

@@ -1,20 +1,18 @@
 from math import prod
-from typing import Callable, Dict, Iterable, Optional, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from torch import nn
 
 from sinabs import layers as sl
 
 from .dynapcnn_layer import DynapcnnLayer
-from .dynapcnn_layer_handler import DynapcnnLayerHandler
 from .utils import expand_to_pair
 
 
 def construct_dynapcnnlayers_from_mapper(
     dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
-) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, DynapcnnLayerHandler]]:
-    """Construct DynapcnnLayer and DynapcnnLayerHandler instances from
-    `dcnnl_map`
+) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, Set[int]], List[int]]:
+    """Construct DynapcnnLayer instances from `dcnnl_map`
 
     Paramters
     ---------
@@ -22,8 +20,8 @@ def construct_dynapcnnlayers_from_mapper(
     Returns
     -------
     - Dict of new DynapcnnLayer instances, with keys corresponding to `dcnnl_map`
-    - Dict of new DynapcnnLayerHandler instances, with keys corresponding
-        to `dcnnl_map`
+    - Dict mapping to each layer index a set of destination indices
+    - List of layer indices that act as entry points to the network
     """
     finalize_dcnnl_map(dcnnl_map, rescale_fn)
 
@@ -32,12 +30,10 @@ def construct_dynapcnnlayers_from_mapper(
         for layer_idx, layer_info in dcnnl_map.items()
     }
 
-    dynapcnn_layer_handlers = {
-        layer_idx: construct_single_dynapcnn_layer_handler(layer_idx, layer_info)
-        for layer_idx, layer_info in dcnnl_map.items()
-    }
+    destination_map = construct_destination_map(dcnnl_map)
+    entry_points = collect_entry_points(dcnnl_map)
 
-    return dynapcnn_layers, dynapcnn_layer_handlers
+    return dynapcnn_layers, destination_map, entry_points
 
 
 def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None):
@@ -50,8 +46,7 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None):
 
     Parameters
     ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer
-        and DynapcnnLayerHandler instances
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
     - rescale_fn: Optional callable that is used to determine layer
         rescaling in case of conflicting preceeding average pooling
     """
@@ -82,8 +77,7 @@ def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     ----------
     - layer_info: Dict holding info of single layer. Corresponds to
         single entry in `dcnnl_map`
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer
-        and DynapcnnLayerHandler instances
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
     """
     layer_info["pooling_list"] = []
     for destination in layer_info["destinations"]:
@@ -259,34 +253,46 @@ def construct_single_dynapcnn_layer(
     )
 
 
-def construct_single_dynapcnn_layer_handler(
-    layer_index: int, layer_info: Dict
-) -> DynapcnnLayerHandler:
-    """Instantiate a DynapcnnLayerHandler instance from the
-    information in `layer_info'
+def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]]:
+    """ Create a dict that holds destinations for each layer
 
     Parameters
     ----------
-    - layer_index: Global index of the layer
-    - layer_info: Dict holding info of single layer.
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
 
     Returns
     -------
-    New DynapcnnLayerHandler instance
+    Dict with layer indices (int) as keys and list of destination indices (int) as values.
+        Layer outputs that are not sent to other dynapcnn layers are represented by negative indices.
     """
-    destination_indices = []
-    none_counter = 0
-    for dest in layer_info["destinations"]:
-        if (dest_idx := dest["destination_layer"]) is None:
-            # For `None` destinations use unique negative index
-            none_counter += 1
-            destination_indices.append(-none_counter)
-        else:
-            destination_indices.append(dest_idx)
+    destination_map = dict()
+    for layer_index, layer_info in dcnnl_map.items():
+        destination_indices = []
+        none_counter = 0
+        for dest in layer_info["destinations"]:
+            if (dest_idx := dest["destination_layer"]) is None:
+                # For `None` destinations use unique negative index
+                none_counter += 1
+                destination_indices.append(-none_counter)
+            else:
+                destination_indices.append(dest_idx)
+        destination_map[layer_index] = destination_indices
 
-    return DynapcnnLayerHandler(
-        layer_index=layer_index,
-        is_entry_node=layer_info["is_entry_node"],
-        destination_indices=destination_indices,
-        assigned_core=None,
-    )
+    return destination_map
+
+
+def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
+    """ Return set of layer indices that are entry points
+
+    Parameters
+    ----------
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+
+    Returns
+    -------
+    Set of all layer indices which act as entry points to the network
+    """
+    return {
+        layer_index 
+        for layer_index, layer_info in dcnnl_map.items() if layer_info["is_entry_node"]
+    }
