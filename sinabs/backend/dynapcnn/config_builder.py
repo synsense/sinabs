@@ -4,7 +4,12 @@ from typing import List
 
 import samna
 
+import sinabs
+import sinabs.backend
+import sinabs.backend.dynapcnn
+
 from .dvs_layer import DVSLayer
+from .exceptions import InvalidModel
 from .mapping import LayerConstraints, get_valid_mapping
 
 
@@ -71,19 +76,32 @@ class ConfigBuilder(ABC):
 
         Returns
         -------
-        List of core indices corresponding to each layer of the model:
-        The index of the core on chip to which the i-th layer in the
-        model is mapped is the value of the i-th entry in the list.
+        - chip_layers_ordering (list): the core indices corresponding to each layer of the model. Though this list is being returned, each core index
+            `core_idx` is assigned directyl to each `DynapcnnLayer` instance via accesses to `model.layers_mapper`.
         """
-        mapping = get_valid_mapping(model, cls.get_constraints())
-        # turn the mapping into a dict
-        mapping = {m[0]: m[1] for m in mapping}
-        # Check if there is a dvs layer in the model
-        num_dynapcnn_cores = len(model.sequence)
-        if isinstance(model.sequence[0], DVSLayer):
-            num_dynapcnn_cores -= 1
-        # apply the mapping
-        chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
+
+        chip_layers_ordering = []
+
+        if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+            mapping = get_valid_mapping(model, cls.get_constraints())
+
+            if isinstance(model.layers_mapper[0], DVSLayer):
+                # TODO not handling DVSLayer yet.
+                # TODO if the architecture has more than one `DynapcnnLayer`s acting as input node of the model
+                # thi check will be wrong since it assumes the network has a single input node `model.layers_mapper[0]`.
+                pass
+
+            for dcnnl_idx, core_idx in mapping:
+                # save the core index information on the handler of this `DynapcnnLayer` instance.
+                model.layers_handlers[dcnnl_idx][
+                    "layer_handler"
+                ].assigned_core = core_idx
+                chip_layers_ordering.append(core_idx)
+
+        else:
+            raise InvalidModel(model)
+
+        # return kept but its information is not used beyond this point (core indices already part of each `DynapcnnLayerHandler` instance).
         return chip_layers_ordering
 
     @classmethod

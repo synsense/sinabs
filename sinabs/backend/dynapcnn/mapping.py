@@ -1,10 +1,13 @@
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Union
+
+import sinabs
 
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
+from .exceptions import InvalidModel
 
 
 @dataclass
@@ -44,33 +47,41 @@ def find_chip_layers(
 
 
 def get_valid_mapping(
-    model: "DynapcnnNetwork", constraints: List[LayerConstraints]
+    model: Union["DynapcnnNetwork"], constraints: List[LayerConstraints]
 ) -> List[Tuple[int, int]]:
     """Given a model, find a valid layer ordering for its placement within the constraints
     provided.
 
     Parameters
     ----------
-    model:
-        DynapcnnNetwork
-    constraints:
-        A list of all the layer's constraints
+        model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
+        constraints: a list of all the layer's constraints.
 
     Returns
+        netmap: a list of tuples with (dynapcnnlayer index, core index).
     -------
     """
     layer_mapping = []
 
-    for layer in model.sequence:
-        if isinstance(layer, DynapcnnLayer):
-            layer_mapping.append(find_chip_layers(layer, constraints))
+    if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
+        for dcnnl_index, ith_dcnnl in model.layers_mapper.items():
+            if isinstance(ith_dcnnl, DynapcnnLayer):
+                layer_mapping.append(find_chip_layers(ith_dcnnl, constraints))
+            else:
+                raise ValueError(
+                    f"Layer {dcnnl_index} is not an instance of `DynapcnnLayer`."
+                )
 
-    graph = make_flow_graph(layer_mapping, len(constraints))
+        graph = make_flow_graph(layer_mapping, len(constraints))
 
-    # Call mapping
-    new_graph = edmonds(graph, 0, len(graph) - 1)
+        # use graph algorithm to find suitable cores for each DynapcnnLayer.
+        new_graph = edmonds(graph, 0, len(graph) - 1)
 
-    netmap = recover_mapping(new_graph, layer_mapping)
+        netmap = recover_mapping(new_graph, layer_mapping)
+
+    else:
+        raise InvalidModel(model)
+
     return netmap
 
 
@@ -188,7 +199,7 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
             if edge.flow == 1:
                 mapping.append((i, edge.t - len(layer_mapping) - 1))
     if len(mapping) != len(layer_mapping):
-        raise ValueError("No valid mapping found")
+        raise ValueError("One of the DynapcnnLayers could not be mapped to any core.")
     return mapping
 
 

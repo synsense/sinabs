@@ -179,3 +179,92 @@ def set_batch_size(model: nn.Module, batch_size: int):
         if isinstance(mod, sinabs.layers.SqueezeMixin):
             mod.batch_size = batch_size
             # reset_states(mod)
+
+
+def get_batch_size(model: nn.Module) -> int:
+    """Get batch size from any model with sinabs squeeze layers
+
+    Will raise a ValueError if different squeeze layers within the model
+    have different batch sizes. Ignores layers with batch size `-1`, if
+    others provide it.
+
+    Args:
+        model (nn.Module): pytorch model with sinabs Squeeze layers
+
+    Returns:
+        batch_size (int): The batch size, `-1` if none is found.
+    """
+
+    batch_sizes = {
+        mod.batch_size
+        for mod in model.modules()
+        if isinstance(mod, sinabs.layers.SqueezeMixin)
+    }
+    # Ignore values `-1` and `None`
+    batch_sizes.discard(-1)
+    batch_sizes.discard(None)
+
+    if len(batch_sizes) == 0:
+        return -1
+    elif len(batch_sizes) == 1:
+        return batch_sizes.pop()
+    else:
+        raise ValueError(
+            "The model contains layers with different batch sizes: "
+            ", ".join((str(s) for s in batch_sizes))
+        )
+
+
+def get_num_timesteps(model: nn.Module) -> int:
+    """Get number of timesteps from any model with sinabs squeeze layers
+
+    Will raise a ValueError if different squeeze layers within the model
+    have different `num_timesteps` attributes. Ignores layers with value
+    `-1`, if others provide it.
+
+    Args:
+        model (nn.Module): pytorch model with sinabs Squeeze layers
+
+    Returns:
+        num_timesteps (int): The number of time steps, `-1` if none is found.
+    """
+
+    numbers = {
+        mod.num_timesteps
+        for mod in model.modules()
+        if isinstance(mod, sinabs.layers.SqueezeMixin)
+    }
+    # Ignore values `-1` and `None`
+    numbers.discard(-1)
+    numbers.discard(None)
+
+    if len(numbers) == 0:
+        return -1
+    elif len(numbers) == 1:
+        return numbers.pop()
+    else:
+        raise ValueError(
+            "The model contains layers with different numbers of time steps: "
+            ", ".join((str(s) for s in numbers))
+        )
+
+
+def get_smallest_compatible_time_dimension(model: nn.Module) -> int:
+    """Find the smallest size for input to a model with sinabs squeeze layers
+    along the batch/time (first) dimension.
+
+    Will raise a ValueError if different squeeze layers within the model
+    have different `num_timesteps` or `batch_size` attributes (except for
+    `-1`)
+
+    Args:
+        model (nn.Module): pytorch model with sinabs Squeeze layers
+
+    Returns:
+        int: The smallest compatible size for the first dimension of
+            an input to the `model`.
+    """
+    batch_size = abs(get_batch_size(model))  # Use `abs` to turn -1 to 1
+    num_timesteps = abs(get_num_timesteps(model))
+    # Use `abs` to turn `-1` to `1`
+    return abs(batch_size * num_timesteps)

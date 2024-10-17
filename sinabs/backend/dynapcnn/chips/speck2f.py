@@ -1,3 +1,5 @@
+from typing import Dict
+
 import samna
 from samna.speck2f.configuration import SpeckConfiguration
 
@@ -26,8 +28,12 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
         return samna.BasicSinkNode_speck2f_event_output_event()
 
     @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
-        config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
+    def get_dynapcnn_layer_config_dict(
+        cls, layer: DynapcnnLayer, layers_mapper: Dict[int, DynapcnnLayer]
+    ) -> dict:
+        config_dict = super().get_dynapcnn_layer_config_dict(
+            layer=layer, layers_mapper=layers_mapper
+        )
         config_dict.pop("weights_kill_bit")
         config_dict.pop("biases_kill_bit")
         config_dict.pop("neurons_value_kill_bit")
