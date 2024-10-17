@@ -28,7 +28,7 @@ class DynapcnnNetwork(nn.Module):
         self,
         snn: nn.Module,
         input_shape: Tuple[int, int, int],
-        batch_size: int,
+        batch_size: Optional[int] = None,
         dvs_input: bool = False,
         discretize: bool = True,
         weight_rescaling_fn: Callable = rescale_method_1,
@@ -42,25 +42,13 @@ class DynapcnnNetwork(nn.Module):
         ----------
         - snn (nn.Module): a  implementing a spiking network.
         - input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
+        - batch_size (optional int): If `None`, will try to infer the batch size from the model.
+            If int value is provided, it has to match the actual batch size of the model.
         - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
         - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading
             weights to dynapcnn. Set to `False` only for testing purposes.
         - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
             the same convolutional layer are combined/re-scaled before applying them.
-
-        Notes
-        ----------
-        Some of the properties defined within the class constructor are meant to be temporary data structures handling the conversion
-        of the `snn` (the original `nn.Module`) into a set of `DynapcnnLayer`s composing a `DynapcnnNetwork` instance. Once their role
-        in preprocessing `snn` is finished, all required data to train/deploy the `DynapcnnNetwork` instance is within `self._dcnnl_edges`
-        (the connectivity between each `DynapcnnLayer`/core), `self._layers_mapper` (every `DynapcnnLayer` in the network) and `self._merge_points`
-        (the `DynapcnnLayer`s that need a `Merge` input). Thus, the following private properties are delted as last step of the constructor:
-
-        - self._graph_extractor
-        - self._sinabs_edges
-        - self._sinabs_indx_2_module_map
-        - self._dcnnl_map
-        - self._dynapcnn_layers
         """
         super().__init__()
 
@@ -72,6 +60,9 @@ class DynapcnnNetwork(nn.Module):
 
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
+        # Infer batch size for dummpy input to graph extractor
+        if batch_size is None:
+            batch_size = sinabs.utils.get_smallest_compatible_time_dimension(snn)
         # computational graph from original PyTorch module.
         self._graph_extractor = GraphExtractor(
             snn, torch.randn((batch_size, *self.input_shape))
