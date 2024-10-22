@@ -1,14 +1,15 @@
-import time
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Dict, List
 
 import samna
+from samna.dynapcnn.configuration import DynapcnnConfiguration
 
 import sinabs
 import sinabs.backend
 import sinabs.backend.dynapcnn
 
 from .dvs_layer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
 from .exceptions import InvalidModel
 from .mapping import LayerConstraints, get_valid_mapping
 
@@ -35,7 +36,12 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
+    def build_config(
+        cls,
+        layers: Dict[int, DynapcnnLayer],
+        destination_map: Dict[int, List[int]],
+        layer2core_map: Dict[int, int],
+    ) -> DynapcnnConfiguration:
         """Build the configuration given a model.
 
         Parameters
@@ -67,6 +73,7 @@ class ConfigBuilder(ABC):
 
     @classmethod
     def get_valid_mapping(cls, model: "DynapcnnNetwork") -> List[int]:
+        # TODO: This should accept more explicit arguments
         """Find a valid set of layers for a given model.
 
         Parameters

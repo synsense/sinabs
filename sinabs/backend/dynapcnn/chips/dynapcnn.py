@@ -1,5 +1,5 @@
 import copy
-from typing import List
+from typing import Dict, List
 from warnings import warn
 
 import samna
@@ -10,7 +10,6 @@ import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
-from sinabs.backend.dynapcnn.dynapcnn_layer_handler import DynapcnnLayerHandler
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 
@@ -77,9 +76,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def get_dynapcnn_layer_config_dict(
         cls,
         layer: DynapcnnLayer,
-        layer_handler: DynapcnnLayerHandler,
-        all_handlers: dict,
+        layer2core_map: Dict[int, int],
+        destination_indices: List[int],
     ) -> dict:
+        # TODO: Docstring
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
 
@@ -158,22 +158,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             }
         )
 
-        # setting destinations config. based on destinations destination nodes of the nodes withing this `dcnnl`.
+        # Configure destinations
         destinations = []
-        for node_id, destination_nodes in layer_handler.nodes_destinations.items():
-            for dest_node in destination_nodes:
-                core_id = DynapcnnLayerHandler.find_nodes_core_id(
-                    dest_node, all_handlers
-                )
-                kernel_size = layer_handler.get_pool_kernel_size(node_id)
-
-                dest_data = {
-                    "layer": core_id,
-                    "enable": True,
-                    "pooling": expand_to_pair(kernel_size if kernel_size else 1),
-                }
-
-                destinations.append(dest_data)
+        pooling_sizes = layer.pool
+        for dest_layer_id, pool in zip(destination_indices, pooling_sizes):
+            dest_data = {
+                "layer": layer2core_map[dest_layer_id],
+                "enable": True,
+                "pooling": expand_to_pair(pool),
+            }
+            destinations.append(dest_data)
         config_dict["destinations"] = destinations
 
         # Set kill bits
@@ -185,9 +179,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def write_dynapcnn_layer_config(
         cls,
         layer: DynapcnnLayer,
+        layer2core_map: Dict[int, int],
+        destination_indices: List[int],
         chip_layer: "CNNLayerConfig",
-        layer_handler: DynapcnnLayerHandler,
-        all_handlers: dict,
     ) -> None:
         """Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be
         deployed on chip.
@@ -202,7 +196,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
         # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
         config_dict = cls.get_dynapcnn_layer_config_dict(
-            layer=layer, layer_handler=layer_handler, all_handlers=all_handlers
+            layer=layer,
+            layer2core_map=layer2core_map,
+            destination_indices=destination_indices,
         )
 
         # update configuration of the DYNAPCNN layer.
@@ -210,14 +206,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict.pop("dimensions")
 
         # set the destinations configuration.
-        for i in range(len(config_dict["destinations"])):
-            chip_layer.destinations[i].layer = config_dict["destinations"][i]["layer"]
-            chip_layer.destinations[i].enable = config_dict["destinations"][i]["enable"]
-            chip_layer.destinations[i].pooling = config_dict["destinations"][i][
-                "pooling"
-            ]
-
-        config_dict.pop("destinations")
+        for dest_idx, destination in enumerate(config_dict.pop("destinations")):
+            chip_layer.destinations[dest_idx].layer = destination["layer"]
+            chip_layer.destinations[dest_idx].enable = destination["enable"]
+            chip_layer.destinations[dest_idx].pooling = destination["pooling"]
 
         # set remaining configuration.
         for param, value in config_dict.items():
@@ -227,7 +219,13 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 raise TypeError(f"Unexpected parameter {param} or value. {e}")
 
     @classmethod
-    def build_config(cls, model: "DynapcnnNetwork") -> DynapcnnConfiguration:
+    def build_config(
+        cls,
+        layers: Dict[int, DynapcnnLayer],
+        destination_map: Dict[int, List[int]],
+        layer2core_map: Dict[int, int],
+    ) -> DynapcnnConfiguration:
+        # TODO: Update docstring
         """Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
         using using the `DynapcnnLayer` properties.
 
@@ -244,22 +242,20 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         has_dvs_layer = False  # TODO DVSLayer not supported yet.
 
         # Loop over layers in network and write corresponding configurations
-        for layer_index, ith_dcnnl in model.layers_mapper.items():
+        for layer_index, ith_dcnnl in layers.items():
             if isinstance(ith_dcnnl, DVSLayer):
                 # TODO DVSLayer not supported yet.
                 pass
 
             elif isinstance(ith_dcnnl, DynapcnnLayer):
-                # retrieve assigned core from the handler of this DynapcnnLayer (`ith_dcnnl`) instance.
-                chip_layer = config.cnn_layers[
-                    model.layers_handlers[layer_index].assigned_core
-                ]
+                # retrieve config dict for current layer
+                chip_layer = config.cnn_layers[layer2core_map[layer_index]]
                 # write core configuration.
                 cls.write_dynapcnn_layer_config(
                     ith_dcnnl,
                     chip_layer,
-                    model.layers_handlers[layer_index],
-                    model.layers_handlers,
+                    destination_indices=destination_map[layer_index],
+                    layer2core_map=layer2core_map,
                 )
 
             else:

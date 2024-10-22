@@ -395,8 +395,10 @@ class DynapcnnNetwork(nn.Module):
         # TODO not handling DVSLayer yet.
         has_dvs_layer = isinstance(self._layers_mapper[0], DVSLayer)
 
+        # TODO: Replayce chip_layers_ordering with layer2core_map
         if chip_layers_ordering == "auto":
             # figure out mapping of each `DynapcnnLayer` into one core (core ID will be set in the layer's handler instance via `.assigned_core`).
+            # TODO: Argument should not be `self`
             _ = config_builder.get_valid_mapping(self)
 
         else:
@@ -406,7 +408,11 @@ class DynapcnnNetwork(nn.Module):
                 pass
 
         # update config (config. DynapcnnLayer instances into their assigned core).
-        config = config_builder.build_config(self)
+        config = config_builder.build_config(
+            layers=self.dynapcnn_layers,
+            destination_map=self.layer_destination_map,
+            layer2core_map=layer2core_map,
+        )
 
         # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
         if self.input_shape and self.input_shape[0] == 1:
