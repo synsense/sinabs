@@ -145,7 +145,7 @@ def get_valid_edge_type(
 
     Returns
     ----------
-        edge_type: the edge type specified in 'valid_edges_map' ('None' if edge is not valid).
+        edge_type: the edge type specified in 'VALID_SINABS_EDGE_TYPES' ('None' if edge is not valid).
     """
     source_type = type(layers[edge[0]])
     target_type = type(layers[edge[1]])
