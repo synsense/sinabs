@@ -134,11 +134,11 @@ class DynapcnnLayer(nn.Module):
         self._spk = spk
 
     @property
-    def conv(self):
+    def conv_layer(self):
         return self._conv
 
     @property
-    def spk(self):
+    def spk_layer(self):
         return self._spk
 
     @property
@@ -167,8 +167,8 @@ class DynapcnnLayer(nn.Module):
 
         returns = []
 
-        x = self.conv(x)
-        x = self.spk(x)
+        x = self.conv_layer(x)
+        x = self.spk_layer(x)
 
         for pool in self._pool:
 
@@ -254,7 +254,7 @@ class DynapcnnLayer(nn.Module):
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
             "neuron": f
             * pow(2, np.ceil(np.log2(neuron_height)) + np.ceil(np.log2(neuron_width))),
-            "bias": 0 if self.conv.bias is None else len(self.conv.bias),
+            "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
 
     ####################################################### Private Methods #######################################################
@@ -268,11 +268,11 @@ class DynapcnnLayer(nn.Module):
         """
         # get the layer's parameters.
 
-        out_channels = self.conv.out_channels
-        kernel_size = self.conv.kernel_size
-        stride = self.conv.stride
-        padding = self.conv.padding
-        dilation = self.conv.dilation
+        out_channels = self.conv_layer.out_channels
+        kernel_size = self.conv_layer.kernel_size
+        stride = self.conv_layer.stride
+        padding = self.conv_layer.padding
+        dilation = self.conv_layer.dilation
 
         # compute the output height and width.
         out_height = (
