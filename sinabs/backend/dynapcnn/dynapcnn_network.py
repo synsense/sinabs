@@ -3,6 +3,7 @@
 
 import time
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
+from warnings import warn
 
 import samna
 import torch
@@ -57,6 +58,7 @@ class DynapcnnNetwork(nn.Module):
         dvs_input = False
         self.dvs_input = dvs_input
         self.input_shape = input_shape
+        self._layer2core_map = None
 
         assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
 
@@ -92,14 +94,22 @@ class DynapcnnNetwork(nn.Module):
         return self._dynapcnn_module.destination_map
 
     @property
+    def layer2core_map(self):
+        return self._layer2core_map
+
+    @property
     def chip_layers_ordering(self):
-        return self._chip_layers_ordering
+        warn(
+            "`chip_layers_ordering` is deprecated. Returning `layer2core_map` instead.",
+            DeprecationWarning    
+        )
+        return self._layer2core_map
 
     def get_output_core_id(self) -> int:
         """."""
 
         # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
-        for _, ith_dcnnl in self._layers_mapper.items():
+        for _, ith_dcnnl in self._dynapcnn_layers.items():
             if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
                 # a DynapcnnLayer without destinations is taken to be the output layer of the network.
                 return ith_dcnnl.assigned_core
@@ -109,7 +119,7 @@ class DynapcnnNetwork(nn.Module):
         a list of all core IDs to which an input layer of the network has been assigned to.
         """
         entry_points = []
-        for _, ith_dcnnl in self._layers_mapper.items():
+        for _, ith_dcnnl in self._dynapcnn_layers.items():
             if ith_dcnnl.entry_point:
                 entry_points.append(ith_dcnnl.assigned_core)
 
@@ -204,7 +214,7 @@ class DynapcnnNetwork(nn.Module):
         """
         parameters = []
 
-        for layer in self._layers_mapper.values():
+        for layer in self._dynapcnn_layers.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
@@ -217,14 +227,14 @@ class DynapcnnNetwork(nn.Module):
         ----------
         - init_fn (torch.nn.init): the weight initialization method to be used.
         """
-        for layer in self._layers_mapper.values():
+        for layer in self._dynapcnn_layers.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
 
     def detach_neuron_states(self) -> None:
         """Detach the neuron states and activations from current computation graph (necessary)."""
 
-        for module in self._layers_mapper.values():
+        for module in self._dynapcnn_layers.values():
             if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
@@ -232,13 +242,16 @@ class DynapcnnNetwork(nn.Module):
 
     def to(
         self,
-        device="cpu",
-        chip_layers_ordering="auto",
+        device: str = "cpu",
         monitor_layers: Optional[Union[List, str]] = None,
-        config_modifier=None,
-        slow_clk_frequency: int = None,
+        config_modifier: Optional[Callable] = None,
+        slow_clk_frequency: Optional[int] = None,
+        layer2core_map: Union[Dict[int, int], str] = "auto",
+        chip_layers_ordering="auto",
     ):
-        """Note that the model parameters are only ever transferred to the device on the `to` call,
+        """ Deploy model to cpu, gpu or a SynSense device.
+        
+        Note that the model parameters are only ever transferred to the device on the `to` call,
         so changing a threshold or weight of a model that is deployed will have no effect on the
         model on chip until `to` is called again.
 
@@ -247,13 +260,6 @@ class DynapcnnNetwork(nn.Module):
 
         device: String
             cpu:0, cuda:0, dynapcnndevkit, speck2devkit
-
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         monitor_layers: None/List
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
@@ -267,6 +273,22 @@ class DynapcnnNetwork(nn.Module):
         config_modifier:
             A user configuration modifier method.
             This function can be used to make any custom changes you want to make to the configuration object.
+
+        layer2core_map (dict or "auto"): Defines how cores on chip are 
+            assigned to DynapcnnLayers. If `auto`, an automated procedure
+            will be used to find a valid ordering. Otherwise a dict needs
+            to be passed, with DynapcnnLayer indices as keys and assigned
+            core IDs as values. DynapcnnLayer indices have to match those of
+            `self.dynapcnn_layers`.
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+            Note: This parameter is obsolete and should not be passed anymore. Use
+            `layer2core_map` instead.
 
         Note
         ----
@@ -285,6 +307,7 @@ class DynapcnnNetwork(nn.Module):
 
                 # generate config.
                 config = self._make_config(
+                    layer2core_map=layer2core_map,
                     chip_layers_ordering=chip_layers_ordering,
                     device=device,
                     monitor_layers=monitor_layers,
@@ -344,26 +367,24 @@ class DynapcnnNetwork(nn.Module):
 
     def _make_config(
         self,
-        chip_layers_ordering: Union[Sequence[int], str] = "auto",
-        device="dynapcnndevkit:0",
+        layer2core_map: Union[Dict[int, int], str] = "auto",
+        device: str = "dynapcnndevkit:0",
         monitor_layers: Optional[Union[List, str]] = None,
-        config_modifier=None,
+        config_modifier: Optional[Callable] = None,
+        chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
     ):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
         ----------
-
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
-
-        device: String
-            dynapcnndevkit, speck2b or speck2devkit
-
-        monitor_layers: None/List/Str
+        - layer2core_map (dict or "auto"): Defines how cores on chip are 
+            assigned to DynapcnnLayers. If `auto`, an automated procedure
+            will be used to find a valid ordering. Otherwise a dict needs
+            to be passed, with DynapcnnLayer indices as keys and assigned
+            core IDs as values. DynapcnnLayer indices have to match those of
+            `self.dynapcnn_layers`.
+        - device: (string): dynapcnndevkit, speck2b or speck2devkit
+        - monitor_layers: None/List/Str
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
             If you want to monitor the dvs layer for eg.
             ::
@@ -374,9 +395,16 @@ class DynapcnnNetwork(nn.Module):
 
             If this value is left as None, by default the last layer of the model is monitored.
 
-        config_modifier:
+        - config_modifier (Callable or None):
             A user configuration modifier method.
             This function can be used to make any custom changes you want to make to the configuration object.
+        - chip_layers_ordering (None, sequence of integers or "auto", obsolete):
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+            Note: This parameter is obsolete and should not be passed anymore. Use
+            `layer2core_map` instead.
 
         Returns
         -------
@@ -393,19 +421,44 @@ class DynapcnnNetwork(nn.Module):
         config_builder = ChipFactory(device).get_config_builder()
 
         # TODO not handling DVSLayer yet.
-        has_dvs_layer = isinstance(self._layers_mapper[0], DVSLayer)
+        has_dvs_layer = isinstance(self._dynapcnn_layers[0], DVSLayer)
 
-        # TODO: Replayce chip_layers_ordering with layer2core_map
-        if chip_layers_ordering == "auto":
-            # figure out mapping of each `DynapcnnLayer` into one core (core ID will be set in the layer's handler instance via `.assigned_core`).
-            # TODO: Argument should not be `self`
-            _ = config_builder.get_valid_mapping(self)
-
+        if chip_layers_ordering is not None:
+            if layer2core_map is not None:
+                warn(
+                    "Both `chip_layers_ordering` and `layer2core_map are provided. "
+                    "Please only provide `layer2core_map`, as `chip_layers_ordering` "
+                    "is deprecated.",
+                    DeprecationWarning,
+                )
+            elif chip_layers_ordering == "auto":
+                warn(
+                    "The parameter `chip_layers_ordering` is deprecated. Passing "
+                    "'auto' is still accepted, but in the future please use "
+                    "`layer2core_map` instead.",
+                    DeprecationWarning,
+                )
+                layer2core_map = "auto"
+            else:
+                raise ValueError(
+                    "`chip_layers_ordering` is deprecated. Passing anything other "
+                    "than `None` or 'auto' is not possible. To manually assign core "
+                    "to layers, please use the `layer2core_map` argument."
+                )
+        if layer2core_map == "auto":
+            # Assign chip core ID for each DynapcnnLayer.
+            layer2core_map = config_builder.map_layers_to_cores(self.dynapcnn_layers)
         else:
-            # TODO - mapping from each DynapcnnLayer into cores has been provided by the user: NOT IMPLEMENTED YET.
+            if not layer2core_map.keys() == self.dynapcnn_layers.keys():
+                raise ValueError(
+                    "The keys provided in `layer2core_map` must exactly match "
+                    "the keys in `self.dynapcnn_layers`"
+                )
+
             if has_dvs_layer:
                 # TODO not handling DVSLayer yet.
                 pass
+        self._layer2core_map = layer2core_map
 
         # update config (config. DynapcnnLayer instances into their assigned core).
         config = config_builder.build_config(
@@ -422,7 +475,7 @@ class DynapcnnNetwork(nn.Module):
         monitor_chip_layers = []
         if monitor_layers is None:
             # check if any monitoring is enabled (if not, enable monitoring for the last layer).
-            for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
+            for dcnnl_index, ith_dcnnl in self._dynapcnn_layers.items():
 
                 # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
                 if (
@@ -439,7 +492,7 @@ class DynapcnnNetwork(nn.Module):
                     )
 
         elif monitor_layers == "all":
-            for dcnnl_index, ith_dcnnl in self._layers_mapper.items():
+            for dcnnl_index, ith_dcnnl in self._dynapcnn_layers.items():
                 # TODO not handling DVSLayer yet
                 # monitor each chip core (if not a DVSLayer).
                 if not isinstance(ith_dcnnl, DVSLayer):
@@ -468,7 +521,7 @@ class DynapcnnNetwork(nn.Module):
 
     def _to_device(self, device: torch.device) -> None:
         """Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
-        for layer in self._layers_mapper.values():
+        for layer in self._dynapcnn_layers.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 layer.to(device)
 
@@ -477,7 +530,7 @@ class DynapcnnNetwork(nn.Module):
 
     def __str__(self):
         pretty_print = ""
-        for idx, layer_data in self._layers_mapper.items():
+        for idx, layer_data in self._dynapcnn_layers.items():
             pretty_print += f"----------------------- [ DynapcnnLayer {idx} ] -----------------------\n"
             pretty_print += f"{layer_data}\n\n"
 

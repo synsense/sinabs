@@ -1,7 +1,7 @@
 from collections import deque
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import sinabs
 
@@ -47,58 +47,76 @@ def find_chip_layers(
 
 
 def get_valid_mapping(
-    model: Union["DynapcnnNetwork"], constraints: List[LayerConstraints]
-) -> List[Tuple[int, int]]:
+    layers: Dict[int, DynapcnnLayer], constraints: List[LayerConstraints]
+) -> Dict[int, int]:
     """Given a model, find a valid layer ordering for its placement within the constraints
     provided.
 
     Parameters
     ----------
-        model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
-        constraints: a list of all the layer's constraints.
+    - model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
+    - constraints: a list of all the layer's constraints.
 
     Returns
-        netmap: a list of tuples with (dynapcnnlayer index, core index).
+    - Dict mapping from layer index (key) to assigned core ID (value)
     -------
     """
+    # Store layer indices and lists of possible target chips in separate lists
+    layer_indices = []
     layer_mapping = []
+    for layer_index, this_layer in layers.items():
+        # Skip DVSLayers
+        if isinstance(this_layer, DynapcnnLayer):
+            chip_layers = find_chip_layers(this_layer, constraints)
+            layer_mapping[layer_index] = chip_layers
+        # Make sure only DynapcnnLayers and DVSLayers are passed
+        elif not isinstance(this_layer, DVSLayer):
+            raise ValueError(f"Found unexpected layer type: `{type(this_layer)}")
 
-    if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-        for dcnnl_index, ith_dcnnl in model.layers_mapper.items():
-            if isinstance(ith_dcnnl, DynapcnnLayer):
-                layer_mapping.append(find_chip_layers(ith_dcnnl, constraints))
-            else:
-                raise ValueError(
-                    f"Layer {dcnnl_index} is not an instance of `DynapcnnLayer`."
-                )
+    graph = make_flow_graph(layer_mapping, len(constraints))
 
-        graph = make_flow_graph(layer_mapping, len(constraints))
+    # use Edmonds' Algorithm to find suitable cores for each DynapcnnLayer.
+    new_graph = edmonds(graph, 0, len(graph) - 1)
+    netmap = recover_mapping(new_graph, layer_mapping)
 
-        # use graph algorithm to find suitable cores for each DynapcnnLayer.
-        new_graph = edmonds(graph, 0, len(graph) - 1)
-
-        netmap = recover_mapping(new_graph, layer_mapping)
-
-    else:
-        raise InvalidModel(model)
-
-    return netmap
+    # Convert `netmap` to dict mapping from layer index to core ID
+    return {
+        layer_idx: core_id for layer_idx, core_id in zip(layer_indices, netmap)
+    }
 
 
 @dataclass
-class Edge:
+class FlowGraphEdge:
     s: int
     t: int
     cap: int
     flow: int = 0
-    rev: Optional["Edge"] = None
+    rev: Optional["FlowGraphEdge"] = None
 
     def __repr__(self):
-        return f"Edge from {self.s} to {self.t} with capacity {self.cap} and flow {self.flow}"
+        return f"FlowGraphEdge from {self.s} to {self.t} with capacity {self.cap} and flow {self.flow}"
 
 
-# graph is list of list of edges. Each edge is
-def edmonds(graph, source, sink, verbose: bool = False):
+def edmonds(
+    graph: List[List[FlowGraphEdge]], source: int, sink: int, verbose: bool = False
+) -> List[List[FlowGraphEdge]]:
+    """Use Edmonds' Algorithm to compute flow of flow graph
+
+    Makes a copy of the graph. The original graph is not changed in place.
+
+    Parameters
+    ----------
+    - graph List[List[FlowGraphEdge]]): Flow graph representation. Each list entry
+        corresponds to a node and consists of a list holding the outgoing edges
+        from this node.
+    - source (int): Index of source node within graph
+    - sind (int): Index of sink node within graph
+    - verbose (bool): Print detailed flow information if `True`
+
+    Returns
+    -------
+        List[List[FlowGraphEdge]]: New flow graph with calculated flow
+    """
     graph = deepcopy(graph)
     flow = 0
     while True:
@@ -133,31 +151,32 @@ def edmonds(graph, source, sink, verbose: bool = False):
 
 def make_flow_graph(
     layer_mapping: List[List[int]], num_layers: int = 9
-) -> List[List[Edge]]:
-    """Make a flow graph given all possible chip layers for each DynapcnnCompatibleLayer layer.
-    Note that the flows are not computed yet. The flow for the graph generated here needs to be
-    populated by calling the method `edmonds`
+) -> List[List[FlowGraphEdge]]:
+    """Make a flow graph given all possible chip cores for each software layer.
+
+    Note that the flows are not computed yet. The flow for the graph generated here
+    needs to be populated by calling the method `edmonds`
 
     Parameters
     ----------
-    layer_mapping:
-        List of a list of all layer indices. Eg. [[1,3], [4, 6, 1]] for a two layer model
-    num_layers:
-        Number of layers on the chip
+    - layer_mapping: List of a list of matching chip core indices for each software layer.
+        Eg. [[1,3], [4, 6, 1]] for a two layer model
+    - num_layers (int): Number of layers on the chip
 
     Returns
     -------
-        graph: List[List[Edge]]
+        List[List[FlowGraphEdge]]: Flow graph representation. Each list entry corresponds
+            to a node and consists of a list holding the outgoing edges from this node.
     """
     graph = []
     # add all our nodes
     # one source node
     graph.append([])
     # one node for every layer that will be mapped
-    for x in range(len(layer_mapping)):
+    for __ in range(len(layer_mapping)):
         graph.append([])
     # one node for every chip layer
-    for x in range(num_layers):
+    for __ in range(num_layers):
         graph.append([])
     # one sink node
     graph.append([])
@@ -165,41 +184,62 @@ def make_flow_graph(
     target_offset = len(layer_mapping) + 1
     # first from source to all layers
     for i in range(len(layer_mapping)):
-        graph[0].append(Edge(s=0, t=i + 1, cap=1, flow=0))
-        # add the reverse edge
-        graph[i + 1].append(Edge(s=i + 1, t=0, cap=0, flow=0))
+        source_to_layer = FlowGraphEdge(s=0, t=i + 1, cap=1, flow=0)
+        layer_to_source = FlowGraphEdge(s=i + 1, t=0, cap=0, flow=0)
         # fill in reverse pointers
-        graph[0][-1].rev = graph[i + 1][-1]
-        graph[i + 1][-1].rev = graph[0][-1]
+        source_to_layer.rev = layer_to_source
+        layer_to_source.rev = source_to_layer
+        # append new edges
+        graph[0].append(source_to_layer)
+        graph[i + 1].append(layer_to_source)
     # then from layers to chip layers
     for i, layer_targets in enumerate(layer_mapping):
         for target in layer_targets:
-            graph[i + 1].append(Edge(s=i + 1, t=target + target_offset, cap=1, flow=0))
-            graph[target + target_offset].append(
-                Edge(s=target + target_offset, t=i + 1, cap=0, flow=0)
+            layer_to_chip = FlowGraphEdge(
+                s=i + 1, t=target + target_offset, cap=1, flow=0
             )
-            graph[i + 1][-1].rev = graph[target + target_offset][-1]
-            graph[target + target_offset][-1].rev = graph[i + 1][-1]
-    # print(graph)
+            chip_to_layer = FlowGraphEdge(
+                s=target + target_offset, t=i + 1, cap=0, flow=0
+            )
+            layer_to_chip.rev = chip_to_layer
+            chip_to_layer.rev = layer_to_chip
+            graph[i + 1].append(layer_to_chip)
+            graph[target + target_offset].append(chip_to_layer)
     # then from chip layers to sink
-    for i, layer in enumerate(graph[target_offset:-1]):
-        sink = len(graph) - 1
-        source = i + target_offset
-        graph[source].append(Edge(s=source, t=sink, cap=1, flow=0))
-        graph[sink].append(Edge(s=sink, t=source, cap=0, flow=0))
-        graph[source][-1].rev = graph[sink][-1]
+    sink = len(graph) - 1
+    for chip_node in range(target_offset, sink):
+        graph[chip_node].append(FlowGraphEdge(s=chip_node, t=sink, cap=1, flow=0))
+        graph[sink].append(FlowGraphEdge(s=sink, t=chip_node, cap=0, flow=0))
+        graph[chip_node][-1].rev = graph[sink][-1]
         graph[sink][-1].rev = graph[sink][-1]
     return graph
 
 
-def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
+def recover_mapping(
+    graph: List[List[FlowGraphEdge]], num_layers: int
+) -> List[int]:
+    """Based on the flow graph retrieve a layer-to-core mapping
+
+    Parameters
+    ----------
+    - graph List[List[FlowGraphEdge]]): Flow graph representation with flow calculated.
+        Each list entry corresponds to a node and consists of a list holding the
+        outgoing edges from this node.
+    - num_layers (int): Number of software layers
+
+    Returns
+    -------
+    List[int]: Assigned core IDs for each layer in order.
+    """
     mapping = []
-    for i, layer in enumerate(layer_mapping):
-        for edge in graph[i + 1]:
+    for i in range(1, num_layers + 1):  # `+1` to skip source node
+        for edge in graph[i]:
             if edge.flow == 1:
-                mapping.append((i, edge.t - len(layer_mapping) - 1))
-    if len(mapping) != len(layer_mapping):
-        raise ValueError("One of the DynapcnnLayers could not be mapped to any core.")
+                mapping.append(edge.t - num_layers - 1)
+    if len(mapping) != num_layers:
+        raise ValueError(
+            "One or more of the DynapcnnLayers could not be mapped to any core."
+        )
     return mapping
 
 

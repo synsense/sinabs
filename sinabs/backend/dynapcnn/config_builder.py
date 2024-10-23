@@ -72,44 +72,19 @@ class ConfigBuilder(ABC):
         """Enable the monitor for a given set of layers in the config object."""
 
     @classmethod
-    def get_valid_mapping(cls, model: "DynapcnnNetwork") -> List[int]:
-        # TODO: This should accept more explicit arguments
-        """Find a valid set of layers for a given model.
+    def map_layers_to_cores(cls, layers: Dict[int, DynapcnnLayer]) -> Dict[int]:
+        """Find a mapping from DynapcnnLayers onto on-chip cores
 
         Parameters
         ----------
-        model (DynapcnnNetwork):
-            A model
+        - layers: Dict with layer indices as keys and DynapcnnLayer instances as values
 
         Returns
         -------
-        - chip_layers_ordering (list): the core indices corresponding to each layer of the model. Though this list is being returned, each core index
-            `core_idx` is assigned directyl to each `DynapcnnLayer` instance via accesses to `model.layers_mapper`.
+        - Dict mapping layer indices (keys) to assigned core IDs (values).
         """
 
-        chip_layers_ordering = []
-
-        if type(model) == sinabs.backend.dynapcnn.dynapcnn_network.DynapcnnNetwork:
-            mapping = get_valid_mapping(model, cls.get_constraints())
-
-            if isinstance(model.layers_mapper[0], DVSLayer):
-                # TODO not handling DVSLayer yet.
-                # TODO if the architecture has more than one `DynapcnnLayer`s acting as input node of the model
-                # thi check will be wrong since it assumes the network has a single input node `model.layers_mapper[0]`.
-                pass
-
-            for dcnnl_idx, core_idx in mapping:
-                # save the core index information on the handler of this `DynapcnnLayer` instance.
-                model.layers_handlers[dcnnl_idx][
-                    "layer_handler"
-                ].assigned_core = core_idx
-                chip_layers_ordering.append(core_idx)
-
-        else:
-            raise InvalidModel(model)
-
-        # return kept but its information is not used beyond this point (core indices already part of each `DynapcnnLayerHandler` instance).
-        return chip_layers_ordering
+        return get_valid_mapping(layers, cls.get_constraints())
 
     @classmethod
     def validate_configuration(cls, config) -> bool:
