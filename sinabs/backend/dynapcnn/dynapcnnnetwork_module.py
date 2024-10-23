@@ -75,6 +75,49 @@ class DynapcnnNetworkModule(nn.Module):
     def node_source_map(self):
         return self._node_source_map
 
+    def get_exit_layers(self) -> List[int]:
+        """ Get layers that act as exit points of the network
+        
+        Returns
+        -------
+        - List[int]: Layer indices with at least one exit destination.
+        """
+        return [
+            layer_idx
+            for layer_idx, destinations in self.destination_map.items()
+            if any(d < 0 for d in destinations)
+        ]
+
+    def get_exit_points(self):
+        """ Get details of layers that act as exit points of the network
+        
+        Returns
+        -------
+        - Dict[int, Dict]: Dict whose keys are layer indices of `dynapcnn_layers`
+            with at least one exit destination. Values are list of dicts, providing
+            for each exit destination the negative valued ID ('destination_id'),
+            the index of that destination within the list of destinations of the
+            corresponding `DynapcnnLayer` ('destination_index'), and the pooling
+            for this destination.
+        """
+        exit_layers = dict()
+        for layer_idx, destinations in self.destination_map.items():
+            exit_destinations = []
+            for i, dest in enumerate(destinations):
+                if dest < 0:
+                    exit_destinations.append(
+                        {
+                            "destination_id": dest,
+                            "destination_index": i,
+                            "pooling": self.dynapcnn_layers[layer_idx].pool[i],
+                        }
+                    )
+            if exit_destinations:
+                exit_layers[layer_idx] = exit_destinations
+
+        return exit_layers
+
+        
     def setup_dynapcnnlayer_graph(self, index_layers_topologically: bool = False):
         """ Set up data structures to run forward pass through dynapcnn layers
         
@@ -166,15 +209,15 @@ class DynapcnnNetworkModule(nn.Module):
             dict, with layer indices as keys, and nested dicts as values, which
             hold destination indices as keys and output tensors as values.
         * If `return_complete` is `False` and there is only a single destination
-            in the whole network that is marked as final (i.e. destination
+            in the whole network that is marked as exit point (i.e. destination
             index in dynapcnn layer handler is negative), it will return the
             output as a single tensor.
         * If `return_complete` is `False` and no destination in the network
-            is marked as final, a warning will be raised and the function
+            is marked as exit point, a warning will be raised and the function
             returns an empty dict.
         * In all other cases a dict will be returned that is of the same
             structure as if `return_complete` is `True`, but only with entries
-            where the destination is marked as final.
+            where the destination is marked as exit point.
 
         """
         if not hasattr(self, "_sorted_nodes"):
@@ -217,24 +260,24 @@ class DynapcnnNetworkModule(nn.Module):
         if return_complete:
             return layers_outputs
 
-        # Take outputs with final destinations as network output
+        # Take outputs with exit point destinations as network output
         network_outputs = {}
         for layer_idx, outputs in layers_outputs.items():
-            final_outputs = {
-                abs(idx_dest): out for idx_dest, out in outputs.items() if idx_dest < 0
+            outputs = {
+                idx_dest: out for idx_dest, out in outputs.items() if idx_dest < 0
             }
-            if final_outputs:
-                network_outputs[layer_idx] = final_outputs
+            if outputs:
+                network_outputs[layer_idx] = outputs
 
         # If no outputs have been found return None and warn
         if not network_outputs:
             warn(
-                "No final outputs have been found. Try setting `return_complete` "
-                "`True` to get all outputs, or mark final outputs by setting "
+                "No exit points have been found. Try setting `return_complete` "
+                "`True` to get all outputs, or mark exit points by setting "
                 "corresponding destination layer indices in destination_map "
                 " to negative integer values"
             )
-            return
+            return dict()
 
         # Special case with single output: return single tensor
         if (
@@ -257,12 +300,6 @@ class DynapcnnNetworkModule(nn.Module):
         index_order: List of integers indicating new order of layers:
             Position of layer index within this list indicates new index
         """
-        def negative_default(key):
-            if isinstance(key, int) and key < 0:
-                return key
-            else:
-                raise KeyError(key)
-
         mapping = {old: new for new, old in enumerate(index_order)}
 
         def remap(key):

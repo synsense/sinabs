@@ -263,7 +263,8 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
     Returns
     -------
     Dict with layer indices (int) as keys and list of destination indices (int) as values.
-        Layer outputs that are not sent to other dynapcnn layers are represented by negative indices.
+        Layer outputs that are not sent to other dynapcnn layers are considered
+        exit points of the network and represented by negative indices.
     """
     destination_map = dict()
     for layer_index, layer_info in dcnnl_map.items():

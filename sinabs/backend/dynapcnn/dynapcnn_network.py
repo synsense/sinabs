@@ -14,6 +14,7 @@ import sinabs
 import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
+from .dynapcnn_layer import DynapcnnLayer
 from .dvs_layer import DVSLayer
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
@@ -215,7 +216,7 @@ class DynapcnnNetwork(nn.Module):
         parameters = []
 
         for layer in self._dynapcnn_layers.values():
-            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
+            if isinstance(layer, DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
         return parameters
@@ -228,14 +229,14 @@ class DynapcnnNetwork(nn.Module):
         - init_fn (torch.nn.init): the weight initialization method to be used.
         """
         for layer in self._dynapcnn_layers.values():
-            if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
+            if isinstance(layer, DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
 
     def detach_neuron_states(self) -> None:
         """Detach the neuron states and activations from current computation graph (necessary)."""
 
         for module in self._dynapcnn_layers.values():
-            if isinstance(module, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
+            if isinstance(module, DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
                         buffer.detach_()
@@ -472,37 +473,30 @@ class DynapcnnNetwork(nn.Module):
             config.dvs_layer.merge = True
 
         # TODO all this monitoring part needs validation still.
-        monitor_chip_layers = []
         if monitor_layers is None:
-            # check if any monitoring is enabled (if not, enable monitoring for the last layer).
-            for dcnnl_index, ith_dcnnl in self._dynapcnn_layers.items():
-
-                # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
-                if (
-                    len(
-                        self._dynapcnnlayers_handlers[
-                            dcnnl_index
-                        ].dynapcnnlayer_destination
-                    )
-                    == 0
-                ):
-                    # a DynapcnnLayer without destinations is taken to be the output layer of the network.
-                    monitor_chip_layers.append(
-                        self._dynapcnnlayers_handlers[dcnnl_index].assigned_core
-                    )
+            # Monitor all layers with exit point destinations
+            monitor_layers = self._dynapcnn_module.get_exit_layers()
 
         elif monitor_layers == "all":
-            for dcnnl_index, ith_dcnnl in self._dynapcnn_layers.items():
-                # TODO not handling DVSLayer yet
-                # monitor each chip core (if not a DVSLayer).
-                if not isinstance(ith_dcnnl, DVSLayer):
-                    monitor_chip_layers.append(
-                        self._dynapcnnlayers_handlers[dcnnl_index].assigned_core
-                    )
+            monitor_layers = [
+                lyr_idx for lyr_idx, layer in self.dynapcnn_layers.items()
+                if not isinstance(layer, DVSLayer)
+            ]
 
-        if monitor_layers:
-            if "dvs" in monitor_layers:
+        # Collect cores (chip layers) that are to be monitored
+        monitor_chip_layers = []
+        for lyr_idx in monitor_layers:
+            if lyr_idx.lower() == "dvs":
                 monitor_chip_layers.append("dvs")
+            else:
+                # Warn when recording layers with pooling
+                if any(p != (1, 1) for p in self.dynapcnn_layers[lyr_idx].pool):
+                    warn(
+                        f"Monitored layer {lyr_idx} has at least one destination "
+                        "with pooling. Note that monitored events will be recorded "
+                        "before pooling"
+                    )
+                monitor_chip_layers.append(layer2core_map[lyr_idx])
 
         # enable monitors on the specified layers.
         config_builder.monitor_layers(config, monitor_chip_layers)
