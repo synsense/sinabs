@@ -4,7 +4,11 @@ from warnings import warn
 
 import samna
 import torch
-from samna.dynapcnn.configuration import DynapcnnConfiguration
+from samna.dynapcnn.configuration import (
+    CNNLayerConfig,
+    DynapcnnConfiguration,
+    DvsLayerConfig,
+)
 
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
@@ -26,7 +30,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
     @classmethod
-    def write_dvs_layer_config(cls, layer: DVSLayer, config: "DvsLayerConfig"):
+    def write_dvs_layer_config(cls, layer: DVSLayer, config: DvsLayerConfig):
         for param, value in layer.get_config_dict().items():
             setattr(config, param, value)
 
@@ -79,7 +83,19 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layer2core_map: Dict[int, int],
         destination_indices: List[int],
     ) -> dict:
-        # TODO: Docstring
+        """Generate config dict from DynapcnnLayer instance
+
+        Parameters
+        ----------
+        - layer (DynapcnnLayer): Layer instance from which to generate the config
+        - layer2core_map (Dict): Keys are layer indices, values are corresponding
+            cores on hardware. Needed to map the destinations.]
+        - destination_indices (List): Indices of destination layers for `layer`
+
+        Returns
+        -------
+        - Dict that holds the information to configure the on-chip core
+        """
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
 
@@ -181,17 +197,21 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layer: DynapcnnLayer,
         layer2core_map: Dict[int, int],
         destination_indices: List[int],
-        chip_layer: "CNNLayerConfig",
+        chip_layer: CNNLayerConfig,
     ) -> None:
-        """Write a single layer configuration to the dynapcnn conf object. Uses the data in `layer` to configure a `CNNLayerConfig` to be
+        """Write a single layer configuration to the dynapcnn conf object.
+
+        Uses the data in `layer` to configure a `CNNLayerConfig` to be
         deployed on chip.
 
         Parameters
         ----------
-        - layer (DynapcnnLayer): the layer for which the condiguration will be written.
-        - chip_layer (CNNLayerConfig): configuration object representing the layer to which configuration is written.
-        - layer_handler (DynapcnnLayerHandler): ...
-        - all_handlers (dict): ...
+        - layer (DynapcnnLayer): Layer instance from which to generate the config
+        - layer2core_map (Dict): Keys are layer indices, values are corresponding
+            cores on hardware. Needed to map the destinations.]
+        - destination_indices (List): Indices of destination layers for `layer`
+        - chip_layer (CNNLayerConfig): Configuration object of the corrsesponding
+            on-chip core. Will be changed in-place based on `layer`.
         """
 
         # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
@@ -225,17 +245,19 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
     ) -> DynapcnnConfiguration:
-        # TODO: Update docstring
-        """Uses `DynapcnnLayer` objects to configure their equivalent chip core via a `CNNLayerConfig` object that is built
-        using using the `DynapcnnLayer` properties.
+        """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
         Parameters
         ----------
-        - model (DynapcnnNetwork): network instance used to read out `DynapcnnLayer` instances.
+        - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
+        - layer2core_map (Dict): Keys are layer indices, values are corresponding
+            cores on hardware. Needed to map the destinations.]
+        - destination_indices (List): Indices of destination layers for `layer`
 
         Returns
-        ----------
-        - config (DynapcnnConfiguration): an instance of a `DynapcnnConfiguration`.
+        -------
+        - DynapcnnConfiguration: Config object holding the information to configure
+            the chip based on the provided `layers`.
         """
         config = cls.get_default_config()
 

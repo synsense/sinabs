@@ -30,12 +30,3 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
         return config_dict
-
-    @classmethod
-    def get_dynapcnn_layer_config_dict(
-        cls, layer: DynapcnnLayer, layers_mapper: Dict[int, DynapcnnLayer]
-    ) -> dict:
-        config_dict = super().get_dynapcnn_layer_config_dict(
-            layer=layer, layers_mapper=layers_mapper
-        )
-        return config_dict
