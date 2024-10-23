@@ -106,26 +106,6 @@ class DynapcnnNetwork(nn.Module):
         )
         return self._layer2core_map
 
-    def get_output_core_id(self) -> int:
-        """."""
-
-        # TODO if a network with two output layers is deployed, which is not supported yet btw, this monitoring part needs to be revised.
-        for _, ith_dcnnl in self._dynapcnn_layers.items():
-            if len(ith_dcnnl.dynapcnnlayer_destination) == 0:
-                # a DynapcnnLayer without destinations is taken to be the output layer of the network.
-                return ith_dcnnl.assigned_core
-
-    def get_input_core_id(self) -> list:
-        """Since the chip allows for multiple input layers (that merge into a single output at some point), this method returns
-        a list of all core IDs to which an input layer of the network has been assigned to.
-        """
-        entry_points = []
-        for _, ith_dcnnl in self._dynapcnn_layers.items():
-            if ith_dcnnl.entry_point:
-                entry_points.append(ith_dcnnl.assigned_core)
-
-        return entry_points
-
     def hw_forward(self, x):
         """Forwards data through the chip."""
 
