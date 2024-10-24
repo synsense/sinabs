@@ -284,11 +284,15 @@ class GraphExtractor:
         ----------
         - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
-        return {
-            self._name_2_indx_map[name]: module
-            for name, module in model.named_modules()
-            if name in self._name_2_indx_map
-        }
+        indx_2_module_map = dict()
+
+        for name, module in model.named_modules():
+            # Make sure names match those provided by nirtorch nodes 
+            name = nirtorch.utils.sanitize_name(name)
+            if name in self._name_2_indx_map:
+                indx_2_module_map[self._name_2_indx_map[name]] = module
+
+        return indx_2_module_map
 
     def _update_internal_representation(self, remapped_nodes: Dict[int, int]):
         """Update internal attributes after remapping of nodes
