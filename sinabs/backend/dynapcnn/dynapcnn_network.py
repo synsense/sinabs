@@ -196,7 +196,7 @@ class DynapcnnNetwork(nn.Module):
         """
         parameters = []
 
-        for layer in self._dynapcnn_layers.values():
+        for layer in self.dynapcnn_layers.values():
             if isinstance(layer, DynapcnnLayer):
                 parameters.extend(layer.conv_layer.parameters())
 
@@ -209,14 +209,14 @@ class DynapcnnNetwork(nn.Module):
         ----------
         - init_fn (torch.nn.init): the weight initialization method to be used.
         """
-        for layer in self._dynapcnn_layers.values():
+        for layer in self.dynapcnn_layers.values():
             if isinstance(layer, DynapcnnLayer):
                 init_fn(layer.conv_layer.weight.data)
 
     def detach_neuron_states(self) -> None:
         """Detach the neuron states and activations from current computation graph (necessary)."""
 
-        for module in self._dynapcnn_layers.values():
+        for module in self.dynapcnn_layers.values():
             if isinstance(module, DynapcnnLayer):
                 if isinstance(module.spk_layer, sl.StatefulLayer):
                     for name, buffer in module.spk_layer.named_buffers():
@@ -494,7 +494,7 @@ class DynapcnnNetwork(nn.Module):
         config_builder = ChipFactory(device).get_config_builder()
 
         # TODO not handling DVSLayer yet.
-        has_dvs_layer = isinstance(self._dynapcnn_layers[0], DVSLayer)
+        has_dvs_layer = isinstance(self.dynapcnn_layers[0], DVSLayer)
 
         if chip_layers_ordering is not None:
             if layer2core_map is not None:
@@ -582,7 +582,7 @@ class DynapcnnNetwork(nn.Module):
 
     def _to_device(self, device: torch.device) -> None:
         """Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
-        for layer in self._dynapcnn_layers.values():
+        for layer in self.dynapcnn_layers.values():
             if isinstance(layer, sinabs.backend.dynapcnn.dynapcnn_layer.DynapcnnLayer):
                 layer.to(device)
 
@@ -591,7 +591,7 @@ class DynapcnnNetwork(nn.Module):
 
     def __str__(self):
         pretty_print = ""
-        for idx, layer_data in self._dynapcnn_layers.items():
+        for idx, layer_data in self.dynapcnn_layers.items():
             pretty_print += f"----------------------- [ DynapcnnLayer {idx} ] -----------------------\n"
             pretty_print += f"{layer_data}\n\n"
 
