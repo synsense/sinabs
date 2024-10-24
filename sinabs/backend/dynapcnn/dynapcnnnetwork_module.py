@@ -50,7 +50,7 @@ class DynapcnnNetworkModule(nn.Module):
 
         # Unfortunately ModuleDict does not allow for integer keys
         # TODO: Consider using list instead of dict
-        self.dynapcnn_layers = nn.ModuleDict(
+        self._dynapcnn_layers = nn.ModuleDict(
             {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
         )
         self._destination_map = destination_map
@@ -63,6 +63,11 @@ class DynapcnnNetworkModule(nn.Module):
     def destination_map(self):
         return self._destination_map
     
+    @property
+    def dynapcnn_layers(self):
+        # Convert string-indices to integers
+        return {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
+
     @property
     def entry_points(self):
         return self._entry_points
@@ -241,7 +246,7 @@ class DynapcnnNetworkModule(nn.Module):
                 current_input = layers_outputs[idx_src][idx_curr]
 
             # Get current layer instance and destinations
-            layer = self.dynapcnn_layers[str(idx_curr)]
+            layer = self.dynapcnn_layers[idx_curr]
             destinations = self._destination_map[idx_curr]
 
             # Forward pass through layer
@@ -312,8 +317,8 @@ class DynapcnnNetworkModule(nn.Module):
                 return mapping[key]
 
         # Remap all internal objects
-        self.dynapcnn_layers = nn.ModuleDict(
-            {str(remap(int(idx))): lyr for idx, lyr in self.dynapcnn_layers.items()}
+        self._dynapcnn_layers = nn.ModuleDict(
+            {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
         )
         self._entry_points = {remap(idx) for idx in self._entry_points}
         self._destination_map = {
