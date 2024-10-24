@@ -11,7 +11,12 @@ from typing import Dict, List, Set, Tuple, Type
 from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES
-from .exceptions import InvalidEdge, InvalidGraphStructure, UnmatchedNode, UnmatchedPoolingEdges
+from .exceptions import (
+    InvalidEdge,
+    InvalidGraphStructure,
+    UnmatchedNode,
+    UnmatchedPoolingEdges,
+)
 from .utils import Edge
 
 
@@ -46,27 +51,9 @@ def collect_dynapcnn_layer_info(
     # TODO: Handle DVS layer
 
     # Sort edges by edge type (type of layers they connect)
-    edges_by_type: Dict[str, Set[Edge]] = dict()
-    for edge in edges:
-        edge_type = get_valid_edge_type(
-            edge, indx_2_module_map, VALID_SINABS_EDGE_TYPES
-        )
-
-        # Validate edge type
-        if edge_type is None:
-            raise InvalidEdge(
-                edge, type(indx_2_module_map[edge[0]]), type(indx_2_module_map[edge[1]])
-            )
-
-        if edge_type in edges_by_type:
-            edges_by_type[edge_type].add(edge)
-        else:
-            edges_by_type[edge_type] = {edge}
-
-    # Dict to collect information for each future dynapcnn layer
-    dynapcnn_layer_info = dict()
-    # Map node IDs to dynapcnn layer ID
-    node_2_layer_map = dict()
+    edges_by_type: Dict[str, Set[Edge]] = sort_edges_by_type(
+        edges=edges, indx_2_module_map=indx_2_module_map
+    )
 
     if "weight-neuron" not in edges_by_type:
         raise InvalidGraphStructure(
@@ -74,6 +61,11 @@ def collect_dynapcnn_layer_info(
             "that is directly connected to a neuron layer (e.g. IAFSqueeze). "
             "None such weight-neuron pair has been found in the provided network."
         )
+
+    # Dict to collect information for each future dynapcnn layer
+    dynapcnn_layer_info = dict()
+    # Map node IDs to dynapcnn layer ID
+    node_2_layer_map = dict()
 
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
     while edges_by_type["weight-neuron"]:
@@ -99,9 +91,7 @@ def collect_dynapcnn_layer_info(
     while edges_by_type.get("neuron-pooling", False):
         edge = edges_by_type["neuron-pooling"].pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
-        pooling_chains, edges_used = trace_paths(
-            edge[1], pooling_pooling_edges
-        )
+        pooling_chains, edges_used = trace_paths(edge[1], pooling_pooling_edges)
         add_pooling_to_entry(
             dynapcnn_layer_info,
             edge,
@@ -142,9 +132,9 @@ def get_valid_edge_type(
 
     Parameters
     ----------
-        edge (tuple of two int): The edge whose type is to be inferred
-        layers (Dict): Dict with node IDs as keys and layer instances as values
-        valid_edge_ids: Dict with valid edge-types (tuples of Types) as keys and edge-type-ID as value
+    edge (tuple of two int): The edge whose type is to be inferred
+    layers (Dict): Dict with node IDs as keys and layer instances as values
+    valid_edge_ids: Dict with valid edge-types (tuples of Types) as keys and edge-type-ID as value
 
     Returns
     ----------
@@ -154,6 +144,42 @@ def get_valid_edge_type(
     target_type = type(layers[edge[1]])
 
     return valid_edge_ids.get((source_type, target_type), None)
+
+
+def sort_edges_by_type(
+    edges: Set[Edge], indx_2_module_map: Dict[int, Type]
+) -> Dict[str, Set[Edge]]:
+    """Sort edges by the type of nodes they connect
+
+    Parameters
+    ----------
+    edges (set of tuples): Represent connections between two nodes in computational graph
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+
+    Returns
+    -------
+    Dict with possible keys "weight-neuron", "neuron-weight", "neuron-pooling", "pooling-pooling",
+        and "pooling-weight". Values are sets of edges corresponding to these types.
+    """
+    edges_by_type: Dict[str, Set[Edge]] = dict()
+
+    for edge in edges:
+        edge_type = get_valid_edge_type(
+            edge, indx_2_module_map, VALID_SINABS_EDGE_TYPES
+        )
+
+        # Validate edge type
+        if edge_type is None:
+            raise InvalidEdge(
+                edge, type(indx_2_module_map[edge[0]]), type(indx_2_module_map[edge[1]])
+            )
+
+        if edge_type in edges_by_type:
+            edges_by_type[edge_type].add(edge)
+        else:
+            edges_by_type[edge_type] = {edge}
+
+    return edges_by_type
 
 
 def init_new_dynapcnnlayer_entry(
@@ -269,7 +295,7 @@ def add_pooling_to_entry(
 
 def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     """Set minimal destination entries for layers that don't have any.
-     
+
     This ensures that the forward methods of the resulting DynapcnnLayer
     instances return an output, letting these layers act as exit points
     of the network.
@@ -284,13 +310,13 @@ def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     for layer_info in dynapcnn_layer.values():
         if not (destinations := layer_info["destinations"]):
             # Add `None` destination to empty destination lists
-                destinations.append(
-                    {
-                        "pooling_ids": [],
-                        "pooling_modules": [],
-                        "destination_layer": None,
-                    }
-                )
+            destinations.append(
+                {
+                    "pooling_ids": [],
+                    "pooling_modules": [],
+                    "destination_layer": None,
+                }
+            )
 
 
 def set_neuron_layer_destination(
