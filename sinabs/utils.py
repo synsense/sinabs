@@ -1,4 +1,4 @@
-from typing import List
+from typing import Iterable, List, Tuple, TypeVar, Union
 
 import numpy as np
 import torch
@@ -268,3 +268,45 @@ def get_smallest_compatible_time_dimension(model: nn.Module) -> int:
     num_timesteps = abs(get_num_timesteps(model))
     # Use `abs` to turn `-1` to `1`
     return abs(batch_size * num_timesteps)
+
+
+def expand_to_pair(value) -> Tuple[int, int]:
+    """Expand a given value to a pair (tuple) if an int is passed.
+
+    Parameters
+    ----------
+    value:
+        int
+
+    Returns
+    -------
+    pair:
+        (int, int)
+    """
+    return (value, value) if isinstance(value, int) else value
+
+
+T = TypeVar("T")
+def collapse_pair(pair: Union[Iterable[T], T]) -> T:
+    """ Collapse an iterable of equal elements by returning only the first
+
+    Parameters
+    ----------
+    pair: Iterable. All elements should be the same.
+
+    Returns
+    -------
+    First item of `pair`. If `pair` is not iterable it will return `pair` itself.
+
+    Raises
+    ------
+    ValueError if not all elements in `pair` are equal. 
+    """
+    if isinstance(pair, Iterable):
+        items = [x for x in pair]
+        if any(x != items[0] for x in items):
+            raise ValueError("All elements of `pair` must be the same")
+        return items[0]
+    else:
+        return pair
+

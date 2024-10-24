@@ -12,7 +12,7 @@ from samna.dynapcnn.configuration import (
 
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
-from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
+from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
@@ -178,12 +178,24 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         destinations = []
         pooling_sizes = layer.pool
         for dest_layer_id, pool in zip(destination_indices, pooling_sizes):
-            dest_data = {
-                "layer": layer2core_map[dest_layer_id],
-                "enable": True,
-                "pooling": expand_to_pair(pool),
-            }
-            destinations.append(dest_data)
+            # Ignore exit point destinations
+            if dest_layer_id >= 0:
+
+                try:
+                    # Use scalar value for pooling
+                    pool = sinabs.utils.collapse_pair(pool)
+                except ValueError:
+                    raise ValueError(
+                        f"Can only do pooling with quadratic kernels. Received {pool}"
+                    )
+
+                dest_data = {
+                    "layer": layer2core_map[dest_layer_id],
+                    "enable": True,
+                    "pooling": pool,
+                }
+                destinations.append(dest_data)
+
         config_dict["destinations"] = destinations
 
         # Set kill bits
@@ -222,8 +234,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         )
 
         # update configuration of the DYNAPCNN layer.
-        chip_layer.dimensions = config_dict["dimensions"]
-        config_dict.pop("dimensions")
+        chip_layer.dimensions = config_dict.pop("dimensions")
 
         # set the destinations configuration.
         for dest_idx, destination in enumerate(config_dict.pop("destinations")):
@@ -274,10 +285,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 chip_layer = config.cnn_layers[layer2core_map[layer_index]]
                 # write core configuration.
                 cls.write_dynapcnn_layer_config(
-                    ith_dcnnl,
-                    chip_layer,
-                    destination_indices=destination_map[layer_index],
+                    layer=ith_dcnnl,
                     layer2core_map=layer2core_map,
+                    chip_layer=chip_layer,
+                    destination_indices=destination_map[layer_index],
                 )
 
             else:

@@ -4,9 +4,9 @@ from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 from torch import nn
 
 from sinabs import layers as sl
+from sinabs.utils import expand_to_pair
 
 from .dynapcnn_layer import DynapcnnLayer
-from .utils import expand_to_pair
 
 
 def construct_dynapcnnlayers_from_mapper(

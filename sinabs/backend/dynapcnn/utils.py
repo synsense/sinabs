@@ -13,9 +13,10 @@ import torch
 import torch.nn as nn
 
 import sinabs.layers as sl
+from sinabs.utils import expand_to_pair
 
 from .crop2d import Crop2d
-from .dvs_layer import DVSLayer, expand_to_pair
+from .dvs_layer import DVSLayer
 from .flipdims import FlipDims
 
 if TYPE_CHECKING:

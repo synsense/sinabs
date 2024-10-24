@@ -570,7 +570,7 @@ class DynapcnnNetwork(nn.Module):
         # Collect cores (chip layers) that are to be monitored
         monitor_chip_layers = []
         for lyr_idx in monitor_layers:
-            if lyr_idx.lower() == "dvs":
+            if str(lyr_idx).lower() == "dvs":
                 monitor_chip_layers.append("dvs")
             else:
                 # Warn when recording layers with pooling

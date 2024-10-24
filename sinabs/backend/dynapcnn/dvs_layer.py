@@ -3,25 +3,10 @@ from typing import Optional, Tuple
 import torch.nn as nn
 
 from sinabs.layers import SumPool2d
+from sinabs.utils import expand_to_pair
 
 from .crop2d import Crop2d
 from .flipdims import FlipDims
-
-
-def expand_to_pair(value) -> (int, int):
-    """Expand a given value to a pair (tuple) if an int is passed.
-
-    Parameters
-    ----------
-    value:
-        int
-
-    Returns
-    -------
-    pair:
-        (int, int)
-    """
-    return (value, value) if isinstance(value, int) else value
 
 
 class DVSLayer(nn.Module):
