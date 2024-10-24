@@ -432,6 +432,18 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise ValueError(f"Generated config is not valid for {device}")
 
+    def has_dvs_layer(self) -> bool:
+        """ Return True if there is a DVSLayer in the network
+        
+        Returns
+        -------
+        bool: True if DVSLayer is found within the network.
+        """
+        for layer in self.dynapcnn_layers.values():
+            if isinstance(layer, DVSLayer):
+                return True
+        return False    
+        
     ####################################################### Private Methods #######################################################
 
     def _make_config(
@@ -494,7 +506,7 @@ class DynapcnnNetwork(nn.Module):
         config_builder = ChipFactory(device).get_config_builder()
 
         # TODO not handling DVSLayer yet.
-        has_dvs_layer = isinstance(self.dynapcnn_layers[0], DVSLayer)
+        has_dvs_layer = self.has_dvs_layer()
 
         if chip_layers_ordering is not None:
             if layer2core_map is not None:
