@@ -1,67 +1,143 @@
+from collections import defaultdict, deque
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Tuple, Type, Union
+from typing import (
+    TYPE_CHECKING,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+)
 
 import torch
 import torch.nn as nn
 
-import sinabs
 import sinabs.layers as sl
+from sinabs.utils import expand_to_pair
 
 from .crop2d import Crop2d
-from .dvs_layer import DVSLayer, expand_to_pair
-from .dynapcnn_layer import DynapcnnLayer
-from .exceptions import InputConfigurationError, MissingLayer, UnexpectedLayer
+from .dvs_layer import DVSLayer
 from .flipdims import FlipDims
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
-DEFAULT_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten)
+DEFAULT_IGNORED_LAYER_TYPES = Union[
+    nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge
+]
+
+Edge = Tuple[int, int]  # Define edge-type alias
 
 
-def infer_input_shape(
-    layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
-) -> Tuple[int, int, int]:
-    """Checks if the input_shape is specified. If either of them are specified, then it checks if
-    the information is consistent and returns the input shape.
+####################################################### Device Related #######################################################
+
+
+def parse_device_id(device_id: str) -> Tuple[str, int]:
+    """Parse device id into device type and device index.
+
+    Args:
+        device_id (str): Device id typically of the form `device_type:index`.
+            In case no index is specified, the default index of zero is returned.
+
+    Returns:
+        Tuple[str, int]: (device_type, index) Returns a tuple with the index and device type.
+    """
+    parts = device_id.split(sep=":")
+    if len(parts) == 1:
+        device_type = parts[0]
+        index = 0
+    elif len(parts) == 2:
+        device_type, index = parts
+    else:
+        raise Exception(
+            "Device id not understood. A string of form `device_type:index` expected."
+        )
+
+    return device_type, int(index)
+
+
+def get_device_id(device_type: str, index: int) -> str:
+    """Generate a device id string given a device type and its index.
+
+    Args:
+        device_type (str): Device type
+        index (int): Device index
+
+    Returns:
+        str: A string of the form `device_type:index`
+    """
+    return f"{device_type}:{index}"
+
+
+def standardize_device_id(device_id: str) -> str:
+    """Standardize device id string.
+
+    Args:
+        device_id (str): Device id string. Could be of the form `device_type` or `device_type:index`
+
+    Returns:
+        str: Returns a sanitized device id of the form `device_type:index`
+    """
+    device_type, index = parse_device_id(device_id=device_id)
+    return get_device_id(device_type=device_type, index=index)
+
+
+####################################################### DynapcnnNetwork Related #######################################################
+
+
+def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:
+    """Performs a topological sorting (using Kahn's algorithm) of a graph descrobed by a list edges. An entry node `X`
+    of the graph have to be flagged inside `edges` by a tuple `('input', X)`.
 
     Parameters
     ----------
-    layers:
-        List of modules
-    input_shape :
-        (channels, height, width)
+    - edges (set): the edges describing the *acyclic* graph.
 
     Returns
-    -------
-    Output shape:
-        (channels, height, width)
+    ----------
+    - topological_order (list): the nodes sorted by the graph's topology.
     """
-    if input_shape is not None and len(input_shape) != 3:
-        raise InputConfigurationError(
-            f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
-        )
 
-    input_shape_from_layer = None
-    if layers and isinstance(layers[0], DVSLayer):
-        input_shape_from_layer = layers[0].input_shape
-        if len(input_shape_from_layer) != 3:
-            raise InputConfigurationError(
-                f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found."
-            )
-    if (input_shape is not None) and (input_shape_from_layer is not None):
-        if input_shape == input_shape_from_layer:
-            return input_shape
+    graph = defaultdict(list)
+    in_degree = defaultdict(int)
+
+    # initialize the graph and in-degrees.
+    for u, v in edges:
+        if u != "input":
+            graph[u].append(v)
+            in_degree[v] += 1
         else:
-            raise InputConfigurationError(
-                f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}"
-            )
-    elif input_shape_from_layer is not None:
-        return input_shape_from_layer
-    elif input_shape is not None:
-        return input_shape
-    else:
-        raise InputConfigurationError("No input shape could be inferred")
+            if v not in in_degree:
+                in_degree[v] = 0
+        if v not in in_degree:
+            in_degree[v] = 0
+
+    # find all nodes with zero in-degrees.
+    zero_in_degree_nodes = deque(
+        [node for node, degree in in_degree.items() if degree == 0]
+    )
+
+    # process nodes and create the topological order.
+    topological_order = []
+
+    while zero_in_degree_nodes:
+        node = zero_in_degree_nodes.popleft()
+        topological_order.append(node)
+
+        for neighbor in graph[node]:
+            in_degree[neighbor] -= 1
+            if in_degree[neighbor] == 0:
+                zero_in_degree_nodes.append(neighbor)
+
+    # check if all nodes are processed (to handle cycles).
+    if len(topological_order) == len(in_degree):
+        return topological_order
+
+    raise ValueError("The graph has a cycle and cannot be topologically sorted.")
+
+
+####################################################### MISSING FUNCTIONALITY #######################################################
+# TODO: these methods are currently not used by the new implementation of DynapcnnNetwork (but should).
 
 
 def convert_cropping2dlayer_to_crop2d(
@@ -183,6 +259,8 @@ def construct_dvs_layer(
 def merge_conv_bn(conv, bn):
     """Merge a convolutional layer with subsequent batch normalization.
 
+    # TODO: new implementation of 'DynapcnnLayer' is not handling BN layers yet.
+
     Parameters
     ----------
         conv: torch.nn.Conv2d
@@ -240,7 +318,6 @@ def construct_next_pooling_layer(
 
     rescale_factor = 1
     cumulative_pooling = expand_to_pair(1)
-
     idx_next = idx_start
     # Figure out pooling dims
     while idx_next < len(layers):
@@ -268,6 +345,7 @@ def construct_next_pooling_layer(
             cumulative_pooling[0] * pooling[0],
             cumulative_pooling[1] * pooling[1],
         )
+
         # Update rescaling factor
         if isinstance(lyr, nn.AvgPool2d):
             rescale_factor *= pooling[0] * pooling[1]
@@ -278,223 +356,6 @@ def construct_next_pooling_layer(
     else:
         lyr_pool = sl.SumPool2d(cumulative_pooling)
         return lyr_pool, idx_next, rescale_factor
-
-
-def construct_next_dynapcnn_layer(
-    layers: List[nn.Module],
-    idx_start: int,
-    in_shape: Tuple[int, int, int],
-    discretize: bool,
-    rescale_factor: float = 1,
-) -> Tuple[DynapcnnLayer, int, float]:
-    """Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and pooling layers.
-
-    Parameters
-    ----------
-
-        layers: sequence of layer objects
-            First object must be Conv2d, next must be an IAF layer. All pooling
-            layers that follow immediately are consolidated. Layers after this
-            will be ignored.
-        idx_start:
-            Layer index to start construction from
-        in_shape: tuple of integers
-            Shape of the input to the first layer in `layers`. Convention:
-            (input features, height, width)
-        discretize: bool
-            Discretize weights and thresholds if True
-        rescale_factor: float
-            Weights of Conv2d layer are scaled down by this factor. Can be
-            used to account for preceding average pooling that gets converted
-            to sum pooling.
-
-    Returns
-    -------
-        dynapcnn_layer: DynapcnnLayer
-            DynapcnnLayer
-        layer_idx_next: int
-            Index of the next layer after this layer is constructed
-        rescale_factor: float
-            rescaling factor to account for average pooling
-    """
-    layer_idx_next = idx_start  # Keep track of layer indices
-
-    # Check that the first layer is Conv2d, or Linear
-    if not isinstance(layers[layer_idx_next], (nn.Conv2d, nn.Linear)):
-        raise UnexpectedLayer(nn.Conv2d, layers[layer_idx_next])
-
-    # Identify and consolidate conv layer
-    lyr_conv = layers[layer_idx_next]
-    layer_idx_next += 1
-    if layer_idx_next >= len(layers):
-        raise MissingLayer(layer_idx_next)
-    # Check and consolidate batch norm
-    if isinstance(layers[layer_idx_next], nn.BatchNorm2d):
-        lyr_conv = merge_conv_bn(lyr_conv, layers[layer_idx_next])
-        layer_idx_next += 1
-
-    # Check next layer exists
-    try:
-        lyr_spk = layers[layer_idx_next]
-        layer_idx_next += 1
-    except IndexError:
-        raise MissingLayer(layer_idx_next)
-
-    # Check that the next layer is spiking
-    # TODO: Check that the next layer is an IAF layer
-    if not isinstance(lyr_spk, sl.IAF):
-        raise TypeError(
-            f"Convolution must be followed by IAF spiking layer, found {type(lyr_spk)}"
-        )
-
-    # Check for next pooling layer
-    lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(
-        layers, layer_idx_next
-    )
-    # Increment layer index to after the pooling layers
-    layer_idx_next = i_next
-
-    # Compose DynapcnnLayer
-    dynapcnn_layer = DynapcnnLayer(
-        conv=lyr_conv,
-        spk=lyr_spk,
-        pool=lyr_pool,
-        in_shape=in_shape,
-        discretize=discretize,
-        rescale_weights=rescale_factor,
-    )
-
-    return dynapcnn_layer, layer_idx_next, rescale_factor_after_pooling
-
-
-def build_from_list(
-    layers: List[nn.Module],
-    in_shape,
-    discretize=True,
-    dvs_input=False,
-) -> nn.Sequential:
-    """Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising
-    a spiking CNN.
-
-    Parameters
-    ----------
-
-        layers: sequence of layer objects
-        in_shape: tuple of integers
-            Shape of the input to the first layer in `layers`. Convention:
-            (channels, height, width)
-        discretize: bool
-            Discretize weights and thresholds if True
-        dvs_input: bool
-            Whether model should receive DVS input. If `True`, the returned model
-            will begin with a DVSLayer with `disable_pixel_array` set to False.
-            Otherwise, the model starts with a DVSLayer only if the first element
-            in `layers` is a pooling, cropping or flipping layer.
-
-    Returns
-    -------
-        nn.Sequential
-    """
-    compatible_layers = []
-    lyr_indx_next = 0
-    # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
-    dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
-        layers, input_shape=in_shape, idx_start=lyr_indx_next, dvs_input=dvs_input
-    )
-    if dvs_layer is not None:
-        compatible_layers.append(dvs_layer)
-        in_shape = dvs_layer.get_output_shape()
-    # Find and populate dynapcnn layers
-    while lyr_indx_next < len(layers):
-        if isinstance(layers[lyr_indx_next], DEFAULT_IGNORED_LAYER_TYPES):
-            # - Ignore identity, dropout and flatten layers
-            lyr_indx_next += 1
-            continue
-        dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
-            layers,
-            lyr_indx_next,
-            in_shape=in_shape,
-            discretize=discretize,
-            rescale_factor=rescale_factor,
-        )
-        in_shape = dynapcnn_layer.get_output_shape()
-        compatible_layers.append(dynapcnn_layer)
-
-    return nn.Sequential(*compatible_layers)
-
-
-def convert_model_to_layer_list(
-    model: Union[nn.Sequential, sinabs.Network],
-    ignore: Union[Type, Tuple[Type, ...]] = (),
-) -> List[nn.Module]:
-    """Convert a model to a list of layers.
-
-    Parameters
-    ----------
-    model: nn.Sequential or sinabs.Network
-    ignore: type or tuple of types of modules to be ignored
-
-    Returns
-    -------
-    List[nn.Module]
-    """
-    if isinstance(model, sinabs.Network):
-        return convert_model_to_layer_list(model.spiking_model)
-    elif isinstance(model, nn.Sequential):
-        layers = [layer for layer in model if not isinstance(layer, ignore)]
-    else:
-        raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
-    return layers
-
-
-def parse_device_id(device_id: str) -> Tuple[str, int]:
-    """Parse device id into device type and device index.
-
-    Args:
-        device_id (str): Device id typically of the form `device_type:index`.
-            In case no index is specified, the default index of zero is returned.
-
-    Returns:
-        Tuple[str, int]: (device_type, index) Returns a tuple with the index and device type.
-    """
-    parts = device_id.split(sep=":")
-    if len(parts) == 1:
-        device_type = parts[0]
-        index = 0
-    elif len(parts) == 2:
-        device_type, index = parts
-    else:
-        raise Exception(
-            "Device id not understood. A string of form `device_type:index` expected."
-        )
-
-    return device_type, int(index)
-
-
-def get_device_id(device_type: str, index: int) -> str:
-    """Generate a device id string given a device type and its index.
-
-    Args:
-        device_type (str): Device type
-        index (int): Device index
-
-    Returns:
-        str: A string of the form `device_type:index`
-    """
-    return f"{device_type}:{index}"
-
-
-def standardize_device_id(device_id: str) -> str:
-    """Standardize device id string.
-
-    Args:
-        device_id (str): Device id string. Could be of the form `device_type` or `device_type:index`
-
-    Returns:
-        str: Returns a sanitized device id of the form `device_type:index`
-    """
-    device_type, index = parse_device_id(device_id=device_id)
-    return get_device_id(device_type=device_type, index=index)
 
 
 def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
@@ -537,3 +398,224 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
         torch.zeros(size=(1, *input_shape))
     )  # run a forward pass to initialize the new weights and last IAF
     return model
+
+
+####################################################### DEPRECATED METHODS #######################################################
+# TODO: these methods were used by the old implementation of DynapcnnNetwork - delete all.
+
+# def infer_input_shape(
+#     layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
+# ) -> Tuple[int, int, int]:
+#     """Checks if the input_shape is specified. If either of them are specified, then it checks if
+#     the information is consistent and returns the input shape.
+
+#     Parameters
+#     ----------
+#     layers:
+#         List of modules
+#     input_shape :
+#         (channels, height, width)
+
+#     Returns
+#     -------
+#     Output shape:
+#         (channels, height, width)
+#     """
+#     if input_shape is not None and len(input_shape) != 3:
+#         raise InputConfigurationError(
+#             f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
+#         )
+
+#     input_shape_from_layer = None
+#     if layers and isinstance(layers[0], DVSLayer):
+#         input_shape_from_layer = layers[0].input_shape
+#         if len(input_shape_from_layer) != 3:
+#             raise InputConfigurationError(
+#                 f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found."
+#             )
+#     if (input_shape is not None) and (input_shape_from_layer is not None):
+#         if input_shape == input_shape_from_layer:
+#             return input_shape
+#         else:
+#             raise InputConfigurationError(
+#                 f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}"
+#             )
+#     elif input_shape_from_layer is not None:
+#         return input_shape_from_layer
+#     elif input_shape is not None:
+#         return input_shape
+#     else:
+#         raise InputConfigurationError("No input shape could be inferred")
+
+# def construct_next_dynapcnn_layer(
+#     layers: List[nn.Module],
+#     idx_start: int,
+#     in_shape: Tuple[int, int, int],
+#     discretize: bool,
+#     rescale_factor: float = 1,
+# ) -> Tuple[DynapcnnLayer, int, float]:
+#     """Generate a DynapcnnLayer from a Conv2d layer and its subsequent spiking and pooling layers.
+
+#     Parameters
+#     ----------
+
+#         layers: sequence of layer objects
+#             First object must be Conv2d, next must be an IAF layer. All pooling
+#             layers that follow immediately are consolidated. Layers after this
+#             will be ignored.
+#         idx_start:
+#             Layer index to start construction from
+#         in_shape: tuple of integers
+#             Shape of the input to the first layer in `layers`. Convention:
+#             (input features, height, width)
+#         discretize: bool
+#             Discretize weights and thresholds if True
+#         rescale_factor: float
+#             Weights of Conv2d layer are scaled down by this factor. Can be
+#             used to account for preceding average pooling that gets converted
+#             to sum pooling.
+
+#     Returns
+#     -------
+#         dynapcnn_layer: DynapcnnLayer
+#             DynapcnnLayer
+#         layer_idx_next: int
+#             Index of the next layer after this layer is constructed
+#         rescale_factor: float
+#             rescaling factor to account for average pooling
+#     """
+#     layer_idx_next = idx_start  # Keep track of layer indices
+
+#     # Check that the first layer is Conv2d, or Linear
+#     if not isinstance(layers[layer_idx_next], (nn.Conv2d, nn.Linear)):
+#         raise UnexpectedLayer(nn.Conv2d, layers[layer_idx_next])
+
+#     # Identify and consolidate conv layer
+#     lyr_conv = layers[layer_idx_next]
+#     layer_idx_next += 1
+#     if layer_idx_next >= len(layers):
+#         raise MissingLayer(layer_idx_next)
+#     # Check and consolidate batch norm
+#     if isinstance(layers[layer_idx_next], nn.BatchNorm2d):
+#         lyr_conv = merge_conv_bn(lyr_conv, layers[layer_idx_next])
+#         layer_idx_next += 1
+
+#     # Check next layer exists
+#     try:
+#         lyr_spk = layers[layer_idx_next]
+#         layer_idx_next += 1
+#     except IndexError:
+#         raise MissingLayer(layer_idx_next)
+
+#     # Check that the next layer is spiking
+#     # TODO: Check that the next layer is an IAF layer
+#     if not isinstance(lyr_spk, sl.IAF):
+#         raise TypeError(
+#             f"Convolution must be followed by IAF spiking layer, found {type(lyr_spk)}"
+#         )
+
+#     # Check for next pooling layer
+#     lyr_pool, i_next, rescale_factor_after_pooling = construct_next_pooling_layer(
+#         layers, layer_idx_next
+#     )
+#     # Increment layer index to after the pooling layers
+#     layer_idx_next = i_next
+
+#     # Compose DynapcnnLayer
+#     dynapcnn_layer = DynapcnnLayer(
+#         conv=lyr_conv,
+#         spk=lyr_spk,
+#         pool=lyr_pool,
+#         in_shape=in_shape,
+#         discretize=discretize,
+#         rescale_weights=rescale_factor,
+#     )
+
+#     return dynapcnn_layer, layer_idx_next, rescale_factor_after_pooling
+
+
+# def build_from_list(
+#     layers: List[nn.Module],
+#     in_shape,
+#     discretize=True,
+#     dvs_input=False,
+# ) -> nn.Sequential:
+#     """Build a sequential model of DVSLayer and DynapcnnLayer(s) given a list of layers comprising
+#     a spiking CNN.
+
+#     Parameters
+#     ----------
+
+#         layers: sequence of layer objects
+#         in_shape: tuple of integers
+#             Shape of the input to the first layer in `layers`. Convention:
+#             (channels, height, width)
+#         discretize: bool
+#             Discretize weights and thresholds if True
+#         dvs_input: bool
+#             Whether model should receive DVS input. If `True`, the returned model
+#             will begin with a DVSLayer with `disable_pixel_array` set to False.
+#             Otherwise, the model starts with a DVSLayer only if the first element
+#             in `layers` is a pooling, cropping or flipping layer.
+
+#     Returns
+#     -------
+#         nn.Sequential
+#     """
+#     compatible_layers = []
+#     lyr_indx_next = 0
+#     # Find and populate dvs layer (NOTE: We are ignoring the channel information here and could lead to problems)
+#     dvs_layer, lyr_indx_next, rescale_factor = construct_dvs_layer(
+#         layers, input_shape=in_shape, idx_start=lyr_indx_next, dvs_input=dvs_input
+#     )
+
+#     if dvs_layer is not None:
+#         compatible_layers.append(dvs_layer)
+#         in_shape = dvs_layer.get_output_shape()
+#     # Find and populate dynapcnn layers
+#     while lyr_indx_next < len(layers):
+#         if isinstance(layers[lyr_indx_next], DEFAULT_IGNORED_LAYER_TYPES):
+#             # - Ignore identity, dropout and flatten layers
+#             lyr_indx_next += 1
+#             continue
+#         dynapcnn_layer, lyr_indx_next, rescale_factor = construct_next_dynapcnn_layer(
+#             layers,
+#             lyr_indx_next,
+#             in_shape=in_shape,
+#             discretize=discretize,
+#             rescale_factor=rescale_factor,
+#         )
+#         in_shape = dynapcnn_layer.get_output_shape()
+#         compatible_layers.append(dynapcnn_layer)
+
+#     return nn.Sequential(*compatible_layers)
+
+
+# def convert_model_to_layer_list(
+#     model: Union[nn.Sequential, sinabs.Network, nn.Module],
+#     ignore: Union[Type, Tuple[Type, ...]] = (),
+# ) -> List[nn.Module]:
+#     """Convert a model to a list of layers.
+
+#     Parameters
+#     ----------
+#         model: nn.Sequential, nn.Module or sinabs.Network.
+#         ignore: type or tuple of types of modules to be ignored.
+
+#     Returns
+#     -------
+#         List[nn.Module]
+#     """
+#     if isinstance(model, sinabs.Network):
+#         return convert_model_to_layer_list(model.spiking_model)
+
+#     elif isinstance(model, nn.Sequential):
+#         layers = [layer for layer in model if not isinstance(layer, ignore)]
+
+#     elif isinstance(model, nn.Module):
+#         layers = [layer for _, layer in model.named_children() if not isinstance(layer, ignore)]
+
+#     else:
+#         raise TypeError("Expected torch.nn.Sequential or sinabs.Network")
+
+#     return layers

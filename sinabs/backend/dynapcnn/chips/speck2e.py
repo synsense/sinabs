@@ -1,3 +1,5 @@
+from typing import Dict
+
 import samna
 from samna.speck2e.configuration import SpeckConfiguration
 
@@ -27,9 +29,4 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
 
     @classmethod
     def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
-        return config_dict
-
-    @classmethod
-    def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
-        config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
         return config_dict
