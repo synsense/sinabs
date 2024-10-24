@@ -72,7 +72,7 @@ class ConfigBuilder(ABC):
         """Enable the monitor for a given set of layers in the config object."""
 
     @classmethod
-    def map_layers_to_cores(cls, layers: Dict[int, DynapcnnLayer]) -> Dict[int]:
+    def map_layers_to_cores(cls, layers: Dict[int, DynapcnnLayer]) -> Dict[int, int]:
         """Find a mapping from DynapcnnLayers onto on-chip cores
 
         Parameters

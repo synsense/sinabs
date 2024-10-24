@@ -7,7 +7,7 @@ import torch
 from samna.dynapcnn.configuration import (
     CNNLayerConfig,
     DynapcnnConfiguration,
-    DvsLayerConfig,
+    DVSLayerConfig,
 )
 
 import sinabs
@@ -30,7 +30,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
     @classmethod
-    def write_dvs_layer_config(cls, layer: DVSLayer, config: DvsLayerConfig):
+    def write_dvs_layer_config(cls, layer: DVSLayer, config: DVSLayerConfig):
         for param, value in layer.get_config_dict().items():
             setattr(config, param, value)
 
