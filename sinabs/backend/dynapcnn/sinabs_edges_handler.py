@@ -11,7 +11,7 @@ from typing import Dict, List, Set, Tuple, Type
 from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES
-from .exceptions import InvalidEdge, UnmatchedNode, UnmatchedPoolingEdges
+from .exceptions import InvalidEdge, InvalidGraphStructure, UnmatchedNode, UnmatchedPoolingEdges
 from .utils import Edge
 
 
@@ -68,6 +68,13 @@ def collect_dynapcnn_layer_info(
     # Map node IDs to dynapcnn layer ID
     node_2_layer_map = dict()
 
+    if "weight-neuron" not in edges_by_type:
+        raise InvalidGraphStructure(
+            "Any dynapcnn layer must contain a weight layer (e.g. Conv2d, Linear) "
+            "that is directly connected to a neuron layer (e.g. IAFSqueeze). "
+            "None such weight-neuron pair has been found in the provided network."
+        )
+
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
     while edges_by_type["weight-neuron"]:
         edge = edges_by_type["weight-neuron"].pop()
@@ -81,23 +88,19 @@ def collect_dynapcnn_layer_info(
         )
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
-    while edges_by_type["neuron-weight"]:
+    while edges_by_type.get("neuron-weight", False):
         edge = edges_by_type["neuron-weight"].pop()
         set_neuron_layer_destination(
             dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
         )
 
-    # "pooling-pooling" edges are optional. Unlike other types, missing entry would cause exception.
-    # Therefore add empty set if not existing
-    if "pooling-pooling" not in edges_by_type:
-        edges_by_type["pooling-pooling"] = set()
-
     # Add pooling based on neuron->pooling connections
-    while edges_by_type["neuron-pooling"]:
+    pooling_pooling_edges = edges_by_type.get("pooling-pooling", set())
+    while edges_by_type.get("neuron-pooling", False):
         edge = edges_by_type["neuron-pooling"].pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
         pooling_chains, edges_used = trace_paths(
-            edge[1], edges_by_type["pooling-pooling"]
+            edge[1], pooling_pooling_edges
         )
         add_pooling_to_entry(
             dynapcnn_layer_info,
@@ -107,14 +110,14 @@ def collect_dynapcnn_layer_info(
             node_2_layer_map,
         )
         # Remove handled pooling-pooling edges
-        edges_by_type["pooling-pooling"].difference_update(edges_used)
+        pooling_pooling_edges.difference_update(edges_used)
 
     # After adding pooling make sure all pooling-pooling edges have been handled
-    if len(edges_by_type["pooling-pooling"]) > 0:
-        raise UnmatchedPoolingEdges(edges_by_type["pooling-pooling"])
+    if len(pooling_pooling_edges) > 0:
+        raise UnmatchedPoolingEdges(pooling_pooling_edges)
 
     # Add all edges connecting pooling to a new dynapcnn layer
-    while edges_by_type["pooling-weight"]:
+    while edges_by_type.get("pooling-weight", False):
         edge = edges_by_type["pooling-weight"].pop()
         set_pooling_layer_destination(
             dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
@@ -145,7 +148,7 @@ def get_valid_edge_type(
 
     Returns
     ----------
-        edge_type: the edge type specified in 'VALID_SINABS_EDGE_TYPES' ('None' if edge is not valid).
+        edge_type: the edge type specified in 'valid_edges_map' ('None' if edge is not valid).
     """
     source_type = type(layers[edge[0]])
     target_type = type(layers[edge[1]])
