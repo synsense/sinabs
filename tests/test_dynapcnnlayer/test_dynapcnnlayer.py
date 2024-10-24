@@ -2,7 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 import pytest
-from conftest_dynapcnnlayer import args_DynapcnnLayer
+from .conftest_dynapcnnlayer import args_DynapcnnLayer
 
 from sinabs.backend.dynapcnn.dynapcnn_layer_utils import (
     construct_dynapcnnlayers_from_mapper,
