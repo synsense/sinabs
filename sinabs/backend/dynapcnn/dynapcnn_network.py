@@ -358,7 +358,9 @@ class DynapcnnNetwork(nn.Module):
             _, is_compatible = self._make_config(device=device_type)
         except ValueError as e:
             # Catch "No valid mapping found" error
-            if e.args[0] == ("No valid mapping found"):
+            if e.args[0] == (
+                "One or more of the DynapcnnLayers could not be mapped to any core."
+            ):
                 return False
             else:
                 raise e
@@ -573,13 +575,6 @@ class DynapcnnNetwork(nn.Module):
             if str(lyr_idx).lower() == "dvs":
                 monitor_chip_layers.append("dvs")
             else:
-                # Warn when recording layers with pooling
-                if any(p != (1, 1) for p in self.dynapcnn_layers[lyr_idx].pool):
-                    warn(
-                        f"Monitored layer {lyr_idx} has at least one destination "
-                        "with pooling. Note that monitored events will be recorded "
-                        "before pooling"
-                    )
                 monitor_chip_layers.append(layer2core_map[lyr_idx])
 
         # enable monitors on the specified layers.
