@@ -68,7 +68,8 @@ def get_valid_mapping(
         # Skip DVSLayers
         if isinstance(this_layer, DynapcnnLayer):
             chip_layers = find_chip_layers(this_layer, constraints)
-            layer_mapping[layer_index] = chip_layers
+            layer_mapping.append(chip_layers)
+            layer_indices.append(layer_index)
         # Make sure only DynapcnnLayers and DVSLayers are passed
         elif not isinstance(this_layer, DVSLayer):
             raise ValueError(f"Found unexpected layer type: `{type(this_layer)}")
@@ -77,7 +78,7 @@ def get_valid_mapping(
 
     # use Edmonds' Algorithm to find suitable cores for each DynapcnnLayer.
     new_graph = edmonds(graph, 0, len(graph) - 1)
-    netmap = recover_mapping(new_graph, layer_mapping)
+    netmap = recover_mapping(new_graph, len(layer_mapping))
 
     # Convert `netmap` to dict mapping from layer index to core ID
     return {
