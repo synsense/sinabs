@@ -6,6 +6,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from warnings import warn
 
 import samna
+from samna.dynapcnn.configuration import DynapcnnConfiguration
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -287,7 +288,7 @@ class DynapcnnNetwork(nn.Module):
             if device_name in ChipFactory.supported_devices:
 
                 # generate config.
-                config = self._make_config(
+                config = self.make_config(
                     layer2core_map=layer2core_map,
                     chip_layers_ordering=chip_layers_ordering,
                     device=device,
@@ -344,16 +345,33 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise Exception("Unknown device description.")
 
-    ####################################################### Private Methods #######################################################
+    def is_compatible_with(self, device_type: str) -> bool:
+        """Check if the current model is compatible with a given device.
 
-    def _make_config(
+        Args:
+            device_type (str): Device type ie speck2b, speck2fmodule
+
+        Returns:
+            bool: True if compatible
+        """
+        try:
+            _, is_compatible = self._make_config(device=device_type)
+        except ValueError as e:
+            # Catch "No valid mapping found" error
+            if e.args[0] == ("No valid mapping found"):
+                return False
+            else:
+                raise e
+        return is_compatible
+
+    def make_config(
         self,
         layer2core_map: Union[Dict[int, int], str] = "auto",
         device: str = "dynapcnndevkit:0",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier: Optional[Callable] = None,
         chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
-    ):
+    ) -> DynapcnnConfiguration:
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
@@ -398,6 +416,80 @@ class DynapcnnNetwork(nn.Module):
                 If samna is not available.
             ValueError
                 If the generated configuration is not valid for the specified device.
+        """
+        config, is_compatible = self._make_config(
+            layer2core_map=layer2core_map,
+            device=device,
+            monitor_layers=monitor_layers,
+            config_modifier=config_modifier,
+            chip_layers_ordering=chip_layers_ordering,
+        )
+
+        # Validate config
+        if is_compatible:
+            print("Network is valid")
+            return config
+        else:
+            raise ValueError(f"Generated config is not valid for {device}")
+
+    ####################################################### Private Methods #######################################################
+
+    def _make_config(
+        self,
+        layer2core_map: Union[Dict[int, int], str] = "auto",
+        device: str = "dynapcnndevkit:0",
+        monitor_layers: Optional[Union[List, str]] = None,
+        config_modifier: Optional[Callable] = None,
+        chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
+    ) -> Tuple[DynapcnnConfiguration, bool]:
+        """Prepare and output the `samna` DYNAPCNN configuration for this network.
+
+        Parameters
+        ----------
+        - layer2core_map (dict or "auto"): Defines how cores on chip are 
+            assigned to DynapcnnLayers. If `auto`, an automated procedure
+            will be used to find a valid ordering. Otherwise a dict needs
+            to be passed, with DynapcnnLayer indices as keys and assigned
+            core IDs as values. DynapcnnLayer indices have to match those of
+            `self.dynapcnn_layers`.
+        - device: (string): dynapcnndevkit, speck2b or speck2devkit
+        - monitor_layers: None/List/Str
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+            If this value is left as None, by default the last layer of the model is monitored.
+
+        - config_modifier (Callable or None):
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+        - chip_layers_ordering (None, sequence of integers or "auto", obsolete):
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+            Note: This parameter is obsolete and should not be passed anymore. Use
+            `layer2core_map` instead.
+
+        Returns
+        -------
+        Configuration object
+            Object defining the configuration for the device
+        Bool
+            True if the configuration is valid for the given device.
+
+
+        Raises
+        ------
+            ImportError
+                If samna is not available.
+            ValueError
+                If no valid mapping between the layers of this object and the cores of
+                the provided device can be found.
         """
         config_builder = ChipFactory(device).get_config_builder()
 
@@ -484,14 +576,9 @@ class DynapcnnNetwork(nn.Module):
         if config_modifier is not None:
             # apply user config modifier.
             config = config_modifier(config)
-
-        if config_builder.validate_configuration(config):
-            # validate config.
-            print("Network is valid: \n")
-
-            return config
-        else:
-            raise ValueError(f"Generated config is not valid for {device}")
+        
+        # Validate config
+        return config, config_builder.validate_configuration(config)
 
     def _to_device(self, device: torch.device) -> None:
         """Access each sub-layer within all `DynapcnnLayer` instances and call `.to(device)` on them."""
