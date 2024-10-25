@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 
 import sinabs
+from dvs_layer import DVSLayer
 
 from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
@@ -15,13 +16,13 @@ from .connectivity_specs import (
 )
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
-from .exceptions import InvalidGraphStructure
+from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
 from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import Edge, topological_sorting
 
 
 class GraphExtractor:
-    def __init__(self, spiking_model: nn.Module, dummy_input: torch.tensor):
+    def __init__(self, spiking_model: nn.Module, dummy_input: torch.tensor, dvs_input: bool):
         """Class implementing the extraction of the computational graph from `spiking_model`, where
         each node represents a layer in the model and the list of edges represents how the data flow between
         the layers.
@@ -47,6 +48,8 @@ class GraphExtractor:
             Map from layer ID to the corresponding nn.Module instance.
         - nodes_io_shapes (dict):
             Map from node ID to dict containing node's in- and output shapes
+        - dvs_input (bool):
+            Whether or not the model should start with a `DVSLayer`.
         """
 
         # extract computational graph.
@@ -54,8 +57,10 @@ class GraphExtractor:
             spiking_model, dummy_input, model_name=None
         ).ignore_tensors()
 
+        # This var. will be set to `True` if `dvs_input == True` and `spiking_model` does not start with DVS layer.
+        need_dvs_node = self._need_dvs_node(spiking_model, dvs_input)
         # Map node names to indices
-        self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+        self._name_2_indx_map = self._get_name_2_indx_map(nir_graph, need_dvs_node)
         # Extract edges list from graph
         self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
         # Determine entry points to graph
@@ -219,12 +224,36 @@ class GraphExtractor:
 
     ####################################################### Pivate Methods #######################################################
 
-    def _get_name_2_indx_map(self, nir_graph: nirtorch.graph.Graph) -> Dict[str, int]:
-        """Assign unique index to each node and return mapper from name to index.
+    def _need_dvs_node(self, model: nn.Module, dvs_input: bool) -> bool:
+        """ Returns whether or not a node will need to be added to represent a `DVSLayer` instance. A new node will have 
+        to be added if `model` does not start with a `DVSLayer` instance and `dvs_input == True`.
+        
+        Parameters
+        ----------
+            - model (nn.Module): the `spiking_model` used as argument to the class instance.
+            - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
+        Returns
+        -------
+            - True if the first layer is a DVSLayer, False otherwise.
+        """
+
+        # Get the first module only and check its type
+        first_name, first_module = next(model.named_modules())
+        
+        # Check consistency of user provided arguments for use of the DVS
+        if isinstance(first_module, DVSLayer) and not dvs_input:
+            raise InvalidModelWithDVSSetup()
+
+        return not isinstance(first_module, DVSLayer) and dvs_input
+
+    def _get_name_2_indx_map(self, nir_graph: nirtorch.graph.Graph, need_dvs_node: bool) -> Dict[str, int]:
+        """Assign unique index to each node and return mapper from name to index. If `need_dvs_node == Ture` we want to 
+        leave index `0` free to be assigned to the `DVSLayer` node that will have to be created.
 
         Parameters
         ----------
         - nir_graph (nirtorch.graph.Graph): a NIR graph representation of `spiking_model`.
+        - need_dvs_node (bool): True of `dvs_input == True` and `spiking_model` doesn't start with a `DVSLayer`.
 
         Returns
         ----------
@@ -232,7 +261,8 @@ class GraphExtractor:
             `spiking_model` and `value is an integer representing the layer in a standard format.
         """
         return {
-            node.name: node_idx for node_idx, node in enumerate(nir_graph.node_list)
+            node.name: (node_idx + 1 if need_dvs_node else node_idx)
+            for node_idx, node in enumerate(nir_graph.node_list)
         }
 
     def _get_edges_from_nir(
