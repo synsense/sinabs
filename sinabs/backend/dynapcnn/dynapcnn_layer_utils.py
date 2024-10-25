@@ -36,7 +36,7 @@ def construct_dynapcnnlayers_from_mapper(
     return dynapcnn_layers, destination_map, entry_points
 
 
-def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None):
+def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -> None:
     """Finalize dcnnl map by consolidating information
 
     Update dcnnl_map in-place
