@@ -59,14 +59,20 @@ class GraphExtractor:
 
         # This var. will be set to `True` if `dvs_input == True` and `spiking_model` does not start with DVS layer.
         need_dvs_node = self._need_dvs_node(spiking_model, dvs_input)
+        dvs_input_shape = None
+        if need_dvs_node:
+            # We need to provide `(height, width)` to the DVSLayer instance that will be the module of the node 'dvs'.
+            _, _, height, width = dummy_input.shape
+            dvs_input_shape = (height, width)
+
         # Map node names to indices
         self._name_2_indx_map = self._get_name_2_indx_map(nir_graph, need_dvs_node)
         # Extract edges list from graph
-        self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
+        self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map) # @TODO edges need to be modified in place if DVS layer is needed.
         # Determine entry points to graph
-        self._entry_nodes = self._get_entry_nodes(self._edges)
+        self._entry_nodes = self._get_entry_nodes(self._edges) # @TODO maybe functionality has to change here a when DVS layer is needed.
         # Store the associated `nn.Module` (layer) of each node.
-        self._indx_2_module_map = self._get_named_modules(spiking_model)
+        self._indx_2_module_map = self._get_named_modules(spiking_model, need_dvs_node, dvs_input_shape)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -239,7 +245,7 @@ class GraphExtractor:
 
         # Get the first module only and check its type
         first_name, first_module = next(model.named_modules())
-        
+
         # Check consistency of user provided arguments for use of the DVS
         if isinstance(first_module, DVSLayer) and not dvs_input:
             raise InvalidModelWithDVSSetup()
@@ -260,10 +266,18 @@ class GraphExtractor:
         - name_2_indx_map (dict): `key` is the original variable name for a layer in
             `spiking_model` and `value is an integer representing the layer in a standard format.
         """
-        return {
+
+        # Start name indexing from 1 if a DVS node needs to be added
+        name_2_indx_map = {
             node.name: (node_idx + 1 if need_dvs_node else node_idx)
             for node_idx, node in enumerate(nir_graph.node_list)
         }
+
+        if need_dvs_node:
+            # Adds entry for the DVS node that needs to be created - default node name is 'dvs'
+            name_2_indx_map['dvs'] = 0
+
+        return name_2_indx_map
 
     def _get_edges_from_nir(
         self, nir_graph: nirtorch.graph.Graph, name_2_indx_map: Dict[str, int]
@@ -303,17 +317,22 @@ class GraphExtractor:
         all_sources, all_targets = zip(*edges)
         return set(all_sources) - set(all_targets)
 
-    def _get_named_modules(self, model: nn.Module) -> Dict[int, nn.Module]:
+    def _get_named_modules(self, model: nn.Module, need_dvs_node: bool, dvs_input_shape: Tuple[int, int]) -> Dict[int, nn.Module]:
         """Find for each node in the graph what its associated layer in `model` is.
 
         Parameters
         ----------
         - model (nn.Module): the `spiking_model` used as argument to the class instance.
+        - need_dvs_node (bool): True of `dvs_input == True` and `spiking_model` doesn't start with a `DVSLayer`.
+        - dvs_input_shape (tuple): Shape of input in format `(height, width)`.
 
         Returns
         ----------
         - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         """
+
+        assert need_dvs_node and isinstance(dvs_input_shape, tuple), f"DVSLayer instantiation is needed but 'dvs_input_shape == {dvs_input_shape}'."
+
         indx_2_module_map = dict()
 
         for name, module in model.named_modules():
@@ -321,6 +340,10 @@ class GraphExtractor:
             name = nirtorch.utils.sanitize_name(name)
             if name in self._name_2_indx_map:
                 indx_2_module_map[self._name_2_indx_map[name]] = module
+
+        if need_dvs_node:
+            # Adds an entry for the `DVSLayer` node that is needed - default node name is 'dvs'
+            indx_2_module_map[self._name_2_indx_map['dvs']] = DVSLayer(input_shape=dvs_input_shape)
 
         return indx_2_module_map
 
