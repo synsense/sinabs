@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, List
+from typing import Dict, List, Optional
 from warnings import warn
 
 import samna
@@ -287,7 +287,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
-        dvs_node_info: Dict,
+        dvs_node_info: Optional[Dict],
     ) -> DynapcnnConfiguration:
         """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
