@@ -28,6 +28,7 @@ def construct_dynapcnnlayers_from_mapper(
     dynapcnn_layers = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize)
         for layer_idx, layer_info in dcnnl_map.items()
+        if 'dvs_layer' not in layer_info # handle only dicts with info. for DynapcnnLayer instances.
     }
 
     destination_map = construct_destination_map(dcnnl_map)
