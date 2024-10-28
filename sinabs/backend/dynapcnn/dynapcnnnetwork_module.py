@@ -336,7 +336,11 @@ class DynapcnnNetworkModule(nn.Module):
         # Remap all internal objects
         dynapcnn_layers = {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
         if isinstance(self.dvs_node_info, Dict):
-            dynapcnn_layers[str(remap(self.dvs_node_info['layer_id']))] = self.dvs_node_info['module']
+            _ = str(remap(self.dvs_node_info['layer_id']))
+            dynapcnn_layers[_] = self.dvs_node_info['module']
+            # @TODO - update DVS node layer id in-place [THIS NEEDS VALIDATION]
+            self.dvs_node_info['layer_id'] = int(_)
+
         self._dynapcnn_layers = nn.ModuleDict(dynapcnn_layers)
 
         self._entry_points = {remap(idx) for idx in self._entry_points}
