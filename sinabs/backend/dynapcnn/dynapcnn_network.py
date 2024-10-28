@@ -55,9 +55,7 @@ class DynapcnnNetwork(nn.Module):
         """
         super().__init__()
 
-        # TODO for now the graph part is not taking into consideration DVS inputs.
         # check if dvs input is expected.
-        dvs_input = False
         self.dvs_input = dvs_input
         self.input_shape = input_shape
         self._layer2core_map = None

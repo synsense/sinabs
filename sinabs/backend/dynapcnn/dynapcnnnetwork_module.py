@@ -82,7 +82,7 @@ class DynapcnnNetworkModule(nn.Module):
         dynapcnn_layers = {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
         # Insert DVS node if DVS was enabled.
         if isinstance(self.dvs_node_info, Dict):
-            dynapcnn_layers[str(self.dvs_node_info['layer_id'])] = self.dvs_node_info['module']
+            dynapcnn_layers[self.dvs_node_info['layer_id']] = self.dvs_node_info['module']
         return dynapcnn_layers
 
     @property
