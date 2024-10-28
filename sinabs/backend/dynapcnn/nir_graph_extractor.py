@@ -61,8 +61,6 @@ class GraphExtractor:
         self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
         # Extract edges list from graph
         self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
-        # Determine entry points to graph
-        self._entry_nodes = self._get_entry_nodes(self._edges)
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
@@ -71,6 +69,9 @@ class GraphExtractor:
             # input shape for `DVSLayer` instance that will be the module of the node 'dvs'.
             _, _, height, width = dummy_input.shape
             self._add_dvs_node(dvs_input_shape=(height, width))
+
+        # Determine entry points to graph
+        self._entry_nodes = self._get_entry_nodes(self._edges)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -240,6 +241,7 @@ class GraphExtractor:
         """
 
         # [] @TODO - not considering pooling after the DVSLayer yet.
+        # [] @TODO - I/O shape in 'self._nodes_io_shapes' not being handled yet.
 
         # add name entry for node 'dvs'.
         self._name_2_indx_map['dvs'] = len(self._name_2_indx_map)
@@ -247,8 +249,6 @@ class GraphExtractor:
         self._indx_2_module_map[self._name_2_indx_map['dvs']] = DVSLayer(input_shape=dvs_input_shape)
         # set DVS node as input to each entry node of the graph.
         self._edges.update({(self._name_2_indx_map['dvs'], entry_node) for entry_node in self._entry_nodes})
-
-        # [] @TODO - all indexes in 'self._entry_nodes' are no longer entry nodes of the network since a DVS layer is being added.
 
     def _need_dvs_node(self, model: nn.Module, dvs_input: bool) -> bool:
         """ Returns whether or not a node will need to be added to represent a `DVSLayer` instance. A new node will have 
