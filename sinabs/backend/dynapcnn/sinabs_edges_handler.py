@@ -25,6 +25,7 @@ def collect_dynapcnn_layer_info(
     edges: Set[Edge],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
     entry_nodes: Set[int],
+    dvs_input: bool,
 ) -> Dict[int, Dict]:
     """Collect information to construct DynapcnnLayer instances.
 
@@ -37,10 +38,11 @@ def collect_dynapcnn_layer_info(
 
     Parameters
     ----------
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    edges (set of tuples): Represent connections between two nodes in computational graph
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
-    entry_nodes (set of int): IDs of nodes that receive external input
+    - indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    - edges (set of tuples): Represent connections between two nodes in computational graph
+    - nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    - entry_nodes (set of int): IDs of nodes that receive external input
+    - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
 
     Returns
     -------
@@ -60,6 +62,11 @@ def collect_dynapcnn_layer_info(
             "Any dynapcnn layer must contain a weight layer (e.g. Conv2d, Linear) "
             "that is directly connected to a neuron layer (e.g. IAFSqueeze). "
             "None such weight-neuron pair has been found in the provided network."
+        )
+
+    if not any(edge in edges_by_type for edge in ["dvs-weight", "dvs-pooling"]) and dvs_input:
+        raise InvalidGraphStructure(
+            "DVS camera is set selected for usage (dvs_input == True) but edge type involving it has not been found."
         )
 
     # Dict to collect information for each future dynapcnn layer

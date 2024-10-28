@@ -105,7 +105,7 @@ class GraphExtractor:
         return {n: module for n, module in self._indx_2_module_map.items()}
 
     def get_dynapcnn_network_module(
-        self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None
+        self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None, dvs_input: bool = False
     ) -> DynapcnnNetworkModule:
         """ Create DynapcnnNetworkModule based on stored graph representation
 
@@ -117,6 +117,7 @@ class GraphExtractor:
             weights to dynapcnn. Set to `False` only for testing purposes.
         - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
             the same convolutional layer are combined/re-scaled before applying them.
+        - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
 
         Returns
         -------
@@ -129,6 +130,7 @@ class GraphExtractor:
             edges = self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
             entry_nodes=self.entry_nodes,
+            dvs_input=dvs_input,
         )
 
         # build `DynapcnnLayer` instances from mapper.
@@ -236,8 +238,8 @@ class GraphExtractor:
         ----------
         - dvs_input_shape (tuple): Shape of input in format `(height, width)`. 
         """
-        # @TODO - not considering pooling after the DVSLayer yet.
-        # @TODO - does self._entry_nodes need to have the index of the DVS node?
+
+        # [] @TODO - not considering pooling after the DVSLayer yet.
 
         # add name entry for node 'dvs'.
         self._name_2_indx_map['dvs'] = len(self._name_2_indx_map)
@@ -245,6 +247,8 @@ class GraphExtractor:
         self._indx_2_module_map[self._name_2_indx_map['dvs']] = DVSLayer(input_shape=dvs_input_shape)
         # set DVS node as input to each entry node of the graph.
         self._edges.update({(self._name_2_indx_map['dvs'], entry_node) for entry_node in self._entry_nodes})
+
+        # [] @TODO - all indexes in 'self._entry_nodes' are no longer entry nodes of the network since a DVS layer is being added.
 
     def _need_dvs_node(self, model: nn.Module, dvs_input: bool) -> bool:
         """ Returns whether or not a node will need to be added to represent a `DVSLayer` instance. A new node will have 

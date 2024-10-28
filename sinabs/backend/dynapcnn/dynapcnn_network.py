@@ -69,7 +69,7 @@ class DynapcnnNetwork(nn.Module):
             batch_size = sinabs.utils.get_smallest_compatible_time_dimension(snn)
         # computational graph from original PyTorch module.
         self._graph_extractor = GraphExtractor(
-            snn, torch.randn((batch_size, *self.input_shape))
+            snn, torch.randn((batch_size, *self.input_shape), self.dvs_input)
         )  # needs the batch dimension.
 
         # Remove nodes of ignored classes (including merge nodes)
@@ -77,7 +77,7 @@ class DynapcnnNetwork(nn.Module):
 
         # Module to execute forward pass through network
         self._dynapcnn_module = self._graph_extractor.get_dynapcnn_network_module(
-            discretize=discretize, weight_rescaling_fn=weight_rescaling_fn
+            discretize=discretize, weight_rescaling_fn=weight_rescaling_fn, dvs_input=self.dvs_input
         )
         self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
