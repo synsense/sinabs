@@ -29,10 +29,42 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
+    # @classmethod
+    # def write_dvs_layer_config(cls, layer: DVSLayer, config: DVSLayerConfig):
+    #     for param, value in layer.get_config_dict().items():
+    #         setattr(config, param, value)
+
+    
     @classmethod
-    def write_dvs_layer_config(cls, layer: DVSLayer, config: DVSLayerConfig):
+    def write_dvs_layer_config(
+        cls,
+        layer: DVSLayer,
+        layer2core_map: Dict[int, int],
+        destination_indices: List[int],
+        chip_layer: DVSLayerConfig,
+    ) -> None:
+        """Write a DVS layer configuration to the conf object.
+
+        Uses the data in `layer` to configure a `DVSLayerConfig` to use the chip's DVS camera.
+
+        Parameters
+        ----------
+        - layer (DVSLayer): Layer instance from which to generate the config
+        - layer2core_map (Dict): Keys are layer indices, values are corresponding
+            cores on hardware. Needed to map the destinations.]
+        - destination_indices (List): Indices of destination layers for `layer`
+        - chip_layer (DVSLayerConfig): Configuration object of the corrsesponding
+            on-chip core. Will be changed in-place based on `layer`.
+        """
         for param, value in layer.get_config_dict().items():
-            setattr(config, param, value)
+            setattr(chip_layer, param, value)
+
+        # Set destinations.
+        for dest_idx, dest in enumerate(destination_indices):
+            chip_layer.destinations[dest_idx].layer = layer2core_map[dest]
+            chip_layer.destinations[dest_idx].enable = True
+
+        chip_layer.pass_sensor_events = True
 
     @classmethod
     def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
@@ -273,16 +305,22 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             the chip based on the provided `layers`.
         """
         config = cls.get_default_config()
+        config.dvs_layer.pass_sensor_events = False
 
-        has_dvs_layer = False  # TODO DVSLayer not supported yet.
+        # Uses the DVS camera.
+        if isinstance(dvs_node_info, dict):
+            chip_layer = config.dvs_layer
+            sw_layer = dvs_node_info['module']
+            destination_indices = dvs_node_info['destinations']
+            # Write camera configuration.
+            cls.write_dvs_layer_config(sw_layer, layer2core_map, destination_indices, chip_layer)
+            chip_layer.pass_sensor_events = False
+
+            # TODO - for now it's being handled separatly but it might make more sense to handle it within `layers`.
 
         # Loop over layers in network and write corresponding configurations
         for layer_index, ith_dcnnl in layers.items():
-            if isinstance(ith_dcnnl, DVSLayer):
-                # TODO DVSLayer using `dvs_node_info`.
-                pass
-
-            elif isinstance(ith_dcnnl, DynapcnnLayer):
+            if isinstance(ith_dcnnl, DynapcnnLayer):
                 # retrieve config dict for current layer
                 chip_layer = config.cnn_layers[layer2core_map[layer_index]]
                 # write core configuration.
@@ -292,18 +330,11 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     chip_layer=chip_layer,
                     destination_indices=destination_map[layer_index],
                 )
-
             else:
                 # shouldn't happen since type checks are made previously.
                 raise TypeError(
                     f"Layer (index {layer_index}) is unexpected in the model: \n{ith_dcnnl}"
                 )
-
-        if not has_dvs_layer:
-            # TODO DVSLayer not supported yet.
-            config.dvs_layer.pass_sensor_events = False
-        else:
-            config.dvs_layer.pass_sensor_events = False
 
         return config
 

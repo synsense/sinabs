@@ -25,7 +25,8 @@ class DynapcnnNetworkModule(nn.Module):
     - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
     - destination_map (dict): Maps layer indices to list of destination indices.
         Exit destinations are marked by negative integers    
-    - entry_points (set): Set of layer indices that act as network entry points
+    - entry_points (set): Set of layer indices that act as network entry points.
+    - dvs_node_info (dict): contains information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`).
 
     Attributes
     ----------
@@ -45,6 +46,7 @@ class DynapcnnNetworkModule(nn.Module):
         dynapcnn_layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         entry_points: Set[int],
+        dvs_node_info: Dict,
     ):
         super().__init__()
 
@@ -58,6 +60,13 @@ class DynapcnnNetworkModule(nn.Module):
 
         # `Merge` layers are stateless. One instance can be used for all merge points during forward pass
         self.merge_layer = sl.Merge()
+
+        # TODO - just saved for now [ STILL NEEDS TO BE INCORPORATED TO THE FORWARD PASS ].
+        self._dvs_node_info = dvs_node_info
+
+    @property
+    def dvs_node_info(self):
+        return self._dvs_node_info
     
     @property
     def destination_map(self):

@@ -365,7 +365,6 @@ def add_or_update_dvs_to_entry(
             # TODO - GraphTracer not populating I/O shape for DVS yet.
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
-            "config_dict": indx_2_module_map[edge[0]].get_config_dict(),
             "destinations": [node_2_layer_map[edge[1]]],
         }
 
