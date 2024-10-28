@@ -43,6 +43,7 @@ class DVSLayer(nn.Module):
         flip_y: bool = False,
         swap_xy: bool = False,
         disable_pixel_array: bool = True,
+        destinations: list = [0] # TODO: just to get the forward to work but should use same concept for the pool argument in DynapcnnLayer.
     ):
         super().__init__()
 
@@ -222,15 +223,23 @@ class DVSLayer(nn.Module):
         # Merge polarities
         if self.merge_polarities:
             data = data.sum(1, keepdim=True)
+
         # Pool
         out = self.pool_layer(data)
+
         # Crop
         if self.crop_layer is not None:
             out = self.crop_layer(out)
+
         # Flip stuff
         out = self.flip_layer(out)
 
-        return out
+        # TODO: just to get the forward to work but should use same concept for the pool argument in DynapcnnLayer.
+        returns = []
+        for dest in destinations:
+            returns.append(out)
+
+        return tuple(returns)
 
     def get_pooling(self) -> Tuple[int, int]:
         """Pooling kernel shape.
