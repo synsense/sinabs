@@ -18,7 +18,7 @@ from .exceptions import (
     UnmatchedPoolingEdges,
 )
 from .utils import Edge
-
+from dvs_layer import DVSLayer
 
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
@@ -85,6 +85,18 @@ def collect_dynapcnn_layer_info(
             node_2_layer_map,
             entry_nodes,
         )
+
+    # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
+    while edges_by_type["dvs-weight"]:
+        edge = edges_by_type["dvs-weight"].pop()
+        add_or_update_dvs_to_entry(
+            edge,
+            dynapcnn_layer_info,
+            indx_2_module_map,
+            node_2_layer_map,
+        )
+
+    # TODO - handle dvs->pooling connections.
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
     while edges_by_type.get("neuron-weight", False):
@@ -299,6 +311,56 @@ def add_pooling_to_entry(
         assert node not in node_2_layer_map
         node_2_layer_map[node] = layer_idx
 
+def add_or_update_dvs_to_entry(
+    edge: Edge,
+    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    indx_2_module_map: Dict[int, nn.Module],
+    node_2_layer_map: Dict[int, int],
+) -> None:
+    """ Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
+    Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry 
+    to the `desctinations` key of its dictionary.
+
+    Parameters
+    ----------
+    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
+        Edge target has to be within an existing entry of `dynapcnn_layer_info`.
+    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
+        key is unique dynapcnn layer ID, value is dict with nodes of the layer
+        Will be updated in-place.
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
+        Will be updated in-place.
+    """
+
+    assert isinstance(indx_2_module_map[edge[0]], DVSLayer), f'Source node in edge {edge} is of type {type(DVSLayer)} (it should be a DVSLayer instance).'
+    assert edge[1] in node_2_layer_map, f'Node {edge[1]} is a weight node that should have been initialized.'
+
+    if edge[0] not in node_2_layer_map:
+        # DVS node hasn't being initialized yet: take current length of the dict as new, unique ID.
+        layer_id = len(dynapcnn_layer_info)
+        assert layer_id not in dynapcnn_layer_info
+
+        # Init. entry for a DVS layer using its configuration dict.
+        dynapcnn_layer_info[layer_id] = {
+            "dvs_layer": True,
+            # TODO - GraphTracer not populating I/O shape for DVS yet.
+            "input_shape":  nodes_io_shapes[edge[0]]["input"],
+            "config_dict": indx_2_module_map[edge[0]].get_config_dict(),
+            "destinations": [node_2_layer_map[edge[1]]],
+        }
+
+        node_2_layer_map[edge[0]] = layer_id
+    else:
+        # Update entry for DVS with new destination.
+        source_layer_id = node_2_layer_map[edge[0]]
+        destination_layer_id = node_2_layer_map[edge[1]]
+
+        assert 'dvs_layer' in dynapcnn_layer_info[source_layer_id]
+        assert dynapcnn_layer_info[source_layer_id]['dvs_layer']
+        assert destination_layer_id not in dynapcnn_layer_info[source_layer_id]["destinations"]
+    
+        dynapcnn_layer_info[source_layer_id]["destinations"].append(destination_layer_id)
 
 def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     """Set minimal destination entries for layers that don't have any.
