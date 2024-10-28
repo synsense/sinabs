@@ -32,6 +32,7 @@ def construct_dynapcnnlayers_from_mapper(
     }
 
     destination_map = construct_destination_map(dcnnl_map)
+    update_destination_map_with_dvs(dcnnl_map, destination_map)
     entry_points = collect_entry_points(dcnnl_map)
 
     return dynapcnn_layers, destination_map, entry_points
@@ -298,3 +299,17 @@ def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
         layer_index 
         for layer_index, layer_info in dcnnl_map.items() if layer_info["is_entry_node"]
     }
+
+def update_destination_map_with_dvs(dcnnl_map: Dict[int, Dict], destination_map: Dict[int, List[int]]) -> None:
+    """ Modifies `destination_map` in-place to add entry for the DVS came node (if it existis).
+
+    Parameters
+    ----------
+    - dcnnl_map (dict): Dict holding info needed to instantiate DynapcnnLayer instances.
+    - destination_map (dict): dict mapping to each layer index a set of destination indices.
+    """
+    for layer_index, layer_info in dcnnl_map.items():
+        if 'dvs_layer' in layer_info:
+            assert layer_info['dvs_layer']
+            assert layer_index not in destination_map, 'It seems more than one DVS node has been added (only one should exist).'
+            destination_map[layer_index] = layer_info['destinations']
