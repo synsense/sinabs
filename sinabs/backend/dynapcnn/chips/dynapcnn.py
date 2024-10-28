@@ -255,6 +255,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
+        dvs_node_info: Dict,
     ) -> DynapcnnConfiguration:
         """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
@@ -264,6 +265,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
             cores on hardware. Needed to map the destinations.]
         - destination_indices (List): Indices of destination layers for `layer`
+        - dvs_node_info (dict): contains information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
 
         Returns
         -------
@@ -277,7 +279,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         # Loop over layers in network and write corresponding configurations
         for layer_index, ith_dcnnl in layers.items():
             if isinstance(ith_dcnnl, DVSLayer):
-                # TODO DVSLayer not supported yet.
+                # TODO DVSLayer using `dvs_node_info`.
                 pass
 
             elif isinstance(ith_dcnnl, DynapcnnLayer):

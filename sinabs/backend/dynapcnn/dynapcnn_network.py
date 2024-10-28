@@ -84,6 +84,10 @@ class DynapcnnNetwork(nn.Module):
     ####################################################### Public Methods #######################################################
 
     @property
+    def dvs_node_info(self):
+        return self._dynapcnn_module.dvs_node_info
+
+    @property
     def dynapcnn_layers(self):
         return self._dynapcnn_module.dynapcnn_layers
 
@@ -552,6 +556,7 @@ class DynapcnnNetwork(nn.Module):
             layers=self.dynapcnn_layers,
             destination_map=self.layer_destination_map,
             layer2core_map=layer2core_map,
+            dvs_node_info=dvs_node_info,
         )
 
         # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).

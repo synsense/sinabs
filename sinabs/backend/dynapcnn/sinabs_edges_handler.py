@@ -6,7 +6,7 @@ contact       : williansoaresgirao@gmail.com
 """
 
 from collections import deque
-from typing import Dict, List, Set, Tuple, Type
+from typing import Dict, List, Set, Tuple, Type, Optional
 
 from torch import Size, nn
 
@@ -19,6 +19,23 @@ from .exceptions import (
 )
 from .utils import Edge
 from dvs_layer import DVSLayer
+
+def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
+    """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.
+
+    Parameters
+    ----------
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+
+    Returns
+    -------
+    -  Dict containing information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
+    """
+    for layer_index, layer_info in dcnnl_map.items():
+        if 'dvs_layer' in layer_info:
+            assert layer_info['dvs_layer']
+            return destination_map[layer_index]
+    return None
 
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
@@ -344,8 +361,10 @@ def add_or_update_dvs_to_entry(
         # Init. entry for a DVS layer using its configuration dict.
         dynapcnn_layer_info[layer_id] = {
             "dvs_layer": True,
+            "node_id": edge[0],
             # TODO - GraphTracer not populating I/O shape for DVS yet.
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
+            "module": indx_2_module_map[edge[0]],
             "config_dict": indx_2_module_map[edge[0]].get_config_dict(),
             "destinations": [node_2_layer_map[edge[1]]],
         }

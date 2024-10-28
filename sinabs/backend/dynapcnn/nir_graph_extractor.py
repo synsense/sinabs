@@ -17,7 +17,7 @@ from .connectivity_specs import (
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
-from .sinabs_edges_handler import collect_dynapcnn_layer_info
+from .sinabs_edges_handler import collect_dynapcnn_layer_info, get_dvs_node_from_mapper
 from .utils import Edge, topological_sorting
 
 
@@ -143,9 +143,12 @@ class GraphExtractor:
             )
         )
 
+        # DVSLayer node information (None if DVS camera is not used).
+        dvs_node_info = get_dvs_node_from_mapper(dcnnl_map)
+
         # Instantiate the DynapcnnNetworkModule
         return DynapcnnNetworkModule(
-            dynapcnn_layers, destination_map, entry_points
+            dynapcnn_layers, destination_map, entry_points, dvs_node_info
         )
 
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
