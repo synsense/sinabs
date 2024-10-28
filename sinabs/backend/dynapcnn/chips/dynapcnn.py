@@ -314,7 +314,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             destination_indices = dvs_node_info['destinations']
             # Write camera configuration.
             cls.write_dvs_layer_config(sw_layer, layer2core_map, destination_indices, chip_layer)
-            chip_layer.pass_sensor_events = False
 
             # TODO - for now it's being handled separatly but it might make more sense to handle it within `layers`.
 
