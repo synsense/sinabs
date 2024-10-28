@@ -366,6 +366,7 @@ def add_or_update_dvs_to_entry(
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
             "destinations": [node_2_layer_map[edge[1]]],
+            'layer_id': layer_id,
         }
 
         node_2_layer_map[edge[0]] = layer_id

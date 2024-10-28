@@ -2,7 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 from collections import defaultdict
-from typing import Dict, List, Set, Union
+from typing import Dict, List, Set, Union, Optional
 from warnings import warn
 
 import torch.nn as nn
@@ -46,23 +46,27 @@ class DynapcnnNetworkModule(nn.Module):
         dynapcnn_layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         entry_points: Set[int],
-        dvs_node_info: Dict,
+        dvs_node_info: Optional[Dict],
     ):
         super().__init__()
 
+        self._dvs_node_info = dvs_node_info
+
+        # nodes in a DynapcnnNetwork graph.
+        module_dict = {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
+        # Insert DVS node if DVS was enabled.
+        if isinstance(self._dvs_node_info, Dict):
+            module_dict[str(dvs_node_info['layer_id'])] = dvs_node_info['module']
+        
         # Unfortunately ModuleDict does not allow for integer keys
         # TODO: Consider using list instead of dict
-        self._dynapcnn_layers = nn.ModuleDict(
-            {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
-        )
+        self._dynapcnn_layers = nn.ModuleDict(module_dict)
+
         self._destination_map = destination_map
         self._entry_points = entry_points
 
         # `Merge` layers are stateless. One instance can be used for all merge points during forward pass
         self.merge_layer = sl.Merge()
-
-        # TODO - just saved for now [ STILL NEEDS TO BE INCORPORATED TO THE FORWARD PASS ].
-        self._dvs_node_info = dvs_node_info
 
     @property
     def dvs_node_info(self):
@@ -75,7 +79,11 @@ class DynapcnnNetworkModule(nn.Module):
     @property
     def dynapcnn_layers(self):
         # Convert string-indices to integers
-        return {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        dynapcnn_layers = {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        # Insert DVS node if DVS was enabled.
+        if isinstance(self.dvs_node_info, Dict):
+            dynapcnn_layers[str(self.dvs_node_info['layer_id'])] = self.dvs_node_info['module']
+        return dynapcnn_layers
 
     @property
     def entry_points(self):
@@ -326,9 +334,11 @@ class DynapcnnNetworkModule(nn.Module):
                 return mapping[key]
 
         # Remap all internal objects
-        self._dynapcnn_layers = nn.ModuleDict(
-            {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
-        )
+        dynapcnn_layers = {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        if isinstance(self.dvs_node_info, Dict):
+            dynapcnn_layers[str(remap(self.dvs_node_info['layer_id']))] = self.dvs_node_info['module']
+        self._dynapcnn_layers = nn.ModuleDict(dynapcnn_layers)
+
         self._entry_points = {remap(idx) for idx in self._entry_points}
         self._destination_map = {
             remap(idx): [remap(dest) for dest in destinations]
