@@ -1,7 +1,5 @@
 """
 functionality : list device-independent supported connections between layers on chip
-author        : Willian Soares Girao
-contact       : williansoaresgirao@gmail.com
 """
 
 from typing import Union
@@ -9,11 +7,14 @@ from typing import Union
 import torch.nn as nn
 
 import sinabs.layers as sl
+from dvs_layer import DVSLayer
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
 Neuron = (sl.IAFSqueeze,)
+Dvs = (DVSLayer,)
 
+# @TODO - need to list other edge cases involving DVS layer (for now only dvs-weight and dvs-pooling).
 VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # convoluion is always followed by a neuron layer.
     (Weight, Neuron): "weight-neuron",
@@ -25,6 +26,10 @@ VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     (Neuron, Weight): "neuron-weight",
     # Pooling can be followed by weight layer of next core
     (Pooling, Weight): "pooling-weight",
+    # Dvs can be followed by weight layer of next core
+    (Dvs, Weight): "dvs-weight",
+    # Dvs can be followed by pooling layers
+    (Dvs, Pooling): "dvs-pooling",
 }
 
 # Unpack dict
@@ -39,4 +44,4 @@ VALID_SINABS_EDGE_TYPES = {
 LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
 
 # Neuron and pooling layers can have their output sent to multiple cores
-LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling)]
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling, *Dvs)]
