@@ -42,16 +42,17 @@ def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     return None
 
 def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module]) -> None:
-    """ Modifies `edges` in-place to re-structure the edges related witht the DVSLayer instance. Currently, this is also
-    removing a self-recurrent node with edge `(FlipDims, FlipDims)` that is created when forwarding via DVSLayer.
+    """ Modifies `edges` in-place to re-structure the edges related witht the DVSLayer instance. The DVSLayer's forward method 
+    feeds that in the sequence `DVS.pool -> DVS.crop -> DVS.flip`, so we remove edges involving these nodes that are internaly
+    implementend in the DVSLayer instance from the graph and point the node of DVSLayer directly to the layer/module it is suppoed
+    to forward its data to.
     
-    The DVSLayer's forward method feeds that in the sequence `DVS.pool -> DVS.crop -> DVS.flip`, so 
-    we want to find four nodes in `edges` (one for each of these in the sequence plus the node representing 
-    the DVSLayer itself).
+    Currently, this is also removing a self-recurrent node with edge `(FlipDims, FlipDims)` that is 
+    created when forwarding via DVSLayer.
 
     The 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
     the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
-    this layer as **it should be**.
+    this layer as **it should be** but the graph tracing of NIR should be looked into to solve the root problem.
 
     Parameters
     ----------
@@ -61,7 +62,7 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
 
     # spot nodes (ie, modules) used in a DVSLayer instance's forward pass (including the DVSLayer node itself).
     dvslayer_nodes = {
-        index for index, module in indx_2_module_map.items() 
+        index: module for index, module in indx_2_module_map.items() 
         if any(isinstance(module, dvs_node) for dvs_node in DVS)
     }
 
@@ -70,18 +71,31 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
     # inputing into a crop layer than the pool is inside the DVSLayer instance. It feels like a hacky way to do it 
     # so we should revise this.
     dvslayer_nodes.update({
-        edge[0] for edge in edges 
+        edge[0]: indx_2_module_map[edge[0]] for edge in edges 
         if isinstance(indx_2_module_map[edge[0]], SumPool2d) and isinstance(indx_2_module_map[edge[1]], Crop2d)
     })
 
     # NIR is extracting and edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
     edges = {(src, tgt) for (src, tgt) in edges if not (src == tgt and isinstance(indx_2_module_map[src], FlipDims))}
 
-    # DVS edges we want: (dvs, dvs_pool), (dvs_pool, dvs_crop), (dvs_crop, dvs_flip)
-    
+    # Since NIR is not extracting the edges for the DVSLayer correctly, remove all edges involving the DVS.
+    edges = {(src, tgt) for (src, tgt) in edges if src not in dvslayer_nodes and tgt not in dvslayer_nodes}
 
-    print('>>> ', dvslayer_nodes)
-    print('>>> ', edges)
+    # Get what the entry nodes should be without the DVS - these are the ones the DVS should point to.
+    all_sources, all_targets = zip(*edges)
+    entry_nodes =  set(all_sources) - set(all_targets)
+
+    # Get node's indexes based on the module type - just for validation.
+    dvs_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, DVSLayer)]
+    dvs_pool_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, SumPool2d)]
+    dvs_crop_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, Crop2d)]
+    dvs_flip_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, FlipDims)]
+
+    if any(len(node) > 1 for node in [dvs_node, dvs_pool_node, dvs_crop_node, dvs_flip_node]):
+        raise ValueError(f'Internal DVS nodes should be single instances but multiple have been found: dvs_node: {len(dvs_node)} dvs_pool_node: {len(dvs_pool_node)} dvs_crop_node: {len(dvs_crop_node)} dvs_flip_node: {len(dvs_flip_node)}')
+    
+    # dvs_pool, dvs_crop and dvs_flip are internal nodes of the DVSLayer: we only want an edge from 'dvs' node to the entry points of the network.
+    edges.update({(dvs_node[-1], node) for node in entry_nodes})
 
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
