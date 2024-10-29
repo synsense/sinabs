@@ -54,14 +54,15 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
     """
     # Consolidate pooling information for each destination
     for layer_info in dcnnl_map.values():
-        consolidate_layer_pooling(layer_info, dcnnl_map)
+        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
+            consolidate_layer_pooling(layer_info, dcnnl_map)
 
     for layer_info in dcnnl_map.values():
-        # Consolidate scale factors
-        consolidate_layer_scaling(layer_info, rescale_fn)
-        # Handle input dimensions
-        determine_layer_input_shape(layer_info)
-
+        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
+            # Consolidate scale factors
+            consolidate_layer_scaling(layer_info, rescale_fn)
+            # Handle input dimensions
+            determine_layer_input_shape(layer_info)
 
 def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     """Consolidate pooling information for individual layer
