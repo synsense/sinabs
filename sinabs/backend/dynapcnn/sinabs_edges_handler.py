@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Tuple, Type, Optional
 
 from torch import Size, nn
 
-from .connectivity_specs import VALID_SINABS_EDGE_TYPES
+from .connectivity_specs import VALID_SINABS_EDGE_TYPES, DVS
 from .exceptions import (
     InvalidEdge,
     InvalidGraphStructure,
@@ -19,6 +19,10 @@ from .exceptions import (
 )
 from .utils import Edge
 from .dvs_layer import DVSLayer
+from .crop2d import Crop2d
+from .flipdims import FlipDims
+
+from sinabs.layers import SumPool2d
 
 def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.
@@ -34,8 +38,50 @@ def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     for layer_index, layer_info in dcnnl_map.items():
         if 'dvs_layer' in layer_info:
             assert layer_info['dvs_layer']
-            return destination_map[layer_index]
+            return layer_info
     return None
+
+def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module]) -> None:
+    """ Modifies `edges` in-place to re-structure the edges related witht the DVSLayer instance. Currently, this is also
+    removing a self-recurrent node with edge `(FlipDims, FlipDims)` that is created when forwarding via DVSLayer.
+    
+    The DVSLayer's forward method feeds that in the sequence `DVS.pool -> DVS.crop -> DVS.flip`, so 
+    we want to find four nodes in `edges` (one for each of these in the sequence plus the node representing 
+    the DVSLayer itself).
+
+    The 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
+    the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
+    this layer as **it should be**.
+
+    Parameters
+    ----------
+    - edges (set): tuples describing the connections between layers in `spiking_model`.
+    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+    """
+
+    # spot nodes (ie, modules) used in a DVSLayer instance's forward pass (including the DVSLayer node itself).
+    dvslayer_nodes = {
+        index for index, module in indx_2_module_map.items() 
+        if any(isinstance(module, dvs_node) for dvs_node in DVS)
+    }
+
+    # TODO - a `SumPool2d` is also a node that's used inside a DVSLayer instance. In what follows we try to find it
+    # by looking for pooling nodes that appear in a (pool, crop) edge - the assumption being that if the pooling is
+    # inputing into a crop layer than the pool is inside the DVSLayer instance. It feels like a hacky way to do it 
+    # so we should revise this.
+    dvslayer_nodes.update({
+        edge[0] for edge in edges 
+        if isinstance(indx_2_module_map[edge[0]], SumPool2d) and isinstance(indx_2_module_map[edge[1]], Crop2d)
+    })
+
+    # NIR is extracting and edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
+    edges = {(src, tgt) for (src, tgt) in edges if not (src == tgt and isinstance(indx_2_module_map[src], FlipDims))}
+
+    # DVS edges we want: (dvs, dvs_pool), (dvs_pool, dvs_crop), (dvs_crop, dvs_flip)
+    
+
+    print('>>> ', dvslayer_nodes)
+    print('>>> ', edges)
 
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],

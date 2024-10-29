@@ -17,7 +17,7 @@ from .connectivity_specs import (
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
-from .sinabs_edges_handler import collect_dynapcnn_layer_info, get_dvs_node_from_mapper
+from .sinabs_edges_handler import collect_dynapcnn_layer_info, get_dvs_node_from_mapper, fix_dvs_module_edges
 from .utils import Edge, topological_sorting
 
 
@@ -59,8 +59,10 @@ class GraphExtractor:
 
         # Map node names to indices
         self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+
         # Extract edges list from graph
         self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
+
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
@@ -72,6 +74,15 @@ class GraphExtractor:
 
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
+
+        print('----------------------------------------')
+        print(self._edges)
+        for key, val in self._name_2_indx_map.items():
+            print(key, val)
+        print('----------------------------------------')
+
+        # Consolidates the edges associated with a DVSLayer instance.
+        fix_dvs_module_edges(edges=self._edges, indx_2_module_map=self._indx_2_module_map)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
