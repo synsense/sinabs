@@ -67,7 +67,6 @@ def collect_dynapcnn_layer_info(
         'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
         containing corresponding node ids and modules required to build the layer
     """
-    # TODO: Handle DVS layer
 
     # Sort edges by edge type (type of layers they connect)
     edges_by_type: Dict[str, Set[Edge]] = sort_edges_by_type(
@@ -103,15 +102,17 @@ def collect_dynapcnn_layer_info(
             entry_nodes,
         )
 
+    # TODO - make 'dvs-weight' an empty set when calling sort_edges_by_type() to remove the need for the 'if' statement bellow.
     # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    while edges_by_type["dvs-weight"]:
-        edge = edges_by_type["dvs-weight"].pop()
-        add_or_update_dvs_to_entry(
-            edge,
-            dynapcnn_layer_info,
-            indx_2_module_map,
-            node_2_layer_map,
-        )
+    if "dvs-weight" in edges_by_type:
+        while edges_by_type["dvs-weight"]:
+            edge = edges_by_type["dvs-weight"].pop()
+            add_or_update_dvs_to_entry(
+                edge,
+                dynapcnn_layer_info,
+                indx_2_module_map,
+                node_2_layer_map,
+            )
 
     # TODO - handle dvs->pooling connections.
 
