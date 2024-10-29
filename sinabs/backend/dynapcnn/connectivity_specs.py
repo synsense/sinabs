@@ -7,7 +7,7 @@ from typing import Union
 import torch.nn as nn
 
 import sinabs.layers as sl
-from dvs_layer import DVSLayer
+from .dvs_layer import DVSLayer
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)

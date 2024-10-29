@@ -18,7 +18,7 @@ from .exceptions import (
     UnmatchedPoolingEdges,
 )
 from .utils import Edge
-from dvs_layer import DVSLayer
+from .dvs_layer import DVSLayer
 
 def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.

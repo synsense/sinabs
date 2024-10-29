@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 
 import sinabs
-from dvs_layer import DVSLayer
+from .dvs_layer import DVSLayer
 
 from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
