@@ -8,11 +8,13 @@ import torch.nn as nn
 
 import sinabs.layers as sl
 from .dvs_layer import DVSLayer
+from .crop2d import Crop2d
+from .flipdims import FlipDims
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
 Neuron = (sl.IAFSqueeze,)
-Dvs = (DVSLayer,)
+DVS = (DVSLayer, Crop2d, FlipDims)
 
 # @TODO - need to list other edge cases involving DVS layer (for now only dvs-weight and dvs-pooling).
 VALID_SINABS_EDGE_TYPES_ABSTRACT = {
@@ -27,9 +29,9 @@ VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # Pooling can be followed by weight layer of next core
     (Pooling, Weight): "pooling-weight",
     # Dvs can be followed by weight layer of next core
-    (Dvs, Weight): "dvs-weight",
+    (DVSLayer, Weight): "dvs-weight",
     # Dvs can be followed by pooling layers
-    (Dvs, Pooling): "dvs-pooling",
+    (DVSLayer, Pooling): "dvs-pooling",
 }
 
 # Unpack dict
@@ -44,4 +46,4 @@ VALID_SINABS_EDGE_TYPES = {
 LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
 
 # Neuron and pooling layers can have their output sent to multiple cores
-LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling, *Dvs)]
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling, DVSLayer)]
