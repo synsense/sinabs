@@ -74,10 +74,11 @@ class GraphExtractor:
             # input shape for `DVSLayer` instance that will be the module of the node 'dvs'.
             _, _, height, width = dummy_input.shape
             self._add_dvs_node(dvs_input_shape=(height, width))
-            # Consolidates the edges associated with a DVSLayer instance (ie., fix NIR edges extraction when DVS is a node in the graph).
-            fix_dvs_module_edges(edges=self._edges, indx_2_module_map=self._indx_2_module_map)
 
-            self._entry_nodes
+            # TODO - the calll bellow should be done outside this 'if' cuz the problem only 
+            # appears when the DVSLayer is given as the first layer of `spiking_model`.
+            # Fix NIR edges extraction when DVS is a node in the graph.
+            fix_dvs_module_edges(edges=self._edges, indx_2_module_map=self._indx_2_module_map)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
