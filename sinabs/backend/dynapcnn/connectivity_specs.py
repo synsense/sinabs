@@ -14,7 +14,7 @@ from .flipdims import FlipDims
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
 Neuron = (sl.IAFSqueeze,)
-DVS = (DVSLayer, Crop2d, FlipDims)
+DVS = (DVSLayer, )
 
 # @TODO - need to list other edge cases involving DVS layer (for now only dvs-weight and dvs-pooling).
 VALID_SINABS_EDGE_TYPES_ABSTRACT = {
@@ -29,9 +29,9 @@ VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # Pooling can be followed by weight layer of next core
     (Pooling, Weight): "pooling-weight",
     # Dvs can be followed by weight layer of next core
-    (DVSLayer, Weight): "dvs-weight",
+    (DVS, Weight): "dvs-weight",
     # Dvs can be followed by pooling layers
-    (DVSLayer, Pooling): "dvs-pooling",
+    (DVS, Pooling): "dvs-pooling",
 }
 
 # Unpack dict
@@ -46,4 +46,4 @@ VALID_SINABS_EDGE_TYPES = {
 LAYER_TYPES_WITH_MULTIPLE_INPUTS = Union[sl.Merge]
 
 # Neuron and pooling layers can have their output sent to multiple cores
-LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling, DVSLayer)]
+LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = Union[(*Neuron, *Pooling, *DVS)]

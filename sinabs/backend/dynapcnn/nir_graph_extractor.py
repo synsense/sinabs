@@ -66,23 +66,18 @@ class GraphExtractor:
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
-        # True if `dvs_input == True` and `spiking_model` does not start with DVS layer.
+        # Determine entry points to graph
+        self._entry_nodes = self._get_entry_nodes(self._edges)
+
+        # If DVS camera is wanted but `spiking_model` does not start with DVS layer.
         if self._need_dvs_node(spiking_model, dvs_input):
             # input shape for `DVSLayer` instance that will be the module of the node 'dvs'.
             _, _, height, width = dummy_input.shape
             self._add_dvs_node(dvs_input_shape=(height, width))
+            # Consolidates the edges associated with a DVSLayer instance (ie., fix NIR edges extraction when DVS is a node in the graph).
+            fix_dvs_module_edges(edges=self._edges, indx_2_module_map=self._indx_2_module_map)
 
-        # Determine entry points to graph
-        self._entry_nodes = self._get_entry_nodes(self._edges)
-
-        print('----------------------------------------')
-        print(self._edges)
-        for key, val in self._name_2_indx_map.items():
-            print(key, val)
-        print('----------------------------------------')
-
-        # Consolidates the edges associated with a DVSLayer instance.
-        fix_dvs_module_edges(edges=self._edges, indx_2_module_map=self._indx_2_module_map)
+            self._entry_nodes
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -247,7 +242,9 @@ class GraphExtractor:
 
     def _add_dvs_node(self, dvs_input_shape: Tuple[int, int]) -> None:
         """ In-place modification of `self._name_2_indx_map`, `self._indx_2_module_map`, and `self._edges` to accomodate the 
-        creation of an extra node in the graph representing the DVS camera of the chip.
+        creation of an extra node in the graph representing the DVS camera of the chip. The DVSLayer node will point to every
+        other node that is up to this point an entry node of the original graph, so `self._entry_nodes` is modified in-place
+        to have only one entry: the index of the DVS node.
 
         Parameters
         ----------
@@ -263,6 +260,8 @@ class GraphExtractor:
         self._indx_2_module_map[self._name_2_indx_map['dvs']] = DVSLayer(input_shape=dvs_input_shape)
         # set DVS node as input to each entry node of the graph.
         self._edges.update({(self._name_2_indx_map['dvs'], entry_node) for entry_node in self._entry_nodes})
+        # DVSLayer node becomes the only entrypoint of the graph.
+        self._entry_nodes = {self._name_2_indx_map['dvs']}
 
     def _need_dvs_node(self, model: nn.Module, dvs_input: bool) -> bool:
         """ Returns whether or not a node will need to be added to represent a `DVSLayer` instance. A new node will have 

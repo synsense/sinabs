@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Tuple, Type, Optional
 
 from torch import Size, nn
 
-from .connectivity_specs import VALID_SINABS_EDGE_TYPES, DVS
+from .connectivity_specs import VALID_SINABS_EDGE_TYPES
 from .exceptions import (
     InvalidEdge,
     InvalidGraphStructure,
@@ -46,25 +46,31 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
     feeds that in the sequence `DVS.pool -> DVS.crop -> DVS.flip`, so we remove edges involving these nodes that are internaly
     implementend in the DVSLayer instance from the graph and point the node of DVSLayer directly to the layer/module it is suppoed
     to forward its data to.
+
+    Modifies `indx_2_module_map` in-place to remove the nodes (Crop2d, FlipDims and DVSLayer's pooling) defined within the DVSLayer
+    instance since those are not independent nodes of the final graph.
     
     Currently, this is also removing a self-recurrent node with edge `(FlipDims, FlipDims)` that is 
     created when forwarding via DVSLayer.
-
-    The 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
-    the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
-    this layer as **it should be** but the graph tracing of NIR should be looked into to solve the root problem.
 
     Parameters
     ----------
     - edges (set): tuples describing the connections between layers in `spiking_model`.
     - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
     """
+    # TODO - the 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
+    # the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
+    # this layer as **it should be** but the graph tracing of NIR should be looked into to solve the root problem.
 
     # spot nodes (ie, modules) used in a DVSLayer instance's forward pass (including the DVSLayer node itself).
     dvslayer_nodes = {
         index: module for index, module in indx_2_module_map.items() 
-        if any(isinstance(module, dvs_node) for dvs_node in DVS)
+        if any(isinstance(module, dvs_node) for dvs_node in (DVSLayer, Crop2d, FlipDims))
     }
+
+    if len(dvslayer_nodes) == 1:
+        # No module within the DVSLayer instance appears as an independent node - nothing to do here.
+        return
 
     # TODO - a `SumPool2d` is also a node that's used inside a DVSLayer instance. In what follows we try to find it
     # by looking for pooling nodes that appear in a (pool, crop) edge - the assumption being that if the pooling is
@@ -93,6 +99,11 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
 
     if any(len(node) > 1 for node in [dvs_node, dvs_pool_node, dvs_crop_node, dvs_flip_node]):
         raise ValueError(f'Internal DVS nodes should be single instances but multiple have been found: dvs_node: {len(dvs_node)} dvs_pool_node: {len(dvs_pool_node)} dvs_crop_node: {len(dvs_crop_node)} dvs_flip_node: {len(dvs_flip_node)}')
+    
+    # Remove dvs_pool, dvs_crop and dvs_flip nodes from `indx_2_module_map` (these operate within the DVS, not as independent nodes of the final graph).
+    indx_2_module_map.pop(dvs_pool_node[-1])
+    indx_2_module_map.pop(dvs_crop_node[-1])
+    indx_2_module_map.pop(dvs_flip_node[-1])
     
     # dvs_pool, dvs_crop and dvs_flip are internal nodes of the DVSLayer: we only want an edge from 'dvs' node to the entry points of the network.
     edges.update({(dvs_node[-1], node) for node in entry_nodes})
