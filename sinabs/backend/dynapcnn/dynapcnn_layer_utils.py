@@ -33,9 +33,6 @@ def construct_dynapcnnlayers_from_mapper(
 
     destination_map = construct_destination_map(dcnnl_map)
 
-    # update mapper if a DVS layer exists.
-    update_destination_map_with_dvs(dcnnl_map, destination_map)
-
     entry_points = collect_entry_points(dcnnl_map)
 
     return dynapcnn_layers, destination_map, entry_points
@@ -283,6 +280,9 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
             else:
                 destination_indices.append(dest_idx)
         destination_map[layer_index] = destination_indices
+
+    # update mapper if a DVS layer exists.
+    update_destination_map_with_dvs(dcnnl_map, destination_map)
 
     return destination_map
 
