@@ -67,7 +67,7 @@ class DynapcnnNetwork(nn.Module):
             batch_size = sinabs.utils.get_smallest_compatible_time_dimension(snn)
         # computational graph from original PyTorch module.
         self._graph_extractor = GraphExtractor(
-            snn, torch.randn((batch_size, *self.input_shape), self.dvs_input)
+            snn, torch.randn((batch_size, *self.input_shape)), self.dvs_input
         )  # needs the batch dimension.
 
         # Remove nodes of ignored classes (including merge nodes)
