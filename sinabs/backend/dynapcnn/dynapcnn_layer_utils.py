@@ -271,16 +271,17 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
     """
     destination_map = dict()
     for layer_index, layer_info in dcnnl_map.items():
-        destination_indices = []
-        none_counter = 0
-        for dest in layer_info["destinations"]:
-            if (dest_idx := dest["destination_layer"]) is None:
-                # For `None` destinations use unique negative index
-                none_counter += 1
-                destination_indices.append(-none_counter)
-            else:
-                destination_indices.append(dest_idx)
-        destination_map[layer_index] = destination_indices
+        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
+            destination_indices = []
+            none_counter = 0
+            for dest in layer_info["destinations"]:
+                if (dest_idx := dest["destination_layer"]) is None:
+                    # For `None` destinations use unique negative index
+                    none_counter += 1
+                    destination_indices.append(-none_counter)
+                else:
+                    destination_indices.append(dest_idx)
+            destination_map[layer_index] = destination_indices
 
     # update mapper if a DVS layer exists.
     update_destination_map_with_dvs(dcnnl_map, destination_map)

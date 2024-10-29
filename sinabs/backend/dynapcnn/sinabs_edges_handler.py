@@ -183,6 +183,7 @@ def collect_dynapcnn_layer_info(
                 dynapcnn_layer_info,
                 indx_2_module_map,
                 node_2_layer_map,
+                nodes_io_shapes,
             )
 
     # TODO - handle dvs->pooling connections.
@@ -405,6 +406,7 @@ def add_or_update_dvs_to_entry(
     dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
 ) -> None:
     """ Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
     Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry 
@@ -420,6 +422,7 @@ def add_or_update_dvs_to_entry(
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     """
 
     assert isinstance(indx_2_module_map[edge[0]], DVSLayer), f'Source node in edge {edge} is of type {type(DVSLayer)} (it should be a DVSLayer instance).'
@@ -432,6 +435,7 @@ def add_or_update_dvs_to_entry(
 
         # Init. entry for a DVS layer using its configuration dict.
         dynapcnn_layer_info[layer_id] = {
+            "is_entry_node": True,
             "dvs_layer": True,
             "node_id": edge[0],
             # TODO - GraphTracer not populating I/O shape for DVS yet.
