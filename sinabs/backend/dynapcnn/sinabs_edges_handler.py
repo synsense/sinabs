@@ -184,20 +184,20 @@ def collect_dynapcnn_layer_info(
             entry_nodes,
         )
 
-    # TODO - make 'dvs-weight' an empty set when calling sort_edges_by_type() to remove the need for the 'if' statement bellow.
     # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    if "dvs-weight" in edges_by_type:
-        while edges_by_type["dvs-weight"]:
-            edge = edges_by_type["dvs-weight"].pop()
-            add_or_update_dvs_to_entry(
-                edge,
-                dynapcnn_layer_info,
-                indx_2_module_map,
-                node_2_layer_map,
-                nodes_io_shapes,
-            )
+    while edges_by_type["dvs-weight"]:
+        edge = edges_by_type["dvs-weight"].pop()
+        add_or_update_dvs_to_entry(
+            edge,
+            dynapcnn_layer_info,
+            indx_2_module_map,
+            node_2_layer_map,
+            nodes_io_shapes,
+        )
 
     # TODO - handle dvs->pooling connections.
+    while edges_by_type["dvs-pooling"]:
+        pass
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
     while edges_by_type.get("neuron-weight", False):
@@ -298,6 +298,14 @@ def sort_edges_by_type(
             edges_by_type[edge_type].add(edge)
         else:
             edges_by_type[edge_type] = {edge}
+
+    # Edges involving DVS are not required so we init. them to empty set if they do not exist.
+
+    if 'dvs-weight' not in edges_by_type:
+        edges_by_type['dvs-weight'] = set()
+
+    if 'dvs-pooling' not in edges_by_type:
+        edges_by_type['dvs-pooling'] = set()
 
     return edges_by_type
 
@@ -447,9 +455,10 @@ def add_or_update_dvs_to_entry(
         # Init. entry for a DVS layer using its configuration dict.
         dynapcnn_layer_info[layer_id] = {
             "is_entry_node": True,
+            # TODO - the key bellow is what currently tells an entry in `dynapcnn_layer_info` for the DVS apart from the DynapcnnLayer 
+            # entries (perhaps there's a better way).
             "dvs_layer": True,
             "node_id": edge[0],
-            # TODO - GraphTracer not populating I/O shape for DVS yet.
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
             "destinations": [node_2_layer_map[edge[1]]],
