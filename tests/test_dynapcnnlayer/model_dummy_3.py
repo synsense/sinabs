@@ -10,7 +10,6 @@ from sinabs.layers import IAFSqueeze, SumPool2d
 dcnnl_map_3 = {
     0: {
         "input_shape": (2, 34, 34),
-        "inferred_input_shapes": set(),
         "rescale_factors": set(),
         "is_entry_node": True,
         "conv": {
@@ -37,7 +36,6 @@ dcnnl_map_3 = {
     },
     1: {
         "input_shape": (4, 33, 33),
-        "inferred_input_shapes": set(((4, 33, 33),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -66,7 +64,6 @@ dcnnl_map_3 = {
     },
     2: {
         "input_shape": (4, 16, 16),
-        "inferred_input_shapes": set(((4, 16, 16),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -94,8 +91,7 @@ dcnnl_map_3 = {
         ],
     },
     3: {
-        "input_shape": (196, 1, 1),
-        "inferred_input_shapes": set(((4, 7, 7),)),
+        "input_shape": (4, 7, 7),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -122,7 +118,6 @@ dcnnl_map_3 = {
     },
     4: {
         "input_shape": (2, 34, 34),
-        "inferred_input_shapes": set(),
         "rescale_factors": set(),
         "is_entry_node": True,
         "conv": {
@@ -149,7 +144,6 @@ dcnnl_map_3 = {
     },
     5: {
         "input_shape": (4, 33, 33),
-        "inferred_input_shapes": set(((4, 33, 33),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -178,7 +172,6 @@ dcnnl_map_3 = {
     },
     6: {
         "input_shape": (4, 16, 16),
-        "inferred_input_shapes": set(((4, 16, 16),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -207,7 +200,6 @@ dcnnl_map_3 = {
     },
     7: {
         "input_shape": (100, 1, 1),
-        "inferred_input_shapes": set(((100, 1, 1),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -234,7 +226,6 @@ dcnnl_map_3 = {
     },
     8: {
         "input_shape": (100, 1, 1),
-        "inferred_input_shapes": set(((100, 1, 1),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -326,5 +317,5 @@ expected_output_3 = {
         6: [3],
         7: [8],
         8: [-1],
-    }
+    },
 }

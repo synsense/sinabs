@@ -23,8 +23,6 @@ def reset_states(seq):
 
 def networks_equal_output(input_data, snn):
     snn.eval()
-    snn_out = snn(input_data).squeeze()  # forward pass
-    reset_states(snn)
 
     spn = DynapcnnNetwork(
         snn,
@@ -32,15 +30,14 @@ def networks_equal_output(input_data, snn):
         discretize=False,
         dvs_input=True,
     )
-    print(spn)
+
+    snn_out = snn(input_data).squeeze()  # forward pass
     spn_out = spn(input_data).squeeze()
 
-    print(snn_out.sum(), spn_out.sum())
     assert torch.equal(snn_out, spn_out)
 
     # this will give an error if the config is not compatible
     config = spn.make_config()
-    print(spn.chip_layers_ordering)
     return config
 
 
@@ -61,10 +58,9 @@ def test_with_class():
 
     snn = from_model(Net().seq, batch_size=1)
     snn.eval()
-    snn_out = snn(input_data).squeeze()  # forward pass
-
-    snn.reset_states()
     spn = DynapcnnNetwork(snn, input_shape=input_data.shape[1:], discretize=False)
+
+    snn_out = snn(input_data).squeeze()  # forward pass
     spn_out = spn(input_data).squeeze()
 
     assert torch.equal(snn_out, spn_out)
