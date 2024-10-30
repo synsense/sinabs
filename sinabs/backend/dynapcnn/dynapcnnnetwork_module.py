@@ -110,7 +110,7 @@ class DynapcnnNetworkModule(nn.Module):
             if any(d < 0 for d in destinations)
         ]
 
-    def get_exit_points(self):
+    def get_exit_points(self) -> Dict[int, Dict]:
         """ Get details of layers that act as exit points of the network
         
         Returns
