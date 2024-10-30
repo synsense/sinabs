@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Union
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple
 
 import torch
 import torch.nn as nn
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 # graph structure (e.g. Merge nodes) or meta-information (e.g.
 # `nn.Flatten` for io-shapes)
 COMPLETELY_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d)
-IGNORED_LAYER_TYPES = Union[nn.Flatten, sl.Merge]
+IGNORED_LAYER_TYPES = (nn.Flatten, sl.Merge)
 
 Edge = Tuple[int, int]  # Define edge-type alias
 

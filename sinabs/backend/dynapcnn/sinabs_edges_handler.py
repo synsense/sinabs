@@ -219,9 +219,6 @@ def init_new_dynapcnnlayer_entry(
 
     dynapcnn_layer_info[layer_id] = {
         "input_shape": nodes_io_shapes[edge[0]]["input"],
-        # Collect output shapes (before possible flattening) of layers with this layer as their destination
-        # This will allow infering shapes when converting linear to conv layers
-        "inferred_input_shapes": set(),
         "conv": {
             "module": indx_2_module_map[edge[0]],
             "node_id": edge[0],
@@ -387,11 +384,6 @@ def set_neuron_layer_destination(
         }
     )
 
-    # Add output shape of this layer to input shapes of destination
-    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
-        output_shape
-    )
-
 
 def set_pooling_layer_destination(
     dynapcnn_layer_info: Dict[int, Dict],
@@ -466,11 +458,6 @@ def set_pooling_layer_destination(
     destination["destination_layer"] = destination_layer_idx
     output_shape = nodes_io_shapes[edge[0]]["output"]
     destination["output_shape"] = output_shape
-
-    # Add output shape of this layer to input shapes of destination
-    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
-        output_shape
-    )
 
 
 def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:

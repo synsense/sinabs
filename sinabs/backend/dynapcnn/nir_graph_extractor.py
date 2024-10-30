@@ -149,7 +149,7 @@ class GraphExtractor:
         # Instantiate the DynapcnnNetworkModule
         return DynapcnnNetworkModule(dynapcnn_layers, destination_map, entry_points)
 
-    def remove_nodes_by_class(self, node_classes: Union[Type, Tuple[Type]]):
+    def remove_nodes_by_class(self, node_classes: Tuple[Type]):
         """Remove nodes of given classes from graph in place.
 
         Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
@@ -172,6 +172,18 @@ class GraphExtractor:
             # Skip nodes that are to be removed
             if not isinstance(self.indx_2_module_map[node], node_classes)
         }
+
+        if nn.Flatten in node_classes:
+            # Update input shapes of nodes after `Flatten` to the shape before flattening
+            # Note: This is likely to produce incorrect results if multiple Flatten layers
+            # come in sequence.
+            for node in self.sorted_nodes:
+                if isinstance(self.indx_2_module_map[node], nn.Flatten):
+                    shape_before_flatten = self.nodes_io_shapes[node]["input"]
+                    for target_node in self._find_valid_targets(node, node_classes):
+                        self._nodes_io_shapes[target_node][
+                            "input"
+                        ] = shape_before_flatten
 
         # remapping nodes indices contiguously starting from 0
         remapped_nodes = {
