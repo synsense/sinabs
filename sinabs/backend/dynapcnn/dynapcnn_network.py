@@ -508,8 +508,6 @@ class DynapcnnNetwork(nn.Module):
                 the provided device can be found.
         """
         config_builder = ChipFactory(device).get_config_builder()
-
-        # TODO not handling DVSLayer yet.
         has_dvs_layer = self.has_dvs_layer()
 
         if chip_layers_ordering is not None:
@@ -545,7 +543,7 @@ class DynapcnnNetwork(nn.Module):
                 )
 
             if has_dvs_layer:
-                # TODO not handling DVSLayer yet.
+                # TODO - DVS layer has been incorporated: what should happen here?
                 pass
         self._layer2core_map = layer2core_map
 
@@ -554,10 +552,10 @@ class DynapcnnNetwork(nn.Module):
             layers=self.dynapcnn_layers,
             destination_map=self.layer_destination_map,
             layer2core_map=layer2core_map,
-            dvs_node_info=dvs_node_info,
+            dvs_node_info=self.dvs_node_info,
         )
 
-        # TODO not handling DVSLayer yet (this is from the old implementation, should be revised).
+        # TODO - this is from the old implementation, should be revised.
         if self.input_shape and self.input_shape[0] == 1:
             config.dvs_layer.merge = True
 

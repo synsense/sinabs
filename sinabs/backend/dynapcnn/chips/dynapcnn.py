@@ -33,7 +33,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     # def write_dvs_layer_config(cls, layer: DVSLayer, config: DVSLayerConfig):
     #     for param, value in layer.get_config_dict().items():
     #         setattr(config, param, value)
-
     
     @classmethod
     def write_dvs_layer_config(
@@ -51,7 +50,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         ----------
         - layer (DVSLayer): Layer instance from which to generate the config
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.]
+            cores on hardware. Needed to map the destinations.
         - destination_indices (List): Indices of destination layers for `layer`
         - chip_layer (DVSLayerConfig): Configuration object of the corrsesponding
             on-chip core. Will be changed in-place based on `layer`.
@@ -295,7 +294,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         ----------
         - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.]
+            cores on hardware. Needed to map the destinations.
         - destination_indices (List): Indices of destination layers for `layer`
         - dvs_node_info (dict): contains information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
 
@@ -306,16 +305,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
         config = cls.get_default_config()
         config.dvs_layer.pass_sensor_events = False
-
-        # Uses the DVS camera.
-        if isinstance(dvs_node_info, dict):
-            chip_layer = config.dvs_layer
-            sw_layer = dvs_node_info['module']
-            destination_indices = dvs_node_info['destinations']
-            # Write camera configuration.
-            cls.write_dvs_layer_config(sw_layer, layer2core_map, destination_indices, chip_layer)
-
-            # TODO - for now it's being handled separatly but it might make more sense to handle it within `layers`.
 
         # Loop over layers in network and write corresponding configurations
         for layer_index, ith_dcnnl in layers.items():
@@ -329,6 +318,17 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     chip_layer=chip_layer,
                     destination_indices=destination_map[layer_index],
                 )
+            elif isinstance(ith_dcnnl, DVSLayer) and isinstance(dvs_node_info, dict):
+                # Uses the DVS camera.
+                chip_layer = config.dvs_layer
+                sw_layer = ith_dcnnl
+                destination_indices = destination_map[layer_index]
+                # Write camera configuration.
+                cls.write_dvs_layer_config(
+                    layer=sw_layer,
+                    layer2core_map=layer2core_map,
+                    destination_indices=destination_indices,
+                    chip_layer=chip_layer)
             else:
                 # shouldn't happen since type checks are made previously.
                 raise TypeError(

@@ -80,11 +80,7 @@ class DynapcnnNetworkModule(nn.Module):
     @property
     def dynapcnn_layers(self):
         # Convert string-indices to integers-indices
-        dynapcnn_layers = {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
-        # Insert DVS node if DVS was enabled.
-        if isinstance(self.dvs_node_info, Dict):
-            dynapcnn_layers[self.dvs_node_info['layer_id']] = self.dvs_node_info['module']
-        return dynapcnn_layers
+        return {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
 
     @property
     def entry_points(self):

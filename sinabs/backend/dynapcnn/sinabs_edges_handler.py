@@ -71,7 +71,7 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
         if any(isinstance(module, dvs_node) for dvs_node in (DVSLayer, Crop2d, FlipDims))
     }
 
-    if len(dvslayer_nodes) == 1:
+    if len(dvslayer_nodes) <= 1:
         # No module within the DVSLayer instance appears as an independent node - nothing to do here.
         return
 
