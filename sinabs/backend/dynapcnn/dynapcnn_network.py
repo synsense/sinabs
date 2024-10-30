@@ -6,23 +6,20 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from warnings import warn
 
 import samna
-from samna.dynapcnn.configuration import DynapcnnConfiguration
 import torch
 import torch.nn as nn
+from samna.dynapcnn.configuration import DynapcnnConfiguration
 from torch import Tensor
 
 import sinabs
 import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
-from .dynapcnn_layer import DynapcnnLayer
 from .dvs_layer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
-from .utils import (
-    DEFAULT_IGNORED_LAYER_TYPES,
-    parse_device_id,
-)
+from .utils import COMPLETELY_IGNORED_LAYER_TYPES, IGNORED_LAYER_TYPES, parse_device_id
 from .weight_rescaling_methods import rescale_method_1
 
 
@@ -69,11 +66,17 @@ class DynapcnnNetwork(nn.Module):
             batch_size = sinabs.utils.get_smallest_compatible_time_dimension(snn)
         # computational graph from original PyTorch module.
         self._graph_extractor = GraphExtractor(
-            snn, torch.randn((batch_size, *self.input_shape))
-        )  # needs the batch dimension.
+            snn,
+            torch.randn((batch_size, *self.input_shape)),
+            ignore_node_types=COMPLETELY_IGNORED_LAYER_TYPES,
+        )
 
         # Remove nodes of ignored classes (including merge nodes)
-        self._graph_extractor.remove_nodes_by_class(DEFAULT_IGNORED_LAYER_TYPES)
+        # Other than `COMPLETELY_IGNORED_LAYER_TYPES`, `IGNORED_LAYER_TYPES` are
+        # part of the graph initially and are needed to ensure proper handling of
+        # graph structure (e.g. Merge nodes) or meta-information (e.g.
+        # `nn.Flatten` for io-shapes)
+        self._graph_extractor.remove_nodes_by_class(IGNORED_LAYER_TYPES)
 
         # Module to execute forward pass through network
         self._dynapcnn_module = self._graph_extractor.get_dynapcnn_network_module(
@@ -82,6 +85,14 @@ class DynapcnnNetwork(nn.Module):
         self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
     ####################################################### Public Methods #######################################################
+
+    @property
+    def chip_layers_ordering(self):
+        warn(
+            "`chip_layers_ordering` is deprecated. Returning `layer2core_map` instead.",
+            DeprecationWarning,
+        )
+        return self._layer2core_map
 
     @property
     def dynapcnn_layers(self):
@@ -100,12 +111,8 @@ class DynapcnnNetwork(nn.Module):
         return self._layer2core_map
 
     @property
-    def chip_layers_ordering(self):
-        warn(
-            "`chip_layers_ordering` is deprecated. Returning `layer2core_map` instead.",
-            DeprecationWarning    
-        )
-        return self._layer2core_map
+    def name_2_indx_map(self):
+        return self._graph_extractor.name_2_indx_map
 
     def hw_forward(self, x):
         """Forwards data through the chip."""
@@ -231,8 +238,8 @@ class DynapcnnNetwork(nn.Module):
         layer2core_map: Union[Dict[int, int], str] = "auto",
         chip_layers_ordering="auto",
     ):
-        """ Deploy model to cpu, gpu or a SynSense device.
-        
+        """Deploy model to cpu, gpu or a SynSense device.
+
         Note that the model parameters are only ever transferred to the device on the `to` call,
         so changing a threshold or weight of a model that is deployed will have no effect on the
         model on chip until `to` is called again.
@@ -256,7 +263,7 @@ class DynapcnnNetwork(nn.Module):
             A user configuration modifier method.
             This function can be used to make any custom changes you want to make to the configuration object.
 
-        layer2core_map (dict or "auto"): Defines how cores on chip are 
+        layer2core_map (dict or "auto"): Defines how cores on chip are
             assigned to DynapcnnLayers. If `auto`, an automated procedure
             will be used to find a valid ordering. Otherwise a dict needs
             to be passed, with DynapcnnLayer indices as keys and assigned
@@ -378,7 +385,7 @@ class DynapcnnNetwork(nn.Module):
 
         Parameters
         ----------
-        - layer2core_map (dict or "auto"): Defines how cores on chip are 
+        - layer2core_map (dict or "auto"): Defines how cores on chip are
             assigned to DynapcnnLayers. If `auto`, an automated procedure
             will be used to find a valid ordering. Otherwise a dict needs
             to be passed, with DynapcnnLayer indices as keys and assigned
@@ -435,8 +442,8 @@ class DynapcnnNetwork(nn.Module):
             raise ValueError(f"Generated config is not valid for {device}")
 
     def has_dvs_layer(self) -> bool:
-        """ Return True if there is a DVSLayer in the network
-        
+        """Return True if there is a DVSLayer in the network
+
         Returns
         -------
         bool: True if DVSLayer is found within the network.
@@ -444,8 +451,8 @@ class DynapcnnNetwork(nn.Module):
         for layer in self.dynapcnn_layers.values():
             if isinstance(layer, DVSLayer):
                 return True
-        return False    
-        
+        return False
+
     ####################################################### Private Methods #######################################################
 
     def _make_config(
@@ -460,7 +467,7 @@ class DynapcnnNetwork(nn.Module):
 
         Parameters
         ----------
-        - layer2core_map (dict or "auto"): Defines how cores on chip are 
+        - layer2core_map (dict or "auto"): Defines how cores on chip are
             assigned to DynapcnnLayers. If `auto`, an automated procedure
             will be used to find a valid ordering. Otherwise a dict needs
             to be passed, with DynapcnnLayer indices as keys and assigned
@@ -565,7 +572,8 @@ class DynapcnnNetwork(nn.Module):
 
         elif monitor_layers == "all":
             monitor_layers = [
-                lyr_idx for lyr_idx, layer in self.dynapcnn_layers.items()
+                lyr_idx
+                for lyr_idx, layer in self.dynapcnn_layers.items()
                 if not isinstance(layer, DVSLayer)
             ]
 
@@ -583,7 +591,7 @@ class DynapcnnNetwork(nn.Module):
         if config_modifier is not None:
             # apply user config modifier.
             config = config_modifier(config)
-        
+
         # Validate config
         return config, config_builder.validate_configuration(config)
 
