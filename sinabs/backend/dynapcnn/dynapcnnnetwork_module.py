@@ -12,6 +12,7 @@ import sinabs.layers as sl
 
 from .dynapcnn_layer import DynapcnnLayer
 from .utils import Edge, topological_sorting
+from .dvs_layer import DVSLayer
 
 
 class DynapcnnNetworkModule(nn.Module):
@@ -274,10 +275,16 @@ class DynapcnnNetworkModule(nn.Module):
                 # Output is single tensor
                 layers_outputs[idx_curr] = {destinations[0]: output}
             else:
-                # Output is list of tensors for different destinations
-                layers_outputs[idx_curr] = {
-                    idx_dest: out for idx_dest, out in zip(destinations, output)
-                }
+                if isinstance(layer, DVSLayer):
+                    # DVSLayer returns a single tensor (same for all its destinations).
+                    layers_outputs[idx_curr] = {
+                        idx_dest: output for idx_dest in destinations
+                    }
+                else:
+                    # Output is list of tensors for different destinations
+                    layers_outputs[idx_curr] = {
+                        idx_dest: out for idx_dest, out in zip(destinations, output)
+                    }
       
         if return_complete:
             return layers_outputs
