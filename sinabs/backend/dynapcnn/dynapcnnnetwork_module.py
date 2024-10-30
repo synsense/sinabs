@@ -140,7 +140,7 @@ class DynapcnnNetworkModule(nn.Module):
         return exit_layers
 
         
-    def setup_dynapcnnlayer_graph(self, index_layers_topologically: bool = False):
+    def setup_dynapcnnlayer_graph(self, index_layers_topologically: bool = False) -> None:
         """ Set up data structures to run forward pass through dynapcnn layers
         
         Parameters
@@ -156,6 +156,11 @@ class DynapcnnNetworkModule(nn.Module):
         self._node_source_map = self.get_node_source_map(self._dynapcnnlayer_edges)
         if index_layers_topologically:
             self.reindex_layers(self._sorted_nodes)
+
+        print('self._dynapcnnlayer_edges: ', self._dynapcnnlayer_edges)
+        print('self._sorted_nodes: ', self._sorted_nodes)
+        for key, val in self._node_source_map.items():
+            print(key, val)
 
     def get_dynapcnnlayers_edges(self) -> Set[Edge]:
         """Create edges representing connections between `DynapcnnLayer` instances.
@@ -174,7 +179,7 @@ class DynapcnnNetworkModule(nn.Module):
 
         return dcnnl_edges
 
-    def add_entry_points_edges(self, dcnnl_edges: Set[Edge]):
+    def add_entry_points_edges(self, dcnnl_edges: Set[Edge]) -> None:
         """Add extra edges `('input', X)` to `dcnnl_edges` for
         layers which are entry points of the `DynapcnnNetwork`, i.e.
         `handler.entry_node = True`.
@@ -311,7 +316,7 @@ class DynapcnnNetworkModule(nn.Module):
         # If there is output from multiple layers return all of them in a dict
         return network_outputs
 
-    def reindex_layers(self, index_order: List[int]):
+    def reindex_layers(self, index_order: List[int]) -> None:
         """ Reindex layers based on provided order
         
         Will assign new index to dynapcnn layers and update all internal
