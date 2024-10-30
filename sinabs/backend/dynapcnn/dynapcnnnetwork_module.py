@@ -78,7 +78,7 @@ class DynapcnnNetworkModule(nn.Module):
     
     @property
     def dynapcnn_layers(self):
-        # Convert string-indices to integers
+        # Convert string-indices to integers-indices
         dynapcnn_layers = {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
         # Insert DVS node if DVS was enabled.
         if isinstance(self.dvs_node_info, Dict):
@@ -156,11 +156,6 @@ class DynapcnnNetworkModule(nn.Module):
         self._node_source_map = self.get_node_source_map(self._dynapcnnlayer_edges)
         if index_layers_topologically:
             self.reindex_layers(self._sorted_nodes)
-
-        print('self._dynapcnnlayer_edges: ', self._dynapcnnlayer_edges)
-        print('self._sorted_nodes: ', self._sorted_nodes)
-        for key, val in self._node_source_map.items():
-            print(key, val)
 
     def get_dynapcnnlayers_edges(self) -> Set[Edge]:
         """Create edges representing connections between `DynapcnnLayer` instances.
@@ -340,23 +335,27 @@ class DynapcnnNetworkModule(nn.Module):
 
         # Remap all internal objects
         dynapcnn_layers = {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
+
         if isinstance(self.dvs_node_info, Dict):
             _ = str(remap(self.dvs_node_info['layer_id']))
             dynapcnn_layers[_] = self.dvs_node_info['module']
-            # @TODO - update DVS node layer id in-place [THIS NEEDS VALIDATION]
             self.dvs_node_info['layer_id'] = int(_)
 
         self._dynapcnn_layers = nn.ModuleDict(dynapcnn_layers)
 
         self._entry_points = {remap(idx) for idx in self._entry_points}
+
         self._destination_map = {
             remap(idx): [remap(dest) for dest in destinations]
             for idx, destinations in self._destination_map.items()
         }
+
         self._dynapcnnlayer_edges = {
             (remap(src), remap(trg)) for (src, trg) in self._dynapcnnlayer_edges
         }
+
         self._sorted_nodes = [remap(idx) for idx in self._sorted_nodes]
+
         self._node_source_map = {
             remap(node): [remap(src) for src in sources]
             for node, sources in self._node_source_map.items()
