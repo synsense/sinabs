@@ -254,7 +254,7 @@ def construct_single_dynapcnn_layer(
 
 
 def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]]:
-    """ Create a dict that holds destinations for each layer
+    """Create a dict that holds destinations for each layer
 
     Parameters
     ----------
@@ -283,7 +283,7 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
 
 
 def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
-    """ Return set of layer indices that are entry points
+    """Return set of layer indices that are entry points
 
     Parameters
     ----------
@@ -294,6 +294,7 @@ def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
     Set of all layer indices which act as entry points to the network
     """
     return {
-        layer_index 
-        for layer_index, layer_info in dcnnl_map.items() if layer_info["is_entry_node"]
+        layer_index
+        for layer_index, layer_info in dcnnl_map.items()
+        if layer_info["is_entry_node"]
     }
