@@ -166,24 +166,26 @@ class GraphExtractor:
 
         """
         # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
-        source2target: Dict[int, Set[int]] = {
-            node: self._find_valid_targets(node, node_classes)
-            for node in self.sorted_nodes
-            # Skip nodes that are to be removed
-            if not isinstance(self.indx_2_module_map[node], node_classes)
-        }
+        source2target: Dict[int, Set[int]] = {}
+        for node in self.sorted_nodes:
+            if isinstance((mod := self.indx_2_module_map[node]), node_classes):
+                # If an entry node is removed, its targets become entry nodes
+                if node in self.entry_nodes:
+                    targets = self._find_valid_targets(node, node_classes)
+                    self._entry_nodes.update(targets)
 
-        if nn.Flatten in node_classes:
-            # Update input shapes of nodes after `Flatten` to the shape before flattening
-            # Note: This is likely to produce incorrect results if multiple Flatten layers
-            # come in sequence.
-            for node in self.sorted_nodes:
-                if isinstance(self.indx_2_module_map[node], nn.Flatten):
+                # Update input shapes of nodes after `Flatten` to the shape before flattening
+                # Note: This is likely to produce incorrect results if multiple Flatten layers
+                # come in sequence.
+                if isinstance(mod, nn.Flatten):
                     shape_before_flatten = self.nodes_io_shapes[node]["input"]
                     for target_node in self._find_valid_targets(node, node_classes):
                         self._nodes_io_shapes[target_node][
                             "input"
                         ] = shape_before_flatten
+
+            else:
+                source2target[node] = self._find_valid_targets(node, node_classes)
 
         # remapping nodes indices contiguously starting from 0
         remapped_nodes = {
