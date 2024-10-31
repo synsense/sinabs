@@ -289,6 +289,7 @@ def merge_conv_bn(conv, bn):
     return conv
 
 
+# Should become obsolete
 def construct_next_pooling_layer(
     layers: List[nn.Module], idx_start: int
 ) -> Tuple[Optional[sl.SumPool2d], int, float]:

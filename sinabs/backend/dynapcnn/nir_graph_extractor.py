@@ -1,7 +1,7 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type
 
 import nirtorch
 import torch
@@ -246,12 +246,12 @@ class GraphExtractor:
 
     ####################################################### Pivate Methods #######################################################
 
-    def _get_name_2_indx_map(self, nir_graph: nirtorch.graph.Graph) -> Dict[str, int]:
+    def _get_name_2_indx_map(self, nir_graph: nirtorch.graph.TorchGraph) -> Dict[str, int]:
         """Assign unique index to each node and return mapper from name to index.
 
         Parameters
         ----------
-        - nir_graph (nirtorch.graph.Graph): a NIR graph representation of `spiking_model`.
+        - nir_graph (nirtorch.graph.TorchGraph): a NIR graph representation of `spiking_model`.
 
         Returns
         ----------
@@ -263,14 +263,14 @@ class GraphExtractor:
         }
 
     def _get_edges_from_nir(
-        self, nir_graph: nirtorch.graph.Graph, name_2_indx_map: Dict[str, int]
+        self, nir_graph: nirtorch.graph.TorchGraph, name_2_indx_map: Dict[str, int]
     ) -> Set[Edge]:
-        """Standardize the representation of `nirtorch.graph.Graph` into a list of edges,
+        """Standardize the representation of `nirtorch.graph.TorchGraph` into a list of edges,
         representing nodes by their indices.
 
         Parameters
         ----------
-        - nir_graph (nirtorch.graph.Graph): a NIR graph representation of `spiking_model`.
+        - nir_graph (nirtorch.graph.TorchGraph): a NIR graph representation of `spiking_model`.
         - name_2_indx_map (dict): Map from node names to unique indices.
 
         Returns
