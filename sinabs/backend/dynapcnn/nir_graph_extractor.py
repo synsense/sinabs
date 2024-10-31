@@ -95,7 +95,12 @@ class GraphExtractor:
         if self._need_dvs_node(spiking_model, dvs_input):
             # TODO: Infer polarity as well. Do that in `_add_dvs_node`
             # input shape for `DVSLayer` instance that will be the module of the node 'dvs'.
-            self._add_dvs_node(dvs_input_shape=dummpy_input_shape[1:])
+            self._add_dvs_node(dvs_input_shape=dummy_input.shape[1:])
+        else:
+            # TODO: Handle case where DVSLayer is present:
+            # - make sure it is the only entry node
+            # - Make sure the `merge_polarities` attribute matches `dummy_input.shape`
+            pass
         
         # Check for the need of fixing NIR edges extraction when DVS is a node in the graph. If DVS
         # is used its node becomes the only entry node in the graph.
@@ -294,9 +299,6 @@ class GraphExtractor:
         - dvs_input_shape (tuple): Shape of input in format `(height, width)`. 
         """
 
-        # [] @TODO - not considering pooling after the DVSLayer yet.
-        # [] @TODO - I/O shape in 'self._nodes_io_shapes' not being handled yet.
-
         # add name entry for node 'dvs'.
         self._name_2_indx_map['dvs'] = len(self._name_2_indx_map)
         # add module entry for node 'dvs'.
@@ -304,23 +306,21 @@ class GraphExtractor:
         # set DVS node as input to each entry node of the graph.
         self._edges.update({(self._name_2_indx_map['dvs'], entry_node) for entry_node in self._entry_nodes})
         # DVSLayer node becomes the only entrypoint of the graph.
-        # TODO: Possibly have to remove previous entry nodes here.
         self._entry_nodes = {self._name_2_indx_map['dvs']}
 
-    def _need_dvs_node(self, model: nn.Module, dvs_input: bool) -> bool:
+    def _need_dvs_node(self, dvs_input: bool) -> bool:
         """ Returns whether or not a node will need to be added to represent a
         `DVSLayer` instance. 
         
-        A new node will have to be added if `model` does not start with a
+        A new node will have to be added if `self._indx_2_module_map` contains no
         `DVSLayer` instance and `dvs_input == True`.
         
         Parameters
         ----------
-            - model (nn.Module): the `spiking_model` used as argument to the class instance.
             - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
         Returns
         -------
-            - True if `model` contains a DVSLayer, False otherwise.
+            - True if `self._indx_2_module_map` contains a DVSLayer, False otherwise.
         """
         
         dvs_layers = {
@@ -355,8 +355,6 @@ class GraphExtractor:
             `spiking_model` and `value is an integer representing the layer in a standard format.
         """
 
-        # TODO: Unclear comment
-        # Start name indexing from 1 if a DVS node needs to be added
         return {
             node.name: node_idx for node_idx, node in enumerate(nir_graph.node_list)
         }

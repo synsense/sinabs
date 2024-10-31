@@ -29,6 +29,7 @@ class DynapcnnNetwork(nn.Module):
         snn: nn.Module,
         input_shape: Tuple[int, int, int],
         batch_size: Optional[int] = None,
+        # TODO: Set None by default
         dvs_input: bool = False,
         discretize: bool = True,
         weight_rescaling_fn: Callable = rescale_method_1,
@@ -84,6 +85,10 @@ class DynapcnnNetwork(nn.Module):
         self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
     ####################################################### Public Methods #######################################################
+
+    @property
+    def all_layers(self):
+        return self._dynapcnn_module.all_layers
 
     @property
     def dvs_node_info(self):
@@ -516,7 +521,6 @@ class DynapcnnNetwork(nn.Module):
                 the provided device can be found.
         """
         config_builder = ChipFactory(device).get_config_builder()
-        has_dvs_layer = self.has_dvs_layer()
 
         if chip_layers_ordering is not None:
             if layer2core_map is not None:
@@ -554,7 +558,7 @@ class DynapcnnNetwork(nn.Module):
 
         # update config (config. DynapcnnLayer instances into their assigned core).
         config = config_builder.build_config(
-            layers=self.dynapcnn_layers,
+            layers=self.all_layers,
             destination_map=self.layer_destination_map,
             layer2core_map=layer2core_map,
             dvs_node_info=self.dvs_node_info,
