@@ -101,6 +101,10 @@ class DynapcnnNetwork(nn.Module):
     @property
     def dynapcnn_module(self):
         return self._dynapcnn_module
+    
+    @property
+    def exit_layers(self):
+        return [self.dynapcnn_layers[i] for i in self._dynapcnn_module.get_exit_layers()]
 
     @property
     def layer_destination_map(self):
