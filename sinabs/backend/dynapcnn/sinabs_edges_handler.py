@@ -11,12 +11,7 @@ from typing import Dict, List, Set, Tuple, Type, Optional
 from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES
-from .exceptions import (
-    InvalidEdge,
-    InvalidGraphStructure,
-    UnmatchedNode,
-    UnmatchedPoolingEdges,
-)
+from .exceptions import InvalidEdge, InvalidGraphStructure
 from .utils import Edge
 from .dvs_layer import DVSLayer
 from .crop2d import Crop2d
@@ -155,13 +150,6 @@ def collect_dynapcnn_layer_info(
         edges=edges, indx_2_module_map=indx_2_module_map
     )
 
-    if "weight-neuron" not in edges_by_type:
-        raise InvalidGraphStructure(
-            "Any dynapcnn layer must contain a weight layer (e.g. Conv2d, Linear) "
-            "that is directly connected to a neuron layer (e.g. IAFSqueeze). "
-            "None such weight-neuron pair has been found in the provided network."
-        )
-
     if not any(edge in edges_by_type for edge in ["dvs-weight", "dvs-pooling"]) and dvs_input:
         raise InvalidGraphStructure(
             "DVS camera is set selected for usage (dvs_input == True) but edge type involving it has not been found."
@@ -173,7 +161,7 @@ def collect_dynapcnn_layer_info(
     node_2_layer_map = dict()
 
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
-    while edges_by_type["weight-neuron"]:
+    while edges_by_type.get("weight-neuron", False):
         edge = edges_by_type["weight-neuron"].pop()
         init_new_dynapcnnlayer_entry(
             dynapcnn_layer_info,
@@ -203,7 +191,11 @@ def collect_dynapcnn_layer_info(
     while edges_by_type.get("neuron-weight", False):
         edge = edges_by_type["neuron-weight"].pop()
         set_neuron_layer_destination(
-            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
+            dynapcnn_layer_info,
+            edge,
+            node_2_layer_map,
+            nodes_io_shapes,
+            indx_2_module_map,
         )
 
     # Add pooling based on neuron->pooling connections
@@ -224,13 +216,24 @@ def collect_dynapcnn_layer_info(
 
     # After adding pooling make sure all pooling-pooling edges have been handled
     if len(pooling_pooling_edges) > 0:
-        raise UnmatchedPoolingEdges(pooling_pooling_edges)
+        unmatched_layers = {edge[0] for edge in pooling_pooling_edges}
+        raise InvalidGraphStructure(
+            f"Pooling layers {unmatched_layers} could not be assigned to a "
+            "dynapcnn layer. This is likely due to an unsupported SNN "
+            "architecture. Pooling layers must always be preceded by a "
+            "spiking layer (`IAFSqueeze`), another pooling layer, or"
+            "DVS input"
+        )
 
     # Add all edges connecting pooling to a new dynapcnn layer
     while edges_by_type.get("pooling-weight", False):
         edge = edges_by_type["pooling-weight"].pop()
         set_pooling_layer_destination(
-            dynapcnn_layer_info, edge, node_2_layer_map, nodes_io_shapes
+            dynapcnn_layer_info,
+            edge,
+            node_2_layer_map,
+            nodes_io_shapes,
+            indx_2_module_map,
         )
 
     # Make sure we have taken care of all edges
@@ -344,9 +347,6 @@ def init_new_dynapcnnlayer_entry(
 
     dynapcnn_layer_info[layer_id] = {
         "input_shape": nodes_io_shapes[edge[0]]["input"],
-        # Collect output shapes (before possible flattening) of layers with this layer as their destination
-        # This will allow infering shapes when converting linear to conv layers
-        "inferred_input_shapes": set(),
         "conv": {
             "module": indx_2_module_map[edge[0]],
             "node_id": edge[0],
@@ -372,7 +372,8 @@ def add_pooling_to_entry(
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
 ) -> None:
-    """Add or extend destination information to existing entry in `dynapcnn_layer_info`.
+    """Add or extend destination information with pooling for existing
+    entry in `dynapcnn_layer_info`.
 
     Correct entry is identified by existing neuron node. Destination information is a
     dict containing list of IDs and list of modules for each chains of pooling nodes.
@@ -382,8 +383,10 @@ def add_pooling_to_entry(
     dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
         key is unique dynapcnn layer ID, value is dict with nodes of the layer
         Will be updated in-place.
-    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be within an existing entry of `dynapcnn_layer_info`.
+    edge: Tuple of 2 integers, indicating edge between a neuron node and the pooling
+        node that starts all provided `pooling_chains`.
+        Edge source has to be a neuron node within an existing entry of
+        `dynapcnn_layer_info`, i.e. it has to have been processed already.
     pooling_chains: List of deque of int. All sequences ("chains") of connected pooling nodes,
         starting from edge[1]
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
@@ -394,7 +397,13 @@ def add_pooling_to_entry(
     try:
         layer_idx = node_2_layer_map[edge[0]]
     except KeyError:
-        raise UnmatchedNode(edge, edge[0])
+        neuron_layer = indx_2_module_map[edge[0]]
+        raise InvalidGraphStructure(
+            f"Spiking layer {neuron_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Spiking "
+            "layers have to be preceded by a weight layer (`nn.Conv2d` or "
+            "`nn.Linear`)."
+        )
     # Make sure all pooling chains start with expected node
     assert all(chain[0] == edge[1] for chain in pooling_chains)
 
@@ -508,8 +517,9 @@ def set_neuron_layer_destination(
     edge: Edge,
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
+    indx_2_module_map: Dict[int, nn.Module],
 ) -> None:
-    """Set destination layer without pooling.
+    """Set destination layer without pooling for existing entry in `dynapcnn_layer_info`.
 
     Parameters
     ----------
@@ -517,20 +527,34 @@ def set_neuron_layer_destination(
         key is unique dynapcnn layer ID, value is dict with nodes of the layer
         Will be updated in-place.
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be within an existing entry of `dynapcnn_layer_info`.
+        Edge source has to be a neuron layer within an existing entry of
+        `dynapcnn_layer_info`. Edge target has to be the weight layer of
+        another dynapcnn layer.
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     """
     # Make sure both source (neuron layer) and target (weight layer) have been previously processed
     try:
         source_layer_idx = node_2_layer_map[edge[0]]
     except KeyError:
-        raise UnmatchedNode(edge, edge[0])
+        neuron_layer = indx_2_module_map[edge[0]]
+        raise InvalidGraphStructure(
+            f"Spiking layer {neuron_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Spiking "
+            "layers have to be preceded by a weight layer (`nn.Conv2d` or "
+            "`nn.Linear`)."
+        )
     try:
         destination_layer_idx = node_2_layer_map[edge[1]]
     except KeyError:
-        raise UnmatchedNode(edge, edge[1])
+        weight_layer = indx_2_module_map[edge[1]]
+        raise InvalidGraphStructure(
+            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Weight "
+            "layers have to be followed by a spiking layer (`IAFSqueeze`)."
+        )
 
     # Add new destination
     output_shape = nodes_io_shapes[edge[0]]["output"]
@@ -544,19 +568,15 @@ def set_neuron_layer_destination(
         }
     )
 
-    # Add output shape of this layer to input shapes of destination
-    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
-        output_shape
-    )
-
 
 def set_pooling_layer_destination(
     dynapcnn_layer_info: Dict[int, Dict],
     edge: Edge,
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
+    indx_2_module_map: Dict[int, nn.Module],
 ) -> None:
-    """Set destination layer with pooling.
+    """Set destination layer with pooling for existing entry in `dynapcnn_layer_info`.
 
     Parameters
     ----------
@@ -564,20 +584,36 @@ def set_pooling_layer_destination(
         key is unique dynapcnn layer ID, value is dict with nodes of the layer
         Will be updated in-place.
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be within an existing entry of `dynapcnn_layer_info`.
+        Edge source has to be a pooling layer that is at the end of at least
+        one pooling chain within an existing entry of `dynapcnn_layer_info`.
+        Edge target has to be a weight layer within an existing entry of
+        `dynapcnn_layer_info`.
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     """
     # Make sure both source (pooling layer) and target (weight layer) have been previously processed
     try:
         source_layer_idx = node_2_layer_map[edge[0]]
     except KeyError:
-        raise UnmatchedNode(edge, edge[0])
+        poolin_layer = indx_2_module_map[edge[0]]
+        raise InvalidGraphStructure(
+            f"Layer {poolin_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Pooling "
+            "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
+            "another pooling layer, or DVS input"
+        )
     try:
         destination_layer_idx = node_2_layer_map[edge[1]]
     except KeyError:
-        raise UnmatchedNode(edge, edge[1])
+        weight_layer = indx_2_module_map[edge[1]]
+        raise InvalidGraphStructure(
+            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Weight "
+            "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
+            "another pooling layer, or DVS input"
+        )
 
     # Find current source node within destinations
     layer_info = dynapcnn_layer_info[source_layer_idx]
@@ -594,17 +630,18 @@ def set_pooling_layer_destination(
             matched = True
             break
     if not matched:
-        raise UnmatchedNode(edge, edge[0])
+        poolin_layer = indx_2_module_map[edge[0]]
+        raise InvalidGraphStructure(
+            f"Layer {poolin_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Pooling "
+            "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
+            "another pooling layer, or DVS input"
+        )
 
     # Set destination layer within destination dict that holds current source node
     destination["destination_layer"] = destination_layer_idx
     output_shape = nodes_io_shapes[edge[0]]["output"]
     destination["output_shape"] = output_shape
-
-    # Add output shape of this layer to input shapes of destination
-    dynapcnn_layer_info[destination_layer_idx]["inferred_input_shapes"].add(
-        output_shape
-    )
 
 
 def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:

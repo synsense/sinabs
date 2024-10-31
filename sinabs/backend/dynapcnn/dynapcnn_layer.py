@@ -81,7 +81,7 @@ class DynapcnnLayer(nn.Module):
         discretize: bool
             Whether to discretize parameters.
         rescale_weights: int
-            Layer weights will be divided by this value.
+            Layer weights will be multiplied by this value.
     """
 
     def __init__(
@@ -114,7 +114,7 @@ class DynapcnnLayer(nn.Module):
 
         if self._rescale_weights != 1:
             # this has to be done after copying but before discretizing
-            conv.weight.data = (conv.weight / self._rescale_weights).clone().detach()
+            conv.weight.data = (conv.weight * self._rescale_weights).clone().detach()
 
         # TODO: Does this really need to be enforced here or upon deployment?
         # check if convolution kernel is a square.
