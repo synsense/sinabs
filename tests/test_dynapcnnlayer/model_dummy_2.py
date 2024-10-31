@@ -10,7 +10,6 @@ from sinabs.layers import IAFSqueeze, SumPool2d
 dcnnl_map_2 = {
     0: {
         "input_shape": (2, 34, 34),
-        "inferred_input_shapes": set(),
         "rescale_factors": set(),
         "is_entry_node": True,
         "conv": {
@@ -37,7 +36,6 @@ dcnnl_map_2 = {
     },
     1: {
         "input_shape": (4, 33, 33),
-        "inferred_input_shapes": set(((4, 33, 33),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -74,7 +72,6 @@ dcnnl_map_2 = {
     },
     2: {
         "input_shape": (4, 16, 16),
-        "inferred_input_shapes": set(((4, 16, 16),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -103,7 +100,6 @@ dcnnl_map_2 = {
     },
     3: {
         "input_shape": (4, 16, 16),
-        "inferred_input_shapes": set(((4, 16, 16),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -132,7 +128,6 @@ dcnnl_map_2 = {
     },
     4: {
         "input_shape": (4, 7, 7),
-        "inferred_input_shapes": set(((4, 7, 7),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -158,8 +153,7 @@ dcnnl_map_2 = {
         ],
     },
     5: {
-        "input_shape": (144, 1, 1),
-        "inferred_input_shapes": set(((4, 6, 6),)),
+        "input_shape": (4, 6, 6),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -179,7 +173,6 @@ dcnnl_map_2 = {
     },
     6: {
         "input_shape": (4, 7, 7),
-        "inferred_input_shapes": set(((4, 7, 7),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -258,5 +251,5 @@ expected_output_2 = {
         4: [5],
         6: [5],
         5: [],
-    }
+    },
 }

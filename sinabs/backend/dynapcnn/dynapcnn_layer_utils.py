@@ -61,8 +61,6 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
         if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
             # Consolidate scale factors
             consolidate_layer_scaling(layer_info, rescale_fn)
-            # Handle input dimensions
-            determine_layer_input_shape(layer_info)
 
 def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     """Consolidate pooling information for individual layer
@@ -186,6 +184,7 @@ def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] =
     layer_info["rescale_factor"] = rescale_factor
 
 
+# TODO: Obsolete
 def determine_layer_input_shape(layer_info: Dict):
     """Determine input shape of single layer
 
@@ -257,7 +256,7 @@ def construct_single_dynapcnn_layer(
 
 
 def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]]:
-    """ Create a dict that holds destinations for each layer
+    """Create a dict that holds destinations for each layer
 
     Parameters
     ----------
@@ -290,7 +289,7 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
 
 
 def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
-    """ Return set of layer indices that are entry points
+    """Return set of layer indices that are entry points
 
     Parameters
     ----------
@@ -301,8 +300,9 @@ def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
     Set of all layer indices which act as entry points to the network
     """
     return {
-        layer_index 
-        for layer_index, layer_info in dcnnl_map.items() if layer_info["is_entry_node"]
+        layer_index
+        for layer_index, layer_info in dcnnl_map.items()
+        if layer_info["is_entry_node"]
     }
 
 def update_destination_map_with_dvs(dcnnl_map: Dict[int, Dict], destination_map: Dict[int, List[int]]) -> None:

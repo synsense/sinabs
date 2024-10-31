@@ -10,7 +10,6 @@ from sinabs.layers import IAFSqueeze
 dcnnl_map_1 = {
     0: {
         "input_shape": (2, 34, 34),
-        "inferred_input_shapes": set(),
         "rescale_factors": set(),
         "is_entry_node": True,
         "conv": {
@@ -45,7 +44,6 @@ dcnnl_map_1 = {
     },
     1: {
         "input_shape": (10, 11, 11),
-        "inferred_input_shapes": set(((10, 11, 11),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -72,7 +70,6 @@ dcnnl_map_1 = {
     },
     2: {
         "input_shape": (10, 8, 8),
-        "inferred_input_shapes": set(((10, 8, 8),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -98,8 +95,7 @@ dcnnl_map_1 = {
         ],
     },
     3: {
-        "input_shape": (49, 1, 1),
-        "inferred_input_shapes": set(((1, 7, 7),)),
+        "input_shape": (1, 7, 7),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -126,7 +122,6 @@ dcnnl_map_1 = {
     },
     4: {
         "input_shape": (500, 1, 1),
-        "inferred_input_shapes": set(((500, 1, 1),)),
         "rescale_factors": set(),
         "is_entry_node": False,
         "conv": {
@@ -148,7 +143,7 @@ dcnnl_map_1 = {
                 "pooling_modules": [],
                 "destination_layer": None,
             }
-        ]
+        ],
     },
 }
 
@@ -195,5 +190,5 @@ expected_output_1 = {
         2: [3],
         3: [4],
         4: [-1],
-    }
+    },
 }
