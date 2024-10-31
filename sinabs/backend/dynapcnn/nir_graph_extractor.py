@@ -19,6 +19,12 @@ from .exceptions import InvalidGraphStructure
 from .sinabs_edges_handler import collect_dynapcnn_layer_info
 from .utils import Edge, topological_sorting
 
+try:
+    from nirtorch.graph import TorchGraph
+except ImportError:
+    # In older nirtorch versions TorchGraph is called Graph
+    from nirtorch.graph import Graph as TorchGraph
+
 
 class GraphExtractor:
     def __init__(
@@ -315,9 +321,14 @@ class GraphExtractor:
 
         for name, module in model.named_modules():
             # Make sure names match those provided by nirtorch nodes
-            name = nirtorch.utils.sanitize_name(name)
             if name in self._name_2_indx_map:
                 indx_2_module_map[self._name_2_indx_map[name]] = module
+            else:
+                # In older nirtorch versions, node names are "sanitized"
+                # Try with sanitized version of the name
+                name = nirtorch.utils.sanitize_name(name)
+                if name in self._name_2_indx_map:
+                    indx_2_module_map[self._name_2_indx_map[name]] = module
 
         return indx_2_module_map
 
