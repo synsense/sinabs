@@ -66,7 +66,7 @@ class DynapcnnNetwork(nn.Module):
         self._graph_extractor = GraphExtractor(
             snn,
             torch.randn((batch_size, *self.input_shape)),
-            self.dvs_input
+            self.dvs_input,
             ignore_node_types=COMPLETELY_IGNORED_LAYER_TYPES,
         )
 
@@ -550,9 +550,6 @@ class DynapcnnNetwork(nn.Module):
                     "the keys in `self.dynapcnn_layers`"
                 )
 
-            if has_dvs_layer:
-                # TODO - DVS layer has been incorporated: what should happen here?
-                pass
         self._layer2core_map = layer2core_map
 
         # update config (config. DynapcnnLayer instances into their assigned core).
@@ -563,11 +560,11 @@ class DynapcnnNetwork(nn.Module):
             dvs_node_info=self.dvs_node_info,
         )
 
-        # TODO - this is from the old implementation, should be revised.
+        # TODO: This should be handled earlier and probably raise a warning if it contradicts
+        # dvs_layer merge_polarities
         if self.input_shape and self.input_shape[0] == 1:
             config.dvs_layer.merge = True
 
-        # TODO all this monitoring part needs validation still.
         if monitor_layers is None:
             # Monitor all layers with exit point destinations
             monitor_layers = self._dynapcnn_module.get_exit_layers()

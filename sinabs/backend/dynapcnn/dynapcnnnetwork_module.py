@@ -27,7 +27,8 @@ class DynapcnnNetworkModule(nn.Module):
     - destination_map (dict): Maps layer indices to list of destination indices.
         Exit destinations are marked by negative integers    
     - entry_points (set): Set of layer indices that act as network entry points.
-    - dvs_node_info (dict): contains information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`).
+    - dvs_node_info (dict): contains information associated with the `DVSLayer` node.
+        `None` if no DVS node exists.
 
     Attributes
     ----------
@@ -47,21 +48,20 @@ class DynapcnnNetworkModule(nn.Module):
         dynapcnn_layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         entry_points: Set[int],
-        dvs_node_info: Optional[Dict],
+        dvs_node_info: Optional[Dict] = None,
     ):
         super().__init__()
 
         self._dvs_node_info = dvs_node_info
 
-        # nodes in a DynapcnnNetwork graph.
-        module_dict = {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
-        # Insert DVS node if DVS was enabled.
-        if isinstance(self._dvs_node_info, Dict):
-            module_dict[str(dvs_node_info['layer_id'])] = dvs_node_info['module']
-        
         # Unfortunately ModuleDict does not allow for integer keys
-        # TODO: Consider using list instead of dict
+        module_dict = {str(idx): lyr for idx, lyr in dynapcnn_layers.items()}
         self._dynapcnn_layers = nn.ModuleDict(module_dict)
+
+        if self._dvs_node_info is not None:
+            self._dvs_layer = dvs_node_info["module"]
+        else:
+            self._dvs_layer = None
 
         self._destination_map = destination_map
         self._entry_points = entry_points
@@ -70,8 +70,23 @@ class DynapcnnNetworkModule(nn.Module):
         self.merge_layer = sl.Merge()
 
     @property
+    def all_layers(self):
+        layers = self.dynapcnn_layers
+        if self.dvs_layer is not None:
+            # `self.dynapcnn_layers` is a (shallow) copy. Adding entries won't
+            # affect `self._dynapcnn_layers`
+            # TODO: Why not use "dvs" as index?
+            dvs_id = self._dvs_node_info["layer_id"]
+            layers[dvs_id] = self.dvs_layer
+        return layers
+
+    @property
     def dvs_node_info(self):
         return self._dvs_node_info
+
+    @property
+    def dvs_layer(self):
+        return self._dvs_layer
     
     @property
     def destination_map(self):
@@ -79,7 +94,7 @@ class DynapcnnNetworkModule(nn.Module):
     
     @property
     def dynapcnn_layers(self):
-        # Convert string-indices to integers-indices
+        # Convert string-indices to integer-indices
         return {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
 
     @property
@@ -260,7 +275,7 @@ class DynapcnnNetworkModule(nn.Module):
                 current_input = layers_outputs[idx_src][idx_curr]
 
             # Get current layer instance and destinations
-            layer = self.dynapcnn_layers[idx_curr]
+            layer = self.all_layers[idx_curr]
             destinations = self._destination_map[idx_curr]
 
             # Forward pass through layer
@@ -337,14 +352,13 @@ class DynapcnnNetworkModule(nn.Module):
                 return mapping[key]
 
         # Remap all internal objects
-        dynapcnn_layers = {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        self._dynapcnn_layers = nn.ModuleDict(
+            {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        )
 
-        if isinstance(self.dvs_node_info, Dict):
-            _ = str(remap(self.dvs_node_info['layer_id']))
-            dynapcnn_layers[_] = self.dvs_node_info['module']
-            self.dvs_node_info['layer_id'] = int(_)
-
-        self._dynapcnn_layers = nn.ModuleDict(dynapcnn_layers)
+        if self.dvs_node_info is not None:
+            new_dvs_id = remap(self.dvs_node_info['layer_id'])
+            self._dvs_node_info["layer_id"] = new_dvs_id
 
         self._entry_points = {remap(idx) for idx in self._entry_points}
 

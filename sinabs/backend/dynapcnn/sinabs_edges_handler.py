@@ -30,6 +30,8 @@ def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     -------
     -  Dict containing information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
     """
+    # TODO: Would it make more sense to have dvs layer separated from dcnnl layers?
+    #   Either as different object or with a very clear key inside `dcnnl_map`
     for layer_index, layer_info in dcnnl_map.items():
         if 'dvs_layer' in layer_info:
             assert layer_info['dvs_layer']

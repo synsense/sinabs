@@ -226,10 +226,8 @@ class DVSLayer(nn.Module):
         # Pool
         out = self.pool_layer(data)
 
-        # TODO - self.crop_layer is never None (even if crop == None when instantiating the class) so this 'if' statement is unecessary (plus confusing when debbuging the code).
         # Crop
-        if self.crop_layer is not None:
-            out = self.crop_layer(out)
+        out = self.crop_layer(out)
 
         # Flip stuff
         out = self.flip_layer(out)
