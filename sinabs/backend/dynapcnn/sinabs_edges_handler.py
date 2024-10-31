@@ -10,7 +10,7 @@ from typing import Dict, List, Set, Tuple, Type, Optional
 
 from torch import Size, nn
 
-from .connectivity_specs import VALID_SINABS_EDGE_TYPES
+from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
 from .exceptions import (
     InvalidEdge,
     InvalidGraphStructure,
@@ -119,6 +119,59 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
     entry_nodes.clear()
     entry_nodes.add(dvs_node[-1])
 
+    # Merge a pooling node from a 'dvs-pooling' edge (pooling being an independent node in the original graph) into the DVSLayer if such edge exists.
+    merge_dvs_pooling_edge(edges, indx_2_module_map, name_2_indx_map)
+
+def merge_dvs_pooling_edge(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
+    """ If a 'dvs-polling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
+    default values. All arguments are modified in-place to remove the references to the incorporated pooling node.
+
+    Parameters
+    ----------
+    - edges (set): tuples describing the connections between layers in `spiking_model`.
+    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+    - name_2_indx_map (dict): Map from node names to unique indices.
+    """
+    # Find 'DVSLayer-pooling' edge.
+    dvs_pool_edge = [
+        (src, tgt) for (src, tgt) in edges 
+        if (isinstance(indx_2_module_map[src], DVSLayer) and any(isinstance(indx_2_module_map[tgt], pool) for pool in Pooling))
+    ]
+    
+    if len(dvs_pool_edge) == 0:
+        # No dvs-pooling edge exists - nothing to do here.
+        return
+    if len(dvs_pool_edge) > 1:
+        # DVSLayer in the original network can have only a single pooling layer liked to it.
+        raise ValueError(f'DVSLayer can have a single edge onto a pooling layer but multiple were found: {dvs_pool_edge}')
+    
+    (dvs_idnx, pool_idnx) = dvs_pool_edge[-1]
+
+    # Checking pooling can be incorporated into the DVSLayer.
+    if indx_2_module_map[dvs_idnx].pool_layer.kernel_size == 1 and indx_2_module_map[dvs_idnx].pool_layer.stride == 1:
+        # DVSLayer.pool has its default config.
+        indx_2_module_map[pool_idnx].kernel_size
+        indx_2_module_map[pool_idnx].stride
+        # Set DVSLayer.pool to have same config. as the independent pooling layer.
+        indx_2_module_map[dvs_idnx].pool_layer.kernel_size = indx_2_module_map[pool_idnx].kernel_size
+        indx_2_module_map[dvs_idnx].pool_layer.stride = indx_2_module_map[pool_idnx].stride
+
+    # Pooling incorporated to the DVSLayer: remove its trace from mappings.
+    indx_2_module_map.pop(pool_idnx)
+    name_2_indx_map.pop([name for name, indx in name_2_indx_map.items() if indx == pool_idnx][-1])
+
+    # Since pool is part of the DVSLayer we now make edges where pool was a source to have DVSLayer as a source.
+    for edge in [edge for edge in edges if edge[0] == pool_idnx]:
+        edges.remove(edge)
+        edges.update({(dvs_idnx, edge[1])})
+
+    # Remove original 'dvs-pool' edge.
+    edges.remove((dvs_idnx, pool_idnx))
+
+    # Checks if any traces of the original pooling node can still be found.
+    if len([edge for edge in edges if (edge[0] == pool_idnx or edge[1] == pool_idnx)]) != 0:
+        raise ValueError('Edges involving the pooling layer merged into the DVSLayer are still present in the graph.')
+
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
     edges: Set[Edge],
@@ -194,10 +247,6 @@ def collect_dynapcnn_layer_info(
             node_2_layer_map,
             nodes_io_shapes,
         )
-
-    # TODO - handle dvs->pooling connections.
-    while edges_by_type["dvs-pooling"]:
-        pass
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
     while edges_by_type.get("neuron-weight", False):
@@ -303,9 +352,6 @@ def sort_edges_by_type(
 
     if 'dvs-weight' not in edges_by_type:
         edges_by_type['dvs-weight'] = set()
-
-    if 'dvs-pooling' not in edges_by_type:
-        edges_by_type['dvs-pooling'] = set()
 
     return edges_by_type
 
