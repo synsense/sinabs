@@ -79,32 +79,6 @@ class InvalidEdge(Exception):
         super().__init__(f"Invalid edge {edge}: {source} can not target {target}.")
 
 
-class InvalidEdgeType(Exception):
-    edge: Tuple[int, int]
-    type: int
-
-    def __init__(self, edge, type):
-        super().__init__(f"Invalid edge type {type} for edge {edge}.")
-
-
-class UnmatchedNode(Exception):
-    edge: Tuple[int, int]
-    node: int
-
-    def __init__(self, edge, node):
-        super().__init__(
-            f"Node {node} in edge {edge} can not found in previously processed edges."
-        )
-
-
-class UnmatchedPoolingEdges(Exception):
-    def __init__(self, edges: Set[int]):
-        super().__init__(
-            "The following edges between pooling layers could not be processed: "
-            f"{edges}. The computational graph is likely invalid."
-        )
-
-
 class UnknownNode(Exception):
     node: int
 

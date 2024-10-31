@@ -1,13 +1,6 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import (
-    TYPE_CHECKING,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple
 
 import torch
 import torch.nn as nn
@@ -22,9 +15,12 @@ from .flipdims import FlipDims
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 
-DEFAULT_IGNORED_LAYER_TYPES = Union[
-    nn.Identity, nn.Dropout, nn.Dropout2d, nn.Flatten, sl.Merge
-]
+# Other than `COMPLETELY_IGNORED_LAYER_TYPES`, `IGNORED_LAYER_TYPES` are
+# part of the graph initially and are needed to ensure proper handling of
+# graph structure (e.g. Merge nodes) or meta-information (e.g.
+# `nn.Flatten` for io-shapes)
+COMPLETELY_IGNORED_LAYER_TYPES = (nn.Identity, nn.Dropout, nn.Dropout2d)
+IGNORED_LAYER_TYPES = (nn.Flatten, sl.Merge)
 
 Edge = Tuple[int, int]  # Define edge-type alias
 

@@ -1,7 +1,7 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-from typing import Callable, Dict, List, Optional, Set, Tuple, Type
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import nirtorch
 import torch
@@ -21,7 +21,12 @@ from .utils import Edge, topological_sorting
 
 
 class GraphExtractor:
-    def __init__(self, spiking_model: nn.Module, dummy_input: torch.tensor):
+    def __init__(
+        self,
+        spiking_model: nn.Module,
+        dummy_input: torch.tensor,
+        ignore_node_types: Optional[Iterable[Type]] = None,
+    ):
         """Class implementing the extraction of the computational graph from `spiking_model`, where
         each node represents a layer in the model and the list of edges represents how the data flow between
         the layers.
@@ -47,12 +52,22 @@ class GraphExtractor:
             Map from layer ID to the corresponding nn.Module instance.
         - nodes_io_shapes (dict):
             Map from node ID to dict containing node's in- and output shapes
+        - ignore_node_types (iterable of types): Node types that should be
+            ignored completely from the graph. This can include, for instance,
+            `nn.Dropout2d`, which otherwise can result in wrongly inferred
+            graph structures by NIRTorch. Types such as `nn.Flatten`, or sinabs
+            `Merge` should not be included here, as they are needed to properly
+            handle graph structure and metadata. They can be removed after
+            instantiation with `remove_nodes_by_class`.
         """
 
         # extract computational graph.
         nir_graph = nirtorch.extract_torch_graph(
             spiking_model, dummy_input, model_name=None
         ).ignore_tensors()
+        if ignore_node_types is not None:
+            for node_type in ignore_node_types:
+                nir_graph = nir_graph.ignore_nodes(node_type)
 
         # Map node names to indices
         self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
@@ -98,7 +113,7 @@ class GraphExtractor:
     def get_dynapcnn_network_module(
         self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None
     ) -> DynapcnnNetworkModule:
-        """ Create DynapcnnNetworkModule based on stored graph representation
+        """Create DynapcnnNetworkModule based on stored graph representation
 
         This includes construction of the DynapcnnLayer instances
 
@@ -115,9 +130,9 @@ class GraphExtractor:
 
         """
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        dcnnl_map = collect_dynapcnn_layer_info(
-            indx_2_module_map = self.indx_2_module_map,
-            edges = self.edges,
+        self.dcnnl_map = collect_dynapcnn_layer_info(
+            indx_2_module_map=self.indx_2_module_map,
+            edges=self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
             entry_nodes=self.entry_nodes,
         )
@@ -125,16 +140,14 @@ class GraphExtractor:
         # build `DynapcnnLayer` instances from mapper.
         dynapcnn_layers, destination_map, entry_points = (
             construct_dynapcnnlayers_from_mapper(
-                dcnnl_map=dcnnl_map,
+                dcnnl_map=self.dcnnl_map,
                 discretize=discretize,
                 rescale_fn=weight_rescaling_fn,
             )
         )
 
         # Instantiate the DynapcnnNetworkModule
-        return DynapcnnNetworkModule(
-            dynapcnn_layers, destination_map, entry_points
-        )
+        return DynapcnnNetworkModule(dynapcnn_layers, destination_map, entry_points)
 
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
         """Remove nodes of given classes from graph in place.
@@ -153,12 +166,26 @@ class GraphExtractor:
 
         """
         # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
-        source2target: Dict[int, Set[int]] = {
-            node: self._find_valid_targets(node, node_classes)
-            for node in self.sorted_nodes
-            # Skip nodes that are to be removed
-            if not isinstance(self.indx_2_module_map[node], node_classes)
-        }
+        source2target: Dict[int, Set[int]] = {}
+        for node in self.sorted_nodes:
+            if isinstance((mod := self.indx_2_module_map[node]), node_classes):
+                # If an entry node is removed, its targets become entry nodes
+                if node in self.entry_nodes:
+                    targets = self._find_valid_targets(node, node_classes)
+                    self._entry_nodes.update(targets)
+
+                # Update input shapes of nodes after `Flatten` to the shape before flattening
+                # Note: This is likely to produce incorrect results if multiple Flatten layers
+                # come in sequence.
+                if isinstance(mod, nn.Flatten):
+                    shape_before_flatten = self.nodes_io_shapes[node]["input"]
+                    for target_node in self._find_valid_targets(node, node_classes):
+                        self._nodes_io_shapes[target_node][
+                            "input"
+                        ] = shape_before_flatten
+
+            else:
+                source2target[node] = self._find_valid_targets(node, node_classes)
 
         # remapping nodes indices contiguously starting from 0
         remapped_nodes = {
@@ -287,7 +314,7 @@ class GraphExtractor:
         indx_2_module_map = dict()
 
         for name, module in model.named_modules():
-            # Make sure names match those provided by nirtorch nodes 
+            # Make sure names match those provided by nirtorch nodes
             name = nirtorch.utils.sanitize_name(name)
             if name in self._name_2_indx_map:
                 indx_2_module_map[self._name_2_indx_map[name]] = module
