@@ -11,9 +11,9 @@ import sinabs.layers as sl
             (3, sl.SumPool2d, [3, 3], 1),
             ((4, 4), sl.SumPool2d, [4, 4], 1),
             (2, nn.AvgPool2d, [2, 2], 1./4),
-            ((2, 2), sl.nn.AvgPool2d, [2, 2], 1./4),
-            (3, sl.nn.AvgPool2d, [3, 3], 1./9),
-            ((4, 4), sl.nn.AvgPool2d, [4, 4], 1./16),
+            ((2, 2), nn.AvgPool2d, [2, 2], 1./4),
+            (3, nn.AvgPool2d, [3, 3], 1./9),
+            ((4, 4), nn.AvgPool2d, [4, 4], 1./16),
         ]
 )
 def test_construct_pooling_from_1_layer(pooling, layer_type, expected_pooling, expected_scaling):
