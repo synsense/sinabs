@@ -30,8 +30,6 @@ VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     (Pooling, Weight): "pooling-weight",
     # Dvs can be followed by weight layer of next core
     (DVS, Weight): "dvs-weight",
-    # Dvs can be followed by pooling layers
-    (DVS, Pooling): "dvs-pooling",
 }
 
 # Unpack dict
