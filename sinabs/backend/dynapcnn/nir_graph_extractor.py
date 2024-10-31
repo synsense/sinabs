@@ -342,12 +342,12 @@ class GraphExtractor:
 
         return not has_dvs_layer and dvs_input
 
-    def _get_name_2_indx_map(self, nir_graph: nirtorch.graph.TorchGraph) -> Dict[str, int]:
+    def _get_name_2_indx_map(self, nir_graph: TorchGraph) -> Dict[str, int]:
         """Assign unique index to each node and return mapper from name to index.
 
         Parameters
         ----------
-        - nir_graph (nirtorch.graph.TorchGraph): a NIR graph representation of `spiking_model`.
+        - nir_graph (TorchGraph): a NIR graph representation of `spiking_model`.
 
         Returns
         ----------
@@ -362,14 +362,14 @@ class GraphExtractor:
         }
 
     def _get_edges_from_nir(
-        self, nir_graph: nirtorch.graph.TorchGraph, name_2_indx_map: Dict[str, int]
+        self, nir_graph: TorchGraph, name_2_indx_map: Dict[str, int]
     ) -> Set[Edge]:
-        """Standardize the representation of `nirtorch.graph.TorchGraph` into a list of edges,
+        """Standardize the representation of TorchGraph` into a list of edges,
         representing nodes by their indices.
 
         Parameters
         ----------
-        - nir_graph (nirtorch.graph.TorchGraph): a NIR graph representation of `spiking_model`.
+        - nir_graph (TorchGraph): a NIR graph representation of `spiking_model`.
         - name_2_indx_map (dict): Map from node names to unique indices.
 
         Returns
