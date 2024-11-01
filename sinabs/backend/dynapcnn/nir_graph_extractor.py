@@ -92,9 +92,9 @@ class GraphExtractor:
         self._entry_nodes = self._get_entry_nodes(self._edges)
 
         # If DVS camera is wanted but `spiking_model` does not start with DVS layer.
-        if self._need_dvs_node(spiking_model, dvs_input):
+        if self._need_dvs_node(dvs_input):
             # Insert a DVSLayer node in the graph.
-            self._add_dvs_node(dvs_input_shape=dummy_input.shape)
+            self._add_dvs_node(dvs_input_shape=dummy_input.shape[1:])
         
         # Check for the need of fixing NIR edges extraction when DVS is a node in the graph. If DVS
         # is used its node becomes the only entry node in the graph.
@@ -105,7 +105,7 @@ class GraphExtractor:
         merge_dvs_pooling_edge(self._edges, self._indx_2_module_map, self._name_2_indx_map)
 
         # Check if graph structure and DVSLayer.merge_polarities are correctly set (if DVS node exists).
-        self._validate_dvs_setup(dvs_input_shape=dummy_input.shape)
+        self._validate_dvs_setup(dvs_input_shape=dummy_input.shape[1:])
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -139,7 +139,6 @@ class GraphExtractor:
     def indx_2_module_map(self) -> Dict[int, nn.Module]:
         return {n: module for n, module in self._indx_2_module_map.items()}
 
-    # TODO: Information about `dvs_input` should already be part of `self` at this point.
     def get_dynapcnn_network_module(
         self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None
     ) -> DynapcnnNetworkModule:
@@ -317,10 +316,10 @@ class GraphExtractor:
         
         Parameters
         ----------
-            - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive input from its DVS camera.
+        - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive input from its DVS camera.
         Returns
         -------
-            - True if `self._indx_2_module_map` contains a DVSLayer, False otherwise.
+        - True if `self._indx_2_module_map` contains a DVSLayer, False otherwise.
         """
 
         has_dvs_layer = self._has_dvs_layer()
@@ -349,8 +348,9 @@ class GraphExtractor:
             )
         
     def _validate_dvs_setup(self, dvs_input_shape: Tuple[int, int, int]) -> None:
-        """ If a DVSLayer node exists, makes sure it is the only entry node of the graph and that its `merge_polarities`
-        attribute matches `dummy_input.shape[0]` (the number of features).
+        """ If a DVSLayer node exists, makes sure it is the only entry node of the graph. Checks if its `merge_polarities`
+        attribute matches `dummy_input.shape[0]` (the number of features) and, if not, it will be set based on the numeber of
+        features of the input.
 
         Parameters
         ----------
@@ -380,6 +380,9 @@ class GraphExtractor:
         
         if dvs_layer.merge_polarities and features != 1:
             raise ValueError(f"The 'DVSLayer.merge_polarities' is set to 'True' which means the number of input features should be 1 (current input shape is {dvs_input_shape}).")
+            
+        if features == 1:
+            dvs_layer.merge_polarities = True
 
     def _get_name_2_indx_map(self, nir_graph: TorchGraph) -> Dict[str, int]:
         """Assign unique index to each node and return mapper from name to index.

@@ -80,7 +80,7 @@ class DynapcnnNetwork(nn.Module):
 
         # Module to execute forward pass through network
         self._dynapcnn_module = self._graph_extractor.get_dynapcnn_network_module(
-            discretize=discretize, weight_rescaling_fn=weight_rescaling_fn, dvs_input=self.dvs_input
+            discretize=discretize, weight_rescaling_fn=weight_rescaling_fn
         )
         self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
@@ -563,11 +563,6 @@ class DynapcnnNetwork(nn.Module):
             layer2core_map=layer2core_map,
             dvs_node_info=self.dvs_node_info,
         )
-
-        # TODO: This should be handled earlier and probably raise a warning if it contradicts
-        # dvs_layer merge_polarities
-        if self.input_shape and self.input_shape[0] == 1:
-            config.dvs_layer.merge = True
 
         if monitor_layers is None:
             # Monitor all layers with exit point destinations

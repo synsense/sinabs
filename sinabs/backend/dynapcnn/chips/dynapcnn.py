@@ -65,6 +65,9 @@ class DynapcnnConfigBuilder(ConfigBuilder):
 
         chip_layer.pass_sensor_events = True
 
+        if layer.merge_polarities:
+            chip_layer.merge = True
+
     @classmethod
     def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
         """This method updates all the kill_bit parameters.
