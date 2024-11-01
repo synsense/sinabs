@@ -141,7 +141,7 @@ class GraphExtractor:
 
     # TODO: Information about `dvs_input` should already be part of `self` at this point.
     def get_dynapcnn_network_module(
-        self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None, dvs_input: bool = False
+        self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None
     ) -> DynapcnnNetworkModule:
         """Create DynapcnnNetworkModule based on stored graph representation
 
@@ -153,7 +153,6 @@ class GraphExtractor:
             weights to dynapcnn. Set to `False` only for testing purposes.
         - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
             the same convolutional layer are combined/re-scaled before applying them.
-        - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
 
         Returns
         -------
@@ -166,7 +165,7 @@ class GraphExtractor:
             edges=self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
             entry_nodes=self.entry_nodes,
-            dvs_input=dvs_input,
+            dvs_input=self._has_dvs_layer(),
         )
 
         # build `DynapcnnLayer` instances from mapper.
