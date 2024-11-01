@@ -109,6 +109,10 @@ class DynapcnnNetwork(nn.Module):
     @property
     def dynapcnn_module(self):
         return self._dynapcnn_module
+    
+    @property
+    def exit_layers(self):
+        return [self.dynapcnn_layers[i] for i in self._dynapcnn_module.get_exit_layers()]
 
     @property
     def layer_destination_map(self):
@@ -217,6 +221,26 @@ class DynapcnnNetwork(nn.Module):
 
         return parameters
 
+    def memory_summary(self) -> Dict[str, Dict[int, int]]:
+        """Get a summary of the network's memory requirements.
+
+        Returns
+        -------
+        dict:
+            A dictionary with keys kernel, neuron, bias. The values are a dicts.
+            Each nested dict has as keys the indices of all dynapcnn_layers and
+            as values the corresonding memory values for each layer.
+        """
+        # For each entry (kernel, neuron, bias) provide one nested dict with 
+        # one entry for each layer
+        summary = {key: dict() for key in ("kernel", "neuron", "bias")}
+
+        for layer_index, layer in self.dynapcnn_layers.items():
+            for key, val in layer.memory_summary().items():
+                summary[key][layer_index] = val
+
+        return summary
+
     def init_weights(self, init_fn: nn.init = nn.init.xavier_normal_) -> None:
         """Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance.
 
@@ -244,7 +268,7 @@ class DynapcnnNetwork(nn.Module):
         config_modifier: Optional[Callable] = None,
         slow_clk_frequency: Optional[int] = None,
         layer2core_map: Union[Dict[int, int], str] = "auto",
-        chip_layers_ordering="auto",
+        chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
     ):
         """Deploy model to cpu, gpu or a SynSense device.
 
