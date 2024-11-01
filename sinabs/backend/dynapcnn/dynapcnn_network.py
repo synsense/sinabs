@@ -29,8 +29,7 @@ class DynapcnnNetwork(nn.Module):
         snn: nn.Module,
         input_shape: Tuple[int, int, int],
         batch_size: Optional[int] = None,
-        # TODO: Set None by default
-        dvs_input: bool = False,
+        dvs_input: Optional[bool] = None,
         discretize: bool = True,
         weight_rescaling_fn: Callable = rescale_method_1,
     ):
@@ -45,7 +44,8 @@ class DynapcnnNetwork(nn.Module):
         - input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
         - batch_size (optional int): If `None`, will try to infer the batch size from the model.
             If int value is provided, it has to match the actual batch size of the model.
-        - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
+        - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive
+            input from its DVS camera.
         - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading
             weights to dynapcnn. Set to `False` only for testing purposes.
         - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to

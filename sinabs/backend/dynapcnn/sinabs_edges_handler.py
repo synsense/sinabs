@@ -116,9 +116,6 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
     entry_nodes.clear()
     entry_nodes.add(dvs_node[-1])
 
-    # Merge a pooling node from a 'dvs-pooling' edge (pooling being an independent node in the original graph) into the DVSLayer if such edge exists.
-    merge_dvs_pooling_edge(edges, indx_2_module_map, name_2_indx_map)
-
 def merge_dvs_pooling_edge(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
     """ If a 'dvs-polling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
     default values. All arguments are modified in-place to remove the references to the incorporated pooling node.
