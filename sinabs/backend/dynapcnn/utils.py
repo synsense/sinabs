@@ -255,8 +255,6 @@ def construct_dvs_layer(
 def merge_conv_bn(conv, bn):
     """Merge a convolutional layer with subsequent batch normalization.
 
-    # TODO: new implementation of 'DynapcnnLayer' is not handling BN layers yet.
-
     Parameters
     ----------
         conv: torch.nn.Conv2d
@@ -284,7 +282,8 @@ def merge_conv_bn(conv, bn):
     conv = deepcopy(conv)  # TODO: this will cause copying twice
 
     conv.weight.data = c_weight * factor[:, None, None, None]
-    conv.bias.data = beta + (c_bias - mu) * factor
+    if conv.bias:
+        conv.bias.data = beta + (c_bias - mu) * factor
 
     return conv
 
