@@ -287,6 +287,40 @@ def merge_conv_bn(conv, bn):
 
     return conv
 
+def merge_linear_bn(linear, bn):
+    """Merge a linear (fully connected) layer with subsequent batch normalization.
+
+    Parameters
+    ----------
+        linear: torch.nn.Linear
+            Linear layer
+        bn: torch.nn.BatchNorm1d
+            Batch normalization layer
+
+    Returns
+    -------
+        torch.nn.Linear: Linear layer including batch normalization
+    """
+    mu = bn.running_mean
+    sigmasq = bn.running_var
+
+    if bn.affine:
+        gamma, beta = bn.weight, bn.bias
+    else:
+        gamma, beta = 1.0, 0.0
+
+    factor = gamma / sigmasq.sqrt()
+
+    l_weight = linear.weight.data.clone().detach()
+    l_bias = 0.0 if linear.bias is None else linear.bias.data.clone().detach()
+
+    linear = deepcopy(linear)
+
+    linear.weight.data = l_weight * factor[:, None]
+    if linear.bias is not None:
+        linear.bias.data = beta + (l_bias - mu) * factor
+
+    return linear
 
 # Should become obsolete
 def construct_next_pooling_layer(
