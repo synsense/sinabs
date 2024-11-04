@@ -12,12 +12,94 @@ from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
 from .exceptions import InvalidEdge, InvalidGraphStructure
-from .utils import Edge
+from .utils import Edge, merge_conv_bn
 from .dvs_layer import DVSLayer
 from .crop2d import Crop2d
 from .flipdims import FlipDims
 
 from sinabs.layers import SumPool2d
+
+def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]) -> Set[Edge]:
+    """
+    """
+    remapped_edges = set()
+
+    for (src, tgt) in edges:
+        if src == dropped_node:
+            remapped_edges.add((source_of_dropped_node, tgt))
+
+    return remapped_edges
+
+def handle_batchnorm2d_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
+        """
+
+        Parameters
+        ----------
+        - edges (set): tuples describing the connections between layers in `spiking_model`.
+        - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+        - name_2_indx_map (dict): Map from node names to unique indices.
+        - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
+        """
+
+        print('----------------------------------------')
+        print(edges)
+        for key, val in indx_2_module_map.items():
+            print(key, val)
+        print('----------------------------------------')
+
+        # Gather indexes of the BatchNorm2d nodes.
+        bnorm_nodes = {
+            index for index, module in indx_2_module_map.items()
+            if isinstance(module, nn.BatchNorm2d)
+        }
+
+        if len(bnorm_nodes) == 0:
+            # There are no edges with BatchNorm2d - nothing to do here.
+            return
+
+        # Find conv-bnorm edges.
+        conv_bnorm_edges = {
+            (src, tgt) for (src, tgt) in edges
+            if isinstance(indx_2_module_map[src], nn.Conv2d) and isinstance(indx_2_module_map[tgt], nn.BatchNorm2d)
+        }
+
+        # Merge conv and bnorm layers using 'conv-bnorm' edges.
+        for edge in conv_bnorm_edges:
+            # merge and update conv node.
+            bnorm = indx_2_module_map[edge[1]]
+            conv = indx_2_module_map[edge[0]]
+            indx_2_module_map[edge[0]] = merge_conv_bn(conv, bnorm)
+
+        # Point Conv2d nodes to the targets of their respective BatchNorm2d nodes.
+        for conv, bnorm in conv_bnorm_edges:
+            new_edges = remap_edges_after_drop(dropped_node=bnorm, source_of_dropped_node=conv, edges=edges)
+
+        # Remove references to the bnorm node.
+
+        for idx in bnorm_nodes:
+            indx_2_module_map.pop(idx)
+            
+        for name in [name for name, indx in name_2_indx_map.items() if indx in bnorm_nodes]:
+            name_2_indx_map.pop(name)
+
+        for edge in conv_bnorm_edges:
+            edges.remove(edge)
+
+        for edge in [(src, tgt) for (src, tgt) in edges if (src in bnorm_nodes or tgt in bnorm_nodes)]:
+            edges.remove(edge)
+
+        # Update 'edges' in-place to incorporate new edges:
+        print(new_edges)
+        for edge in new_edges:
+            edges.add(edge)
+
+        print('++++++++++++++++++++++++++++++++++++++++++++++')
+        print(edges)
+        for key, val in indx_2_module_map.items():
+            print(key, val)
+        print('++++++++++++++++++++++++++++++++++++++++++++++')
+        
+
 
 def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.

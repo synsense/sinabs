@@ -17,7 +17,7 @@ from .connectivity_specs import (
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
 from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
-from .sinabs_edges_handler import collect_dynapcnn_layer_info, get_dvs_node_from_mapper, fix_dvs_module_edges, merge_dvs_pooling_edge
+from .sinabs_edges_handler import collect_dynapcnn_layer_info, get_dvs_node_from_mapper, fix_dvs_module_edges, merge_dvs_pooling_edge, handle_batchnorm2d_nodes
 from .utils import Edge, topological_sorting
 
 try:
@@ -88,6 +88,9 @@ class GraphExtractor:
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
+        # Merges BatchNorm2d nodes with Conv2d ones.
+        handle_batchnorm2d_nodes(self._edges, self._indx_2_module_map, self._name_2_indx_map)
+
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
 
@@ -112,6 +115,7 @@ class GraphExtractor:
 
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
+
 
     ####################################################### Publich Methods #######################################################
 
