@@ -41,7 +41,7 @@ def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges
 
     return remapped_edges
 
-def handle_batchnorm2d_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
+def handle_batchnorm_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
         """ Merges `BatchNorm2d`/`BatchNorm1d` layers into `Conv2d`/`Linear` ones. The batch norm nodes will be removed from the graph (by updating all variables 
         passed as arguments in-place) after their properties are used to re-scale the weights of the convolutional/linear layers associated with batch
         normalization via the `weight-batchnorm` edges found in the original graph.
