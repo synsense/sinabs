@@ -287,7 +287,7 @@ def merge_conv_bn(conv, bn):
 
     return conv
 
-def merge_linear_bn(linear, bn):
+def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
     """Merge a linear (fully connected) layer with subsequent batch normalization.
 
     Parameters
