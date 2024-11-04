@@ -20,7 +20,18 @@ from .flipdims import FlipDims
 from sinabs.layers import SumPool2d
 
 def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]) -> Set[Edge]:
-    """
+    """ Creates a new set of edges from `edges`. All edges where `dropped_node` is the source node will be used to generate
+    a new edge where `source_of_dropped_node` becomes the source node (the target is kept).
+
+    Parameters
+    ----------
+    - dropped_node (int): 
+    - source_of_dropped_node (int):
+    - edges (set): tuples describing the connections between layers in `spiking_model`.
+
+    Returns
+    -------
+    - remapped_edges (set): new set of edges with `source_of_dropped_node` as the source node where `dropped_node` used to be.
     """
     remapped_edges = set()
 
@@ -31,21 +42,16 @@ def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges
     return remapped_edges
 
 def handle_batchnorm2d_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
-        """
+        """ Merges `BatchNorm2d` layers into `Conv2d` ones. The `BatchNorm2d` nodes will be removed from the graph (by updating all variables 
+        passed as arguments in-place) after their properties are used to re-scale the weights of the convolutional layers associated with batch
+        normalization via `conv-batchnorm` edges.
 
         Parameters
         ----------
         - edges (set): tuples describing the connections between layers in `spiking_model`.
         - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
         - name_2_indx_map (dict): Map from node names to unique indices.
-        - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
         """
-
-        print('----------------------------------------')
-        print(edges)
-        for key, val in indx_2_module_map.items():
-            print(key, val)
-        print('----------------------------------------')
 
         # Gather indexes of the BatchNorm2d nodes.
         bnorm_nodes = {
@@ -89,17 +95,8 @@ def handle_batchnorm2d_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.M
             edges.remove(edge)
 
         # Update 'edges' in-place to incorporate new edges:
-        print(new_edges)
         for edge in new_edges:
             edges.add(edge)
-
-        print('++++++++++++++++++++++++++++++++++++++++++++++')
-        print(edges)
-        for key, val in indx_2_module_map.items():
-            print(key, val)
-        print('++++++++++++++++++++++++++++++++++++++++++++++')
-        
-
 
 def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
     """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.
