@@ -16,7 +16,7 @@ from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
 from .exceptions import InvalidEdge, InvalidGraphStructure
 from .flipdims import FlipDims
-from .utils import Edge
+from .utils import Edge, expand_to_pair
 
 
 def fix_dvs_module_edges(
@@ -140,7 +140,7 @@ def merge_dvs_pooling_edge(
     indx_2_module_map: Dict[int, nn.Module],
     name_2_indx_map: Dict[str, int],
 ) -> None:
-    """If a 'dvs-polling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
+    """If a 'dvs-pooling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
     default values. All arguments are modified in-place to remove the references to the incorporated pooling node.
 
     Parameters
@@ -165,42 +165,70 @@ def merge_dvs_pooling_edge(
     if len(dvs_pool_edge) > 1:
         # DVSLayer in the original network can have only a single pooling layer liked to it.
         raise ValueError(
-            f"DVSLayer can have a single edge onto a pooling layer but multiple were found: {dvs_pool_edge}"
+            f"DVSLayer has multiple outgoing edges to pooling layers: {dvs_pool_edge}. "
+            "Unlike convolutional layers, for DVS layers, pooling is set globally for "
+            "all destinations. Therefore a DVSLayer can be followed by at most one "
+            "pooling layer."
         )
 
-    (dvs_idnx, pool_idnx) = dvs_pool_edge[-1]
+    (dvs_indx, pool_indx) = dvs_pool_edge[-1]
+    dvs_layer = indx_2_module_map[dvs_indx]
+    pool_layer = indx_2_module_map[pool_indx]
 
     # Checking pooling can be incorporated into the DVSLayer.
+    if expand_to_pair(dvs_layer.pool_layer.kernel_size) != [1, 1] or expand_to_pair(
+        dvs_layer.pool_layer.stride
+    ) != [1, 1]:
+        raise ValueError(
+            "DVSLayer with pooling is followed by another pooling layer. "
+            "This is currently not supported. Please update the network "
+            "such that all pooling is either done by the DVSLayer or by "
+            "the following pooling layer."
+        )
+    crop_layer = dvs_layer.crop_layer
     if (
-        indx_2_module_map[dvs_idnx].pool_layer.kernel_size == 1
-        and indx_2_module_map[dvs_idnx].pool_layer.stride == 1
+        crop_layer.top_crop != 0
+        or crop_layer.left_crop != 0
+        or crop_layer.bottom_crop != dvs_layer.input_shape[1]
+        or crop_layer.right_crop != dvs_layer.input_shape[2]
     ):
-        # Set DVSLayer.pool to have same config. as the independent pooling layer.
-        indx_2_module_map[dvs_idnx].pool_layer.kernel_size = indx_2_module_map[
-            pool_idnx
-        ].kernel_size
-        indx_2_module_map[dvs_idnx].pool_layer.stride = indx_2_module_map[
-            pool_idnx
-        ].stride
-    # TODO: Should there not be an error be raised if the condition is wrong?
+        raise ValueError(
+            "DVSLayer with cropping is followed by a pooling layer. "
+            "This is currently not supported. Please define pooling "
+            "directly within the DVSLayer (with the `pool` argument) "
+            "and remove the pooling layer that follows the DVSLayer"
+        )
+    flip_layer = dvs_layer.flip_layer
+    if flip_layer.flip_x or flip_layer.flip_y or flip_layer.swap_xy:
+        raise ValueError(
+            "DVSLayer with flipping or dimension swapping is followed "
+            "by a pooling layer. This is currently not supported. "
+            "Please define pooling directly within the DVSLayer "
+            "(with the `pool` argument) and remove the pooling "
+            "layer that follows the DVSLayer"
+        )
+
+    # Set DVSLayer.pool to have same config. as the independent pooling layer.
+    dvs_layer.pool_layer.kernel_size = pool_layer.kernel_size
+    dvs_layer.pool_layer.stride = pool_layer.stride
 
     # Pooling incorporated to the DVSLayer: remove its trace from mappings.
-    indx_2_module_map.pop(pool_idnx)
+    indx_2_module_map.pop(pool_indx)
     name_2_indx_map.pop(
-        [name for name, indx in name_2_indx_map.items() if indx == pool_idnx][-1]
+        [name for name, indx in name_2_indx_map.items() if indx == pool_indx][-1]
     )
 
     # Since pool is part of the DVSLayer we now make edges where pool was a source to have DVSLayer as a source.
-    for edge in [edge for edge in edges if edge[0] == pool_idnx]:
+    for edge in [edge for edge in edges if edge[0] == pool_indx]:
         edges.remove(edge)
-        edges.update({(dvs_idnx, edge[1])})
+        edges.update({(dvs_indx, edge[1])})
 
     # Remove original 'dvs-pool' edge.
-    edges.remove((dvs_idnx, pool_idnx))
+    edges.remove((dvs_indx, pool_indx))
 
     # Checks if any traces of the original pooling node can still be found.
     if (
-        len([edge for edge in edges if (edge[0] == pool_idnx or edge[1] == pool_idnx)])
+        len([edge for edge in edges if (edge[0] == pool_indx or edge[1] == pool_indx)])
         != 0
     ):
         raise ValueError(
