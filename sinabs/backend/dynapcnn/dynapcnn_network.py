@@ -585,7 +585,6 @@ class DynapcnnNetwork(nn.Module):
             layers=self.all_layers,
             destination_map=self.layer_destination_map,
             layer2core_map=layer2core_map,
-            dvs_node_info=self.dvs_node_info,
         )
 
         if monitor_layers is None:

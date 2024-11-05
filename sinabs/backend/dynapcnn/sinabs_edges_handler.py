@@ -81,7 +81,7 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
         if isinstance(indx_2_module_map[edge[0]], SumPool2d) and isinstance(indx_2_module_map[edge[1]], Crop2d)
     })
 
-    # NIR is extracting and edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
+    # NIR is extracting an edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
     for edge in [(src, tgt) for (src, tgt) in edges if (src == tgt and isinstance(indx_2_module_map[src], FlipDims))]:
         edges.remove(edge)
 
@@ -143,12 +143,10 @@ def merge_dvs_pooling_edge(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Mod
 
     # Checking pooling can be incorporated into the DVSLayer.
     if indx_2_module_map[dvs_idnx].pool_layer.kernel_size == 1 and indx_2_module_map[dvs_idnx].pool_layer.stride == 1:
-        # DVSLayer.pool has its default config.
-        indx_2_module_map[pool_idnx].kernel_size
-        indx_2_module_map[pool_idnx].stride
         # Set DVSLayer.pool to have same config. as the independent pooling layer.
         indx_2_module_map[dvs_idnx].pool_layer.kernel_size = indx_2_module_map[pool_idnx].kernel_size
         indx_2_module_map[dvs_idnx].pool_layer.stride = indx_2_module_map[pool_idnx].stride
+    # TODO: Should there not be an error be raised if the condition is wrong?
 
     # Pooling incorporated to the DVSLayer: remove its trace from mappings.
     indx_2_module_map.pop(pool_idnx)
