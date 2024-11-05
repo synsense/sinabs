@@ -119,6 +119,7 @@ def test_was_copied():
         spk_lyr_snn = snn_layers[spk_name]
         assert spk_lyr_dynapcnn is not spk_lyr_snn
 
+
 def test_make_config():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False

@@ -26,7 +26,7 @@ seq_2 = nn.Sequential(
     nn.Conv2d(8, 2, kernel_size=3, stride=1, bias=False),
     IAFSqueeze(batch_size=1),
     nn.Flatten(),
-    nn.Linear(3*3*2, 5),
+    nn.Linear(3 * 3 * 2, 5),
     nn.Identity(),
     IAFSqueeze(batch_size=1),
 )
@@ -49,7 +49,7 @@ expected_seq_1 = {
     "entry_points": {0},
 }
 
-expected_seq_2= {
+expected_seq_2 = {
     "dcnnl_edges": {
         (0, 1),
         (1, 2),

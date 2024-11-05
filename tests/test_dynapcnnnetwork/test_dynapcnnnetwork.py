@@ -30,24 +30,22 @@ def test_DynapcnnNetwork(snn, input_shape, batch_size, expected_output):
     ), "wrong list of edges describing DynapcnnLayer connectivity."
 
     # Convert source lists to sets to ignore order
-    source_map = {node: set(sources) for node, sources in module._node_source_map.items()}
-    assert(
-        expected_output["node_source_map"] == source_map
-    ), "wrong node source map"
+    source_map = {
+        node: set(sources) for node, sources in module._node_source_map.items()
+    }
+    assert expected_output["node_source_map"] == source_map, "wrong node source map"
 
     # Convert destination lists to sets to ignore order
-    destination_map = {node: set(dests) for node, dests in module._destination_map.items()}
-    assert(
+    destination_map = {
+        node: set(dests) for node, dests in module._destination_map.items()
+    }
+    assert (
         expected_output["destination_map"] == destination_map
     ), "wrong destination map"
 
-    assert(
-        expected_output["entry_points"] == module._entry_points
-    ), "wrong entry points"
+    assert expected_output["entry_points"] == module._entry_points, "wrong entry points"
 
-    assert(
-        expected_output["sorted_nodes"] == module._sorted_nodes
-    ), "wrong node sorting"
+    assert expected_output["sorted_nodes"] == module._sorted_nodes, "wrong node sorting"
 
     assert (
         expected_output["output_shape"] == output.shape
