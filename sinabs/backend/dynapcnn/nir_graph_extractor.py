@@ -91,21 +91,8 @@ class GraphExtractor:
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
 
-        # If DVS camera is wanted but `spiking_model` does not start with DVS layer.
-        if self._need_dvs_node(dvs_input):
-            # Insert a DVSLayer node in the graph.
-            self._add_dvs_node(dvs_input_shape=dummy_input.shape[1:])
-        
-        # Check for the need of fixing NIR edges extraction when DVS is a node in the graph. If DVS
-        # is used its node becomes the only entry node in the graph.
-        fix_dvs_module_edges(self._edges, self._indx_2_module_map, self._name_2_indx_map, self._entry_nodes)
-
-        # Merge a pooling node from a 'dvs-pooling' edge (pooling being an independent node in the original 
-        # graph) into the DVSLayer if such edge exists.
-        merge_dvs_pooling_edge(self._edges, self._indx_2_module_map, self._name_2_indx_map)
-
-        # Check if graph structure and DVSLayer.merge_polarities are correctly set (if DVS node exists).
-        self._validate_dvs_setup(dvs_input_shape=dummy_input.shape[1:])
+        # Make sure DVS input is properly integrated into graph
+        self._handle_dvs_input(input_shape=dummy_input.shape[1:], dvs_input=dvs_input)
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
@@ -288,6 +275,39 @@ class GraphExtractor:
                     )
 
     ####################################################### Pivate Methods #######################################################
+
+    def _handle_dvs_input(self, input_shape: Tuple[int, int, int], dvs_input: Optional[bool] = None):
+        """Make sure DVS input is properly integrated into graph
+        
+        - Decide whether `DVSLayer` instance needs to be added to the graph
+            This is the case when `dvs_input==True` and there is no `DVSLayer` yet.
+        - Make sure edges between DVS related nodes are set properly
+        - Absorb pooling layers in DVS node if applicable
+        
+        Parameters
+        ----------
+        - input_shape (tuple of three integers): Input shape (features, height, width)
+        - dvs_input (bool or `None` (default)): If `False`, will raise
+            `InvalidModelWithDvsSetup` if a `DVSLayer` is part of the graph. If `True`,
+            a `DVSLayer` will be added to the graph if there is none already. If `None`,
+            the model is considered to be using DVS input only if the graph contains
+            a `DVSLayer`.
+        """
+        # If DVS camera is wanted but `spiking_model` does not start with DVS layer.
+        if self._need_dvs_node(dvs_input):
+            # Insert a DVSLayer node in the graph.
+            self._add_dvs_node(dvs_input_shape=input_shape)
+        
+        # Check for the need of fixing NIR edges extraction when DVS is a node in the graph. If DVS
+        # is used its node becomes the only entry node in the graph.
+        fix_dvs_module_edges(self._edges, self._indx_2_module_map, self._name_2_indx_map, self._entry_nodes)
+
+        # Merge a pooling node from a 'dvs-pooling' edge (pooling being an independent node in the original 
+        # graph) into the DVSLayer if such edge exists.
+        merge_dvs_pooling_edge(self._edges, self._indx_2_module_map, self._name_2_indx_map)
+
+        # Check if graph structure and DVSLayer.merge_polarities are correctly set (if DVS node exists).
+        self._validate_dvs_setup(dvs_input_shape=input_shape)
 
     def _add_dvs_node(self, dvs_input_shape: Tuple[int, int, int]) -> None:
         """ In-place modification of `self._name_2_indx_map`, `self._indx_2_module_map`, and `self._edges` to accomodate the 
