@@ -222,22 +222,23 @@ def fix_dvs_module_edges(
     indx_2_module_map.pop(dvs_crop_node[-1])
     indx_2_module_map.pop(dvs_flip_node[-1])
 
-    # Remove internal DVS modeules from name/index map.
-    for name in [
-        name
-        for name, index in name_2_indx_map.items()
-        if index in [dvs_pool_node[-1], dvs_crop_node[-1], dvs_flip_node[-1]]
-    ]:
-        name_2_indx_map.pop(name)
+    # Remove internal DVS modules from name/index map.
+    # Iterate over copy to prevent iterable from changing size.
+    n2i_map_copy = {k: v for k, v in name_2_indx_map.items()}
+    for name, index in n2i_map_copy.items():
+        if index in [dvs_pool_node[-1], dvs_crop_node[-1], dvs_flip_node[-1]]:
+            name_2_indx_map.pop(name)
 
-    # Add edges from 'dvs' node to the entry point of the graph.
-    all_sources, all_targets = zip(*edges)
-    local_entry_nodes = set(all_sources) - set(all_targets)
-    edges.update({(dvs_node[-1], node) for node in local_entry_nodes})
+    dvs_node = dvs_node[0]
+    if edges:
+        # Add edges from 'dvs' node to the entry point of the graph.
+        all_sources, all_targets = zip(*edges)
+        local_entry_nodes = set(all_sources) - set(all_targets)
+        edges.update({(dvs_node, node) for node in local_entry_nodes})
 
     # DVS becomes the only entry node of the graph.
     entry_nodes.clear()
-    entry_nodes.add(dvs_node[-1])
+    entry_nodes.add(dvs_node)
 
 
 def merge_dvs_pooling_edge(
