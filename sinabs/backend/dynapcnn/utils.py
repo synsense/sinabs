@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, TypeVar, Union
 
 import sinabs.layers as sl
 import torch
@@ -250,8 +250,50 @@ def construct_dvs_layer(
         # No parameters/layers pertaining to DVS preprocessing found
         return None, 0, 1
 
+WeightLayer = TypeVar("WeightLayer", nn.Linear, nn.Conv2d)
+def merge_bn(weight_layer: WeightLayer, bn: Union[nn.BatchNorm1d, nn.BatchNorm2d]) -> WeightLayer:
+    """Merge a convolutional or linear layer with subsequent batch normalization.
 
-def merge_conv_bn(conv, bn):
+    Parameters
+    ----------
+        weight_layer: torch.nn.Conv2d or nn.Linear
+            Convolutional or linear layer
+        bn: torch.nn.Batchnorm2d or nn.Batchnorm1d
+            Batch normalization
+
+    Returns
+    -------
+        Weight layer including batch normalization
+    """
+    mu = bn.running_mean
+    sigmasq = bn.running_var
+
+    if bn.affine:
+        gamma, beta = bn.weight, bn.bias
+    else:
+        gamma, beta = 1.0, 0.0
+
+    factor = gamma / sigmasq.sqrt()
+
+    weight = weight_layer.weight.data.clone().detach()
+    bias = 0.0 if weight_layer.bias is None else weight_layer.bias.data.clone().detach()
+
+    weight_layer = deepcopy(weight_layer)
+
+    new_bias = beta + (bias - mu) * factor
+    if weight_layer.bias is None:
+        weight_layer.bias = nn.Parameter(new_bias)
+    else:
+        weight_layer.bias.data = new_bias
+
+    for __ in range(weight_layer.weight.ndim - factor.ndim):
+        factor.unsqueeze_(-1)
+    weight_layer.weight.data = weight * factor
+
+    return weight_layer
+
+
+def merge_conv_bn(conv: nn.Conv2d, bn: nn.BatchNorm2d) -> nn.Conv2d:
     """Merge a convolutional layer with subsequent batch normalization.
 
     Parameters
@@ -265,26 +307,7 @@ def merge_conv_bn(conv, bn):
     -------
         torch.nn.Conv2d: Convolutional layer including batch normalization
     """
-    mu = bn.running_mean
-    sigmasq = bn.running_var
-
-    if bn.affine:
-        gamma, beta = bn.weight, bn.bias
-    else:
-        gamma, beta = 1.0, 0.0
-
-    factor = gamma / sigmasq.sqrt()
-
-    c_weight = conv.weight.data.clone().detach()
-    c_bias = 0.0 if conv.bias is None else conv.bias.data.clone().detach()
-
-    conv = deepcopy(conv)  # TODO: this will cause copying twice
-
-    conv.weight.data = c_weight * factor[:, None, None, None]
-    if conv.bias:
-        conv.bias.data = beta + (c_bias - mu) * factor
-
-    return conv
+    return merge_bn(conv, bn)
 
 def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
     """Merge a linear (fully connected) layer with subsequent batch normalization.
@@ -300,26 +323,7 @@ def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
     -------
         torch.nn.Linear: Linear layer including batch normalization
     """
-    mu = bn.running_mean
-    sigmasq = bn.running_var
-
-    if bn.affine:
-        gamma, beta = bn.weight, bn.bias
-    else:
-        gamma, beta = 1.0, 0.0
-
-    factor = gamma / sigmasq.sqrt()
-
-    l_weight = linear.weight.data.clone().detach()
-    l_bias = 0.0 if linear.bias is None else linear.bias.data.clone().detach()
-
-    linear = deepcopy(linear)
-
-    linear.weight.data = l_weight * factor[:, None]
-    if linear.bias is not None:
-        linear.bias.data = beta + (l_bias - mu) * factor
-
-    return linear
+    return merge_bn(linear, bn)
 
 # Should become obsolete
 def construct_next_pooling_layer(
