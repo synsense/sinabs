@@ -6,10 +6,9 @@ from functools import partial
 from typing import List, Tuple
 
 import numpy as np
+import sinabs.layers as sl
 import torch
 from torch import nn
-
-import sinabs.layers as sl
 
 from .discretize import discretize_conv_spike_
 

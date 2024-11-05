@@ -2,10 +2,9 @@ from copy import deepcopy
 from typing import Optional, Tuple
 from warnings import warn
 
+import sinabs.layers as sl
 import torch
 import torch.nn as nn
-
-import sinabs.layers as sl
 
 DYNAPCNN_WEIGHT_PRECISION_BITS = 8
 DYNAPCNN_STATE_PRECISION_BITS = 16

@@ -2,10 +2,9 @@ from collections import defaultdict, deque
 from copy import deepcopy
 from typing import TYPE_CHECKING, List, Optional, Set, Tuple
 
+import sinabs.layers as sl
 import torch
 import torch.nn as nn
-
-import sinabs.layers as sl
 from sinabs.utils import expand_to_pair
 
 from .crop2d import Crop2d
@@ -392,7 +391,7 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
                 ext_bias_data[i * 4] = og_bias_data[i]
             og_readout_conv_layer.bias.data = ext_bias_data
         # run a forward pass to initialize the new weights and last IAF
-    model(torch.zeros(size=(1, *input_shape)))  
+    model(torch.zeros(size=(1, *input_shape)))
     return model
 
 

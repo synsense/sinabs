@@ -6,13 +6,12 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from warnings import warn
 
 import samna
+import sinabs
+import sinabs.layers as sl
 import torch
 import torch.nn as nn
 from samna.dynapcnn.configuration import DynapcnnConfiguration
 from torch import Tensor
-
-import sinabs
-import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
@@ -109,10 +108,12 @@ class DynapcnnNetwork(nn.Module):
     @property
     def dynapcnn_module(self):
         return self._dynapcnn_module
-    
+
     @property
     def exit_layers(self):
-        return [self.dynapcnn_layers[i] for i in self._dynapcnn_module.get_exit_layers()]
+        return [
+            self.dynapcnn_layers[i] for i in self._dynapcnn_module.get_exit_layers()
+        ]
 
     @property
     def layer_destination_map(self):
@@ -231,7 +232,7 @@ class DynapcnnNetwork(nn.Module):
             Each nested dict has as keys the indices of all dynapcnn_layers and
             as values the corresonding memory values for each layer.
         """
-        # For each entry (kernel, neuron, bias) provide one nested dict with 
+        # For each entry (kernel, neuron, bias) provide one nested dict with
         # one entry for each layer
         summary = {key: dict() for key in ("kernel", "neuron", "bias")}
 

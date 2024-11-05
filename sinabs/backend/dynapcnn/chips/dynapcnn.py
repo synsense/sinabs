@@ -3,14 +3,13 @@ from typing import Dict, List, Union
 from warnings import warn
 
 import samna
+import sinabs
 import torch
 from samna.dynapcnn.configuration import (
     CNNLayerConfig,
-    DynapcnnConfiguration,
     DVSLayerConfig,
+    DynapcnnConfiguration,
 )
-
-import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -324,7 +323,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     layer=sw_layer,
                     layer2core_map=layer2core_map,
                     destination_indices=destination_indices,
-                    chip_layer=chip_layer)
+                    chip_layer=chip_layer,
+                )
             else:
                 # shouldn't happen since type checks are made previously.
                 raise TypeError(

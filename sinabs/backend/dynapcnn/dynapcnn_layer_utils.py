@@ -1,16 +1,18 @@
 from math import prod
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
-from torch import nn
-
 from sinabs import layers as sl
 from sinabs.utils import expand_to_pair
+from torch import nn
 
 from .dynapcnn_layer import DynapcnnLayer
 
 
 def construct_dynapcnnlayers_from_mapper(
-    dcnnl_map: Dict, dvs_layer_info: Union[None, Dict], discretize: bool, rescale_fn: Optional[Callable] = None
+    dcnnl_map: Dict,
+    dvs_layer_info: Union[None, Dict],
+    discretize: bool,
+    rescale_fn: Optional[Callable] = None,
 ) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, Set[int]], List[int]]:
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
@@ -58,6 +60,7 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
     for layer_info in dcnnl_map.values():
         # Consolidate scale factors
         consolidate_layer_scaling(layer_info, rescale_fn)
+
 
 def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     """Consolidate pooling information for individual layer
@@ -252,7 +255,9 @@ def construct_single_dynapcnn_layer(
     )
 
 
-def construct_destination_map(dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]) -> Dict[int, List[int]]:
+def construct_destination_map(
+    dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]
+) -> Dict[int, List[int]]:
     """Create a dict that holds destinations for each layer
 
     Parameters
@@ -285,7 +290,9 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[
     return destination_map
 
 
-def collect_entry_points(dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]) -> Set[int]:
+def collect_entry_points(
+    dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]
+) -> Set[int]:
     """Return set of layer indices that are entry points
 
     Parameters
