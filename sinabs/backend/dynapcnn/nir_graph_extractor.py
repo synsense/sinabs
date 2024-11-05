@@ -1,7 +1,7 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import nirtorch
 import torch
@@ -159,7 +159,6 @@ class GraphExtractor:
             edges=self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
             entry_nodes=self.entry_nodes,
-            dvs_input=self.has_dvs_layer,
         )
 
         # build `DynapcnnLayer` instances from mapper.
