@@ -9,6 +9,7 @@ from collections import deque
 from typing import Dict, List, Set, Tuple, Type, Union
 
 from sinabs.layers import SumPool2d
+from sinabs.utils import expand_to_pair
 from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
@@ -16,7 +17,7 @@ from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
 from .exceptions import InvalidEdge, InvalidGraphStructure
 from .flipdims import FlipDims
-from .utils import Edge, expand_to_pair, merge_bn
+from .utils import Edge, merge_bn
 
 
 def remap_edges_after_drop(
