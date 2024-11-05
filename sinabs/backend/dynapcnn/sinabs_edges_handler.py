@@ -204,8 +204,9 @@ def collect_dynapcnn_layer_info(
     node_2_layer_map = dict()
 
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
-    while edges_by_type.get("weight-neuron", False):
-        edge = edges_by_type["weight-neuron"].pop()
+    weight_neuron_edges = edges_by_type.get("weight-neuron", Set())
+    while weight_neuron_edges:
+        edge = weight_neuron_edges.pop()
         init_new_dynapcnnlayer_entry(
             dynapcnn_layer_info,
             edge,
@@ -216,8 +217,9 @@ def collect_dynapcnn_layer_info(
         )
 
     # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    while edges_by_type.get("dvs-weight", False):
-        edge = edges_by_type["dvs-weight"].pop()
+    dvs_weight_edges = edges_by_type.get("dvs-weight", Set())
+    while dvs_weight_edges:
+        edge = dvs_weight_edges.pop()
         add_or_update_dvs_to_entry(
             edge,
             dynapcnn_layer_info,
@@ -227,8 +229,9 @@ def collect_dynapcnn_layer_info(
         )
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
-    while edges_by_type.get("neuron-weight", False):
-        edge = edges_by_type["neuron-weight"].pop()
+    neuron_weight_edges = edges_by_type.get("neuron-weight", Set())
+    while neuron_weight_edges:
+        edge = neuron_weight_edges.pop()
         set_neuron_layer_destination(
             dynapcnn_layer_info,
             edge,
@@ -238,9 +241,9 @@ def collect_dynapcnn_layer_info(
         )
 
     # Add pooling based on neuron->pooling connections
-    pooling_pooling_edges = edges_by_type.get("pooling-pooling", set())
-    while edges_by_type.get("neuron-pooling", False):
-        edge = edges_by_type["neuron-pooling"].pop()
+    pooling_pooling_edges = edges_by_type.get("pooling-pooling", Set())
+    while pooling_pooling_edges:
+        edge = pooling_pooling_edges.pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
         pooling_chains, edges_used = trace_paths(edge[1], pooling_pooling_edges)
         add_pooling_to_entry(
@@ -265,8 +268,9 @@ def collect_dynapcnn_layer_info(
         )
 
     # Add all edges connecting pooling to a new dynapcnn layer
-    while edges_by_type.get("pooling-weight", False):
-        edge = edges_by_type["pooling-weight"].pop()
+    pooling_weight_edges = edges_by_type.get("pooling-weight", Set())
+    while pooling_weight_edges:
+        edge = pooling_weight_edges.pop()
         set_pooling_layer_destination(
             dynapcnn_layer_info,
             edge,
