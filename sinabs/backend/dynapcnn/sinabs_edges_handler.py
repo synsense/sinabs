@@ -6,7 +6,7 @@ contact       : williansoaresgirao@gmail.com
 """
 
 from collections import deque
-from typing import Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Dict, List, Set, Tuple, Type, Union
 
 from sinabs.layers import SumPool2d
 from torch import Size, nn
