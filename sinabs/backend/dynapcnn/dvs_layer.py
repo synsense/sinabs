@@ -186,14 +186,13 @@ class DVSLayer(nn.Module):
         ) = self.get_output_shape_after_pooling()
 
         # Compute dims after cropping
-        if self.crop_layer is not None:
-            (
-                channel_count,
-                output_size_y,
-                output_size_x,
-            ) = self.crop_layer.get_output_shape(
-                (channel_count, output_size_y, output_size_x)
-            )
+        (
+            channel_count,
+            output_size_y,
+            output_size_x,
+        ) = self.crop_layer.get_output_shape(
+            (channel_count, output_size_y, output_size_x)
+        )
 
         # Compute dims after pooling
         return {
@@ -250,15 +249,11 @@ class DVSLayer(nn.Module):
         -------
         ((top, bottom), (left, right))
         """
-        if self.crop_layer is not None:
-            _, h, w = self.get_output_shape_after_pooling()
-            return (
-                (self.crop_layer.top_crop, self.crop_layer.bottom_crop),
-                (self.crop_layer.left_crop, self.crop_layer.right_crop),
-            )
-        else:
-            _, output_size_y, output_size_x = self.get_output_shape()
-            return (0, output_size_y), (0, output_size_x)
+        _, h, w = self.get_output_shape_after_pooling()
+        return (
+            (self.crop_layer.top_crop, self.crop_layer.bottom_crop),
+            (self.crop_layer.left_crop, self.crop_layer.right_crop),
+        )
 
     def get_output_shape(self) -> Tuple[int, int, int]:
         """Output shape of the layer.
@@ -278,14 +273,13 @@ class DVSLayer(nn.Module):
         output_size_y = input_size_y // pooling[0]
 
         # Compute dims after cropping
-        if self.crop_layer is not None:
-            (
-                channel_count,
-                output_size_y,
-                output_size_x,
-            ) = self.crop_layer.get_output_shape(
-                (channel_count, output_size_y, output_size_x)
-            )
+        (
+            channel_count,
+            output_size_y,
+            output_size_x,
+        ) = self.crop_layer.get_output_shape(
+            (channel_count, output_size_y, output_size_x)
+        )
 
         return channel_count, output_size_y, output_size_x
 
