@@ -184,52 +184,6 @@ def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] =
     layer_info["rescale_factor"] = rescale_factor
 
 
-# TODO: Obsolete
-def determine_layer_input_shape(layer_info: Dict):
-    """Determine input shape of single layer
-
-    Update "input_shape" entry of `layer_info`.
-    If weight layer is convolutional, only verify that output shapes
-    of preceding layer are not greater than input shape in any dimension.
-
-    If weight layer is linear, the current "input_shape" entry will
-    correspond to the shape after flattening, which might not match
-    the shape of the actual input to the layer. Therefore the new input
-    shape is the largest size across all output shapes of preceding
-    layers, for each dimension individually.
-    Verify that total number of elements (product of entries in new
-    input shape) does not exceed that of original input shape.
-
-    Parameters
-    ----------
-    - layer_info: Dict holding info of single layer.
-    """
-    # For each dimension find largest inferred input size
-    max_inferred_input_shape = [
-        max(sizes) for sizes in zip(*layer_info["inferred_input_shapes"])
-    ]
-
-    if isinstance(layer_info["conv"]["module"], nn.Linear):
-        if prod(max_inferred_input_shape) > prod(layer_info["input_shape"]):
-            raise ValueError(
-                "Combined output of some layers projecting to a linear layer is "
-                "larger than expected by destination layer. "
-            )
-        # Take shape before flattening, to convert linear to conv layer
-        layer_info["input_shape"] = max_inferred_input_shape
-    else:
-        if any(
-            inferred > expected
-            for inferred, expected in zip(
-                max_inferred_input_shape, layer_info["input_shape"]
-            )
-        ):
-            raise ValueError(
-                "Output of some layers is larger than expected by destination "
-                "layer along some dimensions."
-            )
-
-
 def construct_single_dynapcnn_layer(
     layer_info: Dict, discretize: bool
 ) -> DynapcnnLayer:

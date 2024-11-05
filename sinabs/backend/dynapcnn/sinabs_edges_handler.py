@@ -19,26 +19,6 @@ from .flipdims import FlipDims
 from .utils import Edge
 
 
-def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
-    """Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.
-
-    Parameters
-    ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-
-    Returns
-    -------
-    -  Dict containing information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`).
-    """
-    # TODO: Would it make more sense to have dvs layer separated from dcnnl layers?
-    #   Either as different object or with a very clear key inside `dcnnl_map`
-    for layer_index, layer_info in dcnnl_map.items():
-        if "dvs_layer" in layer_info:
-            assert layer_info["dvs_layer"]
-            return layer_info
-    return None
-
-
 def fix_dvs_module_edges(
     edges: Set[Edge],
     indx_2_module_map: Dict[int, nn.Module],

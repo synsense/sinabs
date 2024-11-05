@@ -19,7 +19,6 @@ from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
 from .sinabs_edges_handler import (
     collect_dynapcnn_layer_info,
     fix_dvs_module_edges,
-    get_dvs_node_from_mapper,
     merge_dvs_pooling_edge,
 )
 from .utils import Edge, topological_sorting
