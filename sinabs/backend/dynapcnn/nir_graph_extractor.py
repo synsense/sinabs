@@ -171,7 +171,7 @@ class GraphExtractor:
         )
 
         # DVSLayer node information (None if DVS camera is not used).
-        dvs_node_info = get_dvs_node_from_mapper(self.dcnnl_map)
+        dvs_node_info = self.dcnnl_map.get("dvs", None)
 
         # Instantiate the DynapcnnNetworkModule
         return DynapcnnNetworkModule(
@@ -353,7 +353,7 @@ class GraphExtractor:
         has_dvs_layer = self.has_dvs_layer
 
         # Checks if DVSLayer instance exists but user has set 'dvs_input' to False.
-        if has_dvs_layer and dvs_input == False:
+        if has_dvs_layer and dvs_input == False:  # `== False` ensures that `None` is not considered
             raise InvalidModelWithDVSSetup()
 
         return not has_dvs_layer and dvs_input

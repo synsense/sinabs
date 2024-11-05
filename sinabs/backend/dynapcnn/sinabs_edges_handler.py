@@ -502,32 +502,24 @@ def add_or_update_dvs_to_entry(
             "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
         )
 
-    if (source_layer_idx := node_2_layer_map.get(edge[0], None)) is None:
-        # DVS node hasn't been initialized yet: take current length of the dict as new, unique ID.
-        layer_id = len(dynapcnn_layer_info)
-        assert layer_id not in dynapcnn_layer_info
-
+    if "dvs" not in dynapcnn_layer_info:
+        # DVS node hasn't been initialized yet
         # Init. entry for a DVS layer using its configuration dict.
-        dynapcnn_layer_info[layer_id] = {
-            "is_entry_node": True,
-            # TODO - the key below is what currently tells an entry in `dynapcnn_layer_info` for the DVS apart from the DynapcnnLayer 
-            # entries (perhaps there's a better way).
-            "dvs_layer": True,
+        dynapcnn_layer_info["dvs"] = {
             "node_id": edge[0],
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
             "destinations": [node_2_layer_map[edge[1]]],
-            'layer_id': layer_id,
         }
 
-        node_2_layer_map[edge[0]] = layer_id
+        node_2_layer_map[edge[0]] = "dvs"
     else:
         # Update entry for DVS with new destination.
-        assert 'dvs_layer' in dynapcnn_layer_info[source_layer_idx]
-        assert dynapcnn_layer_info[source_layer_idx]['dvs_layer']
-        assert destination_layer_idx not in dynapcnn_layer_info[source_layer_idx]["destinations"]
+        dvs_layer_info = dynapcnn_layer_info["dvs"]
+        assert dvs_layer_info["node_id"] == edge[0]
+        assert destination_layer_idx not in dvs_layer_info["destinations"]
     
-        dynapcnn_layer_info[source_layer_idx]["destinations"].append(destination_layer_idx)
+        dvs_layer_info["destinations"].append(destination_layer_idx)
 
 def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     """Set minimal destination entries for layers that don't have any.
