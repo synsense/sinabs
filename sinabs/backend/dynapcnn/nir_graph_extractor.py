@@ -94,7 +94,9 @@ class GraphExtractor:
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
         # Merges BatchNorm2d/BatchNorm1d nodes with Conv2d/Linear ones.
-        handle_batchnorm_nodes(self._edges, self._indx_2_module_map, self._name_2_indx_map)
+        handle_batchnorm_nodes(
+            self._edges, self._indx_2_module_map, self._name_2_indx_map
+        )
 
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
@@ -107,7 +109,6 @@ class GraphExtractor:
 
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
-
 
     ####################################################### Publich Methods #######################################################
 

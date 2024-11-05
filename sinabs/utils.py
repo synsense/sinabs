@@ -287,8 +287,10 @@ def expand_to_pair(value) -> Tuple[int, int]:
 
 
 T = TypeVar("T")
+
+
 def collapse_pair(pair: Union[Iterable[T], T]) -> T:
-    """ Collapse an iterable of equal elements by returning only the first
+    """Collapse an iterable of equal elements by returning only the first
 
     Parameters
     ----------
@@ -300,7 +302,7 @@ def collapse_pair(pair: Union[Iterable[T], T]) -> T:
 
     Raises
     ------
-    ValueError if not all elements in `pair` are equal. 
+    ValueError if not all elements in `pair` are equal.
     """
     if isinstance(pair, Iterable):
         items = [x for x in pair]
@@ -309,4 +311,3 @@ def collapse_pair(pair: Union[Iterable[T], T]) -> T:
         return items[0]
     else:
         return pair
-

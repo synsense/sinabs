@@ -250,8 +250,13 @@ def construct_dvs_layer(
         # No parameters/layers pertaining to DVS preprocessing found
         return None, 0, 1
 
+
 WeightLayer = TypeVar("WeightLayer", nn.Linear, nn.Conv2d)
-def merge_bn(weight_layer: WeightLayer, bn: Union[nn.BatchNorm1d, nn.BatchNorm2d]) -> WeightLayer:
+
+
+def merge_bn(
+    weight_layer: WeightLayer, bn: Union[nn.BatchNorm1d, nn.BatchNorm2d]
+) -> WeightLayer:
     """Merge a convolutional or linear layer with subsequent batch normalization.
 
     Parameters
@@ -309,6 +314,7 @@ def merge_conv_bn(conv: nn.Conv2d, bn: nn.BatchNorm2d) -> nn.Conv2d:
     """
     return merge_bn(conv, bn)
 
+
 def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
     """Merge a linear (fully connected) layer with subsequent batch normalization.
 
@@ -324,6 +330,7 @@ def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
         torch.nn.Linear: Linear layer including batch normalization
     """
     return merge_bn(linear, bn)
+
 
 # Should become obsolete
 def construct_next_pooling_layer(
