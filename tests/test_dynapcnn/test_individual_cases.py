@@ -204,11 +204,12 @@ def test_no_spk_ending():
 
 
 def test_no_spk_middle():
+    from sinabs.backend.dynapcnn.exceptions import InvalidEdge
     seq = nn.Sequential(
         nn.Flatten(), nn.Linear(512, 10), nn.Linear(10, 2), IAFSqueeze(batch_size=1)
     )
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidEdge):
         DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 

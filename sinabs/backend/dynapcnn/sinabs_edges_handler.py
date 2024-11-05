@@ -911,4 +911,5 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
 """ Add verification tools to ensure that:
 - there are as many destinations as there are edges from pool/neuron to weight
 - there are as many layers as there are edges from weight to neuron
+- each layer has a weight layer node and a spiking layer node
 """
