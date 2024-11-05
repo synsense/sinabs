@@ -16,16 +16,18 @@ from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
 from .exceptions import InvalidEdge, InvalidGraphStructure
 from .flipdims import FlipDims
-from .utils import Edge, expand_to_pair, merge_conv_bn, merge_linear_bn
+from .utils import Edge, expand_to_pair, merge_bn
 
 
-def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]) -> Set[Edge]:
-    """ Creates a new set of edges from `edges`. All edges where `dropped_node` is the source node will be used to generate
+def remap_edges_after_drop(
+    dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]
+) -> Set[Edge]:
+    """Creates a new set of edges from `edges`. All edges where `dropped_node` is the source node will be used to generate
     a new edge where `source_of_dropped_node` becomes the source node (the target is kept).
 
     Parameters
     ----------
-    - dropped_node (int): 
+    - dropped_node (int):
     - source_of_dropped_node (int):
     - edges (set): tuples describing the connections between layers in `spiking_model`.
 
@@ -35,77 +37,91 @@ def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges
     """
     remapped_edges = set()
 
-    for (src, tgt) in edges:
+    for src, tgt in edges:
         if src == dropped_node:
             remapped_edges.add((source_of_dropped_node, tgt))
 
     return remapped_edges
 
-def handle_batchnorm_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
-        """ Merges `BatchNorm2d`/`BatchNorm1d` layers into `Conv2d`/`Linear` ones. The batch norm nodes will be removed from the graph (by updating all variables 
-        passed as arguments in-place) after their properties are used to re-scale the weights of the convolutional/linear layers associated with batch
-        normalization via the `weight-batchnorm` edges found in the original graph.
 
-        Parameters
-        ----------
-        - edges (set): tuples describing the connections between layers in `spiking_model`.
-        - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
-        - name_2_indx_map (dict): Map from node names to unique indices.
-        """
+def handle_batchnorm_nodes(
+    edges: Set[Edge],
+    indx_2_module_map: Dict[int, nn.Module],
+    name_2_indx_map: Dict[str, int],
+) -> None:
+    """Merges `BatchNorm2d`/`BatchNorm1d` layers into `Conv2d`/`Linear` ones. The batch norm nodes will be removed from the graph (by updating all variables
+    passed as arguments in-place) after their properties are used to re-scale the weights of the convolutional/linear layers associated with batch
+    normalization via the `weight-batchnorm` edges found in the original graph.
 
-        # Gather indexes of the BatchNorm2d/BatchNorm1d nodes.
-        bnorm_nodes = {
-            index for index, module in indx_2_module_map.items()
-            if isinstance(module, nn.BatchNorm2d) or isinstance(module, nn.BatchNorm1d)
-        }
+    Parameters
+    ----------
+    - edges (set): tuples describing the connections between layers in `spiking_model`.
+    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+    - name_2_indx_map (dict): Map from node names to unique indices.
+    """
 
-        if len(bnorm_nodes) == 0:
-            # There are no edges with batch norm - nothing to do here.
-            return
+    # Gather indexes of the BatchNorm2d/BatchNorm1d nodes.
+    bnorm_nodes = {
+        index
+        for index, module in indx_2_module_map.items()
+        if isinstance(module, (nn.BatchNorm2d, nn.BatchNorm1d))
+    }
 
-        # Find weight-bnorm edges.
-        weight_bnorm_edges = {
-            (src, tgt) for (src, tgt) in edges
-            if (isinstance(indx_2_module_map[src], nn.Conv2d) and isinstance(indx_2_module_map[tgt], nn.BatchNorm2d)) or (isinstance(indx_2_module_map[src], nn.Linear) and isinstance(indx_2_module_map[tgt], nn.BatchNorm1d))
-        }
+    if len(bnorm_nodes) == 0:
+        # There are no edges with batch norm - nothing to do here.
+        return
 
-        # Merge conv/linear and bnorm layers using 'weight-bnorm' edges.
-        for edge in weight_bnorm_edges:
-            bnorm = indx_2_module_map[edge[1]]
-            weight = indx_2_module_map[edge[0]]
-            
-            # merge and update weight node.
-            if isinstance(weight, nn.Conv2d):
-                indx_2_module_map[edge[0]] = merge_conv_bn(weight, bnorm)
-            elif isinstance(weight, nn.Linear):
-                indx_2_module_map[edge[0]] = merge_linear_bn(weight, bnorm)
-            else:
-                raise ValueError(f'A batch norm layer can only be preceed by either a nn.Conv2d (followed by nn.BatchNorm2d) or a nn.Linear (followed by nn.BatchNorm1d).\nFound a {type(weight)} followed by a {type(bnorm)}.')
+    # Find weight-bnorm edges.
+    weight_bnorm_edges = {
+        (src, tgt)
+        for (src, tgt) in edges
+        if (
+            isinstance(indx_2_module_map[src], nn.Conv2d)
+            and isinstance(indx_2_module_map[tgt], nn.BatchNorm2d)
+        )
+        or (
+            isinstance(indx_2_module_map[src], nn.Linear)
+            and isinstance(indx_2_module_map[tgt], nn.BatchNorm1d)
+        )
+    }
 
-        # Point weight nodes to the targets of their respective batch norm nodes.
-        new_edges = set()
-        for weight, bnorm in weight_bnorm_edges:
-            new_edges.update(
-                remap_edges_after_drop(dropped_node=bnorm, source_of_dropped_node=weight, edges=edges)
+    # Merge conv/linear and bnorm layers using 'weight-bnorm' edges.
+    for edge in weight_bnorm_edges:
+        bnorm = indx_2_module_map[edge[1]]
+        weight = indx_2_module_map[edge[0]]
+
+        # merge and update weight node.
+        indx_2_module_map[edge[0]] = merge_bn(weight, bnorm)
+
+    # Point weight nodes to the targets of their respective batch norm nodes.
+    new_edges = set()
+    for weight, bnorm in weight_bnorm_edges:
+        new_edges.update(
+            remap_edges_after_drop(
+                dropped_node=bnorm, source_of_dropped_node=weight, edges=edges
             )
+        )
 
-        # Remove references to the bnorm node.
+    # Remove references to the bnorm node.
 
-        for idx in bnorm_nodes:
-            indx_2_module_map.pop(idx)
-            
-        for name in [name for name, indx in name_2_indx_map.items() if indx in bnorm_nodes]:
-            name_2_indx_map.pop(name)
+    for idx in bnorm_nodes:
+        indx_2_module_map.pop(idx)
 
-        for edge in weight_bnorm_edges:
-            edges.remove(edge)
+    for name in [name for name, indx in name_2_indx_map.items() if indx in bnorm_nodes]:
+        name_2_indx_map.pop(name)
 
-        for edge in [(src, tgt) for (src, tgt) in edges if (src in bnorm_nodes or tgt in bnorm_nodes)]:
-            edges.remove(edge)
+    for edge in weight_bnorm_edges:
+        edges.remove(edge)
 
-        # Update 'edges' in-place to incorporate new edges:
-        for edge in new_edges:
-            edges.add(edge)
+    for edge in [
+        (src, tgt) for (src, tgt) in edges if (src in bnorm_nodes or tgt in bnorm_nodes)
+    ]:
+        edges.remove(edge)
+
+    # Update 'edges' in-place to incorporate new edges:
+    for edge in new_edges:
+        edges.add(edge)
+
 
 def fix_dvs_module_edges(
     edges: Set[Edge],

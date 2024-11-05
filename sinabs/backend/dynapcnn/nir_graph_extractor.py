@@ -16,11 +16,11 @@ from .connectivity_specs import (
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
-from .exceptions import InvalidGraphStructure, InvalidModelWithDVSSetup
+from .exceptions import InvalidGraphStructure
 from .sinabs_edges_handler import (
     collect_dynapcnn_layer_info,
     fix_dvs_module_edges,
-    handle_batchnorm_edges,
+    handle_batchnorm_nodes,
     merge_dvs_pooling_edge,
 )
 from .utils import Edge, topological_sorting
