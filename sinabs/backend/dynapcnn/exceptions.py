@@ -69,7 +69,10 @@ class InvalidGraphStructure(Exception):
 
 class InvalidModelWithDVSSetup(Exception):
     def __init__(self):
-        super().__init__(f"The network provided has a DVSLayer instance but argument 'dvs_input' is set to False.")
+        super().__init__(
+            f"The network provided has a DVSLayer instance but argument 'dvs_input' is set to False."
+        )
+
 
 # Edge exceptions.
 

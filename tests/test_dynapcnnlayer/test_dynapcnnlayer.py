@@ -21,7 +21,7 @@ def test_DynapcnnLayer(dcnnl_map, discretize, expected_output):
 
     # create a `DynapcnnLayer` from the set of layers in `nodes_to_dcnnl_map[dpcnnl_idx]`.
     dynapcnn_layers, destination_map, entry_points = construct_dynapcnnlayers_from_mapper(
-        dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=None
+        dcnnl_map=dcnnl_map, discretize=discretize, rescale_fn=None, dvs_layer_info=None,
     )
 
     for layer_index, dynapcnn_layer in dynapcnn_layers.items():

@@ -2,7 +2,6 @@ from typing import Dict, List
 
 import samna
 from samna.speck2cMini.configuration import SpeckConfiguration
-
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 from sinabs.backend.dynapcnn.mapping import LayerConstraints
 

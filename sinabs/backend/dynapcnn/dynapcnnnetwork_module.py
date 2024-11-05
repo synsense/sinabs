@@ -2,17 +2,16 @@
 # contact   : wsoaresgirao@gmail.com
 
 from collections import defaultdict
-from typing import Dict, List, Set, Union, Optional
+from typing import Dict, List, Optional, Set, Union
 from warnings import warn
 
+import sinabs.layers as sl
 import torch.nn as nn
 from torch import Tensor
 
-import sinabs.layers as sl
-
+from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .utils import Edge, topological_sorting
-from .dvs_layer import DVSLayer
 
 
 class DynapcnnNetworkModule(nn.Module):
@@ -25,7 +24,7 @@ class DynapcnnNetworkModule(nn.Module):
     ----------
     - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
     - destination_map (dict): Maps layer indices to list of destination indices.
-        Exit destinations are marked by negative integers    
+        Exit destinations are marked by negative integers
     - entry_points (set): Set of layer indices that act as network entry points.
     - dvs_node_info (dict): contains information associated with the `DVSLayer` node.
         `None` if no DVS node exists.
@@ -75,9 +74,7 @@ class DynapcnnNetworkModule(nn.Module):
         if self.dvs_layer is not None:
             # `self.dynapcnn_layers` is a (shallow) copy. Adding entries won't
             # affect `self._dynapcnn_layers`
-            # TODO: Why not use "dvs" as index?
-            dvs_id = self._dvs_node_info["layer_id"]
-            layers[dvs_id] = self.dvs_layer
+            layers["dvs"] = self.dvs_layer
         return layers
 
     @property
@@ -87,11 +84,11 @@ class DynapcnnNetworkModule(nn.Module):
     @property
     def dvs_layer(self):
         return self._dvs_layer
-    
+
     @property
     def destination_map(self):
         return self._destination_map
-    
+
     @property
     def dynapcnn_layers(self):
         # Convert string-indices to integer-indices
@@ -104,14 +101,14 @@ class DynapcnnNetworkModule(nn.Module):
     @property
     def sorted_nodes(self):
         return self._sorted_nodes
-    
+
     @property
     def node_source_map(self):
         return self._node_source_map
 
     def get_exit_layers(self) -> List[int]:
-        """ Get layers that act as exit points of the network
-        
+        """Get layers that act as exit points of the network
+
         Returns
         -------
         - List[int]: Layer indices with at least one exit destination.
@@ -123,8 +120,8 @@ class DynapcnnNetworkModule(nn.Module):
         ]
 
     def get_exit_points(self) -> Dict[int, Dict]:
-        """ Get details of layers that act as exit points of the network
-        
+        """Get details of layers that act as exit points of the network
+
         Returns
         -------
         - Dict[int, Dict]: Dict whose keys are layer indices of `dynapcnn_layers`
@@ -151,10 +148,11 @@ class DynapcnnNetworkModule(nn.Module):
 
         return exit_layers
 
-        
-    def setup_dynapcnnlayer_graph(self, index_layers_topologically: bool = False) -> None:
-        """ Set up data structures to run forward pass through dynapcnn layers
-        
+    def setup_dynapcnnlayer_graph(
+        self, index_layers_topologically: bool = False
+    ) -> None:
+        """Set up data structures to run forward pass through dynapcnn layers
+
         Parameters
         ----------
         - index_layers_topologically (bool): If True, will assign new indices to
@@ -296,7 +294,7 @@ class DynapcnnNetworkModule(nn.Module):
                     layers_outputs[idx_curr] = {
                         idx_dest: out for idx_dest, out in zip(destinations, output)
                     }
-      
+
         if return_complete:
             return layers_outputs
 
@@ -330,8 +328,8 @@ class DynapcnnNetworkModule(nn.Module):
         return network_outputs
 
     def reindex_layers(self, index_order: List[int]) -> None:
-        """ Reindex layers based on provided order
-        
+        """Reindex layers based on provided order
+
         Will assign new index to dynapcnn layers and update all internal
         attributes accordingly.
 
@@ -343,10 +341,8 @@ class DynapcnnNetworkModule(nn.Module):
         mapping = {old: new for new, old in enumerate(index_order)}
 
         def remap(key):
-            if key == "input":
-                return "input"
-            if isinstance(key, int) and key < 0:
-                # maintain negative indices
+            if key in ["dvs", "input"] or (isinstance(key, int) and key < 0):
+                # Entries 'dvs', 'input' and negative indices are not changed
                 return key
             else:
                 return mapping[key]
@@ -355,10 +351,6 @@ class DynapcnnNetworkModule(nn.Module):
         self._dynapcnn_layers = nn.ModuleDict(
             {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
         )
-
-        if self.dvs_node_info is not None:
-            new_dvs_id = remap(self.dvs_node_info['layer_id'])
-            self._dvs_node_info["layer_id"] = new_dvs_id
 
         self._entry_points = {remap(idx) for idx in self._entry_points}
 

@@ -1,16 +1,15 @@
 import copy
-from typing import Dict, List, Optional
+from typing import Dict, List, Union
 from warnings import warn
 
 import samna
+import sinabs
 import torch
 from samna.dynapcnn.configuration import (
     CNNLayerConfig,
-    DynapcnnConfiguration,
     DVSLayerConfig,
+    DynapcnnConfiguration,
 )
-
-import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -29,11 +28,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
-    # @classmethod
-    # def write_dvs_layer_config(cls, layer: DVSLayer, config: DVSLayerConfig):
-    #     for param, value in layer.get_config_dict().items():
-    #         setattr(config, param, value)
-    
     @classmethod
     def write_dvs_layer_config(
         cls,
@@ -289,7 +283,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         layers: Dict[int, DynapcnnLayer],
         destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
-        dvs_node_info: Optional[Dict],
     ) -> DynapcnnConfiguration:
         """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
@@ -299,7 +292,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
             cores on hardware. Needed to map the destinations.
         - destination_indices (List): Indices of destination layers for `layer`
-        - dvs_node_info (dict): contains information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
 
         Returns
         -------
@@ -321,7 +313,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     chip_layer=chip_layer,
                     destination_indices=destination_map[layer_index],
                 )
-            elif isinstance(ith_dcnnl, DVSLayer) and isinstance(dvs_node_info, dict):
+            elif isinstance(ith_dcnnl, DVSLayer):
                 # Uses the DVS camera.
                 chip_layer = config.dvs_layer
                 sw_layer = ith_dcnnl
@@ -331,7 +323,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                     layer=sw_layer,
                     layer2core_map=layer2core_map,
                     destination_indices=destination_indices,
-                    chip_layer=chip_layer)
+                    chip_layer=chip_layer,
+                )
             else:
                 # shouldn't happen since type checks are made previously.
                 raise TypeError(

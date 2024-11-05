@@ -81,9 +81,7 @@ def get_valid_mapping(
     netmap = recover_mapping(new_graph, len(layer_mapping))
 
     # Convert `netmap` to dict mapping from layer index to core ID
-    return {
-        layer_idx: core_id for layer_idx, core_id in zip(layer_indices, netmap)
-    }
+    return {layer_idx: core_id for layer_idx, core_id in zip(layer_indices, netmap)}
 
 
 @dataclass
@@ -216,9 +214,7 @@ def make_flow_graph(
     return graph
 
 
-def recover_mapping(
-    graph: List[List[FlowGraphEdge]], num_layers: int
-) -> List[int]:
+def recover_mapping(graph: List[List[FlowGraphEdge]], num_layers: int) -> List[int]:
     """Based on the flow graph retrieve a layer-to-core mapping
 
     Parameters

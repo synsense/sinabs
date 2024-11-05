@@ -6,18 +6,18 @@ contact       : williansoaresgirao@gmail.com
 """
 
 from collections import deque
-from typing import Dict, List, Set, Tuple, Type, Optional
+from typing import Dict, List, Set, Tuple, Type, Union
 
+from sinabs.layers import SumPool2d
 from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
-from .exceptions import InvalidEdge, InvalidGraphStructure
-from .utils import Edge, merge_conv_bn, merge_linear_bn
-from .dvs_layer import DVSLayer
 from .crop2d import Crop2d
+from .dvs_layer import DVSLayer
+from .exceptions import InvalidEdge, InvalidGraphStructure
 from .flipdims import FlipDims
+from .utils import Edge, expand_to_pair, merge_conv_bn, merge_linear_bn
 
-from sinabs.layers import SumPool2d
 
 def remap_edges_after_drop(dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]) -> Set[Edge]:
     """ Creates a new set of edges from `edges`. All edges where `dropped_node` is the source node will be used to generate
@@ -107,34 +107,20 @@ def handle_batchnorm_nodes(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Mod
         for edge in new_edges:
             edges.add(edge)
 
-def get_dvs_node_from_mapper(dcnnl_map: Dict) -> Optional[Dict]:
-    """ Returns the information dict associated with the `DVSLayer` instance within `dcnnl_map`.
+def fix_dvs_module_edges(
+    edges: Set[Edge],
+    indx_2_module_map: Dict[int, nn.Module],
+    name_2_indx_map: Dict[str, int],
+    entry_nodes: Set[Edge],
+) -> None:
+    """All arguments are modified in-place to fix wrong node extractions from NIRtorch when a DVSLayer istance is the first layer in the network.
 
-    Parameters
-    ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-
-    Returns
-    -------
-    -  Dict containing information associated with the `DVSLayer` node (if no DVS node exists it'll return `None`). 
-    """
-    # TODO: Would it make more sense to have dvs layer separated from dcnnl layers?
-    #   Either as different object or with a very clear key inside `dcnnl_map`
-    for layer_index, layer_info in dcnnl_map.items():
-        if 'dvs_layer' in layer_info:
-            assert layer_info['dvs_layer']
-            return layer_info
-    return None
-
-def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int], entry_nodes: Set[Edge]) -> None:
-    """ All arguments are modified in-place to fix wrong node extractions from NIRtorch when a DVSLayer istance is the first layer in the network.
-    
     Modifies `edges` to re-structure the edges related witht the DVSLayer instance. The DVSLayer's forward method feeds data in the
     sequence 'DVS -> DVS.pool -> DVS.crop -> DVS.flip', so we remove edges involving these nodes (that are internaly implementend in
     the DVSLayer) from the graph and point the node of DVSLayer to the node where it should send its output to. This is also removes
     a self-recurrent node with edge '(FlipDims, FlipDims)' that is wrongly extracted.
 
-    Modifies `indx_2_module_map` and `name_2_indx_map` to remove the internal DVSLayer nodes (Crop2d, FlipDims and DVSLayer's pooling) since 
+    Modifies `indx_2_module_map` and `name_2_indx_map` to remove the internal DVSLayer nodes (Crop2d, FlipDims and DVSLayer's pooling) since
     these should not be independent nodes in the graph.
 
     Modifies `entry_nodes` such that the DVSLayer becomes the only entry node of the graph.
@@ -152,8 +138,11 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
 
     # spot nodes (ie, modules) used in a DVSLayer instance's forward pass (including the DVSLayer node itself).
     dvslayer_nodes = {
-        index: module for index, module in indx_2_module_map.items() 
-        if any(isinstance(module, dvs_node) for dvs_node in (DVSLayer, Crop2d, FlipDims))
+        index: module
+        for index, module in indx_2_module_map.items()
+        if any(
+            isinstance(module, dvs_node) for dvs_node in (DVSLayer, Crop2d, FlipDims)
+        )
     }
 
     if len(dvslayer_nodes) <= 1:
@@ -162,39 +151,68 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
 
     # TODO - a `SumPool2d` is also a node that's used inside a DVSLayer instance. In what follows we try to find it
     # by looking for pooling nodes that appear in a (pool, crop) edge - the assumption being that if the pooling is
-    # inputing into a crop layer than the pool is inside the DVSLayer instance. It feels like a hacky way to do it 
+    # inputing into a crop layer than the pool is inside the DVSLayer instance. It feels like a hacky way to do it
     # so we should revise this.
-    dvslayer_nodes.update({
-        edge[0]: indx_2_module_map[edge[0]] for edge in edges 
-        if isinstance(indx_2_module_map[edge[0]], SumPool2d) and isinstance(indx_2_module_map[edge[1]], Crop2d)
-    })
+    dvslayer_nodes.update(
+        {
+            edge[0]: indx_2_module_map[edge[0]]
+            for edge in edges
+            if isinstance(indx_2_module_map[edge[0]], SumPool2d)
+            and isinstance(indx_2_module_map[edge[1]], Crop2d)
+        }
+    )
 
-    # NIR is extracting and edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
-    for edge in [(src, tgt) for (src, tgt) in edges if (src == tgt and isinstance(indx_2_module_map[src], FlipDims))]:
+    # NIR is extracting an edge (FlipDims, FlipDims) from the DVSLayer: remove self-recurrent nodes from the graph.
+    for edge in [
+        (src, tgt)
+        for (src, tgt) in edges
+        if (src == tgt and isinstance(indx_2_module_map[src], FlipDims))
+    ]:
         edges.remove(edge)
 
     # Since NIR is not extracting the edges for the DVSLayer correctly, remove all edges involving the DVS.
-    for edge in [(src, tgt) for (src, tgt) in edges if (src in dvslayer_nodes or tgt in dvslayer_nodes)]:
+    for edge in [
+        (src, tgt)
+        for (src, tgt) in edges
+        if (src in dvslayer_nodes or tgt in dvslayer_nodes)
+    ]:
         edges.remove(edge)
 
     # Get node's indexes based on the module type - just for validation.
-    dvs_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, DVSLayer)]
-    dvs_pool_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, SumPool2d)]
-    dvs_crop_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, Crop2d)]
-    dvs_flip_node = [key for key, value in dvslayer_nodes.items() if isinstance(value, FlipDims)]
+    dvs_node = [
+        key for key, value in dvslayer_nodes.items() if isinstance(value, DVSLayer)
+    ]
+    dvs_pool_node = [
+        key for key, value in dvslayer_nodes.items() if isinstance(value, SumPool2d)
+    ]
+    dvs_crop_node = [
+        key for key, value in dvslayer_nodes.items() if isinstance(value, Crop2d)
+    ]
+    dvs_flip_node = [
+        key for key, value in dvslayer_nodes.items() if isinstance(value, FlipDims)
+    ]
 
-    if any(len(node) > 1 for node in [dvs_node, dvs_pool_node, dvs_crop_node, dvs_flip_node]):
-        raise ValueError(f'Internal DVS nodes should be single instances but multiple have been found: dvs_node: {len(dvs_node)} dvs_pool_node: {len(dvs_pool_node)} dvs_crop_node: {len(dvs_crop_node)} dvs_flip_node: {len(dvs_flip_node)}')
-    
+    if any(
+        len(node) > 1
+        for node in [dvs_node, dvs_pool_node, dvs_crop_node, dvs_flip_node]
+    ):
+        raise ValueError(
+            f"Internal DVS nodes should be single instances but multiple have been found: dvs_node: {len(dvs_node)} dvs_pool_node: {len(dvs_pool_node)} dvs_crop_node: {len(dvs_crop_node)} dvs_flip_node: {len(dvs_flip_node)}"
+        )
+
     # Remove dvs_pool, dvs_crop and dvs_flip nodes from `indx_2_module_map` (these operate within the DVS, not as independent nodes of the final graph).
     indx_2_module_map.pop(dvs_pool_node[-1])
     indx_2_module_map.pop(dvs_crop_node[-1])
     indx_2_module_map.pop(dvs_flip_node[-1])
 
     # Remove internal DVS modeules from name/index map.
-    for name in [name for name, index in name_2_indx_map.items() if index in [dvs_pool_node[-1], dvs_crop_node[-1], dvs_flip_node[-1]]]:
+    for name in [
+        name
+        for name, index in name_2_indx_map.items()
+        if index in [dvs_pool_node[-1], dvs_crop_node[-1], dvs_flip_node[-1]]
+    ]:
         name_2_indx_map.pop(name)
-    
+
     # Add edges from 'dvs' node to the entry point of the graph.
     all_sources, all_targets = zip(*edges)
     local_entry_nodes = set(all_sources) - set(all_targets)
@@ -204,8 +222,13 @@ def fix_dvs_module_edges(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Modul
     entry_nodes.clear()
     entry_nodes.add(dvs_node[-1])
 
-def merge_dvs_pooling_edge(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Module], name_2_indx_map: Dict[str, int]) -> None:
-    """ If a 'dvs-polling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
+
+def merge_dvs_pooling_edge(
+    edges: Set[Edge],
+    indx_2_module_map: Dict[int, nn.Module],
+    name_2_indx_map: Dict[str, int],
+) -> None:
+    """If a 'dvs-pooling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
     default values. All arguments are modified in-place to remove the references to the incorporated pooling node.
 
     Parameters
@@ -216,51 +239,97 @@ def merge_dvs_pooling_edge(edges: Set[Edge], indx_2_module_map: Dict[int, nn.Mod
     """
     # Find 'DVSLayer-pooling' edge.
     dvs_pool_edge = [
-        (src, tgt) for (src, tgt) in edges 
-        if (isinstance(indx_2_module_map[src], DVSLayer) and any(isinstance(indx_2_module_map[tgt], pool) for pool in Pooling))
+        (src, tgt)
+        for (src, tgt) in edges
+        if (
+            isinstance(indx_2_module_map[src], DVSLayer)
+            and any(isinstance(indx_2_module_map[tgt], pool) for pool in Pooling)
+        )
     ]
-    
+
     if len(dvs_pool_edge) == 0:
         # No dvs-pooling edge exists - nothing to do here.
         return
     if len(dvs_pool_edge) > 1:
         # DVSLayer in the original network can have only a single pooling layer liked to it.
-        raise ValueError(f'DVSLayer can have a single edge onto a pooling layer but multiple were found: {dvs_pool_edge}')
-    
-    (dvs_idnx, pool_idnx) = dvs_pool_edge[-1]
+        raise ValueError(
+            f"DVSLayer has multiple outgoing edges to pooling layers: {dvs_pool_edge}. "
+            "Unlike convolutional layers, for DVS layers, pooling is set globally for "
+            "all destinations. Therefore a DVSLayer can be followed by at most one "
+            "pooling layer."
+        )
+
+    (dvs_indx, pool_indx) = dvs_pool_edge[-1]
+    dvs_layer = indx_2_module_map[dvs_indx]
+    pool_layer = indx_2_module_map[pool_indx]
 
     # Checking pooling can be incorporated into the DVSLayer.
-    if indx_2_module_map[dvs_idnx].pool_layer.kernel_size == 1 and indx_2_module_map[dvs_idnx].pool_layer.stride == 1:
-        # DVSLayer.pool has its default config.
-        indx_2_module_map[pool_idnx].kernel_size
-        indx_2_module_map[pool_idnx].stride
-        # Set DVSLayer.pool to have same config. as the independent pooling layer.
-        indx_2_module_map[dvs_idnx].pool_layer.kernel_size = indx_2_module_map[pool_idnx].kernel_size
-        indx_2_module_map[dvs_idnx].pool_layer.stride = indx_2_module_map[pool_idnx].stride
+    if expand_to_pair(dvs_layer.pool_layer.kernel_size) != [1, 1] or expand_to_pair(
+        dvs_layer.pool_layer.stride
+    ) != [1, 1]:
+        raise ValueError(
+            "DVSLayer with pooling is followed by another pooling layer. "
+            "This is currently not supported. Please update the network "
+            "such that all pooling is either done by the DVSLayer or by "
+            "the following pooling layer."
+        )
+    crop_layer = dvs_layer.crop_layer
+    if (
+        crop_layer.top_crop != 0
+        or crop_layer.left_crop != 0
+        or crop_layer.bottom_crop != dvs_layer.input_shape[1]
+        or crop_layer.right_crop != dvs_layer.input_shape[2]
+    ):
+        raise ValueError(
+            "DVSLayer with cropping is followed by a pooling layer. "
+            "This is currently not supported. Please define pooling "
+            "directly within the DVSLayer (with the `pool` argument) "
+            "and remove the pooling layer that follows the DVSLayer"
+        )
+    flip_layer = dvs_layer.flip_layer
+    if flip_layer.flip_x or flip_layer.flip_y or flip_layer.swap_xy:
+        raise ValueError(
+            "DVSLayer with flipping or dimension swapping is followed "
+            "by a pooling layer. This is currently not supported. "
+            "Please define pooling directly within the DVSLayer "
+            "(with the `pool` argument) and remove the pooling "
+            "layer that follows the DVSLayer"
+        )
+
+    # Set DVSLayer.pool to have same config. as the independent pooling layer.
+    dvs_layer.pool_layer.kernel_size = pool_layer.kernel_size
+    dvs_layer.pool_layer.stride = pool_layer.stride
 
     # Pooling incorporated to the DVSLayer: remove its trace from mappings.
-    indx_2_module_map.pop(pool_idnx)
-    name_2_indx_map.pop([name for name, indx in name_2_indx_map.items() if indx == pool_idnx][-1])
+    indx_2_module_map.pop(pool_indx)
+    name_2_indx_map.pop(
+        [name for name, indx in name_2_indx_map.items() if indx == pool_indx][-1]
+    )
 
     # Since pool is part of the DVSLayer we now make edges where pool was a source to have DVSLayer as a source.
-    for edge in [edge for edge in edges if edge[0] == pool_idnx]:
+    for edge in [edge for edge in edges if edge[0] == pool_indx]:
         edges.remove(edge)
-        edges.update({(dvs_idnx, edge[1])})
+        edges.update({(dvs_indx, edge[1])})
 
     # Remove original 'dvs-pool' edge.
-    edges.remove((dvs_idnx, pool_idnx))
+    edges.remove((dvs_indx, pool_indx))
 
     # Checks if any traces of the original pooling node can still be found.
-    if len([edge for edge in edges if (edge[0] == pool_idnx or edge[1] == pool_idnx)]) != 0:
-        raise ValueError('Edges involving the pooling layer merged into the DVSLayer are still present in the graph.')
+    if (
+        len([edge for edge in edges if (edge[0] == pool_indx or edge[1] == pool_indx)])
+        != 0
+    ):
+        raise ValueError(
+            "Edges involving the pooling layer merged into the DVSLayer are still present in the graph."
+        )
+
 
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
     edges: Set[Edge],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
     entry_nodes: Set[int],
-    dvs_input: bool,
-) -> Dict[int, Dict]:
+) -> Tuple[Dict[int, Dict], Union[Dict, None]]:
     """Collect information to construct DynapcnnLayer instances.
 
     Validate and sort edges based on the type of nodes they connect.
@@ -276,13 +345,14 @@ def collect_dynapcnn_layer_info(
     - edges (set of tuples): Represent connections between two nodes in computational graph
     - nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     - entry_nodes (set of int): IDs of nodes that receive external input
-    - dvs_input (bool): wether or not dynapcnn receive input from its DVS camera.
 
     Returns
     -------
     dynapcnn_layer_info (dict): Each 'key' is the index of a future 'DynapcnnLayer' and
         'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
         containing corresponding node ids and modules required to build the layer
+    dvs_layer_info (dict or None): If a DVSLayer is part of the network, this will
+        be a dict containing the layer itself and its destination indices.
     """
 
     # Sort edges by edge type (type of layers they connect)
@@ -290,19 +360,16 @@ def collect_dynapcnn_layer_info(
         edges=edges, indx_2_module_map=indx_2_module_map
     )
 
-    if not any(edge in edges_by_type for edge in ["dvs-weight", "dvs-pooling"]) and dvs_input:
-        raise InvalidGraphStructure(
-            "DVS camera is set selected for usage (dvs_input == True) but edge type involving it has not been found."
-        )
-
     # Dict to collect information for each future dynapcnn layer
     dynapcnn_layer_info = dict()
+    dvs_layer_info = None
     # Map node IDs to dynapcnn layer ID
     node_2_layer_map = dict()
 
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
-    while edges_by_type.get("weight-neuron", False):
-        edge = edges_by_type["weight-neuron"].pop()
+    weight_neuron_edges = edges_by_type.get("weight-neuron", set())
+    while weight_neuron_edges:
+        edge = weight_neuron_edges.pop()
         init_new_dynapcnnlayer_entry(
             dynapcnn_layer_info,
             edge,
@@ -313,19 +380,21 @@ def collect_dynapcnn_layer_info(
         )
 
     # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    while edges_by_type["dvs-weight"]:
-        edge = edges_by_type["dvs-weight"].pop()
-        add_or_update_dvs_to_entry(
+    dvs_weight_edges = edges_by_type.get("dvs-weight", set())
+    while dvs_weight_edges:
+        edge = dvs_weight_edges.pop()
+        dvs_layer_info = add_or_update_dvs_to_entry(
             edge,
-            dynapcnn_layer_info,
+            dvs_layer_info,
             indx_2_module_map,
             node_2_layer_map,
             nodes_io_shapes,
         )
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
-    while edges_by_type.get("neuron-weight", False):
-        edge = edges_by_type["neuron-weight"].pop()
+    neuron_weight_edges = edges_by_type.get("neuron-weight", set())
+    while neuron_weight_edges:
+        edge = neuron_weight_edges.pop()
         set_neuron_layer_destination(
             dynapcnn_layer_info,
             edge,
@@ -336,8 +405,9 @@ def collect_dynapcnn_layer_info(
 
     # Add pooling based on neuron->pooling connections
     pooling_pooling_edges = edges_by_type.get("pooling-pooling", set())
-    while edges_by_type.get("neuron-pooling", False):
-        edge = edges_by_type["neuron-pooling"].pop()
+    neuron_pooling_edges = edges_by_type.get("neuron-pooling", set())
+    while neuron_pooling_edges:
+        edge = neuron_pooling_edges.pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
         pooling_chains, edges_used = trace_paths(edge[1], pooling_pooling_edges)
         add_pooling_to_entry(
@@ -362,8 +432,9 @@ def collect_dynapcnn_layer_info(
         )
 
     # Add all edges connecting pooling to a new dynapcnn layer
-    while edges_by_type.get("pooling-weight", False):
-        edge = edges_by_type["pooling-weight"].pop()
+    pooling_weight_edges = edges_by_type.get("pooling-weight", set())
+    while pooling_weight_edges:
+        edge = pooling_weight_edges.pop()
         set_pooling_layer_destination(
             dynapcnn_layer_info,
             edge,
@@ -378,7 +449,7 @@ def collect_dynapcnn_layer_info(
     # Set minimal destination entries for layers without child nodes, to act as network outputs
     set_exit_destinations(dynapcnn_layer_info)
 
-    return dynapcnn_layer_info
+    return dynapcnn_layer_info, dvs_layer_info
 
 
 def get_valid_edge_type(
@@ -437,11 +508,6 @@ def sort_edges_by_type(
             edges_by_type[edge_type].add(edge)
         else:
             edges_by_type[edge_type] = {edge}
-
-    # Edges involving DVS are not required so we init. them to empty set if they do not exist.
-
-    if 'dvs-weight' not in edges_by_type:
-        edges_by_type['dvs-weight'] = set()
 
     return edges_by_type
 
@@ -562,62 +628,66 @@ def add_pooling_to_entry(
         assert node not in node_2_layer_map
         node_2_layer_map[node] = layer_idx
 
+
 def add_or_update_dvs_to_entry(
     edge: Edge,
-    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    dvs_layer_info: Union[None, Dict],
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
-) -> None:
-    """ Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
-    Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry 
+) -> Dict:
+    """Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
+    Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry
     to the `desctinations` key of its dictionary.
 
     Parameters
     ----------
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
         Edge target has to be within an existing entry of `dynapcnn_layer_info`.
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
+    dvs_layer_info: Dict containing information about the DVSLayer. If `None`,
+        will instantiate a new dict
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
     """
 
-    assert isinstance(indx_2_module_map[edge[0]], DVSLayer), f'Source node in edge {edge} is of type {type(DVSLayer)} (it should be a DVSLayer instance).'
-    assert edge[1] in node_2_layer_map, f'Node {edge[1]} is a weight node that should have been initialized.'
+    # This should never happen
+    assert isinstance(
+        indx_2_module_map[edge[0]], DVSLayer
+    ), f"Source node in edge {edge} is of type {type(DVSLayer)} (it should be a DVSLayer instance)."
 
-    if edge[0] not in node_2_layer_map:
-        # DVS node hasn't being initialized yet: take current length of the dict as new, unique ID.
-        layer_id = len(dynapcnn_layer_info)
-        assert layer_id not in dynapcnn_layer_info
+    # Find destination layer index
+    try:
+        destination_layer_idx = node_2_layer_map[edge[1]]
+    except KeyError:
+        weight_layer = indx_2_module_map[edge[1]]
+        raise InvalidGraphStructure(
+            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+            "This is likely due to an unsupported SNN architecture. Weight "
+            "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
+        )
 
+    if dvs_layer_info is None:
+        # DVS node hasn't been initialized yet
         # Init. entry for a DVS layer using its configuration dict.
-        dynapcnn_layer_info[layer_id] = {
-            "is_entry_node": True,
-            # TODO - the key bellow is what currently tells an entry in `dynapcnn_layer_info` for the DVS apart from the DynapcnnLayer 
-            # entries (perhaps there's a better way).
-            "dvs_layer": True,
+        dvs_layer_info = {
             "node_id": edge[0],
-            "input_shape":  nodes_io_shapes[edge[0]]["input"],
+            "input_shape": nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
             "destinations": [node_2_layer_map[edge[1]]],
-            'layer_id': layer_id,
         }
 
-        node_2_layer_map[edge[0]] = layer_id
+        node_2_layer_map[edge[0]] = "dvs"
     else:
         # Update entry for DVS with new destination.
-        source_layer_id = node_2_layer_map[edge[0]]
-        destination_layer_id = node_2_layer_map[edge[1]]
+        assert dvs_layer_info["node_id"] == edge[0]
+        assert destination_layer_idx not in dvs_layer_info["destinations"]
 
-        assert 'dvs_layer' in dynapcnn_layer_info[source_layer_id]
-        assert dynapcnn_layer_info[source_layer_id]['dvs_layer']
-        assert destination_layer_id not in dynapcnn_layer_info[source_layer_id]["destinations"]
-    
-        dynapcnn_layer_info[source_layer_id]["destinations"].append(destination_layer_id)
+        dvs_layer_info["destinations"].append(destination_layer_idx)
+
+    return dvs_layer_info
+
 
 def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     """Set minimal destination entries for layers that don't have any.
