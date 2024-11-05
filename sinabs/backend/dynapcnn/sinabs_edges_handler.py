@@ -6,7 +6,7 @@ contact       : williansoaresgirao@gmail.com
 """
 
 from collections import deque
-from typing import Dict, List, Set, Tuple, Type, Optional
+from typing import Dict, List, Set, Tuple, Type, Optional, Union
 
 from torch import Size, nn
 
@@ -169,7 +169,7 @@ def collect_dynapcnn_layer_info(
     edges: Set[Edge],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
     entry_nodes: Set[int],
-) -> Dict[int, Dict]:
+) -> Tuple[Dict[int, Dict], Union[Dict, None]]:
     """Collect information to construct DynapcnnLayer instances.
 
     Validate and sort edges based on the type of nodes they connect.
@@ -191,6 +191,8 @@ def collect_dynapcnn_layer_info(
     dynapcnn_layer_info (dict): Each 'key' is the index of a future 'DynapcnnLayer' and
         'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
         containing corresponding node ids and modules required to build the layer
+    dvs_layer_info (dict or None): If a DVSLayer is part of the network, this will
+        be a dict containing the layer itself and its destination indices.
     """
 
     # Sort edges by edge type (type of layers they connect)
@@ -200,11 +202,12 @@ def collect_dynapcnn_layer_info(
 
     # Dict to collect information for each future dynapcnn layer
     dynapcnn_layer_info = dict()
+    dvs_layer_info = None
     # Map node IDs to dynapcnn layer ID
     node_2_layer_map = dict()
 
     # Each weight->neuron connection instantiates a new, unique dynapcnn layer
-    weight_neuron_edges = edges_by_type.get("weight-neuron", Set())
+    weight_neuron_edges = edges_by_type.get("weight-neuron", set())
     while weight_neuron_edges:
         edge = weight_neuron_edges.pop()
         init_new_dynapcnnlayer_entry(
@@ -217,19 +220,19 @@ def collect_dynapcnn_layer_info(
         )
 
     # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    dvs_weight_edges = edges_by_type.get("dvs-weight", Set())
+    dvs_weight_edges = edges_by_type.get("dvs-weight", set())
     while dvs_weight_edges:
         edge = dvs_weight_edges.pop()
-        add_or_update_dvs_to_entry(
+        dvs_layer_info = add_or_update_dvs_to_entry(
             edge,
-            dynapcnn_layer_info,
+            dvs_layer_info,
             indx_2_module_map,
             node_2_layer_map,
             nodes_io_shapes,
         )
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
-    neuron_weight_edges = edges_by_type.get("neuron-weight", Set())
+    neuron_weight_edges = edges_by_type.get("neuron-weight", set())
     while neuron_weight_edges:
         edge = neuron_weight_edges.pop()
         set_neuron_layer_destination(
@@ -241,9 +244,10 @@ def collect_dynapcnn_layer_info(
         )
 
     # Add pooling based on neuron->pooling connections
-    pooling_pooling_edges = edges_by_type.get("pooling-pooling", Set())
-    while pooling_pooling_edges:
-        edge = pooling_pooling_edges.pop()
+    pooling_pooling_edges = edges_by_type.get("pooling-pooling", set())
+    neuron_pooling_edges = edges_by_type.get("neuron-pooling", set())
+    while neuron_pooling_edges:
+        edge = neuron_pooling_edges.pop()
         # Search pooling-pooling edges for chains of pooling and add to existing entry
         pooling_chains, edges_used = trace_paths(edge[1], pooling_pooling_edges)
         add_pooling_to_entry(
@@ -268,7 +272,7 @@ def collect_dynapcnn_layer_info(
         )
 
     # Add all edges connecting pooling to a new dynapcnn layer
-    pooling_weight_edges = edges_by_type.get("pooling-weight", Set())
+    pooling_weight_edges = edges_by_type.get("pooling-weight", set())
     while pooling_weight_edges:
         edge = pooling_weight_edges.pop()
         set_pooling_layer_destination(
@@ -285,7 +289,7 @@ def collect_dynapcnn_layer_info(
     # Set minimal destination entries for layers without child nodes, to act as network outputs
     set_exit_destinations(dynapcnn_layer_info)
 
-    return dynapcnn_layer_info
+    return dynapcnn_layer_info, dvs_layer_info
 
 
 def get_valid_edge_type(
@@ -466,11 +470,11 @@ def add_pooling_to_entry(
 
 def add_or_update_dvs_to_entry(
     edge: Edge,
-    dynapcnn_layer_info: Dict[int, Dict[int, Dict]],
+    dvs_layer_info: Union[None, Dict],
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
-) -> None:
+) -> Dict:
     """ Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
     Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry 
     to the `desctinations` key of its dictionary.
@@ -479,9 +483,8 @@ def add_or_update_dvs_to_entry(
     ----------
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
         Edge target has to be within an existing entry of `dynapcnn_layer_info`.
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
+    dvs_layer_info: Dict containing information about the DVSLayer. If `None`,
+        will instantiate a new dict
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
@@ -502,10 +505,10 @@ def add_or_update_dvs_to_entry(
             "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
         )
 
-    if "dvs" not in dynapcnn_layer_info:
+    if dvs_layer_info is None:
         # DVS node hasn't been initialized yet
         # Init. entry for a DVS layer using its configuration dict.
-        dynapcnn_layer_info["dvs"] = {
+        dvs_layer_info = {
             "node_id": edge[0],
             "input_shape":  nodes_io_shapes[edge[0]]["input"],
             "module": indx_2_module_map[edge[0]],
@@ -515,11 +518,12 @@ def add_or_update_dvs_to_entry(
         node_2_layer_map[edge[0]] = "dvs"
     else:
         # Update entry for DVS with new destination.
-        dvs_layer_info = dynapcnn_layer_info["dvs"]
         assert dvs_layer_info["node_id"] == edge[0]
         assert destination_layer_idx not in dvs_layer_info["destinations"]
     
         dvs_layer_info["destinations"].append(destination_layer_idx)
+    
+    return dvs_layer_info
 
 def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     """Set minimal destination entries for layers that don't have any.

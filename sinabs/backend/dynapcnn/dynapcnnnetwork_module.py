@@ -75,9 +75,7 @@ class DynapcnnNetworkModule(nn.Module):
         if self.dvs_layer is not None:
             # `self.dynapcnn_layers` is a (shallow) copy. Adding entries won't
             # affect `self._dynapcnn_layers`
-            # TODO: Why not use "dvs" as index?
-            dvs_id = self._dvs_node_info["layer_id"]
-            layers[dvs_id] = self.dvs_layer
+            layers["dvs"] = self.dvs_layer
         return layers
 
     @property
@@ -343,10 +341,8 @@ class DynapcnnNetworkModule(nn.Module):
         mapping = {old: new for new, old in enumerate(index_order)}
 
         def remap(key):
-            if key == "input":
-                return "input"
-            if isinstance(key, int) and key < 0:
-                # maintain negative indices
+            if key in ["dvs", "input"] or (isinstance(key, int) and key < 0):
+                # Entries 'dvs', 'input' and negative indices are not changed
                 return key
             else:
                 return mapping[key]
@@ -355,10 +351,6 @@ class DynapcnnNetworkModule(nn.Module):
         self._dynapcnn_layers = nn.ModuleDict(
             {str(remap(int(idx))): lyr for idx, lyr in self._dynapcnn_layers.items()}
         )
-
-        if self.dvs_node_info is not None:
-            new_dvs_id = remap(self.dvs_node_info['layer_id'])
-            self._dvs_node_info["layer_id"] = new_dvs_id
 
         self._entry_points = {remap(idx) for idx in self._entry_points}
 

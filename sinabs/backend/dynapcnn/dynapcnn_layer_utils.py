@@ -10,7 +10,7 @@ from .dynapcnn_layer import DynapcnnLayer
 
 
 def construct_dynapcnnlayers_from_mapper(
-    dcnnl_map: Dict, discretize: bool, rescale_fn: Optional[Callable] = None
+    dcnnl_map: Dict, dvs_layer_info: Union[None, Dict], discretize: bool, rescale_fn: Optional[Callable] = None
 ) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, Set[int]], List[int]]:
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
@@ -28,12 +28,11 @@ def construct_dynapcnnlayers_from_mapper(
     dynapcnn_layers = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize)
         for layer_idx, layer_info in dcnnl_map.items()
-        if 'dvs_layer' not in layer_info # handle only dicts with info. for DynapcnnLayer instances.
     }
 
-    destination_map = construct_destination_map(dcnnl_map)
+    destination_map = construct_destination_map(dcnnl_map, dvs_layer_info)
 
-    entry_points = collect_entry_points(dcnnl_map)
+    entry_points = collect_entry_points(dcnnl_map, dvs_layer_info)
 
     return dynapcnn_layers, destination_map, entry_points
 
@@ -54,13 +53,11 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
     """
     # Consolidate pooling information for each destination
     for layer_info in dcnnl_map.values():
-        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
-            consolidate_layer_pooling(layer_info, dcnnl_map)
+        consolidate_layer_pooling(layer_info, dcnnl_map)
 
     for layer_info in dcnnl_map.values():
-        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
-            # Consolidate scale factors
-            consolidate_layer_scaling(layer_info, rescale_fn)
+        # Consolidate scale factors
+        consolidate_layer_scaling(layer_info, rescale_fn)
 
 def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     """Consolidate pooling information for individual layer
@@ -255,12 +252,13 @@ def construct_single_dynapcnn_layer(
     )
 
 
-def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]]:
+def construct_destination_map(dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]) -> Dict[int, List[int]]:
     """Create a dict that holds destinations for each layer
 
     Parameters
     ----------
     - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+    - dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations
 
     Returns
     -------
@@ -270,51 +268,41 @@ def construct_destination_map(dcnnl_map: Dict[int, Dict]) -> Dict[int, List[int]
     """
     destination_map = dict()
     for layer_index, layer_info in dcnnl_map.items():
-        if 'dvs_layer' not in layer_info: # only called for `DynapcnnLayer` instances (skip DVS layer).
-            destination_indices = []
-            none_counter = 0
-            for dest in layer_info["destinations"]:
-                if (dest_idx := dest["destination_layer"]) is None:
-                    # For `None` destinations use unique negative index
-                    none_counter += 1
-                    destination_indices.append(-none_counter)
-                else:
-                    destination_indices.append(dest_idx)
-            destination_map[layer_index] = destination_indices
-
-    # update mapper if a DVS layer exists.
-    update_destination_map_with_dvs(dcnnl_map, destination_map)
+        destination_indices = []
+        none_counter = 0
+        for dest in layer_info["destinations"]:
+            if (dest_idx := dest["destination_layer"]) is None:
+                # For `None` destinations use unique negative index
+                none_counter += 1
+                destination_indices.append(-none_counter)
+            else:
+                destination_indices.append(dest_idx)
+        destination_map[layer_index] = destination_indices
+    if dvs_layer_info is not None:
+        # Copy destination list from dvs layer info
+        destination_map["dvs"] = [d for d in dvs_layer_info.destinations]
 
     return destination_map
 
 
-def collect_entry_points(dcnnl_map: Dict[int, Dict]) -> Set[int]:
+def collect_entry_points(dcnnl_map: Dict[int, Dict], dvs_layer_info: Union[None, Dict]) -> Set[int]:
     """Return set of layer indices that are entry points
 
     Parameters
     ----------
     - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+    - dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations
+        If it is not None, it will be the only entry point returned.
 
     Returns
     -------
     Set of all layer indices which act as entry points to the network
     """
-    return {
-        layer_index
-        for layer_index, layer_info in dcnnl_map.items()
-        if layer_info["is_entry_node"]
-    }
-
-def update_destination_map_with_dvs(dcnnl_map: Dict[int, Dict], destination_map: Dict[int, List[int]]) -> None:
-    """ Modifies `destination_map` in-place to add entry for the DVS came node (if it existis).
-
-    Parameters
-    ----------
-    - dcnnl_map (dict): Dict holding info needed to instantiate DynapcnnLayer instances.
-    - destination_map (dict): dict mapping to each layer index a set of destination indices.
-    """
-    for layer_index, layer_info in dcnnl_map.items():
-        if 'dvs_layer' in layer_info:
-            assert layer_info['dvs_layer']
-            assert layer_index not in destination_map, 'It seems more than one DVS node has been added (only one should exist).'
-            destination_map[layer_index] = layer_info['destinations']
+    if dvs_layer_info is None:
+        return {
+            layer_index
+            for layer_index, layer_info in dcnnl_map.items()
+            if layer_info["is_entry_node"]
+        }
+    else:
+        return {"dvs"}

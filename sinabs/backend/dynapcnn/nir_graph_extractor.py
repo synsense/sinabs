@@ -104,7 +104,7 @@ class GraphExtractor:
 
     @property
     def dvs_layer(self) -> Set[int]:
-        return {n for n in self._get_dvs_layer}
+        return self._get_dvs_layer()
 
     @property
     def entry_nodes(self) -> Set[int]:
@@ -154,7 +154,7 @@ class GraphExtractor:
 
         """
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self.dcnnl_map = collect_dynapcnn_layer_info(
+        self.dcnnl_map, self.dvs_layer_info = collect_dynapcnn_layer_info(
             indx_2_module_map=self.indx_2_module_map,
             edges=self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
@@ -165,17 +165,15 @@ class GraphExtractor:
         dynapcnn_layers, destination_map, entry_points = (
             construct_dynapcnnlayers_from_mapper(
                 dcnnl_map=self.dcnnl_map,
+                dvs_layer_info=self.dvs_layer_info,
                 discretize=discretize,
                 rescale_fn=weight_rescaling_fn,
             )
         )
 
-        # DVSLayer node information (None if DVS camera is not used).
-        dvs_node_info = self.dcnnl_map.get("dvs", None)
-
         # Instantiate the DynapcnnNetworkModule
         return DynapcnnNetworkModule(
-            dynapcnn_layers, destination_map, entry_points, dvs_node_info
+            dynapcnn_layers, destination_map, entry_points, self.dvs_layer_info
         )
 
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
@@ -379,7 +377,7 @@ class GraphExtractor:
         if (num_dvs := len(dvs_layers)) == 0:
             return
         elif num_dvs == 1:
-            return dvs_layers[0]
+            return dvs_layers.pop()
         else:
             raise InvalidGraphStructure(
                 f"The provided model has {num_dvs} `DVSLayer`s. At most one is allowed."
@@ -395,7 +393,9 @@ class GraphExtractor:
         - dvs_input_shape (tuple): shape of the DVSLayer input in format `(features, height, width)`.
         """
 
-        dvs_layer = self.dvs_layer
+        if self.dvs_layer is None:
+            # No DVSLayer found - nothing to do here.
+            return
 
         if (nb_entries := len(self._entry_nodes)) > 1:
             raise ValueError(f'A DVSLayer node exists and there are {nb_entries} entry nodes in the graph: the DVSLayer should be the only entry node.')
@@ -405,11 +405,11 @@ class GraphExtractor:
         if features > 2:
             raise ValueError(f'A DVSLayer istance can have the feature dimension of its inputs with values 1 or 2 but {features} was given.')
         
-        if dvs_layer.merge_polarities and features != 1:
+        if self.dvs_layer.merge_polarities and features != 1:
             raise ValueError(f"The 'DVSLayer.merge_polarities' is set to 'True' which means the number of input features should be 1 (current input shape is {dvs_input_shape}).")
             
         if features == 1:
-            dvs_layer.merge_polarities = True
+            self.dvs_layer.merge_polarities = True
 
     def _get_name_2_indx_map(self, nir_graph: TorchGraph) -> Dict[str, int]:
         """Assign unique index to each node and return mapper from name to index.
