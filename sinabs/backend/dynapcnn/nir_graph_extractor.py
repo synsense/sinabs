@@ -5,9 +5,10 @@ from copy import deepcopy
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import nirtorch
-import sinabs
 import torch
 import torch.nn as nn
+
+import sinabs
 
 from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
@@ -76,6 +77,11 @@ class GraphExtractor:
             instantiation with `remove_nodes_by_class`.
         """
 
+        # Store state before it is changed due to NIRTorch passing dummy input
+        original_state = {
+            n: b.detach().clone() for n, b in spiking_model.named_buffers()
+        }
+
         # extract computational graph.
         nir_graph = nirtorch.extract_torch_graph(
             spiking_model, dummy_input, model_name=None
@@ -83,6 +89,10 @@ class GraphExtractor:
         if ignore_node_types is not None:
             for node_type in ignore_node_types:
                 nir_graph = nir_graph.ignore_nodes(node_type)
+
+        # Restore original state
+        for n, b in spiking_model.named_buffers():
+            b.set_(original_state[n].clone())
 
         # Map node names to indices
         self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
