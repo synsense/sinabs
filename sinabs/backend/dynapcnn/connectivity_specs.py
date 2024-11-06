@@ -4,8 +4,9 @@ functionality : list device-independent supported connections between layers on 
 
 from typing import Union
 
-import sinabs.layers as sl
 import torch.nn as nn
+
+import sinabs.layers as sl
 
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
@@ -13,10 +14,10 @@ from .flipdims import FlipDims
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
-Neuron = (sl.IAFSqueeze,)
+Neuron = (sl.IAFSqueeze, sl.IAF)
 DVS = (DVSLayer,)
+SupportedNodeTypes = (*Pooling, *Weight, *Neuron, *DVS)
 
-# @TODO - need to list other edge cases involving DVS layer (for now only dvs-weight and dvs-pooling).
 VALID_SINABS_EDGE_TYPES_ABSTRACT = {
     # convoluion is always followed by a neuron layer.
     (Weight, Neuron): "weight-neuron",

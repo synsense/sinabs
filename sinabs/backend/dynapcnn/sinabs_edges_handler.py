@@ -6,16 +6,21 @@ contact       : williansoaresgirao@gmail.com
 """
 
 from collections import deque
-from typing import Dict, List, Set, Tuple, Type, Union
+from typing import Dict, List, Optional, Set, Tuple, Type, Union
+
+from torch import Size, nn
 
 from sinabs.layers import SumPool2d
 from sinabs.utils import expand_to_pair
-from torch import Size, nn
 
 from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
-from .exceptions import InvalidEdge, InvalidGraphStructure
+from .exceptions import (
+    InvalidEdge,
+    InvalidGraphStructure,
+    default_invalid_structure_string,
+)
 from .flipdims import FlipDims
 from .utils import Edge, merge_bn
 
@@ -377,6 +382,7 @@ def collect_dynapcnn_layer_info(
     edges_by_type: Dict[str, Set[Edge]] = sort_edges_by_type(
         edges=edges, indx_2_module_map=indx_2_module_map
     )
+    edge_counts_by_type = {t: len(e) for t, e in edges_by_type.items()}
 
     # Dict to collect information for each future dynapcnn layer
     dynapcnn_layer_info = dict()
@@ -466,6 +472,9 @@ def collect_dynapcnn_layer_info(
 
     # Set minimal destination entries for layers without child nodes, to act as network outputs
     set_exit_destinations(dynapcnn_layer_info)
+
+    # Assert formal correctness of layer info
+    verify_layer_info(dynapcnn_layer_info, edge_counts_by_type)
 
     return dynapcnn_layer_info, dvs_layer_info
 
@@ -907,9 +916,49 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
     return paths, processed_edges
 
 
-# TODO:
-""" Add verification tools to ensure that:
-- there are as many destinations as there are edges from pool/neuron to weight
-- there are as many layers as there are edges from weight to neuron
-- each layer has a weight layer node and a spiking layer node
-"""
+def verify_layer_info(
+    dynapcnn_layer_info: Dict[int, Dict], edge_counts: Optional[Dict[str, int]] = None
+):
+    """Verify that `dynapcnn_layer_info` matches formal requirements.
+
+    - Every layer needs to have at least a `conv`, `neuron`, and `destinations`
+        entry.
+    - If `edge_counts` is provided, also make sure that number of layer matches
+        numbers of edges.
+
+    Parameters
+    ----------
+    - dynapcnn_layer_info: Dict with information to construct and connect
+        DynapcnnLayer instances
+    - edge_counts: Optional Dict with edge counts for each edge type. If not
+        `None`, will be used to do further verifications on `dynapcnn_layer_info`
+
+    Raises
+    ------
+    - InvalidGraphStructure: if any verification fails.
+    """
+
+    # Make sure that each dynapcnn layer has at least a weight layer and a neuron layer
+    for idx, info in dynapcnn_layer_info.items():
+        if not "conv" in info:
+            raise InvalidGraphStructure(
+                f"DynapCNN layer {idx} has no weight assigned, which should "
+                "never happen. " + default_invalid_structure_string
+            )
+        if not "neuron" in info:
+            raise InvalidGraphStructure(
+                f"DynapCNN layer {idx} has no spiking layer assigned, which "
+                "should never happen. " + default_invalid_structure_string
+            )
+        if not "destinations" in info:
+            raise InvalidGraphStructure(
+                f"DynapCNN layer {idx} has no destination info assigned, which "
+                "should never happen. " + default_invalid_structure_string
+            )
+    if edge_counts is not None:
+        # Make sure there are as many layers as edges from weight to neuron
+        if edge_counts["weight-neuron"] - len(dynapcnn_layer_info) > 0:
+            raise InvalidGraphStructure(
+                "Not all weight-to-neuron edges have been processed, which "
+                "should never happen. " + default_invalid_structure_string
+            )

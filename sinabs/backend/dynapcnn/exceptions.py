@@ -1,5 +1,12 @@
 from typing import Set, Tuple, Type
 
+default_invalid_structure_string = (
+    "This should never happen, but is most likely due to an unsupported SNN "
+    "architecture. In general, a dynapcnn network should consist of groups of "
+    "a weight layer (conv or linear), a spiking layer (IAFSqueeze), and "
+    "optionally a pooling layer."
+)
+
 
 class MissingLayer(Exception):
     index: int
@@ -44,6 +51,10 @@ class WrongPoolingModule(Exception):
         )
 
 
+class UnsupportedLayerType(Exception):
+    pass
+
+
 class InvalidModel(Exception):
     model: Type
 
@@ -85,10 +96,7 @@ class InvalidEdge(Exception):
     def __init__(self, edge, source, target):
         super().__init__(
             f"Invalid edge {edge}: {source} can not target {target}. "
-            "This is likely due to a network architecture that is not supported. "
-            "In general, a dynapcnn network should be made of groups "
-            "of a weight layer (conv or linear), a spiking layer (IAFSqueeze), "
-            "and optionally a pooling layer."
+            + default_invalid_structure_string
         )
 
 

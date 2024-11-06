@@ -2,22 +2,24 @@
 # contact   : wsoaresgirao@gmail.com
 
 from copy import deepcopy
+from pprint import pformat
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union
 
 import nirtorch
 import torch
 import torch.nn as nn
 
-import sinabs
+from sinabs import layers as sl
 
 from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
     LAYER_TYPES_WITH_MULTIPLE_OUTPUTS,
+    SupportedNodeTypes,
 )
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer_utils import construct_dynapcnnlayers_from_mapper
 from .dynapcnnnetwork_module import DynapcnnNetworkModule
-from .exceptions import InvalidGraphStructure
+from .exceptions import InvalidGraphStructure, UnsupportedLayerType
 from .sinabs_edges_handler import (
     collect_dynapcnn_layer_info,
     fix_dvs_module_edges,
@@ -181,6 +183,9 @@ class GraphExtractor:
         - The DynapcnnNetworkModule based on graph representation of this `GraphExtractor`
 
         """
+        # Make sure all nodes are supported
+        self.verify_node_types()
+
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self.dcnnl_map, self.dvs_layer_info = collect_dynapcnn_layer_info(
             indx_2_module_map=self.indx_2_module_map,
@@ -277,6 +282,10 @@ class GraphExtractor:
         Currently this checks that only nodes of specific classes have
         multiple sources or targets. This method might be extended in the
         future to implement stricter formal verification.
+
+        Raises
+        ------
+        - InvalidGraphStructure: If any verification fails
         """
         # Iterate over all nodes, and count its sources and targets
         for node, module in self.indx_2_module_map.items():
@@ -298,6 +307,55 @@ class GraphExtractor:
                         f"can have more than one output. Node {node} is of type "
                         f"{type(module)} and has {len(targets)} outputs."
                     )
+
+    def verify_node_types(self):
+        """Verify that all nodes are of a supported type.
+
+        Raises
+        ------
+        - UnsupportedLayerType: If any verification fails
+        """
+        unsupported_nodes = dict()
+        for index, module in self.indx_2_module_map.items():
+            if not isinstance(module, SupportedNodeTypes):
+                node_type = type(module)
+                if node_type in unsupported_nodes:
+                    unsupported_nodes[node_type].add(index)
+                else:
+                    unsupported_nodes[node_type] = {index}
+        # Specific error message for leaky neuron types
+        lif_layers = []
+        for lif_type in (sl.LIF, sl.LIFSqueeze):
+            for idx in unsupported_nodes.pop(lif_type, []):
+                lif_layers.append(self.indx_2_module_map[idx])
+        if lif_layers:
+            layer_str = ", ".join(str(lyr) for lyr in (lif_layers))
+            raise UnsupportedLayerType(
+                f"The provided SNN contains LIF layers:\n{layer_str}.\n"
+                "Leaky integrate-and-fire dynamics are not supported by "
+                "DynapCNN. Use non-leaky `IAF` or `IAFSqueeze` layers "
+                "instead."
+            )
+        # Specific error message for most common non-spiking activation layers
+        activation_layers = []
+        for activation_type in (nn.ReLU, nn.Sigmoid, nn.Tanh, sl.NeuromorphicReLU):
+            for idx in unsupported_nodes.pop(activation_type, []):
+                activation_layers.append(self.indx_2_module_map[idx])
+        if activation_layers:
+            layer_str = ", ".join(str(lyr) for lyr in (activation_layers))
+            raise UnsupportedLayerType(
+                "The provided SNN contains non-spiking activation layers:\n"
+                f"{layer_str}.\nPlease convert them to `IAF` or `IAFSqueeze` "
+                "layers before instantiating a `DynapcnnNetwork`. You can "
+                "use the function `sinabs.from_model.from_torch` for this."
+            )
+        if unsupported_nodes:
+            # More generic error message for all remaining types
+            raise UnsupportedLayerType(
+                "One or more layers in the provided SNN are not supported: "
+                f"{pformat(unsupported_nodes)}. Supported layer types are: "
+                f"{pformat(SupportedNodeTypes)}."
+            )
 
     ####################################################### Pivate Methods #######################################################
 
@@ -595,7 +653,7 @@ class GraphExtractor:
         # propagate inputs through the nodes.
         for node in self.sorted_nodes:
 
-            if isinstance(self.indx_2_module_map[node], sinabs.layers.merge.Merge):
+            if isinstance(self.indx_2_module_map[node], sl.merge.Merge):
                 # find `Merge` arguments (at this point the inputs to Merge should have been calculated).
                 input_nodes = self._find_merge_arguments(node)
 
