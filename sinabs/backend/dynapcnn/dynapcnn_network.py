@@ -6,12 +6,13 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from warnings import warn
 
 import samna
-import sinabs
-import sinabs.layers as sl
 import torch
 import torch.nn as nn
 from samna.dynapcnn.configuration import DynapcnnConfiguration
 from torch import Tensor
+
+import sinabs
+import sinabs.layers as sl
 
 from .chip_factory import ChipFactory
 from .dvs_layer import DVSLayer
@@ -472,7 +473,11 @@ class DynapcnnNetwork(nn.Module):
             print("Network is valid")
             return config
         else:
-            raise ValueError(f"Generated config is not valid for {device}")
+            raise ValueError(
+                f"Generated config is not valid for {device}. "
+                "Probably one or more layers are too large. Try "
+                "Reducing the number of neurons or the kernel sizes."
+            )
 
     def has_dvs_layer(self) -> bool:
         """Return True if there is a DVSLayer in the network

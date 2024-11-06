@@ -246,105 +246,6 @@ def fix_dvs_module_edges(
     entry_nodes.add(dvs_node)
 
 
-def merge_dvs_pooling_edge(
-    edges: Set[Edge],
-    indx_2_module_map: Dict[int, nn.Module],
-    name_2_indx_map: Dict[str, int],
-) -> None:
-    """If a 'dvs-pooling' edge existis, the pooling is incorporated into the DVSLayer node if `DVSLayer.pool_layer` has
-    default values. All arguments are modified in-place to remove the references to the incorporated pooling node.
-
-    Parameters
-    ----------
-    - edges (set): tuples describing the connections between layers in `spiking_model`.
-    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
-    - name_2_indx_map (dict): Map from node names to unique indices.
-    """
-    # Find 'DVSLayer-pooling' edge.
-    dvs_pool_edge = [
-        (src, tgt)
-        for (src, tgt) in edges
-        if (
-            isinstance(indx_2_module_map[src], DVSLayer)
-            and any(isinstance(indx_2_module_map[tgt], pool) for pool in Pooling)
-        )
-    ]
-
-    if len(dvs_pool_edge) == 0:
-        # No dvs-pooling edge exists - nothing to do here.
-        return
-    if len(dvs_pool_edge) > 1:
-        # DVSLayer in the original network can have only a single pooling layer liked to it.
-        raise ValueError(
-            f"DVSLayer has multiple outgoing edges to pooling layers: {dvs_pool_edge}. "
-            "Unlike convolutional layers, for DVS layers, pooling is set globally for "
-            "all destinations. Therefore a DVSLayer can be followed by at most one "
-            "pooling layer."
-        )
-
-    (dvs_indx, pool_indx) = dvs_pool_edge[-1]
-    dvs_layer = indx_2_module_map[dvs_indx]
-    pool_layer = indx_2_module_map[pool_indx]
-
-    # Checking pooling can be incorporated into the DVSLayer.
-    if expand_to_pair(dvs_layer.pool_layer.kernel_size) != (1, 1):
-        raise ValueError(
-            "DVSLayer with pooling is followed by another pooling layer. "
-            "This is currently not supported. Please update the network "
-            "such that all pooling is either done by the DVSLayer or by "
-            "the following pooling layer."
-        )
-    crop_layer = dvs_layer.crop_layer
-    if (
-        crop_layer.top_crop != 0
-        or crop_layer.left_crop != 0
-        or crop_layer.bottom_crop != dvs_layer.input_shape[1]
-        or crop_layer.right_crop != dvs_layer.input_shape[2]
-    ):
-        raise ValueError(
-            "DVSLayer with cropping is followed by a pooling layer. "
-            "This is currently not supported. Please define pooling "
-            "directly within the DVSLayer (with the `pool` argument) "
-            "and remove the pooling layer that follows the DVSLayer"
-        )
-    flip_layer = dvs_layer.flip_layer
-    if flip_layer.flip_x or flip_layer.flip_y or flip_layer.swap_xy:
-        raise ValueError(
-            "DVSLayer with flipping or dimension swapping is followed "
-            "by a pooling layer. This is currently not supported. "
-            "Please define pooling directly within the DVSLayer "
-            "(with the `pool` argument) and remove the pooling "
-            "layer that follows the DVSLayer"
-        )
-
-    # Set DVSLayer.pool to have same config. as the independent pooling layer.
-    dvs_layer.pool_layer.kernel_size = pool_layer.kernel_size
-    dvs_layer.pool_layer.stride = None
-
-    # Pooling incorporated to the DVSLayer: remove its trace from mappings.
-    indx_2_module_map.pop(pool_indx)
-    name_2_indx_map.pop(
-        [name for name, indx in name_2_indx_map.items() if indx == pool_indx][-1]
-    )
-
-    # Since pool is part of the DVSLayer we now make edges where pool was a source to have DVSLayer as a source.
-    for edge in [edge for edge in edges if edge[0] == pool_indx]:
-        edges.remove(edge)
-        edges.update({(dvs_indx, edge[1])})
-
-    # Remove original 'dvs-pool' edge.
-    edges.remove((dvs_indx, pool_indx))
-
-    # Checks if any traces of the original pooling node can still be found.
-    if (
-        len([edge for edge in edges if (edge[0] == pool_indx or edge[1] == pool_indx)])
-        != 0
-    ):
-        raise ValueError(
-            "Edges involving the pooling layer merged into the DVSLayer are still present in the graph."
-        )
-
-
 def collect_dynapcnn_layer_info(
     indx_2_module_map: Dict[int, nn.Module],
     edges: Set[Edge],
@@ -384,7 +285,6 @@ def collect_dynapcnn_layer_info(
 
     # Dict to collect information for each future dynapcnn layer
     dynapcnn_layer_info = dict()
-    dvs_layer_info = None
     # Map node IDs to dynapcnn layer ID
     node_2_layer_map = dict()
 
@@ -401,17 +301,10 @@ def collect_dynapcnn_layer_info(
             entry_nodes,
         )
 
-    # Process all dvs->weight edges connecting the DVS camera to a unique dynapcnn layer.
-    dvs_weight_edges = edges_by_type.get("dvs-weight", set())
-    while dvs_weight_edges:
-        edge = dvs_weight_edges.pop()
-        dvs_layer_info = add_or_update_dvs_to_entry(
-            edge,
-            dvs_layer_info,
-            indx_2_module_map,
-            node_2_layer_map,
-            nodes_io_shapes,
-        )
+    # Process all edges related to DVS layer
+    dvs_layer_info = dvs_setup(
+        edges_by_type, indx_2_module_map, node_2_layer_map, nodes_io_shapes
+    )
 
     # Process all edges connecting two dynapcnn layers that do not include pooling
     neuron_weight_edges = edges_by_type.get("neuron-weight", set())
@@ -654,62 +547,208 @@ def add_pooling_to_entry(
         node_2_layer_map[node] = layer_idx
 
 
-def add_or_update_dvs_to_entry(
-    edge: Edge,
-    dvs_layer_info: Union[None, Dict],
+def dvs_setup(
+    edges_by_type: Dict[str, Set[Edge]],
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
-) -> Dict:
-    """Initiate or update dict to hold information for a DVS Layer configuration based on a "dvs-weight" edges.
-    Change `dynapcnn_layer_info` in-place. If a entry for the DVS node exists the function will add a new entry
-    to the `desctinations` key of its dictionary.
+) -> Union[None, Dict]:
+    """Generate dict containing information to set up DVS layer
 
     Parameters
     ----------
-    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge target has to be within an existing entry of `dynapcnn_layer_info`.
-    dvs_layer_info: Dict containing information about the DVSLayer. If `None`,
-        will instantiate a new dict
+    edges_by_type (dict of sets of edges): Keys are edge types (str), values are sets of edges.
     indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+
+    Returns
+    -------
+    dvs_layer_info: Dict containing information about the DVSLayer.
     """
+    # Process all outgoing edges of a DVSLayer
+    dvs_weight_edges = edges_by_type.get("dvs-weight", set())
+    dvs_pooling_edges = edges_by_type.get("dvs-pooling", set())
 
-    # This should never happen
-    assert isinstance(
-        indx_2_module_map[edge[0]], DVSLayer
-    ), f"Source node in edge {edge} is of type {type(DVSLayer)} (it should be a DVSLayer instance)."
-
-    # Find destination layer index
-    try:
-        destination_layer_idx = node_2_layer_map[edge[1]]
-    except KeyError:
-        weight_layer = indx_2_module_map[edge[1]]
-        raise InvalidGraphStructure(
-            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
-            "This is likely due to an unsupported SNN architecture. Weight "
-            "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
+    # Process all dvs->weight edges connecting the DVS camera to a dynapcnn layer.
+    if dvs_weight_edges:
+        if dvs_pooling_edges:
+            raise InvalidGraphStructure(
+                "DVS layer has destinations with and without pooling. Unlike "
+                "with CNN layers, pooling of the DVS has to be the same for "
+                "all destinations."
+            )
+        return init_dvs_entry(
+            dvs_weight_edges,
+            indx_2_module_map,
+            node_2_layer_map,
+            nodes_io_shapes,
         )
 
-    if dvs_layer_info is None:
-        # DVS node hasn't been initialized yet
-        # Init. entry for a DVS layer using its configuration dict.
-        dvs_layer_info = {
-            "node_id": edge[0],
-            "input_shape": nodes_io_shapes[edge[0]]["input"],
-            "module": indx_2_module_map[edge[0]],
-            "destinations": [node_2_layer_map[edge[1]]],
-        }
+    # Process dvs->pooling edges adding pooling to a DVS Layer
+    elif dvs_pooling_edges:
+        # Make sure there is exactly one dvs->pooling edge
+        if len(dvs_pooling_edges) > 1:
+            raise InvalidGraphStructure(
+                "DVSLayer has connects to multiple pooling layers. Unlike "
+                "with CNN layers, pooling of the DVS has to be the same for "
+                "all destinations, therefore the DVSLayer can connect to at "
+                "most one pooling layer."
+            )
+        dvs_pooling_edge = dvs_pooling_edges.pop()
+        # Find pooling-weight edges that connect DVS layer to dynapcnn layers.
+        pooling_weight_edges = edges_by_type.get("pooling-weight", set())
+        dvs_pooling_weight_edges = find_edges_by_source(
+            pooling_weight_edges, dvs_pooling_edge[1]
+        )
+        # Remove handled pooling-weight edges
+        pooling_weight_edges.difference_update(dvs_pooling_weight_edges)
 
-        node_2_layer_map[edge[0]] = "dvs"
+        return init_dvs_entry_with_pooling(
+            dvs_pooling_edge,
+            dvs_pooling_weight_edges,
+            indx_2_module_map,
+            node_2_layer_map,
+            nodes_io_shapes,
+        )
     else:
-        # Update entry for DVS with new destination.
-        assert dvs_layer_info["node_id"] == edge[0]
-        assert destination_layer_idx not in dvs_layer_info["destinations"]
+        # If no edges related to DVS have been found return None
+        return
 
-        dvs_layer_info["destinations"].append(destination_layer_idx)
+
+def init_dvs_entry(
+    dvs_weight_edges: Set[Edge],
+    indx_2_module_map: Dict[int, nn.Module],
+    node_2_layer_map: Dict[int, int],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
+) -> Dict:
+    """Initiate dict to hold information for a DVS Layer configuration
+    based on "dvs-weight" edges.
+
+    Parameters
+    ----------
+    dvs_weight_edges: Set of edges between two nodes in graph.
+        Edge source has to be a DVSLayer and the same for all edges.
+        Edge target has to be within an existing entry of `dynapcnn_layer_info`.
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
+        Will be updated in-place.
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+
+    Returns
+    -------
+    dvs_layer_info: Dict containing information about the DVSLayer.
+    """
+
+    dvs_node_id = dvs_weight_edges[0][0]
+    # This should never fail
+    if not all(edge[0] == dvs_node_id for edge in dvs_weight_edges):
+        raise InvalidGraphStructure(
+            "The provided network seems to consist of multiple DVS alyers. "
+            "This is not supported."
+        )
+    assert isinstance(
+        (dvs_layer := indx_2_module_map[dvs_node_id]), DVSLayer
+    ), f"Source node in edges {dvs_weight_edges} is of type {type(dvs_layer)} (it should be a DVSLayer instance)."
+
+    # Initialize dvs config dict
+    dvs_layer_info = {
+        "node_id": dvs_node_id,
+        "input_shape": nodes_io_shapes[dvs_node_id]["input"],
+        "module": dvs_layer,
+        "pooling": None,
+    }
+    node_2_layer_map[dvs_node_id] = "dvs"
+
+    # Find destination layer indices
+    destinations = []
+    for edge in dvs_weight_edges:
+        try:
+            destination_layer_idx = node_2_layer_map[edge[1]]
+        except KeyError:
+            weight_layer = indx_2_module_map[edge[1]]
+            raise InvalidGraphStructure(
+                f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+                "This is likely due to an unsupported SNN architecture. Weight "
+                "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
+            )
+
+        # Update entry for DVS with new destination.
+        assert destination_layer_idx not in destinations
+        destinations.append(destination_layer_idx)
+
+    if destinations:
+        dvs_layer_info["destinations"] = destinations
+    else:
+        dvs_layer_info["destinations"] = None
+
+    return dvs_layer_info
+
+
+def init_dvs_entry_with_pooling(
+    dvs_pooling_edge: Edge,
+    pooling_weight_edges: Set[Edge],
+    indx_2_module_map: Dict[int, nn.Module],
+    node_2_layer_map: Dict[int, int],
+    nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
+) -> Dict:
+    """Initiate dict to hold information for a DVS Layer configuration with additional pooling
+
+    Parameters
+    ----------
+    dvs_pooling_edge: Edge from DVSLayer to pooling layer.
+    pooling_weight_edges: Set of edges between pooling layer and weight layer
+        Edge source has to be the target of `dvs_pooling_edge`.
+        Edge targets have to be within an existing entry of `dynapcnn_layer_info`.
+    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
+        Will be updated in-place.
+    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+
+    Returns
+    -------
+    dvs_layer_info: Dict containing information about the DVSLayer.
+    """
+
+    dvs_node_id, pooling_id = dvs_pooling_edge
+
+    # This should never fail
+    assert all(edge[0] == pooling_id for edge in pooling_weight_edges)
+    assert isinstance(
+        (dvs_layer := indx_2_module_map[dvs_node_id]), DVSLayer
+    ), f"Source node in edge {dvs_pooling_edge} is of type {type(dvs_layer)} (it should be a DVSLayer instance)."
+
+    # Initialize dvs config dict
+    dvs_layer_info = {
+        "node_id": dvs_node_id,
+        "input_shape": nodes_io_shapes[dvs_node_id]["input"],
+        "module": dvs_layer,
+        "pooling": {"module": indx_2_module_map[pooling_id], "node_id": pooling_id},
+    }
+    node_2_layer_map[dvs_node_id] = "dvs"
+
+    # Find destination layer indices
+    destinations = []
+    for edge in pooling_weight_edges:
+        try:
+            destination_layer_idx = node_2_layer_map[edge[1]]
+        except KeyError:
+            weight_layer = indx_2_module_map[edge[1]]
+            raise InvalidGraphStructure(
+                f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+                "This is likely due to an unsupported SNN architecture. Weight "
+                "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
+            )
+
+        # Update entry for DVS with new destination.
+        assert destination_layer_idx not in destinations
+        destinations.append(destination_layer_idx)
+
+    if destinations:
+        dvs_layer_info["destinations"] = destinations
+    else:
+        dvs_layer_info["destinations"] = None
 
     return dvs_layer_info
 
@@ -858,9 +897,9 @@ def set_pooling_layer_destination(
             matched = True
             break
     if not matched:
-        poolin_layer = indx_2_module_map[edge[0]]
+        pooling_layer = indx_2_module_map[edge[0]]
         raise InvalidGraphStructure(
-            f"Layer {poolin_layer} cannot be assigned to a dynapcnn layer. "
+            f"Layer {pooling_layer} cannot be assigned to a dynapcnn layer. "
             "This is likely due to an unsupported SNN architecture. Pooling "
             "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
             "another pooling layer, or DVS input"
@@ -912,6 +951,21 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
         paths = [deque([node])]
 
     return paths, processed_edges
+
+
+def find_edges_by_source(edges: Set[Edge], source: int) -> Set[Edge]:
+    """Utility function to find all edges with a given source node.
+
+    Parameters
+    ----------
+    - edges: Set of `Edge` instances to be searched
+    - source (int): Node ID that returned edges should have as source
+
+    Returns
+    -------
+    - Set[Edge]: All sets from `edges` that have `source` as source
+    """
+    return {(src, tgt) for (src, tgt) in edges if src == source}
 
 
 def verify_layer_info(

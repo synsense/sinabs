@@ -26,7 +26,7 @@ def construct_dynapcnnlayers_from_mapper(
     - Dict mapping to each layer index a set of destination indices
     - List of layer indices that act as entry points to the network
     """
-    finalize_dcnnl_map(dcnnl_map, rescale_fn)
+    finalize_dcnnl_map(dcnnl_map, dvs_layer_info, rescale_fn)
 
     dynapcnn_layers = {
         layer_idx: construct_single_dynapcnn_layer(layer_info, discretize)
@@ -40,7 +40,9 @@ def construct_dynapcnnlayers_from_mapper(
     return dynapcnn_layers, destination_map, entry_points
 
 
-def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -> None:
+def finalize_dcnnl_map(
+    dcnnl_map: Dict, dvs_info: Union[Dict, None], rescale_fn: Optional[Callable] = None
+) -> None:
     """Finalize dcnnl map by consolidating information
 
     Update dcnnl_map in-place
@@ -54,6 +56,9 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
     - rescale_fn: Optional callable that is used to determine layer
         rescaling in case of conflicting preceeding average pooling
     """
+    # Consolidate pooling information for DVS layer
+    consolidate_dvs_pooling(dvs_info, dcnnl_map)
+
     # Consolidate pooling information for each destination
     for layer_info in dcnnl_map.values():
         consolidate_layer_pooling(layer_info, dcnnl_map)
@@ -61,6 +66,67 @@ def finalize_dcnnl_map(dcnnl_map: Dict, rescale_fn: Optional[Callable] = None) -
     for layer_info in dcnnl_map.values():
         # Consolidate scale factors
         consolidate_layer_scaling(layer_info, rescale_fn)
+
+
+def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
+    """Consolidate pooling information for dvs layer
+
+    Update `dvs_info` and `dcnnl_map` in place.
+    - Extract pooling and scale factor of consecutive pooling operations
+    - Add entries "cumulative_pooling" and "cumulative_scaling"
+    - Update DVSLayer pooling if applicable
+    - For each destination, add cumulative rescale factor to "rescale_factors"
+        entry in corresponding entry of `dcnnl_map`.
+
+    Parameters
+    ----------
+    - dvs_info: Dict holding info of dvs layer.
+    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+    """
+    if dvs_info is None or dvs_info["pooling"] is None:
+        # Nothing to do
+        return
+
+    # Check whether pooling can be incorporated into the DVSLayer.
+    dvs_layer = dvs_info["module"]
+    crop_layer = dvs_layer.crop_layer
+    if (
+        crop_layer.top_crop != 0
+        or crop_layer.left_crop != 0
+        or crop_layer.bottom_crop != dvs_layer.input_shape[1]
+        or crop_layer.right_crop != dvs_layer.input_shape[2]
+    ):
+        raise ValueError(
+            "DVSLayer with cropping is followed by a pooling layer. "
+            "This is currently not supported. Please define pooling "
+            "directly within the DVSLayer (with the `pool` argument) "
+            "and remove the pooling layer that follows the DVSLayer"
+        )
+    flip_layer = dvs_layer.flip_layer
+    if flip_layer.flip_x or flip_layer.flip_y or flip_layer.swap_xy:
+        raise ValueError(
+            "DVSLayer with flipping or dimension swapping is followed "
+            "by a pooling layer. This is currently not supported. "
+            "Please define pooling directly within the DVSLayer "
+            "(with the `pool` argument) and remove the pooling "
+            "layer that follows the DVSLayer"
+        )
+
+    # Incorporate pooling into DVSLayer
+    pool_layer = dvs_info["pooling"]["module"]
+    added_pooling, scale = extract_pooling_from_module(pool_layer)
+    dvs_pooling = expand_to_pair(dvs_layer.pool_layer.kernel_size)
+    cumulative_pooling = (
+        dvs_pooling[0] * added_pooling[0],
+        dvs_pooling[1] * added_pooling[1],
+    )
+    dvs_layer.pool_layer.kernel_size = cumulative_pooling
+    dvs_layer.pool_layer.stride = None
+
+    # Set rescale_factor for targeted dynapcnn layers
+    if dvs_info["destinations"] is not None:
+        for dest_lyr_idx in dvs_info["destinations"]:
+            dcnnl_map[dest_lyr_idx]["rescale_factors"].add(scale)
 
 
 def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
@@ -174,7 +240,6 @@ def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] =
         rescale_factor = layer_info["rescale_factors"].pop()
     else:
         if rescale_fn is None:
-            # TODO: Custom Exception class?
             raise ValueError(
                 "Average pooling layers of conflicting sizes pointing to "
                 "same destination. Either replace them by SumPool2d layers "
@@ -239,8 +304,11 @@ def construct_destination_map(
                 destination_indices.append(dest_idx)
         destination_map[layer_index] = destination_indices
     if dvs_layer_info is not None:
-        # Copy destination list from dvs layer info
-        destination_map["dvs"] = [d for d in dvs_layer_info["destinations"]]
+        if (dest_info := dvs_layer_info["destinations"]) is None:
+            destination_map["dvs"] = [-1]
+        else:
+            # Copy destination list from dvs layer info
+            destination_map["dvs"] = [d for d in dest_info]
 
     return destination_map
 

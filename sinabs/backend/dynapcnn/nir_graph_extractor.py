@@ -24,7 +24,6 @@ from .sinabs_edges_handler import (
     collect_dynapcnn_layer_info,
     fix_dvs_module_edges,
     handle_batchnorm_nodes,
-    merge_dvs_pooling_edge,
 )
 from .utils import Edge, topological_sorting
 
@@ -394,12 +393,6 @@ class GraphExtractor:
             self._indx_2_module_map,
             self._name_2_indx_map,
             self._entry_nodes,
-        )
-
-        # Merge a pooling node from a 'dvs-pooling' edge (pooling being an independent node in the original
-        # graph) into the DVSLayer if such edge exists.
-        merge_dvs_pooling_edge(
-            self._edges, self._indx_2_module_map, self._name_2_indx_map
         )
 
         # Check if graph structure and DVSLayer.merge_polarities are correctly set (if DVS node exists).
