@@ -5,9 +5,10 @@ from collections import defaultdict
 from typing import Dict, List, Optional, Set, Union
 from warnings import warn
 
-import sinabs.layers as sl
 import torch.nn as nn
 from torch import Tensor
+
+import sinabs.layers as sl
 
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
@@ -259,8 +260,8 @@ class DynapcnnNetworkModule(nn.Module):
             )
 
         # For each layer store its outputs as dict with destination layers as keys.
-        # For input use `defaultdict` so it can be used for all destinations where needed
-        layers_outputs = {"input": defaultdict(lambda: x)}
+        # For input set `x` as input to entry points
+        layers_outputs = {"input": {ep: x for ep in self.entry_points}}
 
         for idx_curr in self._sorted_nodes:
             # Get inputs to the layer
@@ -300,9 +301,11 @@ class DynapcnnNetworkModule(nn.Module):
 
         # Take outputs with exit point destinations as network output
         network_outputs = {}
-        for layer_idx, outputs in layers_outputs.items():
+        for layer_idx, layer_out in layers_outputs.items():
             outputs = {
-                idx_dest: out for idx_dest, out in outputs.items() if idx_dest < 0
+                idx_dest: out
+                for idx_dest, out in layer_out.items()
+                if isinstance(idx_dest, int) and idx_dest < 0
             }
             if outputs:
                 network_outputs[layer_idx] = outputs

@@ -1,9 +1,10 @@
 from math import prod
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
+from torch import nn
+
 from sinabs import layers as sl
 from sinabs.utils import expand_to_pair
-from torch import nn
 
 from .dynapcnn_layer import DynapcnnLayer
 
@@ -239,7 +240,7 @@ def construct_destination_map(
         destination_map[layer_index] = destination_indices
     if dvs_layer_info is not None:
         # Copy destination list from dvs layer info
-        destination_map["dvs"] = [d for d in dvs_layer_info.destinations]
+        destination_map["dvs"] = [d for d in dvs_layer_info["destinations"]]
 
     return destination_map
 

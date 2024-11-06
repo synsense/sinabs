@@ -287,9 +287,7 @@ def merge_dvs_pooling_edge(
     pool_layer = indx_2_module_map[pool_indx]
 
     # Checking pooling can be incorporated into the DVSLayer.
-    if expand_to_pair(dvs_layer.pool_layer.kernel_size) != [1, 1] or expand_to_pair(
-        dvs_layer.pool_layer.stride
-    ) != [1, 1]:
+    if expand_to_pair(dvs_layer.pool_layer.kernel_size) != (1, 1):
         raise ValueError(
             "DVSLayer with pooling is followed by another pooling layer. "
             "This is currently not supported. Please update the network "
@@ -321,7 +319,7 @@ def merge_dvs_pooling_edge(
 
     # Set DVSLayer.pool to have same config. as the independent pooling layer.
     dvs_layer.pool_layer.kernel_size = pool_layer.kernel_size
-    dvs_layer.pool_layer.stride = pool_layer.stride
+    dvs_layer.pool_layer.stride = None
 
     # Pooling incorporated to the DVSLayer: remove its trace from mappings.
     indx_2_module_map.pop(pool_indx)
@@ -957,7 +955,7 @@ def verify_layer_info(
             )
     if edge_counts is not None:
         # Make sure there are as many layers as edges from weight to neuron
-        if edge_counts["weight-neuron"] - len(dynapcnn_layer_info) > 0:
+        if edge_counts.get("weight-neuron", 0) - len(dynapcnn_layer_info) > 0:
             raise InvalidGraphStructure(
                 "Not all weight-to-neuron edges have been processed, which "
                 "should never happen. " + default_invalid_structure_string

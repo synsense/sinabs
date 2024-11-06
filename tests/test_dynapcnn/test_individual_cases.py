@@ -1,5 +1,4 @@
 import pytest
-import samna
 import torch
 from torch import nn
 
@@ -205,6 +204,7 @@ def test_no_spk_ending():
 
 def test_no_spk_middle():
     from sinabs.backend.dynapcnn.exceptions import InvalidEdge
+
     seq = nn.Sequential(
         nn.Flatten(), nn.Linear(512, 10), nn.Linear(10, 2), IAFSqueeze(batch_size=1)
     )
@@ -216,4 +216,9 @@ def test_no_spk_middle():
 def test_no_conv_layers():
     from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 
-    net = DynapcnnNetwork(nn.Sequential(DVSLayer(input_shape=(10, 10))), input_shape=(2, 10, 10))
+    net = DynapcnnNetwork(
+        nn.Sequential(DVSLayer(input_shape=(10, 10))), input_shape=(2, 10, 10)
+    )
+
+
+test_with_sinabs_batch()
