@@ -301,6 +301,3 @@ def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
         assert samna_cfg.dvs_layer.mirror.x is False
         assert samna_cfg.dvs_layer.mirror.y is False
         assert samna_cfg.dvs_layer.mirror_diagonal is False
-
-
-test_dvs_crop(False, False)

@@ -402,12 +402,17 @@ class GraphExtractor:
         """
         if self.has_dvs_layer:
             # Make a copy of the layer so that the original version is not
-            # change in place
+            # changed in place
             new_dvs_layer = deepcopy(self.dvs_layer)
             self.name_2_indx_map[self.dvs_layer_index] = new_dvs_layer
         elif dvs_input:
             # Insert a DVSLayer node in the graph.
-            self._add_dvs_node(dvs_input_shape=input_shape)
+            new_dvs_layer = self._add_dvs_node(dvs_input_shape=input_shape)
+        else:
+            dvs_input = None
+        if dvs_input is not None:
+            # Disable pixel array if `dvs_input` is False
+            new_dvs_layer.disable_pixel_array = not dvs_input
 
         # Check for the need of fixing NIR edges extraction when DVS is a node in the graph. If DVS
         # is used its node becomes the only entry node in the graph.
@@ -421,7 +426,7 @@ class GraphExtractor:
         # Check if graph structure and DVSLayer.merge_polarities are correctly set (if DVS node exists).
         self._validate_dvs_setup(dvs_input_shape=input_shape)
 
-    def _add_dvs_node(self, dvs_input_shape: Tuple[int, int, int]) -> None:
+    def _add_dvs_node(self, dvs_input_shape: Tuple[int, int, int]) -> DVSLayer:
         """In-place modification of `self._name_2_indx_map`, `self._indx_2_module_map`, and `self._edges` to accomodate the
         creation of an extra node in the graph representing the DVS camera of the chip. The DVSLayer node will point to every
         other node that is up to this point an entry node of the original graph, so `self._entry_nodes` is modified in-place
@@ -429,7 +434,10 @@ class GraphExtractor:
 
         Parameters
         ----------
-        - dvs_input_shape (tuple): shape of the DVSLayer input in format `(features, height, width)`.
+        - dvs_input_shape (tuple): shape of the DVSLayer input in format `(features, height, width)`
+
+        Returns
+        - DVSLayer: A handler to the newly added `DVSLayer` instance
         """
 
         (features, height, width) = dvs_input_shape
@@ -441,19 +449,23 @@ class GraphExtractor:
         # Find new index to be assigned to DVS node
         self._name_2_indx_map["dvs"] = get_new_index(self._name_2_indx_map.values())
         # add module entry for node 'dvs'.
-        self._indx_2_module_map[self._name_2_indx_map["dvs"]] = DVSLayer(
+        dvs_layer = DVSLayer(
             input_shape=(height, width),
             merge_polarities=(features == 1),
         )
-        # set DVS node as input to each entry node of the graph.
+        self._indx_2_module_map[self._name_2_indx_map["dvs"]] = dvs_layer
+
+        # set DVS node as input to each entry node of the graph
         self._edges.update(
             {
                 (self._name_2_indx_map["dvs"], entry_node)
                 for entry_node in self._entry_nodes
             }
         )
-        # DVSLayer node becomes the only entrypoint of the graph.
+        # DVSLayer node becomes the only entrypoint of the graph
         self._entry_nodes = {self._name_2_indx_map["dvs"]}
+
+        return dvs_layer
 
     def _get_dvs_layer_index(self) -> Union[int, None]:
         """Loop though all modules and return index of `DVSLayer`

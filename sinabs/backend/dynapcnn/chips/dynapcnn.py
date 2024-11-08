@@ -3,13 +3,14 @@ from typing import Dict, List, Union
 from warnings import warn
 
 import samna
-import sinabs
 import torch
 from samna.dynapcnn.configuration import (
     CNNLayerConfig,
     DVSLayerConfig,
     DynapcnnConfiguration,
 )
+
+import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -57,7 +58,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             chip_layer.destinations[dest_idx].layer = layer2core_map[dest]
             chip_layer.destinations[dest_idx].enable = True
 
-        chip_layer.pass_sensor_events = True
+        chip_layer.pass_sensor_events = not layer.disable_pixel_array
 
         if layer.merge_polarities:
             chip_layer.merge = True

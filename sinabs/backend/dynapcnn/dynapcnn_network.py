@@ -2,6 +2,7 @@
 # contact   : wsoaresgirao@gmail.com
 
 import time
+from pprint import pformat
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 from warnings import warn
 
@@ -561,11 +562,11 @@ class DynapcnnNetwork(nn.Module):
         config_builder = ChipFactory(device).get_config_builder()
 
         if chip_layers_ordering is not None:
-            if layer2core_map is not None:
+            if layer2core_map != "auto":
                 warn(
                     "Both `chip_layers_ordering` and `layer2core_map are provided. "
-                    "Please only provide `layer2core_map`, as `chip_layers_ordering` "
-                    "is deprecated.",
+                    "The parameter `chip_layers_ordering` is deprecated and will "
+                    "be ignored.",
                     DeprecationWarning,
                 )
             elif chip_layers_ordering == "auto":
@@ -575,12 +576,20 @@ class DynapcnnNetwork(nn.Module):
                     "`layer2core_map` instead.",
                     DeprecationWarning,
                 )
-                layer2core_map = "auto"
             else:
-                raise ValueError(
-                    "`chip_layers_ordering` is deprecated. Passing anything other "
-                    "than `None` or 'auto' is not possible. To manually assign core "
-                    "to layers, please use the `layer2core_map` argument."
+                layer2core_map = {
+                    idx: core
+                    for idx, core in zip(self.dynapcnn_layers, chip_layers_ordering)
+                }
+                warn(
+                    "The parameter `chip_layers_ordering` is deprecated. "
+                    "Because `layer2core_map` is 'auto', and `chip_layers_ordering` "
+                    "is not, will convert `chip_layers_ordering` to a "
+                    "dict matching `layer2core_map`. In the future please use "
+                    "`layer2core_map` instead. Please make sure the inferred"
+                    "mapping from DynapcnnLayer index to core index is correct:"
+                    + pformat(layer2core_map),
+                    DeprecationWarning,
                 )
         if layer2core_map == "auto":
             # Assign chip core ID for each DynapcnnLayer.
