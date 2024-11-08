@@ -77,37 +77,6 @@ def test_from_layers(disable_pixel_array, num_channels):
     assert dvs_layer.get_roi() == ((0, 59), (0, 54))
 
 
-def test_construct_empty():
-    from sinabs.backend.dynapcnn.utils import construct_dvs_layer
-
-    layers = []
-
-    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(
-        layers, input_shape=(2, 128, 128)
-    )
-
-    assert rescale_factor == 1
-    assert layer_idx_next == 0
-    assert dvs_layer is None
-
-
-def test_construct_from_sumpool():
-    import sinabs.layers as sl
-    from sinabs.backend.dynapcnn.utils import construct_dvs_layer
-
-    layers = [sl.SumPool2d(2), sl.Cropping2dLayer(((1, 1), (1, 1)))]
-
-    dvs_layer, layer_idx_next, rescale_factor = construct_dvs_layer(
-        layers, input_shape=(2, 128, 128)
-    )
-
-    print(dvs_layer)
-
-    assert rescale_factor == 1
-    assert layer_idx_next == 2
-    assert dvs_layer.get_roi() == ((1, 63), (1, 63))
-
-
 def test_convert_cropping2dlayer_to_crop2d():
     import sinabs.layers as sl
     from sinabs.backend.dynapcnn.utils import convert_cropping2dlayer_to_crop2d

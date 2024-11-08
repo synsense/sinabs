@@ -102,7 +102,9 @@ def test_was_copied():
     from nirtorch.utils import sanitize_name
 
     # - Make sure that layers of different models are distinct objects
-    snn_layers = {sanitize_name(name): lyr for name, lyr in snn.named_modules()}
+    snn_layers = {
+        sanitize_name(name): lyr for name, lyr in snn.spiking_model.named_modules()
+    }
     idx_2_name_map = {
         idx: sanitize_name(name) for name, idx in dynapcnn_net.name_2_indx_map.items()
     }

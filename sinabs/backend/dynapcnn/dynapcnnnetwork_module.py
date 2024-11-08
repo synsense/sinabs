@@ -92,8 +92,8 @@ class DynapcnnNetworkModule(nn.Module):
 
     @property
     def dynapcnn_layers(self):
-        # Convert string-indices to integer-indices
-        return {int(idx): lyr for idx, lyr in self._dynapcnn_layers.items()}
+        # Convert string-indices to integer-indices and sort by index
+        return {int(idx): lyr for idx, lyr in sorted(self._dynapcnn_layers.items())}
 
     @property
     def entry_points(self):
