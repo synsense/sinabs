@@ -8,9 +8,7 @@ import torch.nn as nn
 
 import sinabs.layers as sl
 
-from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
-from .flipdims import FlipDims
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)

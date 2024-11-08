@@ -196,9 +196,9 @@ def test_no_spk_ending():
         nn.Linear(512, 2),
     )
 
-    from sinabs.backend.dynapcnn.exceptions import MissingLayer
+    from sinabs.backend.dynapcnn.exceptions import InvalidGraphStructure
 
-    with pytest.raises(MissingLayer):
+    with pytest.raises(InvalidGraphStructure):
         DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 
@@ -219,6 +219,3 @@ def test_no_conv_layers():
     net = DynapcnnNetwork(
         nn.Sequential(DVSLayer(input_shape=(10, 10))), input_shape=(2, 10, 10)
     )
-
-
-test_batchnorm_after_conv()

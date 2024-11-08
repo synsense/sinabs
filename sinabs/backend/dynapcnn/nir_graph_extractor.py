@@ -116,9 +116,6 @@ class GraphExtractor:
         # Make sure DVS input is properly integrated into graph
         self._handle_dvs_input(input_shape=dummy_input.shape[1:], dvs_input=dvs_input)
 
-        # Verify that graph is compatible
-        self.verify_graph_integrity()
-
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
 
@@ -185,6 +182,9 @@ class GraphExtractor:
         """
         # Make sure all nodes are supported
         self.verify_node_types()
+
+        # Verify that graph is compatible
+        self.verify_graph_integrity()
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self.dcnnl_map, self.dvs_layer_info = collect_dynapcnn_layer_info(
@@ -279,17 +279,28 @@ class GraphExtractor:
     def verify_graph_integrity(self):
         """Apply checks to verify that graph is supported
 
-        Currently this checks that only nodes of specific classes have
-        multiple sources or targets. This method might be extended in the
-        future to implement stricter formal verification.
+        Check that:
+        - Only nodes of specific classes have multiple sources or targets.
+        - There are no disconnected nodes except for `DVSLayer` instances.
 
         Raises
         ------
         - InvalidGraphStructure: If any verification fails
         """
-        # Iterate over all nodes, and count its sources and targets
+
         for node, module in self.indx_2_module_map.items():
-            # Check sources
+            # Make sure there are no individual, unconnected nodes
+            edges_with_node = {e for e in self.edges if node in e}
+            if not edges_with_node and not isinstance(module, DVSLayer):
+                raise InvalidGraphStructure(
+                    f"There is an isolated module of type {type(module)}. Only "
+                    "`DVSLayer` instances can be completely disconnected from "
+                    "any other module. Other than that, layers for DynapCNN "
+                    "consist of groups of weight layers (`Linear` or `Conv2d`), "
+                    "spiking layers (`IAF` or `IAFSqueeze`), and optioanlly "
+                    "pooling layers (`SumPool2d`, `AvgPool2d`)."
+                )
+            # Ensure only certain module types have multiple inputs
             if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_INPUTS):
                 sources = self._find_all_sources_of_input_to(node)
                 if len(sources) > 1:
@@ -298,7 +309,7 @@ class GraphExtractor:
                         f"can have more than one input. Node {node} is of type "
                         f"{type(module)} and has {len(sources)} inputs."
                     )
-            # Check targets
+            # Ensure only certain module types have multiple targets
             if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_OUTPUTS):
                 targets = self._find_valid_targets(node)
                 if len(targets) > 1:
