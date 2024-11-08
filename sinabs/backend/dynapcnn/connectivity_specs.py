@@ -12,7 +12,7 @@ from .dvs_layer import DVSLayer
 
 Pooling = (sl.SumPool2d, nn.AvgPool2d)
 Weight = (nn.Conv2d, nn.Linear)
-Neuron = (sl.IAFSqueeze, sl.IAF)
+Neuron = (sl.IAFSqueeze,)
 DVS = (DVSLayer,)
 SupportedNodeTypes = (*Pooling, *Weight, *Neuron, *DVS)
 

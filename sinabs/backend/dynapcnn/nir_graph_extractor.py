@@ -334,6 +334,17 @@ class GraphExtractor:
                     unsupported_nodes[node_type].add(index)
                 else:
                     unsupported_nodes[node_type] = {index}
+        # Specific error message for non-squeezing IAF layer
+        iaf_layers = []
+        for idx in unsupported_nodes.pop(sl.IAF, []):
+            iaf_layers.append(self.indx_2_module_map[idx])
+        if iaf_layers:
+            layer_str = ", ".join(str(lyr) for lyr in (iaf_layers))
+            raise UnsupportedLayerType(
+                f"The provided SNN contains IAF layers:\n{layer_str}.\n"
+                "For compatibility with torch's `nn.Conv2d` modules, please "
+                "use `IAFSqueeze` layers instead."
+            )
         # Specific error message for leaky neuron types
         lif_layers = []
         for lif_type in (sl.LIF, sl.LIFSqueeze):

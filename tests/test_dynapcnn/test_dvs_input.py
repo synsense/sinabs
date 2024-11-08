@@ -13,7 +13,7 @@ from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.exceptions import *
 from sinabs.from_torch import from_model
-from sinabs.layers import IAF
+from sinabs.layers import IAFSqueeze
 
 INPUT_SHAPE = (2, 16, 16)
 input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
@@ -42,9 +42,9 @@ def verify_dvs_config(
         return
 
     if destination is None:
-        assert dvs.destinations[0].enable == False
+        assert not dvs.destinations[0].enable
     else:
-        assert dvs.destinations[0].enable == True
+        assert dvs.destinations[0].enable
         assert dvs.destinations[0].layer == destination
     if cut is None:
         assert dvs.cut.y == origin[0] + INPUT_SHAPE[1] // pooling[0] - 1
@@ -186,7 +186,7 @@ class DvsNet(nn.Module):
                 **kwargs_flip,
             ),
             nn.Conv2d(n_channels_in, 4, kernel_size=2, stride=2),
-            IAF(),
+            IAFSqueeze(batch_size=1),
         ]
         self.seq = nn.Sequential(*layers)
 
@@ -301,3 +301,6 @@ def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
         assert samna_cfg.dvs_layer.mirror.x is False
         assert samna_cfg.dvs_layer.mirror.y is False
         assert samna_cfg.dvs_layer.mirror_diagonal is False
+
+
+test_dvs_crop(False, False)

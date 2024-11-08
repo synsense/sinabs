@@ -19,7 +19,12 @@ from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
 from .io import disable_timestamps, enable_timestamps, open_device, reset_timestamps
 from .nir_graph_extractor import GraphExtractor
-from .utils import COMPLETELY_IGNORED_LAYER_TYPES, IGNORED_LAYER_TYPES, parse_device_id
+from .utils import (
+    COMPLETELY_IGNORED_LAYER_TYPES,
+    IGNORED_LAYER_TYPES,
+    infer_input_shape,
+    parse_device_id,
+)
 from .weight_rescaling_methods import rescale_method_1
 
 
@@ -27,7 +32,7 @@ class DynapcnnNetwork(nn.Module):
     def __init__(
         self,
         snn: nn.Module,
-        input_shape: Tuple[int, int, int],
+        input_shape: Optional[Tuple[int, int, int]] = None,
         batch_size: Optional[int] = None,
         dvs_input: Optional[bool] = None,
         discretize: bool = True,
@@ -41,7 +46,9 @@ class DynapcnnNetwork(nn.Module):
         Parameters
         ----------
         - snn (nn.Module): a  implementing a spiking network.
-        - input_shape (tuple): a description of the input dimensions as `(features, height, width)`.
+        - input_shape (tuple or None): a description of the input dimensions
+            as `(features, height, width)`. If `None`, `snn` must contain a
+            `DVSLayer` instance, from which the input shape will be inferred.
         - batch_size (optional int): If `None`, will try to infer the batch size from the model.
             If int value is provided, it has to match the actual batch size of the model.
         - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive
@@ -53,12 +60,13 @@ class DynapcnnNetwork(nn.Module):
         """
         super().__init__()
 
-        # check if dvs input is expected.
-        self.dvs_input = dvs_input
-        self.input_shape = input_shape
-        self._layer2core_map = None
+        if isinstance(snn, sinabs.Network):
+            # Ignore `analog_model` of sinabs `Network` instances
+            snn = snn.spiking_model
 
-        assert len(self.input_shape) == 3, "infer_input_shape did not return 3-tuple"
+        self.dvs_input = dvs_input
+        self.input_shape = infer_input_shape(snn, input_shape)
+        self._layer2core_map = None
 
         # Infer batch size for dummpy input to graph extractor
         if batch_size is None:

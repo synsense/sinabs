@@ -1,12 +1,15 @@
 from collections import defaultdict, deque
 from copy import deepcopy
-from typing import TYPE_CHECKING, List, Set, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, List, Optional, Set, Tuple, TypeVar, Union
 
-import sinabs.layers as sl
 import torch
 import torch.nn as nn
 
+import sinabs.layers as sl
+
 from .crop2d import Crop2d
+from .dvs_layer import DVSLayer
+from .exceptions import InputConfigurationError
 
 if TYPE_CHECKING:
     from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
@@ -275,49 +278,49 @@ def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
     return model
 
 
-####################################################### DEPRECATED METHODS #######################################################
-# TODO: these methods were used by the old implementation of DynapcnnNetwork - delete all.
+def infer_input_shape(
+    snn: nn.Module, input_shape: Optional[Tuple[int, int, int]] = None
+) -> Tuple[int, int, int]:
+    """Infer expected shape of input for `snn` either from `input_shape`
+    or from `DVSLayer` instance within `snn` which provides it.
 
-# def infer_input_shape(
-#     layers: List[nn.Module], input_shape: Optional[Tuple[int, int, int]] = None
-# ) -> Tuple[int, int, int]:
-#     """Checks if the input_shape is specified. If either of them are specified, then it checks if
-#     the information is consistent and returns the input shape.
+    If neither are available, raise an InputConfigurationError.
+    If both are the case, verify that the information is consistent.
 
-#     Parameters
-#     ----------
-#     layers:
-#         List of modules
-#     input_shape :
-#         (channels, height, width)
+    Parameters
+    ----------
+    - snn (nn.Module): The SNN whose input shape is to be inferred
+    - input_shape (tuple or None): Explicitly provide input shape.
+        If not None, must be of the format `(channels, height, width)`.
 
-#     Returns
-#     -------
-#     Output shape:
-#         (channels, height, width)
-#     """
-#     if input_shape is not None and len(input_shape) != 3:
-#         raise InputConfigurationError(
-#             f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
-#         )
+    Returns
+    -------
+    - tuple: The input shape to `snn`, in the format `(channels, height, width)`
+    """
+    if input_shape is not None and len(input_shape) != 3:
+        raise InputConfigurationError(
+            f"input_shape expected to have length 3 or None but input_shape={input_shape} given."
+        )
 
-#     input_shape_from_layer = None
-#     if layers and isinstance(layers[0], DVSLayer):
-#         input_shape_from_layer = layers[0].input_shape
-#         if len(input_shape_from_layer) != 3:
-#             raise InputConfigurationError(
-#                 f"input_shape of layer {layers[0]} expected to have length 3 or None but input_shape={input_shape_from_layer} found."
-#             )
-#     if (input_shape is not None) and (input_shape_from_layer is not None):
-#         if input_shape == input_shape_from_layer:
-#             return input_shape
-#         else:
-#             raise InputConfigurationError(
-#                 f"Input shape from the layer {input_shape_from_layer} does not match the specified input_shape {input_shape}"
-#             )
-#     elif input_shape_from_layer is not None:
-#         return input_shape_from_layer
-#     elif input_shape is not None:
-#         return input_shape
-#     else:
-#         raise InputConfigurationError("No input shape could be inferred")
+    # Find `DVSLayer` instance and infer input shape from it
+    input_shape_from_layer = None
+    for module in snn.modules():
+        if isinstance(module, DVSLayer):
+            input_shape_from_layer = module.input_shape
+            # Make sure `input_shape_from_layer` is identical to provided `input_shape`
+            if input_shape is not None and input_shape != input_shape_from_layer:
+                raise InputConfigurationError(
+                    f"Input shape from `DVSLayer` {input_shape_from_layer} does "
+                    f"not match the specified input_shape {input_shape}"
+                )
+            return input_shape_from_layer
+
+    # If no `DVSLayer` is found, `input_shape` must not be provided
+    if input_shape is None:
+        raise InputConfigurationError(
+            "No input shape could be inferred. Either provide it explicitly "
+            "with the `input_shape` argument, or provide a model with "
+            "`DVSLayer` instance."
+        )
+    else:
+        return input_shape

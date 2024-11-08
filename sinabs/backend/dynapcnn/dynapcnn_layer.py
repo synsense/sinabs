@@ -6,9 +6,10 @@ from functools import partial
 from typing import List, Tuple
 
 import numpy as np
-import sinabs.layers as sl
 import torch
 from torch import nn
+
+import sinabs.layers as sl
 
 from .discretize import discretize_conv_spike_
 
@@ -99,6 +100,11 @@ class DynapcnnLayer(nn.Module):
         self._discretize = discretize
         self._rescale_weights = rescale_weights
 
+        if not isinstance(spk, sl.IAFSqueeze):
+            raise TypeError(
+                f"Unsupported spiking layer type {type(spk)}. "
+                "Only `IAFSqueeze` layers are supported."
+            )
         spk = deepcopy(spk)
 
         # Convert `nn.Linear` to `nn.Conv2d`.
