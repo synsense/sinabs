@@ -107,6 +107,10 @@ class DynapcnnNetwork(nn.Module):
         return self._dynapcnn_module.dvs_node_info
 
     @property
+    def dvs_layer(self):
+        return self._dynapcnn_module.dvs_layer
+
+    @property
     def chip_layers_ordering(self):
         warn(
             "`chip_layers_ordering` is deprecated. Returning `layer2core_map` instead.",
@@ -498,10 +502,7 @@ class DynapcnnNetwork(nn.Module):
         -------
         bool: True if DVSLayer is found within the network.
         """
-        for layer in self.dynapcnn_layers.values():
-            if isinstance(layer, DVSLayer):
-                return True
-        return False
+        return self.dvs_layer is not None
 
     ####################################################### Private Methods #######################################################
 

@@ -84,8 +84,7 @@ class NetPool2D(nn.Module):
         super().__init__()
         layers = []
         layers += [
-            nn.AvgPool2d(kernel_size=(2, 2)),
-            nn.AvgPool2d(kernel_size=(1, 2)),
+            nn.AvgPool2d(kernel_size=(2, 4)),
             nn.Conv2d(2, 4, kernel_size=2, stride=2),
             nn.ReLU(),
         ]
@@ -106,7 +105,7 @@ def test_dvs_no_pooling(dvs_input):
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
     # If there is no pooling, a DVSLayer should only be added if `dvs_input` is True
-    assert isinstance(spn.sequence[0], DVSLayer) == dvs_input
+    assert spn.has_dvs_layer() == dvs_input
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
@@ -139,8 +138,8 @@ def test_dvs_pooling_2d(dvs_input):
     # - SPN generation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
-    # When there is pooling, a DVSLayer should also be added if `dvs_input` is True
-    assert isinstance(spn.sequence[0], DVSLayer)
+    # When there is pooling, a DVSLayer should also be added if `dvs_input` is False
+    assert spn.has_dvs_layer()
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
