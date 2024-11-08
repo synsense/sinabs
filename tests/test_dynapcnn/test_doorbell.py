@@ -85,7 +85,9 @@ def test_auto_config():
 def test_was_copied():
     # - Make sure that layers of different models are distinct objects
     # "Sanitize" all layer names, for compatibility with older nirtorch versions
-    snn_layers = {sanitize_name(name): lyr for name, lyr in snn.named_modules()}
+    snn_layers = {
+        sanitize_name(name): lyr for name, lyr in snn.spiking_model.named_modules()
+    }
     idx_2_name_map = {
         idx: sanitize_name(name) for name, idx in dynapcnn_net.name_2_indx_map.items()
     }
