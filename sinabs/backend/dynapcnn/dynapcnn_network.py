@@ -133,6 +133,10 @@ class DynapcnnNetwork(nn.Module):
         ]
 
     @property
+    def exit_layer_ids(self):
+        return self._dynapcnn_module.get_exit_layers()
+
+    @property
     def is_deployed_on_dynapcnn_device(self):
         return (
             hasattr(self, "device")
@@ -312,6 +316,7 @@ class DynapcnnNetwork(nn.Module):
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
                 monitor_layers = "all" # If you want to monitor all the layers
+                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
 
         config_modifier:
             A user configuration modifier method.
@@ -454,6 +459,7 @@ class DynapcnnNetwork(nn.Module):
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
                 monitor_layers = "all" # If you want to monitor all the layers
+                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
 
             If this value is left as None, by default the last layer of the model is monitored.
 
@@ -537,6 +543,7 @@ class DynapcnnNetwork(nn.Module):
                 monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
                 monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
                 monitor_layers = "all" # If you want to monitor all the layers
+                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
 
             If this value is left as None, by default the last layer of the model is monitored.
 
@@ -621,13 +628,16 @@ class DynapcnnNetwork(nn.Module):
         if monitor_layers is None:
             # Monitor all layers with exit point destinations
             monitor_layers = self._dynapcnn_module.get_exit_layers()
-
         elif monitor_layers == "all":
             monitor_layers = [
                 lyr_idx
                 for lyr_idx, layer in self.dynapcnn_layers.items()
                 if not isinstance(layer, DVSLayer)
             ]
+        elif -1 in monitor_layers:
+            # Replace `-1` with exit layer IDs
+            monitor_layers.remove(-1)
+            monitor_layers += self._dynapcnn_module.get_exit_layers()
 
         # Collect cores (chip layers) that are to be monitored
         monitor_chip_layers = []
