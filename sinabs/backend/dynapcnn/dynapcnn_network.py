@@ -133,6 +133,13 @@ class DynapcnnNetwork(nn.Module):
         ]
 
     @property
+    def is_deployed_on_dynapcnn_device(self):
+        return (
+            hasattr(self, "device")
+            and parse_device_id(self.device)[0] in ChipFactory.supported_devices
+        )
+
+    @property
     def layer_destination_map(self):
         return self._dynapcnn_module.destination_map
 
@@ -212,10 +219,7 @@ class DynapcnnNetwork(nn.Module):
             structure as if `return_complete` is `True`, but only with entries
             where the destination is marked as final.
         """
-        if (
-            hasattr(self, "device")
-            and parse_device_id(self.device)[0] in ChipFactory.supported_devices
-        ):
+        if self.is_deployed_on_dynapcnn_device:
             return self.hw_forward(x)
         else:
             # Forward pass through software DynapcnnLayer instance
@@ -654,11 +658,36 @@ class DynapcnnNetwork(nn.Module):
 
     def __str__(self):
         pretty_print = ""
+        if self.dvs_layer is not None:
+            pretty_print += (
+                "-------------------------- [ DVSLayer ] --------------------------\n"
+            )
+            pretty_print += f"{self.dvs_layer}\n\n"
         for idx, layer_data in self.dynapcnn_layers.items():
             pretty_print += f"----------------------- [ DynapcnnLayer {idx} ] -----------------------\n"
+            if self.is_deployed_on_dynapcnn_device:
+                pretty_print += f"Core {self.layer2core_map[idx]}\n"
             pretty_print += f"{layer_data}\n\n"
 
         return pretty_print
+
+    def __repr__(self):
+        if self.is_deployed_on_dynapcnn_device:
+            layer_info = "\n\n".join(
+                f"{idx} - core: {self.layer2core_map[idx]}\n{pformat(layer)}"
+                for idx, layer in self.dynapcnn_layers.items()
+            )
+            device_info = f" deployed on {self.device},"
+        else:
+            layer_info = "\n\n".join(
+                f"Index: {idx}\n{pformat(layer)}"
+                for idx, layer in self.dynapcnn_layers.items()
+            )
+            device_info = f" on {self.device}," if hasattr(self, "device") else ""
+        return (
+            f"DynapCNN Network{device_info} containing:\nDVS Layer: {pformat(self.dvs_layer)}"
+            "\n\nDynapCNN Layers:\n\n" + layer_info
+        )
 
 
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):

@@ -119,6 +119,9 @@ class GraphExtractor:
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
 
+        # Verify that graph is compatible
+        self.verify_graph_integrity()
+
     ####################################################### Publich Methods #######################################################
 
     @property
@@ -180,11 +183,9 @@ class GraphExtractor:
         - The DynapcnnNetworkModule based on graph representation of this `GraphExtractor`
 
         """
-        # Make sure all nodes are supported
+        # Make sure all nodes are supported and there are no isolated nodes.
         self.verify_node_types()
-
-        # Verify that graph is compatible
-        self.verify_graph_integrity()
+        self.verify_no_isolated_nodes()
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
         self.dcnnl_map, self.dvs_layer_info = collect_dynapcnn_layer_info(
@@ -281,7 +282,6 @@ class GraphExtractor:
 
         Check that:
         - Only nodes of specific classes have multiple sources or targets.
-        - There are no disconnected nodes except for `DVSLayer` instances.
 
         Raises
         ------
@@ -378,6 +378,26 @@ class GraphExtractor:
                 f"{pformat(unsupported_nodes)}. Supported layer types are: "
                 f"{pformat(SupportedNodeTypes)}."
             )
+
+    def verify_no_isolated_nodes(self):
+        """Verify that there are no disconnected nodes except for `DVSLayer` instances.
+
+        Raises
+        ------
+        - InvalidGraphStructure when disconnected nodes are detected
+        """
+        for node, module in self.indx_2_module_map.items():
+            # Make sure there are no individual, unconnected nodes
+            edges_with_node = {e for e in self.edges if node in e}
+            if not edges_with_node and not isinstance(module, DVSLayer):
+                raise InvalidGraphStructure(
+                    f"There is an isolated module of type {type(module)}. Only "
+                    "`DVSLayer` instances can be completely disconnected from "
+                    "any other module. Other than that, layers for DynapCNN "
+                    "consist of groups of weight layers (`Linear` or `Conv2d`), "
+                    "spiking layers (`IAF` or `IAFSqueeze`), and optioanlly "
+                    "pooling layers (`SumPool2d`, `AvgPool2d`)."
+                )
 
     ####################################################### Pivate Methods #######################################################
 

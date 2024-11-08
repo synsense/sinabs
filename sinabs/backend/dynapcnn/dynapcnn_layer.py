@@ -96,7 +96,7 @@ class DynapcnnLayer(nn.Module):
         super().__init__()
 
         self.in_shape = in_shape
-        self._pool = pool
+        self.pool = pool
         self._discretize = discretize
         self._rescale_weights = rescale_weights
 
@@ -135,20 +135,16 @@ class DynapcnnLayer(nn.Module):
         if self._discretize:
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self._conv = conv
-        self._spk = spk
+        self.conv = conv
+        self.spk = spk
 
     @property
     def conv_layer(self):
-        return self._conv
+        return self.conv
 
     @property
     def spk_layer(self):
-        return self._spk
-
-    @property
-    def pool(self):
-        return self._pool
+        return self.spk
 
     @property
     def discretize(self):
@@ -175,7 +171,7 @@ class DynapcnnLayer(nn.Module):
         x = self.conv_layer(x)
         x = self.spk_layer(x)
 
-        for pool in self._pool:
+        for pool in self.pool:
 
             if pool == 1:
                 # no pooling is applied.
@@ -215,7 +211,7 @@ class DynapcnnLayer(nn.Module):
         neuron_shape = self.get_neuron_shape()
         # this is the actual output shape, including pooling
         output_shape = []
-        for pool in self._pool:
+        for pool in self.pool:
             output_shape.append(
                 neuron_shape[0],
                 neuron_shape[1] // pool,
@@ -227,7 +223,7 @@ class DynapcnnLayer(nn.Module):
         """Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
 
         return {
-            "pool": (self._pool),
+            "pool": (self.pool),
             "kernel": list(self.conv_layer.weight.data.shape),
             "neuron": self._get_conv_output_shape(),  # neuron layer output has the same shape as the convolution layer ouput.
         }

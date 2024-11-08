@@ -47,14 +47,14 @@ def test_missing_spiking_layer():
     in_shape = (2, 28, 28)
     snn = nn.Sequential(
         nn.Conv2d(2, 8, kernel_size=3, stride=1, bias=False),
-        sl.IAF(),
+        sl.IAFSqueeze(batch_size=1),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
         nn.Conv2d(8, 16, kernel_size=3, stride=1, bias=False),
-        sl.IAF(),
+        sl.IAFSqueeze(batch_size=1),
         nn.Dropout2d(),
         nn.Conv2d(16, 2, kernel_size=3, stride=1, bias=False),
-        sl.IAF(),
+        sl.IAFSqueeze(batch_size=1),
         nn.Flatten(),
         nn.Linear(8, 5),
     )
@@ -66,7 +66,7 @@ def test_missing_spiking_layer():
 def test_incorrect_model_start():
     in_shape = (2, 28, 28)
     snn = nn.Sequential(
-        sl.IAF(),
+        sl.IAFSqueeze(batch_size=1),
         sl.SumPool2d(2),
         nn.AvgPool2d(2),
     )

@@ -1,7 +1,7 @@
 # author    : Willian Soares Girao
 # contact   : wsoaresgirao@gmail.com
 
-from collections import defaultdict
+from pprint import pformat
 from typing import Dict, List, Optional, Set, Union
 from warnings import warn
 
@@ -372,3 +372,8 @@ class DynapcnnNetworkModule(nn.Module):
             remap(node): [remap(src) for src in sources]
             for node, sources in self._node_source_map.items()
         }
+
+    def __repr__(self):
+        return f"DVS Layer: {pformat(self.dvs_layer)}\n\nDynapCNN Layers:\n" + pformat(
+            self.dynapcnn_layers
+        )
