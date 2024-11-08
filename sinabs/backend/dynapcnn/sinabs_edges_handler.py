@@ -11,9 +11,8 @@ from typing import Dict, List, Optional, Set, Tuple, Type, Union
 from torch import Size, nn
 
 from sinabs.layers import SumPool2d
-from sinabs.utils import expand_to_pair
 
-from .connectivity_specs import VALID_SINABS_EDGE_TYPES, Pooling
+from .connectivity_specs import VALID_SINABS_EDGE_TYPES
 from .crop2d import Crop2d
 from .dvs_layer import DVSLayer
 from .exceptions import (
@@ -101,32 +100,23 @@ def handle_batchnorm_nodes(
 
     # Point weight nodes to the targets of their respective batch norm nodes.
     new_edges = set()
-    for weight, bnorm in weight_bnorm_edges:
+    for weight_id, bnorm_id in weight_bnorm_edges:
         new_edges.update(
             remap_edges_after_drop(
-                dropped_node=bnorm, source_of_dropped_node=weight, edges=edges
+                dropped_node=bnorm_id, source_of_dropped_node=weight_id, edges=edges
             )
         )
+    # Remove all edges to and from a batch norm node and replace with new edges
+    bnorm_edges = {e for e in edges if bnorm_nodes.intersection(e)}
+    edges.difference_update(bnorm_edges)
+    edges.update(new_edges)
 
     # Remove references to the bnorm node.
-
     for idx in bnorm_nodes:
         indx_2_module_map.pop(idx)
 
     for name in [name for name, indx in name_2_indx_map.items() if indx in bnorm_nodes]:
         name_2_indx_map.pop(name)
-
-    for edge in weight_bnorm_edges:
-        edges.remove(edge)
-
-    for edge in [
-        (src, tgt) for (src, tgt) in edges if (src in bnorm_nodes or tgt in bnorm_nodes)
-    ]:
-        edges.remove(edge)
-
-    # Update 'edges' in-place to incorporate new edges:
-    for edge in new_edges:
-        edges.add(edge)
 
 
 def fix_dvs_module_edges(
@@ -641,11 +631,13 @@ def init_dvs_entry(
     dvs_layer_info: Dict containing information about the DVSLayer.
     """
 
-    dvs_node_id = dvs_weight_edges[0][0]
+    # Pick any of the edges in set to get the DVS node ID. Should be same for all.
+    dvs_node_id = next(dvs_weight_edges.__iter__())[0]
+
     # This should never fail
     if not all(edge[0] == dvs_node_id for edge in dvs_weight_edges):
         raise InvalidGraphStructure(
-            "The provided network seems to consist of multiple DVS alyers. "
+            "The provided network seems to consist of multiple DVS layers. "
             "This is not supported."
         )
     assert isinstance(
@@ -663,7 +655,8 @@ def init_dvs_entry(
 
     # Find destination layer indices
     destinations = []
-    for edge in dvs_weight_edges:
+    while dvs_weight_edges:
+        edge = dvs_weight_edges.pop()
         try:
             destination_layer_idx = node_2_layer_map[edge[1]]
         except KeyError:

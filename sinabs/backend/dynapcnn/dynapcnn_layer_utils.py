@@ -1,4 +1,3 @@
-from math import prod
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Union
 
 from torch import nn
@@ -122,6 +121,10 @@ def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
     )
     dvs_layer.pool_layer.kernel_size = cumulative_pooling
     dvs_layer.pool_layer.stride = None
+
+    # Update cropping layer to account for reduced size after pooling
+    dvs_layer.crop_layer.bottom_crop //= added_pooling[0]
+    dvs_layer.crop_layer.right_crop //= added_pooling[1]
 
     # Set rescale_factor for targeted dynapcnn layers
     if dvs_info["destinations"] is not None:

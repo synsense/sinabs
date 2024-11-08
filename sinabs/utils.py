@@ -1,10 +1,34 @@
-from typing import Iterable, List, Tuple, TypeVar, Union
+from typing import Iterable, List, Sequence, Tuple, TypeVar, Union
 
 import numpy as np
 import torch
 import torch.nn as nn
 
 import sinabs
+
+
+def get_new_index(existing_indices: Sequence) -> int:
+    """Get a new index that is not yet part of a Sequence of existing indices
+
+    Example:
+    `get_new_index([0,1,2,3])`: `4`
+    `get_new_index([0,1,3])`: `2`
+
+    Parameters
+    ----------
+    - existing_indices: Sequence of indices
+
+    Returns
+    -------
+    - int: Smallest number (starting from 0) that is not yet in `existing_indices`.
+    """
+    existing_indices = set(existing_indices)
+    # Largest possible index is the length of `existing_indices`, if they are
+    # consecutively numbered. Otherwise, if there is a "gap", this would be
+    # filled by a smaller number.
+    possible_indices = range(len(existing_indices) + 1)
+    unused_indices = existing_indices.symmetric_difference(possible_indices)
+    return min(unused_indices)
 
 
 def reset_states(model: nn.Module) -> None:

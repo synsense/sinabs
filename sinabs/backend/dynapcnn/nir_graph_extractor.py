@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 
 from sinabs import layers as sl
+from sinabs.utils import get_new_index
 
 from .connectivity_specs import (
     LAYER_TYPES_WITH_MULTIPLE_INPUTS,
@@ -415,8 +416,8 @@ class GraphExtractor:
                 f"A DVSLayer istance can have the feature dimension of its inputs with values 1 or 2 but {features} was given."
             )
 
-        # add name entry for node 'dvs'.
-        self._name_2_indx_map["dvs"] = len(self._name_2_indx_map)
+        # Find new index to be assigned to DVS node
+        self._name_2_indx_map["dvs"] = get_new_index(self._name_2_indx_map.values())
         # add module entry for node 'dvs'.
         self._indx_2_module_map[self._name_2_indx_map["dvs"]] = DVSLayer(
             input_shape=(height, width),

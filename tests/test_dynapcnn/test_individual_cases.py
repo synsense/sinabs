@@ -221,4 +221,4 @@ def test_no_conv_layers():
     )
 
 
-test_with_sinabs_batch()
+test_batchnorm_after_conv()
