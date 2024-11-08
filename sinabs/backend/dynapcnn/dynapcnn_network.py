@@ -53,7 +53,10 @@ class DynapcnnNetwork(nn.Module):
         - batch_size (optional int): If `None`, will try to infer the batch size from the model.
             If int value is provided, it has to match the actual batch size of the model.
         - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive
-            input from its DVS camera.
+            input from its DVS camera. If a `DVSLayer` is part of `snn` and `dvs_input` is
+            false, the DVS sensor will be configured but its output will not be sent as input
+            to the chip. If `dvs_input` is `True` and `snn` does not contain a `DVSLayer`,
+            it will be added.
         - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading
             weights to dynapcnn. Set to `False` only for testing purposes.
         - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
