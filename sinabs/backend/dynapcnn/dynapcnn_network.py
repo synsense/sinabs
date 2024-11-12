@@ -766,11 +766,7 @@ class DynapcnnCompatibleNetwork(DynapcnnNetwork):
     """Deprecated class, use DynapcnnNetwork instead."""
 
     def __init__(
-        self,
-        snn: Union[nn.Sequential, sinabs.Network],
-        input_shape: Optional[Tuple[int, int, int]] = None,
-        dvs_input: bool = False,
-        discretize: bool = True,
+        self, *args, **kwargs
     ):
         from warnings import warn
 
@@ -778,4 +774,4 @@ class DynapcnnCompatibleNetwork(DynapcnnNetwork):
             "DynapcnnCompatibleNetwork has been renamed to DynapcnnNetwork "
             + "and will be removed in a future release."
         )
-        super().__init__(snn, input_shape, dvs_input, discretize)
+        super().__init__(*args, **kwargs)
