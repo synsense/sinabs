@@ -71,15 +71,15 @@ def test_auto_mapping():
     for test_device in devices:
         # test weights/kernel memory mapping
         _ = SNN_KERNEL_MEM_TEST.make_config(
-            chip_layers_ordering="auto", device=test_device
+            layer2core_map="auto", device=test_device
         )
-        assert SNN_KERNEL_MEM_TEST.chip_layers_ordering == [0, 1, 3, 2, 4]
+        assert SNN_KERNEL_MEM_TEST.layer2core_map == {0: 0, 1: 1, 2: 3, 3: 2, 4: 4}
 
         # test neuron memory mapping
         _ = SNN_NEURON_MEM_TEST.make_config(
-            chip_layers_ordering="auto", device=test_device
+            layer2core_map="auto", device=test_device
         )
-        assert SNN_NEURON_MEM_TEST.chip_layers_ordering == [2, 0, 1, 4, 3]
+        assert SNN_NEURON_MEM_TEST.layer2core_map == {0: 2, 1: 0, 2: 1, 3: 4, 4: 3}
 
 
 def test_manual_mapping():
@@ -87,15 +87,15 @@ def test_manual_mapping():
 
     for test_device in devices:
         # test weights/kernel memory mapping
-        chip_layers_order = [4, 2, 3, 1, 0]
+        layer2core_map = {0: 4, 1: 2, 2: 3, 3: 1, 4: 0}
         _ = SNN_KERNEL_MEM_TEST.make_config(
-            chip_layers_ordering=chip_layers_order, device=test_device
+            layer2core_map=layer2core_map, device=test_device
         )
-        assert SNN_KERNEL_MEM_TEST.chip_layers_ordering == chip_layers_order
+        assert SNN_KERNEL_MEM_TEST.layer2core_map == layer2core_map
 
         # test neuron memory mapping
-        chip_layers_order = [1, 0, 2, 3, 4]
+        chip_layers_order = {0: 1, 1: 0, 2: 2, 3: 3, 4: 4}
         _ = SNN_NEURON_MEM_TEST.make_config(
-            chip_layers_ordering=chip_layers_order, device=test_device
+            layer2core_map=chip_layers_order, device=test_device
         )
-        assert SNN_NEURON_MEM_TEST.chip_layers_ordering == chip_layers_order
+        assert SNN_NEURON_MEM_TEST.layer2core_map == chip_layers_order
