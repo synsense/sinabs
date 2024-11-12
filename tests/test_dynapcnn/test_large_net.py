@@ -88,11 +88,6 @@ def test_same_result():
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
-# TODO: Define new test with actual network that is too large. Probably have it as fail case in test_dynapcnnnetwork
-def test_too_large():
-    pass
-
-
 def test_auto_config():
     # - Should give an error with the normal layer ordering
     dynapcnn_net.make_config(chip_layers_ordering="auto")
@@ -136,7 +131,7 @@ def test_make_config():
     )
 
 
-@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
+# @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False
