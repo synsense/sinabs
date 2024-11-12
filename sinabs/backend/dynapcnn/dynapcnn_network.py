@@ -139,7 +139,7 @@ class DynapcnnNetwork(nn.Module):
     @property
     def exit_layers(self):
         return [
-            self.dynapcnn_layers[i] for i in self._dynapcnn_module.get_exit_layers()
+            self.all_layers[i] for i in self._dynapcnn_module.get_exit_layers()
         ]
 
     @property

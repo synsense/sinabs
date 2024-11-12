@@ -79,28 +79,33 @@ class GraphExtractor:
             instantiation with `remove_nodes_by_class`.
         """
 
-        # Store state before it is changed due to NIRTorch passing dummy input
-        original_state = {
-            n: b.detach().clone() for n, b in spiking_model.named_buffers()
-        }
+        # Empty sequentials will cause nirtorch to fail. Treat it separately
+        if isinstance(spiking_model, nn.Sequential) and len(spiking_model) == 0:
+            self._name_2_indx_map = dict()
+            self._edges = set()
+        else:
+            # Store state before it is changed due to NIRTorch passing dummy input
+            original_state = {
+                n: b.detach().clone() for n, b in spiking_model.named_buffers()
+            }
 
-        # extract computational graph.
-        nir_graph = nirtorch.extract_torch_graph(
-            spiking_model, dummy_input, model_name=None
-        ).ignore_tensors()
-        if ignore_node_types is not None:
-            for node_type in ignore_node_types:
-                nir_graph = nir_graph.ignore_nodes(node_type)
+            # extract computational graph.
+            nir_graph = nirtorch.extract_torch_graph(
+                spiking_model, dummy_input, model_name=None
+            ).ignore_tensors()
+            if ignore_node_types is not None:
+                for node_type in ignore_node_types:
+                    nir_graph = nir_graph.ignore_nodes(node_type)
 
-        # Restore original state
-        for n, b in spiking_model.named_buffers():
-            b.set_(original_state[n].clone())
+            # Restore original state
+            for n, b in spiking_model.named_buffers():
+                b.set_(original_state[n].clone())
 
-        # Map node names to indices
-        self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+            # Map node names to indices
+            self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
 
-        # Extract edges list from graph
-        self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
+            # Extract edges list from graph
+            self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
 
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
@@ -126,15 +131,15 @@ class GraphExtractor:
 
     @property
     def dvs_layer(self) -> Union[DVSLayer, None]:
-        idx = self.dvs_layer_index
+        idx = self.dvs_node_id
         if idx is None:
             return None
         else:
-            return self.indx_2_module_map[self.dvs_layer_index]
+            return self.indx_2_module_map[self.dvs_node_id]
 
     @property
-    def dvs_layer_index(self) -> Union[int, None]:
-        return self._get_dvs_layer_index()
+    def dvs_node_id(self) -> Union[int, None]:
+        return self._get_dvs_node_id()
 
     @property
     def entry_nodes(self) -> Set[int]:
@@ -194,6 +199,18 @@ class GraphExtractor:
             nodes_io_shapes=self.nodes_io_shapes,
             entry_nodes=self.entry_nodes,
         )
+
+        # Special case where there is a disconnected `DVSLayer`: There are no
+        # Edges for the edges handler to process. Instantiate layer info manually.
+        if self.dvs_layer_info is None and self.dvs_layer is not None:
+            self.dvs_layer_info = {
+                "node_id": self.dvs_node_id,
+                "input_shape": self.nodes_io_shapes[self.dvs_node_id]["input"],
+                "module": self.dvs_layer,
+                "pooling": None,
+                "destinations": None,
+            }
+
 
         # build `DynapcnnLayer` instances from mapper.
         dynapcnn_layers, destination_map, entry_points = (
@@ -424,7 +441,7 @@ class GraphExtractor:
             # Make a copy of the layer so that the original version is not
             # changed in place
             new_dvs_layer = deepcopy(self.dvs_layer)
-            self._indx_2_module_map[self.dvs_layer_index] = new_dvs_layer
+            self._indx_2_module_map[self.dvs_node_id] = new_dvs_layer
         elif dvs_input:
             # Insert a DVSLayer node in the graph.
             new_dvs_layer = self._add_dvs_node(dvs_input_shape=input_shape)
@@ -487,7 +504,7 @@ class GraphExtractor:
 
         return dvs_layer
 
-    def _get_dvs_layer_index(self) -> Union[int, None]:
+    def _get_dvs_node_id(self) -> Union[int, None]:
         """Loop though all modules and return index of `DVSLayer`
         instance if it exists.
 
@@ -602,6 +619,9 @@ class GraphExtractor:
         - entry_nodes (set): IDs of nodes acting as entry points for the network
            (i.e., receiving external input).
         """
+        if not edges:
+            return set()
+
         all_sources, all_targets = zip(*edges)
         return set(all_sources) - set(all_targets)
 
