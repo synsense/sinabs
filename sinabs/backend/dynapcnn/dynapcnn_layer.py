@@ -188,7 +188,7 @@ class DynapcnnLayer(nn.Module):
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         """Call `zero_grad` method of spiking layer"""
-        return self._spk.zero_grad(set_to_none)
+        return self.spk.zero_grad(set_to_none)
 
     def get_neuron_shape(self) -> Tuple[int, int, int]:
         """Return the output shape of the neuron layer.
