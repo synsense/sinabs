@@ -2,7 +2,6 @@ import pytest
 import torch.nn as nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from sinabs.backend.dynapcnn.mapping import edmonds, make_flow_graph, recover_mapping
 from sinabs.from_torch import from_model
 
 ann = nn.Sequential(
@@ -33,7 +32,7 @@ def test_multi_device_movement():
         input_shape=input_shape,
     )
 
-    hardware_compatible_model.to("speck2b:0")
+    hardware_compatible_model.to("speck2edevkit")
 
     print("Second attempt")
-    hardware_compatible_model.to("speck2b:0")
+    hardware_compatible_model.to("speck2edevkit")

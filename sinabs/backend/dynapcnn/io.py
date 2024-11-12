@@ -252,7 +252,13 @@ def open_device(device_id: str):
     """
     device_id = standardize_device_id(device_id=device_id)
     device_map = get_device_map()
-    device_info = device_map[device_id]
+    try:
+        device_info = device_map[device_id]
+    except KeyError:
+        msg = f"Device {device_id} has not been found. Make sure it is connected."
+        if device_map:
+            msg += "The following devices are available:\n" + "\n".join(device_map)
+        raise IOError(msg)
     device_handle = samna.device.open_device(device_info)
 
     if device_handle is not None:
