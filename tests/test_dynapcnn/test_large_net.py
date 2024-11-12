@@ -131,7 +131,7 @@ def test_make_config():
     )
 
 
-# @pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
+@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False
