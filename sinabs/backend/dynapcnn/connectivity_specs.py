@@ -42,7 +42,7 @@ VALID_SINABS_EDGE_TYPES = {
 }
 
 # Only `Merge` layers are allowed to join multiple inputs
-LAYER_TYPES_WITH_MULTIPLE_INPUTS = (sl.Merge, )
+LAYER_TYPES_WITH_MULTIPLE_INPUTS = (sl.Merge,)
 
 # Neuron and pooling layers can have their output sent to multiple cores
 LAYER_TYPES_WITH_MULTIPLE_OUTPUTS = (*Neuron, *Pooling, *DVS)
