@@ -424,7 +424,7 @@ class GraphExtractor:
             # Make a copy of the layer so that the original version is not
             # changed in place
             new_dvs_layer = deepcopy(self.dvs_layer)
-            self.name_2_indx_map[self.dvs_layer_index] = new_dvs_layer
+            self._indx_2_module_map[self.dvs_layer_index] = new_dvs_layer
         elif dvs_input:
             # Insert a DVSLayer node in the graph.
             new_dvs_layer = self._add_dvs_node(dvs_input_shape=input_shape)
