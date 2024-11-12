@@ -17,13 +17,12 @@ from .model_dummy_4 import batch_size as batch_size_4
 from .model_dummy_4 import expected_output as expected_output_4
 from .model_dummy_4 import input_shape as input_shape_4
 from .model_dummy_4 import snn as snn_4
-from .model_dummy_4 import snn as snn_4
 from .model_dummy_seq import (
+    expected_seq_1,
+    expected_seq_2,
     input_shape_seq,
     seq_1,
     seq_2,
-    expected_seq_1,
-    expected_seq_2,
 )
 
 args_DynapcnnNetworkTest = [

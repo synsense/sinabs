@@ -1,6 +1,7 @@
 from typing import Optional, Tuple
 
 import torch.nn as nn
+
 from sinabs.layers import SumPool2d
 from sinabs.utils import expand_to_pair
 

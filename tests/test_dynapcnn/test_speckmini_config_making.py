@@ -70,15 +70,11 @@ def test_auto_mapping():
 
     for test_device in devices:
         # test weights/kernel memory mapping
-        _ = SNN_KERNEL_MEM_TEST.make_config(
-            layer2core_map="auto", device=test_device
-        )
+        _ = SNN_KERNEL_MEM_TEST.make_config(layer2core_map="auto", device=test_device)
         assert SNN_KERNEL_MEM_TEST.layer2core_map == {0: 0, 1: 1, 2: 3, 3: 2, 4: 4}
 
         # test neuron memory mapping
-        _ = SNN_NEURON_MEM_TEST.make_config(
-            layer2core_map="auto", device=test_device
-        )
+        _ = SNN_NEURON_MEM_TEST.make_config(layer2core_map="auto", device=test_device)
         assert SNN_NEURON_MEM_TEST.layer2core_map == {0: 2, 1: 0, 2: 1, 3: 4, 4: 3}
 
 

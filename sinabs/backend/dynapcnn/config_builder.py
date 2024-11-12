@@ -2,10 +2,11 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import samna
+from samna.dynapcnn.configuration import DynapcnnConfiguration
+
 import sinabs
 import sinabs.backend
 import sinabs.backend.dynapcnn
-from samna.dynapcnn.configuration import DynapcnnConfiguration
 
 from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer

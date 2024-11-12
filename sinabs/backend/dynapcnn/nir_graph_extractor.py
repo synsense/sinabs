@@ -211,7 +211,6 @@ class GraphExtractor:
                 "destinations": None,
             }
 
-
         # build `DynapcnnLayer` instances from mapper.
         dynapcnn_layers, destination_map, entry_points = (
             construct_dynapcnnlayers_from_mapper(

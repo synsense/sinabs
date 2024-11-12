@@ -3,9 +3,10 @@
 
 import pytest
 import torch
-from .conftest_dynapcnnnetwork import args_DynapcnnNetworkTest
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
+
+from .conftest_dynapcnnnetwork import args_DynapcnnNetworkTest
 
 
 @pytest.mark.parametrize(

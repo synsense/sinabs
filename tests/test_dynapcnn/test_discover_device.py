@@ -3,8 +3,9 @@ import samna
 
 from sinabs.backend.dynapcnn import io
 
-
 pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
+
+
 def test_is_device_type():
     devices = samna.device.get_all_devices()
     print([io.is_device_type(d, "dynapcnndevkit") for d in devices])

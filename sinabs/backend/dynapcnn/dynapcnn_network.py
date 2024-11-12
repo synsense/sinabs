@@ -61,7 +61,7 @@ class DynapcnnNetwork(nn.Module):
                 ... and `dvs_input` is `None`, the `disable_pixel_array` attribute
                     of the layer will not be changed.
                 ... and `dvs_input` is `True`, `disable_pixel_array` will be set
-                    `False`, so that the DVS sensor data is sent to the network. 
+                    `False`, so that the DVS sensor data is sent to the network.
             If no `DVSLayer` is part of `snn`...
                 ... and `dvs_input` is `False` or `None`, no `DVSLayer` will be added
                     and the DVS sensor will not be configured upon deployment.
@@ -138,9 +138,7 @@ class DynapcnnNetwork(nn.Module):
 
     @property
     def exit_layers(self):
-        return [
-            self.all_layers[i] for i in self._dynapcnn_module.get_exit_layers()
-        ]
+        return [self.all_layers[i] for i in self._dynapcnn_module.get_exit_layers()]
 
     @property
     def exit_layer_ids(self):
@@ -525,8 +523,8 @@ class DynapcnnNetwork(nn.Module):
         return self.dvs_layer is not None
 
     def zero_grad(self, set_to_none: bool = False) -> None:
-        """ Call `zero_grad` method of each DynapCNN layer
-        
+        """Call `zero_grad` method of each DynapCNN layer
+
         Parameters
         ----------
         - set_to_none (bool): This argument is passed directly to the
@@ -765,9 +763,7 @@ class DynapcnnNetwork(nn.Module):
 class DynapcnnCompatibleNetwork(DynapcnnNetwork):
     """Deprecated class, use DynapcnnNetwork instead."""
 
-    def __init__(
-        self, *args, **kwargs
-    ):
+    def __init__(self, *args, **kwargs):
         from warnings import warn
 
         warn(

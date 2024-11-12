@@ -130,6 +130,8 @@ def test_dvs_no_pooling(dvs_input):
 
 
 args = product((True, False, None), (True, False))
+
+
 @pytest.mark.parametrize("dvs_input,add_input_layer", args)
 def test_dvs_pooling_2d(dvs_input, add_input_layer):
     # - ANN and SNN generation
@@ -155,7 +157,9 @@ def test_dvs_pooling_2d(dvs_input, add_input_layer):
             spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
     # - Compare snn and spn outputs. - Always add DVS so that pooling layer is properly handled
-    spn_float = DynapcnnNetwork(snn, dvs_input=True, discretize=False, input_shape=INPUT_SHAPE)
+    spn_float = DynapcnnNetwork(
+        snn, dvs_input=True, discretize=False, input_shape=INPUT_SHAPE
+    )
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
     assert torch.equal(snn_out.detach(), spn_out)

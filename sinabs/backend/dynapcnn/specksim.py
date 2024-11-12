@@ -4,11 +4,12 @@ from warnings import warn
 
 import numpy as np
 import samna
-import sinabs.layers as sl
 import torch.nn as nn
 from samna.specksim.nodes import SpecksimConvolutionalFilterNode as ConvFilter
 from samna.specksim.nodes import SpecksimIAFFilterNode as IAFFilter
 from samna.specksim.nodes import SpecksimSumPoolingFilterNode as SumPoolFilter
+
+import sinabs.layers as sl
 from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork, DynapcnnNetwork
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 

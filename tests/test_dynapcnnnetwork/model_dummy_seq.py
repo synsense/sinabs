@@ -5,7 +5,6 @@ import torch.nn as nn
 
 from sinabs.layers import IAFSqueeze, SumPool2d
 
-
 input_shape_seq = (2, 30, 30)
 
 seq_1 = nn.Sequential(
