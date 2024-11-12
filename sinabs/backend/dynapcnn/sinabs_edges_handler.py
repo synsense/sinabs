@@ -5,8 +5,7 @@ author        : Willian Soares Girao
 contact       : williansoaresgirao@gmail.com
 """
 
-from collections import deque
-from typing import Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Deque, Dict, List, Optional, Set, Tuple, Type, Union
 
 from torch import Size, nn
 
@@ -475,7 +474,7 @@ def init_new_dynapcnnlayer_entry(
 def add_pooling_to_entry(
     dynapcnn_layer_info: Dict[int, Dict],
     edge: Edge,
-    pooling_chains: List[deque[int]],
+    pooling_chains: List[Deque[int]],
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
 ) -> None:
@@ -904,7 +903,7 @@ def set_pooling_layer_destination(
     destination["output_shape"] = output_shape
 
 
-def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
+def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[Deque[int]]:
     """Trace any path of collected edges through the graph.
 
     Start with `node`, and recursively look for paths of connected nodes
@@ -941,7 +940,7 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[deque[int]]:
 
     if not paths:
         # End of recursion: instantiate a deque only with node
-        paths = [deque([node])]
+        paths = [Deque([node])]
 
     return paths, processed_edges
 
