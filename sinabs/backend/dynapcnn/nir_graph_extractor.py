@@ -79,15 +79,18 @@ class GraphExtractor:
             instantiation with `remove_nodes_by_class`.
         """
 
-        # Empty sequentials will cause nirtorch to fail. Treat it separately
+        # Store state before it is changed due to NIRTorch and
+        # `self._get_nodes_io_shapes` passing dummy input
+        original_state = {
+            n: b.detach().clone() for n, b in spiking_model.named_buffers()
+        }
+
+        # Empty sequentials will cause nirtorch to fail. Treat this case separately
         if isinstance(spiking_model, nn.Sequential) and len(spiking_model) == 0:
             self._name_2_indx_map = dict()
             self._edges = set()
+            original_state = {}
         else:
-            # Store state before it is changed due to NIRTorch passing dummy input
-            original_state = {
-                n: b.detach().clone() for n, b in spiking_model.named_buffers()
-            }
 
             # extract computational graph.
             nir_graph = nirtorch.extract_torch_graph(
@@ -96,10 +99,6 @@ class GraphExtractor:
             if ignore_node_types is not None:
                 for node_type in ignore_node_types:
                     nir_graph = nir_graph.ignore_nodes(node_type)
-
-            # Restore original state
-            for n, b in spiking_model.named_buffers():
-                b.set_(original_state[n].clone())
 
             # Map node names to indices
             self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
@@ -123,6 +122,10 @@ class GraphExtractor:
 
         # retrieves what the I/O shape for each node's module is.
         self._nodes_io_shapes = self._get_nodes_io_shapes(dummy_input)
+
+        # Restore original state - after forward passes from nirtorch and `_get_nodes_io_shapes`
+        for n, b in spiking_model.named_buffers():
+            b.set_(original_state[n].clone())
 
         # Verify that graph is compatible
         self.verify_graph_integrity()
