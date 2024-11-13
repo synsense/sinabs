@@ -26,6 +26,16 @@ def test_DynapcnnNetwork(snn, input_shape, batch_size, expected_output):
     output = dcnnnet(x)
 
     module = dcnnnet.dynapcnn_module
+    # For some models there are multiple possible topological sortings,
+    # such that the assigned node IDs are not always the same.
+    # To prevent the following tests from failing, alternative expected
+    # outputs are defined which correspond to different assigned IDs.
+    if (
+        expected_output["dcnnl_edges"] != module._dynapcnnlayer_edges
+        and "alternative" in expected_output
+    ):
+        expected_output = expected_output["alternative"]
+        print("Using algernative node ID assignment")
     assert (
         expected_output["dcnnl_edges"] == module._dynapcnnlayer_edges
     ), "wrong list of edges describing DynapcnnLayer connectivity."
