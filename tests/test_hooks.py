@@ -139,4 +139,4 @@ def test_input_diff_hook():
             layer.register_forward_hook(hooks.input_diff_hook)
     model(inp)
     for idx, correct in correct_values.items():
-        assert (model[idx].hook_data["diff_output"] == correct).all()
+        assert torch.allclose(model[idx].hook_data["diff_output"], correct)
