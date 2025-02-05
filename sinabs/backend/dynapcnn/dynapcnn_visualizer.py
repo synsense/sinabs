@@ -1,6 +1,6 @@
 import socket
 import warnings
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
 import samna
 
@@ -49,6 +49,7 @@ class DynapcnnVisualizer:
         feature_names: Optional[List[str]] = None,
         readout_images: Optional[List[str]] = None,
         feature_count: Optional[int] = None,
+        readout_node: Union[str, Callable] = "JitMajorityReadout",
         extra_arguments: Optional[Dict[str, Dict[str, any]]] = None,
     ):
         """Quick wrapper around Samna objects to get a basic dynapcnn visualizer.
@@ -98,6 +99,9 @@ class DynapcnnVisualizer:
                 If the `feature_names` and `readout_images` was passed, this is not needed. Otherwise this parameter
                 should be passed, so that the GUI knows how many lines should be drawn on the `Spike Count Plot` and
                 `Readout Layer Plot`.
+            readout_node: str or Callable
+                Can either be a string "JitMajorityReadout" or a callable that returns a samna JIT filter
+                to decide on the readout prediction. Function parameters can be defined freely.
             extra_arguments: Optional[Dict[str, Dict[str, any]]] (defaults to None)
                 Extra arguments that can be passed to individual plots. Available keys are:
                 - `spike_count`: Arguments that can be passed to `spike_count` plot.
@@ -105,7 +109,7 @@ class DynapcnnVisualizer:
                 - `power_measurement`: Arguments that can be passed `power_measurement` plot.
         """
         # Checks if the configuration passed is valid
-        if add_readout_plot and not readout_images:
+        if add_readout_plot and readout_images is None:
             raise ValueError(
                 "If a readout plot is to be displayed image paths should be passed as a list."
                 + "The order of the images, should match the model output."
@@ -135,6 +139,7 @@ class DynapcnnVisualizer:
         self.readout_default_return_value = readout_default_return_value
         self.readout_default_threshold_low = readout_default_threshold_low
         self.readout_default_threshold_high = readout_default_threshold_high
+        self.readout_node = readout_node
 
         # Power monitor components
         if power_monitor_number_of_items != 3 and power_monitor_number_of_items != 5:
@@ -518,19 +523,32 @@ class DynapcnnVisualizer:
 
         ## Readout node
         if "r" in self.gui_type:
-            (_, majority_readout_node, _) = self.streamer_graph.sequential(
-                [
-                    spike_collection_node,
-                    samna.graph.JitMajorityReadout(samna.ui.Event),
-                    streamer_node,
-                ]
-            )
-            majority_readout_node.set_feature_count(self.feature_count)
-            majority_readout_node.set_default_feature(self.readout_default_return_value)
-            majority_readout_node.set_threshold_low(self.readout_default_threshold_low)
-            majority_readout_node.set_threshold_high(
-                self.readout_default_threshold_high
-            )
+            if self.readout_node == "JitMajorityReadout":
+                (_, majority_readout_node, _) = self.streamer_graph.sequential(
+                    [
+                        spike_collection_node,
+                        samna.graph.JitMajorityReadout(samna.ui.Event),
+                        streamer_node,
+                    ]
+                )
+                majority_readout_node.set_feature_count(self.feature_count)
+                majority_readout_node.set_default_feature(
+                    self.readout_default_return_value
+                )
+                majority_readout_node.set_threshold_low(
+                    self.readout_default_threshold_low
+                )
+                majority_readout_node.set_threshold_high(
+                    self.readout_default_threshold_high
+                )
+            else:
+                (_, majority_readout_node, _) = self.streamer_graph.sequential(
+                    [
+                        spike_collection_node,
+                        self.readout_node,
+                        streamer_node,
+                    ]
+                )
 
         ## Readout layer visualization
         if "o" in self.gui_type:
