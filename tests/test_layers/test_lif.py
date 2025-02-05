@@ -347,7 +347,7 @@ def test_lif_recurrent_on_gpu():
     tau_mem = torch.as_tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = (input_dimensions[2:])
+    n_neurons = input_dimensions[2:]
     input_current = torch.ones(*input_dimensions) * 0.5 / (1 - alpha)
 
     rec_connect = nn.Sequential(
