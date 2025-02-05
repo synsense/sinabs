@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 from copy import deepcopy
 from functools import partial
 from typing import List, Tuple

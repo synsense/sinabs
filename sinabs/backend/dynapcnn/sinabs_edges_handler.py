@@ -1,8 +1,6 @@
 """
-functionality : functions implementing the pre-processing of edges into blocks of nodes (modules) for future
-                creation of DynapcnnLayer objects.
-author        : Willian Soares Girao
-contact       : williansoaresgirao@gmail.com
+Implements the pre-processing of edges into blocks of nodes (modules) for future 
+creation of DynapcnnLayer objects.
 """
 
 from typing import Deque, Dict, List, Optional, Set, Tuple, Type, Union

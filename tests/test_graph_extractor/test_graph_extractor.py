@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 import pytest
 from conftest_graph_extractor import args_GraphExtractor
 

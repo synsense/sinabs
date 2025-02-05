@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 import pytest
 
 from sinabs.backend.dynapcnn.dynapcnn_layer_utils import (

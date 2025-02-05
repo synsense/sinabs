@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 from model_dummy_1 import expected_output as expected_output_1
 from model_dummy_1 import input_dummy as input_dummy_1
 from model_dummy_1 import snn as snn_1
