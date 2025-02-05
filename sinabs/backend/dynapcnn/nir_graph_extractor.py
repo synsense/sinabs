@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 from copy import deepcopy
 from pprint import pformat
 from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple, Type, Union

@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 from pprint import pformat
 from typing import Dict, List, Optional, Set, Union
 from warnings import warn

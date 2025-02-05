@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : williansoaresgirao@gmail.com
-
 import statistics
 from typing import Iterable
 
