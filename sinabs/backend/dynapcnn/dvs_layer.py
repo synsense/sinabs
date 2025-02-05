@@ -3,25 +3,10 @@ from typing import Optional, Tuple
 import torch.nn as nn
 
 from sinabs.layers import SumPool2d
+from sinabs.utils import expand_to_pair
 
 from .crop2d import Crop2d
 from .flipdims import FlipDims
-
-
-def expand_to_pair(value) -> (int, int):
-    """Expand a given value to a pair (tuple) if an int is passed.
-
-    Parameters
-    ----------
-    value:
-        int
-
-    Returns
-    -------
-    pair:
-        (int, int)
-    """
-    return (value, value) if isinstance(value, int) else value
 
 
 class DVSLayer(nn.Module):
@@ -202,14 +187,13 @@ class DVSLayer(nn.Module):
         ) = self.get_output_shape_after_pooling()
 
         # Compute dims after cropping
-        if self.crop_layer is not None:
-            (
-                channel_count,
-                output_size_y,
-                output_size_x,
-            ) = self.crop_layer.get_output_shape(
-                (channel_count, output_size_y, output_size_x)
-            )
+        (
+            channel_count,
+            output_size_y,
+            output_size_x,
+        ) = self.crop_layer.get_output_shape(
+            (channel_count, output_size_y, output_size_x)
+        )
 
         # Compute dims after pooling
         return {
@@ -237,11 +221,13 @@ class DVSLayer(nn.Module):
         # Merge polarities
         if self.merge_polarities:
             data = data.sum(1, keepdim=True)
+
         # Pool
         out = self.pool_layer(data)
+
         # Crop
-        if self.crop_layer is not None:
-            out = self.crop_layer(out)
+        out = self.crop_layer(out)
+
         # Flip stuff
         out = self.flip_layer(out)
 
@@ -264,15 +250,11 @@ class DVSLayer(nn.Module):
         -------
         ((top, bottom), (left, right))
         """
-        if self.crop_layer is not None:
-            _, h, w = self.get_output_shape_after_pooling()
-            return (
-                (self.crop_layer.top_crop, self.crop_layer.bottom_crop),
-                (self.crop_layer.left_crop, self.crop_layer.right_crop),
-            )
-        else:
-            _, output_size_y, output_size_x = self.get_output_shape()
-            return (0, output_size_y), (0, output_size_x)
+        _, h, w = self.get_output_shape_after_pooling()
+        return (
+            (self.crop_layer.top_crop, self.crop_layer.bottom_crop),
+            (self.crop_layer.left_crop, self.crop_layer.right_crop),
+        )
 
     def get_output_shape(self) -> Tuple[int, int, int]:
         """Output shape of the layer.
@@ -292,14 +274,13 @@ class DVSLayer(nn.Module):
         output_size_y = input_size_y // pooling[0]
 
         # Compute dims after cropping
-        if self.crop_layer is not None:
-            (
-                channel_count,
-                output_size_y,
-                output_size_x,
-            ) = self.crop_layer.get_output_shape(
-                (channel_count, output_size_y, output_size_x)
-            )
+        (
+            channel_count,
+            output_size_y,
+            output_size_x,
+        ) = self.crop_layer.get_output_shape(
+            (channel_count, output_size_y, output_size_x)
+        )
 
         return channel_count, output_size_y, output_size_x
 

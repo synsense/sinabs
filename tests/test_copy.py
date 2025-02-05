@@ -64,7 +64,6 @@ def test_deepcopy_lif():
     from sinabs.layers import LIF, LIFSqueeze
 
     for train_alphas in (True, False):
-
         input_current = torch.rand(10, 10, 10)
         kwargs = dict(tau_mem=torch.tensor(30.0), tau_syn=torch.tensor(10.0))
 
@@ -120,7 +119,6 @@ def test_deepcopy_lif_uninitialized():
         #         layer_recurrent = LIFRecurrent(**kwargs, rec_connect=torch.nn.Linear(10,10))
 
         for layer_orig in (layer, layer_squeeze_batch, layer_squeeze_nts):
-
             layer_copy = deepcopy(layer_orig)
 
             for p0, p1 in zip(layer_orig.parameters(), layer_copy.parameters()):

@@ -1,10 +1,16 @@
-import time
 from abc import ABC, abstractmethod
-from typing import List
+from typing import Dict, List
 
 import samna
+from samna.dynapcnn.configuration import DynapcnnConfiguration
+
+import sinabs
+import sinabs.backend
+import sinabs.backend.dynapcnn
 
 from .dvs_layer import DVSLayer
+from .dynapcnn_layer import DynapcnnLayer
+from .exceptions import InvalidModel
 from .mapping import LayerConstraints, get_valid_mapping
 
 
@@ -30,7 +36,12 @@ class ConfigBuilder(ABC):
 
     @classmethod
     @abstractmethod
-    def build_config(cls, model: "DynapcnnNetwork", chip_layers: List[int]):
+    def build_config(
+        cls,
+        layers: Dict[int, DynapcnnLayer],
+        destination_map: Dict[int, List[int]],
+        layer2core_map: Dict[int, int],
+    ) -> DynapcnnConfiguration:
         """Build the configuration given a model.
 
         Parameters
@@ -61,30 +72,19 @@ class ConfigBuilder(ABC):
         """Enable the monitor for a given set of layers in the config object."""
 
     @classmethod
-    def get_valid_mapping(cls, model: "DynapcnnNetwork") -> List[int]:
-        """Find a valid set of layers for a given model.
+    def map_layers_to_cores(cls, layers: Dict[int, DynapcnnLayer]) -> Dict[int, int]:
+        """Find a mapping from DynapcnnLayers onto on-chip cores
 
         Parameters
         ----------
-        model (DynapcnnNetwork):
-            A model
+        - layers: Dict with layer indices as keys and DynapcnnLayer instances as values
 
         Returns
         -------
-        List of core indices corresponding to each layer of the model:
-        The index of the core on chip to which the i-th layer in the
-        model is mapped is the value of the i-th entry in the list.
+        - Dict mapping layer indices (keys) to assigned core IDs (values).
         """
-        mapping = get_valid_mapping(model, cls.get_constraints())
-        # turn the mapping into a dict
-        mapping = {m[0]: m[1] for m in mapping}
-        # Check if there is a dvs layer in the model
-        num_dynapcnn_cores = len(model.sequence)
-        if isinstance(model.sequence[0], DVSLayer):
-            num_dynapcnn_cores -= 1
-        # apply the mapping
-        chip_layers_ordering = [mapping[i] for i in range(num_dynapcnn_cores)]
-        return chip_layers_ordering
+
+        return get_valid_mapping(layers, cls.get_constraints())
 
     @classmethod
     def validate_configuration(cls, config) -> bool:

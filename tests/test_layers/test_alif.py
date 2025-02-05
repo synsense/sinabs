@@ -127,7 +127,7 @@ def test_alif_recurrent():
     tau_mem = torch.as_tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
+    n_neurons = np.prod(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1 - alpha)
 
     rec_connect = nn.Sequential(
