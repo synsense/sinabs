@@ -40,7 +40,7 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
         ----------
         - layer (DynapcnnLayer): Layer instance from which to generate the config
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.]
+            cores on hardware. Needed to map the destinations.
         - destination_indices (List): Indices of destination layers for `layer`
 
         Returns
