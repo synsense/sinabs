@@ -69,7 +69,6 @@ def test_model_synops_hook(dt):
 
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook_invalid_pooling(dt):
-
     model = nn.Sequential(
         nn.Conv2d(2, 4, 3, 3),
         IAFSqueeze(batch_size=2),

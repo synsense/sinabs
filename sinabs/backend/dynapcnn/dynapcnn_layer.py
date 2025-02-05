@@ -169,7 +169,6 @@ class DynapcnnLayer(nn.Module):
         x = self.spk_layer(x)
 
         for pool in self.pool:
-
             if pool == 1:
                 # no pooling is applied.
                 returns.append(x)
@@ -244,7 +243,11 @@ class DynapcnnLayer(nn.Module):
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        f, neuron_height, neuron_width = (
+        (
+            f,
+            neuron_height,
+            neuron_width,
+        ) = (
             self._get_conv_output_shape()
         )  # neuron layer output has the same shape as the convolution layer ouput.
 

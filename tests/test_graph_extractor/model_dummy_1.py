@@ -60,7 +60,6 @@ class SNN(nn.Module):
         self.adder = Merge()
 
     def forward(self, x):
-
         con1_out = self.conv1(x)
         iaf1_out = self.iaf1(con1_out)
         pool1_out = self.pool1(iaf1_out)

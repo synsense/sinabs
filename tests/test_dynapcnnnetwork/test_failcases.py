@@ -14,7 +14,6 @@ from sinabs.from_torch import from_model
 
 @pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
 def test_too_large(device):
-
     # Model that is too big to fit on any of our architectures
     big_ann = nn.Sequential(
         nn.Conv2d(1, 3, 5, 1, bias=False),

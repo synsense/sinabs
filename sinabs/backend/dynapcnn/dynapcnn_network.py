@@ -360,7 +360,6 @@ class DynapcnnNetwork(nn.Module):
             device_name, _ = parse_device_id(device)
 
             if device_name in ChipFactory.supported_devices:
-
                 # generate config.
                 config = self.make_config(
                     layer2core_map=layer2core_map,

@@ -27,7 +27,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return DynapcnnConfiguration()
 
     @classmethod
-    def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
+    def get_dvs_layer_config_dict(cls, layer: DVSLayer):
+        ...
 
     @classmethod
     def write_dvs_layer_config(
@@ -209,7 +210,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         for dest_layer_id, pool in zip(destination_indices, pooling_sizes):
             # Ignore exit point destinations
             if dest_layer_id >= 0:
-
                 try:
                     # Use scalar value for pooling
                     pool = sinabs.utils.collapse_pair(pool)

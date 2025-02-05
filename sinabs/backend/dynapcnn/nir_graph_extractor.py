@@ -91,7 +91,6 @@ class GraphExtractor:
             self._edges = set()
             original_state = {}
         else:
-
             # extract computational graph.
             nir_graph = nirtorch.extract_torch_graph(
                 spiking_model, dummy_input, model_name=None
@@ -215,13 +214,15 @@ class GraphExtractor:
             }
 
         # build `DynapcnnLayer` instances from mapper.
-        dynapcnn_layers, destination_map, entry_points = (
-            construct_dynapcnnlayers_from_mapper(
-                dcnnl_map=self.dcnnl_map,
-                dvs_layer_info=self.dvs_layer_info,
-                discretize=discretize,
-                rescale_fn=weight_rescaling_fn,
-            )
+        (
+            dynapcnn_layers,
+            destination_map,
+            entry_points,
+        ) = construct_dynapcnnlayers_from_mapper(
+            dcnnl_map=self.dcnnl_map,
+            dvs_layer_info=self.dvs_layer_info,
+            discretize=discretize,
+            rescale_fn=weight_rescaling_fn,
         )
 
         # Instantiate the DynapcnnNetworkModule
@@ -722,7 +723,6 @@ class GraphExtractor:
 
         # propagate inputs through the nodes.
         for node in self.sorted_nodes:
-
             if isinstance(self.indx_2_module_map[node], sl.merge.Merge):
                 # find `Merge` arguments (at this point the inputs to Merge should have been calculated).
                 input_nodes = self._find_merge_arguments(node)
@@ -744,7 +744,6 @@ class GraphExtractor:
                 nodes_io_map[node] = {"input": inputs[0], "output": _output}
 
             else:
-
                 if node in self._entry_nodes:
                     # forward input dummy through node.
                     _output = self.indx_2_module_map[node](input_dummy)
