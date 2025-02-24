@@ -281,8 +281,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def build_config(
         cls,
         layers: Dict[int, DynapcnnLayer],
-        destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
+        destination_map: Dict[int, List[int]],
     ) -> DynapcnnConfiguration:
         """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
@@ -291,7 +291,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
             cores on hardware. Needed to map the destinations.
-        - destination_indices (List): Indices of destination layers for `layer`
+        - destination_map (Dict): Indices of destination layers for `layer`.
 
         Returns
         -------

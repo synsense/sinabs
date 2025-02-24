@@ -39,17 +39,17 @@ class ConfigBuilder(ABC):
     def build_config(
         cls,
         layers: Dict[int, DynapcnnLayer],
-        destination_map: Dict[int, List[int]],
         layer2core_map: Dict[int, int],
+        destination_map: Dict[int, List[int]],
     ) -> DynapcnnConfiguration:
         """Build the configuration given a model.
 
         Parameters
         ----------
-        model:
-            The target model
-        chip_layers:
-            Chip layers where the given model layers are to be mapped.
+        - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
+        - layer2core_map (Dict): Keys are layer indices, values are corresponding
+            cores on hardware. Needed to map the destinations.
+        - destination_map (Dict): Indices of destination layers for `layer`.
 
         Returns
         -------

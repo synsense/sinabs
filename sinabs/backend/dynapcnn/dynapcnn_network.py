@@ -680,8 +680,9 @@ class DynapcnnNetwork(nn.Module):
         # update config (config. DynapcnnLayer instances into their assigned core).
         config = config_builder.build_config(
             layers=self.all_layers,
-            destination_map=self.layer_destination_map,
             layer2core_map=layer2core_map,
+            destination_map=self.layer_destination_map,
+
         )
 
         if monitor_layers is None:
