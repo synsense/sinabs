@@ -170,7 +170,7 @@ class DynapcnnNetworkModule(nn.Module):
 
         Returns
         ----------
-        - dcnnl_edges: a set of edges using the IDs of `DynapcnnLayer` instances. These edges describe the computational
+        - dcnnl_edges (Set): a set of edges using the IDs of `DynapcnnLayer` instances. These edges describe the computational
             graph implemented by the layers of the model (i.e., how the `DynapcnnLayer` instances address each other).
         """
         dcnnl_edges = set()

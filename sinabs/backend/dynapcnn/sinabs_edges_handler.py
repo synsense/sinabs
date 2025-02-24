@@ -984,23 +984,23 @@ def verify_layer_info(
     for idx, info in dynapcnn_layer_info.items():
         if not "conv" in info:
             raise InvalidGraphStructure(
-                f"DynapCNN layer {idx} has no weight assigned, which should "
-                "never happen. " + default_invalid_structure_string
+                f"DynapCNN layer {idx} has no weight assigned. "
+                + default_invalid_structure_string
             )
         if not "neuron" in info:
             raise InvalidGraphStructure(
-                f"DynapCNN layer {idx} has no spiking layer assigned, which "
-                "should never happen. " + default_invalid_structure_string
+                f"DynapCNN layer {idx} has no spiking layer assigned. "
+                + default_invalid_structure_string
             )
         if not "destinations" in info:
             raise InvalidGraphStructure(
-                f"DynapCNN layer {idx} has no destination info assigned, which "
-                "should never happen. " + default_invalid_structure_string
+                f"DynapCNN layer {idx} has no destination info assigned. "
+                + default_invalid_structure_string
             )
     if edge_counts is not None:
         # Make sure there are as many layers as edges from weight to neuron
         if edge_counts.get("weight-neuron", 0) - len(dynapcnn_layer_info) > 0:
             raise InvalidGraphStructure(
-                "Not all weight-to-neuron edges have been processed, which "
-                "should never happen. " + default_invalid_structure_string
+                "Not all weight-to-neuron edges have been processed. "
+                + default_invalid_structure_string
             )

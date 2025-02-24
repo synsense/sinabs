@@ -1,7 +1,7 @@
 from typing import Set, Tuple, Type
 
 default_invalid_structure_string = (
-    "This should never happen, but is most likely due to an unsupported SNN "
+    "Invalid structure found. This is most likely due to an unsupported SNN "
     "architecture. In general, a dynapcnn network should consist of groups of "
     "a weight layer (conv or linear), a spiking layer (IAFSqueeze), and "
     "optionally a pooling layer."
