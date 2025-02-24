@@ -19,6 +19,7 @@ def construct_dynapcnnlayers_from_mapper(
     Parameters
     ---------
 
+
     Returns
     -------
     - Dict of new DynapcnnLayer instances, with keys corresponding to `dcnnl_map`
@@ -168,7 +169,7 @@ def consolidate_dest_pooling(
 
     Parameters
     ----------
-    modules: Iteravle of pooling modules
+    modules: Iterable of pooling modules
 
     Returns
     -------
@@ -228,7 +229,7 @@ def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] =
 
     Add "rescale_factor" entry to `layer_info`. If more than one
     different rescale factors have been determined due to conflicting
-    average pooling in preceding layers, requrie `rescale_fn` to
+    average pooling in preceding layers, requires `rescale_fn` to
     resolve.
 
     Parameters

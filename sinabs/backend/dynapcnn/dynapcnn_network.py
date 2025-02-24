@@ -79,7 +79,7 @@ class DynapcnnNetwork(nn.Module):
         self.input_shape = infer_input_shape(snn, input_shape)
         self._layer2core_map = None
 
-        # Infer batch size for dummpy input to graph extractor
+        # Infer batch size for dummy input to graph extractor
         if batch_size is None:
             batch_size = sinabs.utils.get_smallest_compatible_time_dimension(snn)
         # computational graph from original PyTorch module.
