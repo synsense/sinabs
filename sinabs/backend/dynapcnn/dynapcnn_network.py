@@ -366,7 +366,7 @@ class DynapcnnNetwork(nn.Module):
                     config_modifier=config_modifier,
                 )
 
-                # apply configuration to device.
+                # apply configuration to device
                 self.samna_device = open_device(device)
                 self.samna_device.get_model().apply_configuration(config)
                 time.sleep(1)
