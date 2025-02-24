@@ -68,7 +68,7 @@ def finalize_dcnnl_map(
 
 
 def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
-    """Consolidate pooling information for dvs layer
+    """Consolidate pooling information for DVS layer
 
     Update `dvs_info` and `dcnnl_map` in place.
     - Extract pooling and scale factor of consecutive pooling operations
