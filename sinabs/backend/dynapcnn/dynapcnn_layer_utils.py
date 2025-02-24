@@ -224,7 +224,7 @@ def extract_pooling_from_module(
 
 
 def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] = None):
-    """Dertermine scale factor of single layer
+    """Determine scale factor of single layer
 
     Add "rescale_factor" entry to `layer_info`. If more than one
     different rescale factors have been determined due to conflicting
