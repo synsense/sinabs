@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 from .model_dummy_1 import batch_size as batch_size_1
 from .model_dummy_1 import expected_output as expected_output_1
 from .model_dummy_1 import input_shape as input_shape_1

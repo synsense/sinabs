@@ -1,6 +1,3 @@
-# author    : Willian Soares Girao
-# contact   : wsoaresgirao@gmail.com
-
 import time
 from pprint import pformat
 from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
@@ -682,7 +679,6 @@ class DynapcnnNetwork(nn.Module):
             layers=self.all_layers,
             layer2core_map=layer2core_map,
             destination_map=self.layer_destination_map,
-
         )
 
         if monitor_layers is None:
