@@ -79,7 +79,7 @@ def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
 
     Parameters
     ----------
-    - dvs_info: Dict holding info of dvs layer.
+    - dvs_info: Dict holding info of DVS layer.
     - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
     """
     if dvs_info is None or dvs_info["pooling"] is None:
