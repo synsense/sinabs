@@ -250,7 +250,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         - layer2core_map (Dict): Keys are layer indices, values are corresponding
             cores on hardware. Needed to map the destinations.
         - destination_indices (List): Indices of destination layers for `layer`
-        - chip_layer (CNNLayerConfig): Configuration object of the corrsesponding
+        - chip_layer (CNNLayerConfig): Configuration object of the corresponding
             on-chip core. Will be changed in-place based on `layer`.
         """
 
