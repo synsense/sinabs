@@ -16,7 +16,7 @@ def construct_dynapcnnlayers_from_mapper(
 ) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, Set[int]], List[int]]:
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
-    Paramters
+    Parameters
     ---------
 
     Returns
