@@ -166,7 +166,7 @@ class DynapcnnNetwork(nn.Module):
         # flush buffer.
         _ = self.samna_output_buffer.get_events()
 
-        # NOTE: The code to start and stop time stamping is device specific
+        # Reset and enable timestamp
         reset_timestamps(self.device)
         enable_timestamps(self.device)
 
