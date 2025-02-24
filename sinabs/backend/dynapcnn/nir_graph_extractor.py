@@ -192,7 +192,7 @@ class GraphExtractor:
         self.verify_no_isolated_nodes()
 
         # create a dict holding the data necessary to instantiate a `DynapcnnLayer`.
-        self.dcnnl_map, self.dvs_layer_info = collect_dynapcnn_layer_info(
+        self.dcnnl_info, self.dvs_layer_info = collect_dynapcnn_layer_info(
             indx_2_module_map=self.indx_2_module_map,
             edges=self.edges,
             nodes_io_shapes=self.nodes_io_shapes,
@@ -216,7 +216,7 @@ class GraphExtractor:
             destination_map,
             entry_points,
         ) = construct_dynapcnnlayers_from_mapper(
-            dcnnl_map=self.dcnnl_map,
+            dcnnl_map=self.dcnnl_info,
             dvs_layer_info=self.dvs_layer_info,
             discretize=discretize,
             rescale_fn=weight_rescaling_fn,
@@ -598,8 +598,6 @@ class GraphExtractor:
         Returns
         ----------
         - edges (set): tuples describing the connections between layers in `spiking_model`.
-        - name_2_indx_map (dict): `key` is the original variable name for a layer in `spiking_model` and `value is an integer representing the layer in a standard format.
-        - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
         """
         return {
             (name_2_indx_map[src.name], name_2_indx_map[tgt.name])
