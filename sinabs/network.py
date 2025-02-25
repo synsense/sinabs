@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
+import pylab
+
 
 from .layers import StatefulLayer
 from .synopcounter import SNNAnalyzer
@@ -136,8 +138,6 @@ class Network(torch.nn.Module):
                 - ann_activity: output activity of the ann layers
                 - snn_activity: output activity of the snn layers
         """
-        import pylab
-
         analog_activations, spike_rates, name_list = self.compare_activations(
             data, name_list=name_list, compute_rate=compute_rate
         )
