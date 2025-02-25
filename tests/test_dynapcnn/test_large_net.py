@@ -103,7 +103,7 @@ def test_was_copied():
     idx_2_name_map = {
         idx: sanitize_name(name) for name, idx in dynapcnn_net.name_2_indx_map.items()
     }
-    for idx, lyr_info in dynapcnn_net._graph_extractor.dcnnl_map.items():
+    for idx, lyr_info in dynapcnn_net._graph_extractor.dcnnl_info.items():
         conv_lyr_dynapcnn = dynapcnn_net.dynapcnn_layers[idx].conv_layer
         conv_node_idx = lyr_info["conv"]["node_id"]
         conv_name = idx_2_name_map[conv_node_idx]
