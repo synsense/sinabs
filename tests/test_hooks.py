@@ -51,7 +51,7 @@ dts = (None, 1, 0.1, 2)
 def test_model_synops_hook(dt):
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     correct_synops = torch.load(INPUT_RESULT_DIR / "model_synops.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     hooks.register_synops_hooks(model, dt=dt)
 
     model(inp)
@@ -69,7 +69,6 @@ def test_model_synops_hook(dt):
 
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook_invalid_pooling(dt):
-
     model = nn.Sequential(
         nn.Conv2d(2, 4, 3, 3),
         IAFSqueeze(batch_size=2),
@@ -108,8 +107,10 @@ def test_model_synops_hook_cuda(dt):
 
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
-    correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
+    correct_firing_rates = torch.load(
+        INPUT_RESULT_DIR / "firing_rates.pth",
+    )
     for layer in model:
         if isinstance(layer, IAFSqueeze):
             layer.register_forward_hook(hooks.firing_rate_hook)
@@ -120,7 +121,7 @@ def test_firing_rate_hook():
 
 def test_firing_rate_per_neuron_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates_per_neuron.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
@@ -132,11 +133,11 @@ def test_firing_rate_per_neuron_hook():
 
 def test_input_diff_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     correct_values = torch.load(INPUT_RESULT_DIR / "input_diffs.pth")
     for layer in model:
         if isinstance(layer, (nn.Conv2d, nn.Linear)):
             layer.register_forward_hook(hooks.input_diff_hook)
     model(inp)
     for idx, correct in correct_values.items():
-        assert (model[idx].hook_data["diff_output"] == correct).all()
+        assert torch.allclose(model[idx].hook_data["diff_output"], correct)

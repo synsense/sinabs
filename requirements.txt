@@ -1,7 +1,7 @@
 pbr
 numpy
-torch>=1.8
+torch>=2.0.0
 nir
 nirtorch
 samna >= 0.33
-
+matplotlib
