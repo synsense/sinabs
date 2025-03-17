@@ -89,7 +89,7 @@ class GraphExtractor:
             original_state = {}
         else:
             # extract computational graph.
-            nir_graph = nirtorch.extract_torch_graph(
+            nir_graph = nirtorch.extract_nir_graph(
                 spiking_model, dummy_input, model_name=None
             ).ignore_tensors()
             if ignore_node_types is not None:
