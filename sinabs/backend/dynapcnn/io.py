@@ -14,19 +14,16 @@ from .utils import parse_device_id, standardize_device_id
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
     "speck": "speck",
-    "speck2b": "Speck2bTestboard",
     "speck2devkit": "Speck2DevKit",
-    "speck2btiny": "Speck2bDevKitTiny",
     "speck2e": "Speck2eTestBoard",  # with a capital B for board
     "speck2edevkit": "Speck2eDevKit",
     "speck2fmodule": "Speck2fModuleDevKit",
     "speck2fdevkit": "Speck2fDevKit",
-    "dynapse1devkit": "Dynapse1DevKit",
+    # "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
-    "pollendevkit": "PollenDevKit",
-    "dynapcnndevkit": "DynapcnnDevKit",
+    # "dynapcnndevkit": "DynapcnnDevKit",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
 }

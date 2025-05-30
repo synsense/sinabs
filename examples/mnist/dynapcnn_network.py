@@ -77,11 +77,9 @@ hardware_compatible_model = DynapcnnNetwork(
 )
 
 # Chip name
-# Depending on the available hardware you have, you can choose to run the
-# network for example on 'dynapcnndevkit' or 'speck2b' among others. See
-# documentation for full list of supported devices
-# chip_name = "speck2fmodule"
-chip_name = "dynapcnndevkit"
+# Depending on the available hardware you have, you need to update the chip name.
+# See documentation for full list of supported devices
+chip_name = "speck2fmodule"
 
 hardware_compatible_model.to(
     device=chip_name, monitor_layers=[-1]  # Monitor the output layer

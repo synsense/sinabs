@@ -110,7 +110,7 @@ class DynapcnnNetwork(nn.Module):
         ----------
 
         device: String
-            cpu:0, cuda:0, dynapcnndevkit, speck2devkit
+            cpu:0, cuda:0, speck2edevkit
 
         chip_layers_ordering: sequence of integers or `auto`
             The order in which the dynapcnn layers will be used. If `auto`,
@@ -197,7 +197,7 @@ class DynapcnnNetwork(nn.Module):
     def _make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
-        device="dynapcnndevkit:0",
+        device="speck2edevkit:0",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ) -> Tuple["SamnaConfiguration", bool]:
@@ -214,7 +214,7 @@ class DynapcnnNetwork(nn.Module):
             Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         device: String
-            dynapcnndevkit, speck2b or speck2devkit
+            speck2edevkit or speck2fdevkit
 
         monitor_layers: None/List/Str
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
@@ -291,7 +291,7 @@ class DynapcnnNetwork(nn.Module):
     def make_config(
         self,
         chip_layers_ordering: Union[Sequence[int], str] = "auto",
-        device="dynapcnndevkit:0",
+        device="speck2fdevkit:0",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier=None,
     ):
@@ -307,7 +307,7 @@ class DynapcnnNetwork(nn.Module):
             Note: This list should be the same length as the number of dynapcnn layers in your model.
 
         device: String
-            dynapcnndevkit, speck2b or speck2devkit
+            speck2edevkit or speck2fdevkit
 
         monitor_layers: None/List/Str
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
@@ -353,7 +353,7 @@ class DynapcnnNetwork(nn.Module):
         """Check if the current model is compatible with a given device.
 
         Args:
-            device_type (str): Device type ie speck2b, speck2fmodule
+            device_type (str): Device type, for example: speck2fmodule
 
         Returns:
             bool: True if compatible

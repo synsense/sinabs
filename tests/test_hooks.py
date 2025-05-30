@@ -130,6 +130,7 @@ def test_firing_rate_per_neuron_hook():
         assert (model[idx].hook_data["firing_rate_per_neuron"] == firing_rate).all()
 
 
+# TODO: this tests is failing now. To check why.
 def test_input_diff_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth")

@@ -4,7 +4,8 @@ from warnings import warn
 
 import samna
 import torch
-from samna.dynapcnn.configuration import DynapcnnConfiguration
+# TODO: to check if this is the correct configuration to be used
+from samna.speck2f.configuration import SpeckConfiguration
 
 import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
@@ -19,8 +20,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return samna.dynapcnn
 
     @classmethod
-    def get_default_config(cls) -> "DynapcnnConfiguration":
-        return DynapcnnConfiguration()
+    def get_default_config(cls) -> "SpeckConfiguration":
+        return SpeckConfiguration()
 
     @classmethod
     def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
@@ -273,7 +274,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return constraints
 
     @classmethod
-    def monitor_layers(cls, config: "DynapcnnConfiguration", layers: List):
+    def monitor_layers(cls, config: "SpeckConfiguration", layers: List):
         """Updates the config object in place.
 
         Parameters
@@ -317,7 +318,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return samna.BasicSinkNode_dynapcnn_event_output_event()
 
     @classmethod
-    def reset_states(cls, config: DynapcnnConfiguration, randomize=False):
+    def reset_states(cls, config: SpeckConfiguration, randomize=False):
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros

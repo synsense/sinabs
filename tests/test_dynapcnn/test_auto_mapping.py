@@ -33,8 +33,7 @@ hardware_compatible_model = DynapcnnNetwork(
 
 def test_auto_mapping():
     for devkit in [
-        "dynapcnndevkit",
-        "speck2btiny",
+        # "dynapcnndevkit",
         "speck2e",
         "speck2edevkit",
         "speck2fmodule",

@@ -36,8 +36,7 @@ hardware_compatible_model = DynapcnnNetwork(
 
 def test_zero_initial_states():
     for devkit in [
-        "dynapcnndevkit",
-        "speck2btiny",
+        # "dynapcnndevkit",
         "speck2e",
         "speck2edevkit",
         "speck2fmodule",

@@ -33,7 +33,8 @@ def test_multi_device_movement():
         input_shape=input_shape,
     )
 
-    hardware_compatible_model.to("speck2b:0")
+    # TODO: changed from speck 2b -> speck2e -- evaluate if makes sense
+    hardware_compatible_model.to("speck2e:0")
 
     print("Second attempt")
-    hardware_compatible_model.to("speck2b:0")
+    hardware_compatible_model.to("speck2e:0")
