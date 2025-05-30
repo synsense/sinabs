@@ -115,6 +115,7 @@ List of devices currently recognized by *samna*
 
 ```
 # A map of all device types and their corresponding samna `device_name`
+TODO: Fix this list
 device_types = {
     "speck": "speck",
     "dynapse2": "DYNAP-SE2 DevBoard",
@@ -124,7 +125,6 @@ device_types = {
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
-    "pollendevkit": "PollenDevKit",
     "dynapcnndevkit": "DynapcnnDevKit",
 }
 ```

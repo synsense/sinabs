@@ -11,9 +11,9 @@ Currently, __sinabs-dynapcnn__ library provides the interface to serveral availa
 
 | Device Name |Identifier |
 | :----| :----: | 
-| DYNAP-CNN Development Kit |*dynapcnndevkit | 
-| Speck Tiny Development Kit|*speck2btiny|
 | Speck Development Kit |*speck2edevkit|
+TODO: Update the device name here
+| Speck Development Kit |*speck2fdevkit|
 
 __note__: * stands for the correspond software identifier we assigned to the different devkit
 
