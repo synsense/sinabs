@@ -27,9 +27,9 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt-get update && sudo apt-get -y install libglu1-mesa
-          pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r tests/requirements.txt
+          pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
       - name: Test with pytest
         run: |
           pytest tests
