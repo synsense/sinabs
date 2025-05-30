@@ -4,6 +4,7 @@ from warnings import warn
 
 import samna
 import torch
+
 # TODO: to check if this is the correct configuration to be used
 from samna.speck2f.configuration import SpeckConfiguration
 
