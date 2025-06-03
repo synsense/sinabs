@@ -26,10 +26,6 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
         return samna.BasicSinkNode_speck2e_event_output_event()
 
     @classmethod
-    def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
-        return config_dict
-
-    @classmethod
     def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
         config_dict = super().get_dynapcnn_layer_config_dict(layer=layer)
         return config_dict
