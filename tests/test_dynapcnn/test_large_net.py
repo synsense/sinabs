@@ -14,6 +14,7 @@ from torch import nn
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 from sinabs.from_torch import from_model
 from sinabs.layers import NeuromorphicReLU
+from hw_utils import find_open_devices
 
 
 class DynapCnnNetA(nn.Module):
@@ -119,23 +120,28 @@ def test_make_config():
     )
 
 
-@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_to_device():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False
     )
     dynapcnn_out = dynapcnn_net(input_data)
 
-    dynapcnn_net.to(
-        device="speck2edevkit:0", chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
-    )
+    devices = find_open_devices()
 
-    # Close device for safe exit
-    from sinabs.backend.dynapcnn import io
+    if len(devices) == 0:
+        pytest.skip("A connected Speck device is required to run this test")
 
-    io.close_device("speck2edevkit:0")
+    for device_name, _ in devices.items():
 
-    dynapcnn_net.to(device="speck2edevkit:0")
+        dynapcnn_net.to(
+            device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
+        )
+        # Close device for safe exit
+        from sinabs.backend.dynapcnn import io
+
+        io.close_device(device_name)
+
+        dynapcnn_net.to(device=device_name)
 
 
 def test_memory_summary():
