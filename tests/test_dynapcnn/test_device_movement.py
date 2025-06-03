@@ -44,4 +44,3 @@ def test_multi_device_movement():
 
             print("Second attempt")
             hardware_compatible_model.to("speck2e:0")
-

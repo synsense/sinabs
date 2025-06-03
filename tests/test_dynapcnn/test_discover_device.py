@@ -4,6 +4,7 @@ import samna
 from sinabs.backend.dynapcnn import io
 from hw_utils import find_open_devices
 
+
 @pytest.mark.skip("Not implemented")
 def test_list_all_devices():
     devices = find_open_devices()
