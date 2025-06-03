@@ -108,7 +108,7 @@ print("Sending events to device")
 evs_out = hardware_compatible_model(input_events)
 
 # Filter readout events
-if chip_name == "dynapcnndevkit":
+if chip_name == "speck2fdevkit":
     evs_out = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike), evs_out))
 
 if len(evs_out) > 0:

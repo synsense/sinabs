@@ -6,7 +6,7 @@ This package automates this process for the end-user and enables quick deploymen
 
 TLDR;
 -----
-A short (and perhaps the quickest path) to deploying your model on one of our dev-kits is shown in the example below.
+A short (and perhaps the quickest path) to deploying your model on one of our chips is shown in the example below.
 
 ```python
 import torch
@@ -45,7 +45,7 @@ hw_model = DynapcnnNetwork(
 )
 
 # Deploy model to a dev-kit
-hw_model.to(device="dynapcnndevkit:0")
+hw_model.to(device="speck2fdevkit:0")
 
 # Send events to chip
 events_in: List["Spike"] =  ... # Load your events
@@ -59,7 +59,7 @@ events_out = hw_model(events_in)
 Model conversion to DYNAP-CNN core structure
 --------------------------------------------
 
-DYNAP-CNN based chips like `DYNAP-CNN DevKit` or `Speck` series comprise several `cores` or `layers`. 
+Speck family chips, based on DYNAP-CNN, comprise several `cores` or `layers`.
 Each of these `layers` comprises three functionalities:
 
     1. 2D Convolution
@@ -97,7 +97,7 @@ Device selection
 ----------------
 
 The device naming is inspired by `pytorch` device naming convention ie `DEVICE_TYPE:INDEX`.
-`dynapcnndevkit:0` refers to the _first_ `Dynapcnn DevKit` available. 
+`speck2fdevkit:0` refers to the _first_ `Speck 2F DevKit` available.
 If there are multiple devices of the same kind connected to the PC, then they are referred by higher incremental indices.
 
 To see all the recognized devices, please have a look at the `sinabs.backend.dynapcnn.io.device_types`
@@ -115,17 +115,16 @@ List of devices currently recognized by *samna*
 
 ```
 # A map of all device types and their corresponding samna `device_name`
-TODO: Fix this list
 device_types = {
-    "speck": "speck",
+    "speck2e": "Speck2eTestBoard",
+    "speck2edevkit": "Speck2eDevKit",
+    "speck2fmodule": "Speck2fModuleDevKit",
+    "speck2fdevkit": "Speck2fDevKit",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
-    "speck2devkit": "Speck2DevKit",
-    "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
-    "dynapcnndevkit": "DynapcnnDevKit",
 }
 ```
 
@@ -166,13 +165,13 @@ Porting model to device
 -----------------------
 
 `DynapcnnNetwork` class has an API similar to that of native `pytorch` and its `.to` method.
-Similar to porting a model to cpu with `model.to("cpu")` and GPU with `model.to("cuda:0")` you can also port your `DynapcnnCompatibleModel` to a chip with `model.to("dynapcnndevkit:0")`.
+Similar to porting a model to cpu with `model.to("cpu")` and GPU with `model.to("cuda:0")` you can also port your `DynapcnnCompatibleModel` to a chip with `model.to("speck2fdevkit:0")`.
 
 You can also specify a few additional parameters as shown below.
 
 ```python
 hw_model.to(
-    device="dynapcnndevkit:0",
+    device="speck2fdevkit:0",
     chip_layers_ordering="auto",  # default value is "auto"
     monitor_layers=[-1],
     config_modifier=config_modifier,

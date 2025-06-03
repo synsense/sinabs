@@ -26,7 +26,7 @@ consist of:
  "Logic" −> "Kernel Memory Read" −> "Logic" −> "Neuron Read" −> "Neuron Write" −> "Logic" 
 `
 
-Each core/layer on the DynapCNN/Speck has an upper limit on the number of synaptic-operations it can execute per second.
+Each core/layer on the Speck processor has an upper limit on the number of synaptic-operations it can execute per second.
 This upper limit is the "bandwidth of SynOps/s". 
 
 If the number of SynOps/s for a single core exceeds the limit, the entire chip stalls, and the

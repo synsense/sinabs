@@ -179,7 +179,7 @@ class Network:
 ```
 network = nn.sequential([
                         nn.conv2d(),
-                        nn.BatchNorm2d(), # unspport in speck/dynapcnn
+                        nn.BatchNorm2d(), # unsupport in speck
                         IAFsqueeze(),
                         ])
 ```
