@@ -4,7 +4,6 @@ import numpy as np
 import torch
 
 from .chips import (
-    # DynapcnnConfigBuilder,
     Speck2EConfigBuilder,
     Speck2FConfigBuilder,
 )
@@ -14,7 +13,6 @@ from .utils import parse_device_id
 
 class ChipFactory:
     supported_devices = {
-        # "dynapcnndevkit": DynapcnnConfigBuilder,
         "speck2e": Speck2EConfigBuilder,
         "speck2edevkit": Speck2EConfigBuilder,
         "speck2fmodule": Speck2FConfigBuilder,  # Speck2fModuleDevKit

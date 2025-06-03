@@ -13,17 +13,13 @@ from .utils import parse_device_id, standardize_device_id
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
-    "speck": "speck",
-    "speck2devkit": "Speck2DevKit",
     "speck2e": "Speck2eTestBoard",  # with a capital B for board
     "speck2edevkit": "Speck2eDevKit",
     "speck2fmodule": "Speck2fModuleDevKit",
     "speck2fdevkit": "Speck2fDevKit",
-    # "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
-    # "dynapcnndevkit": "DynapcnnDevKit",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
 }
@@ -41,13 +37,13 @@ def enable_timestamps(
     ----
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
+    if device_name.lower() == "speck2fdevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
         device_handle.get_stop_watch().set_enable_value(True)
@@ -63,13 +59,13 @@ def disable_timestamps(
 
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
+    if device_name.lower() == "speck2fdevkit":
         device_handle.get_io_module().write_config(0x0003, 0)
     else:
         device_handle.get_stop_watch().set_enable_value(False)
@@ -84,13 +80,13 @@ def reset_timestamps(
     ----
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
+    if device_name.lower() == "speck2fdevkit":
         device_handle.get_io_module().write_config(0x0003, 1)
     else:
         device_handle.get_stop_watch().reset()
@@ -219,7 +215,7 @@ def discover_device(device_id: str):
     ----
 
     device_id: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        Device name/identifier (speck2fdevkit:0 or speck2edevkit:0 or ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
     Returns
@@ -266,7 +262,7 @@ def close_device(device_id: str):
 
     device_id: str
         device_name:device_id pair given as a string.
-        dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
+        speck2fdevkit:0 or speck2edevkit:0 or speck2fdevkit:1 or ...
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
