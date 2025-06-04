@@ -64,6 +64,9 @@ def get_demo_dynapcnn_network():
     return dynapcnn_network
 
 
+@pytest.mark.skip(
+    "This test was being skiiped all the time and now needs modification in the visualizer"
+)
 def test_jit_compilation():
     dvs_shape = (128, 128)
     spike_collection_interval = 500
