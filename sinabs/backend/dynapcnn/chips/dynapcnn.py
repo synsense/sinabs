@@ -1,11 +1,9 @@
-import copy
 from typing import List
 from warnings import warn
 
 import samna
 import torch
 
-import sinabs
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -20,9 +18,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def get_default_config(cls):
         raise NotImplementedError("DynapCNNConfigBuilder should not be used directly.")
-
-    @classmethod
-    def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
 
     @classmethod
     def write_dvs_layer_config(cls, layer: DVSLayer, config: "DvsLayerConfig"):
