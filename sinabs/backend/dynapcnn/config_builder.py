@@ -1,4 +1,3 @@
-import time
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -12,7 +11,7 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def get_samna_module(self):
-        """Get the saman parent module that hosts all the appropriate sub-modules and classes.
+        """Get the samna parent module that hosts all the appropriate sub-modules and classes.
 
         Returns
         -------

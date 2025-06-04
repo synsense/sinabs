@@ -1,8 +1,10 @@
+from abc import abstractmethod
 from typing import List
 from warnings import warn
 
 import samna
 import torch
+import sinabs
 
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
@@ -12,12 +14,22 @@ from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
+    @abstractmethod
     def get_samna_module(cls):
-        return samna.dynapcnn
+        """
+        Get the samna parent module that hosts all the appropriate sub-modules and classes.
+
+        Returns
+        -------
+        samna module
+        """
 
     @classmethod
+    @abstractmethod
     def get_default_config(cls):
-        raise NotImplementedError("DynapCNNConfigBuilder should not be used directly.")
+        """
+        Returns the default configuration for the device type
+        """
 
     @classmethod
     def write_dvs_layer_config(cls, layer: DVSLayer, config: "DvsLayerConfig"):
@@ -254,15 +266,36 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config
 
     @classmethod
+    @abstractmethod
     def get_input_buffer(cls):
-        return samna.BasicSourceNode_dynapcnn_event_input_event()
+        """
+        Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph. (It is needed as of samna
+        0.21.0)
+        """
 
     @classmethod
+    @abstractmethod
     def get_output_buffer(cls):
-        return samna.BasicSinkNode_dynapcnn_event_output_event()
+        """
+        Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph.
+        """
 
     @classmethod
     def reset_states(cls, config, randomize=False):
+        """
+        Parameters
+        ----------
+        config:
+            samna config object
+        randomize (bool):
+            If true, the states will be set to random initial values. Else, they will be set to zero
+        """
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros

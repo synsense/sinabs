@@ -5,9 +5,8 @@ from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 from .dynapcnn import DynapcnnConfigBuilder
 
-# Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
-
+# Inherit DynapCNNConfigBuilder to share implementation with other DynapCNN/Speck devices
 class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_samna_module(cls):
