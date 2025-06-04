@@ -223,7 +223,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return constraints
 
     @classmethod
-    def monitor_layers(cls, config: "SpeckConfiguration", layers: List):
+    def monitor_layers(cls, config, layers: List):
         """Updates the config object in place.
 
         Parameters
@@ -267,7 +267,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return samna.BasicSinkNode_dynapcnn_event_output_event()
 
     @classmethod
-    def reset_states(cls, config: SpeckConfiguration, randomize=False):
+    def reset_states(cls, config, randomize=False):
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros
