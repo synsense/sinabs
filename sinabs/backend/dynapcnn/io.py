@@ -31,7 +31,8 @@ device_map = {}
 def enable_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Enable timestamps of the samna node.
 
     Args
     ----
@@ -40,19 +41,16 @@ def enable_timestamps(
         for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "speck2fdevkit":
-        device_handle.get_io_module().write_config(0x0003, 1)
-    else:
-        device_handle.get_stop_watch().set_enable_value(True)
+    device_handle.get_stop_watch().start()
 
 
 def disable_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Disable timestamps of the samna node.
 
     Args
     ----
@@ -62,19 +60,16 @@ def disable_timestamps(
         for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "speck2fdevkit":
-        device_handle.get_io_module().write_config(0x0003, 0)
-    else:
-        device_handle.get_stop_watch().set_enable_value(False)
+    device_handle.get_stop_watch().stop()
 
 
 def reset_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Reset timestamps of the samna node.
 
     Args
     ----
@@ -83,44 +78,14 @@ def reset_timestamps(
         for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "speck2fdevkit":
-        device_handle.get_io_module().write_config(0x0003, 1)
-    else:
-        device_handle.get_stop_watch().reset()
-
-
-# def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
-#    """
-#    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`.
-#
-#    Parameters
-#    ----------
-#
-#    event_list: List
-#        A list comprising of events from samna API
-#
-#    layer: int
-#        The index of layer for which the data needs to be converted
-#
-#    Returns
-#    -------
-#
-#    raster: torch.Tensor
-#    """
-#    evs_filtered = filter(
-#        lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list
-#    )
-#    evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
-#    raise NotImplementedError
-#    raster = map(rasterize, evs_filtered)
-#    return raster
+    device_handle.get_stop_watch().reset()
 
 
 def events_to_xytp(event_list: List, layer: int) -> np.array:
-    """Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
+    """
+    Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
     `channel`.
 
     Parameters
@@ -140,7 +105,10 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
     """
     evs_filtered = list(
         filter(
-            lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer,
+            lambda x: isinstance(
+                x, (samna.speck2e.event.Spike, samna.speck2f.event.Spike)
+            )
+            and x.layer == layer,
             event_list,
         )
     )
