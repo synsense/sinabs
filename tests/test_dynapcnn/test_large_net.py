@@ -136,12 +136,13 @@ def test_to_device():
         dynapcnn_net.to(
             device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
         )
+
+        # TODO: trying to map a network again is throwing an exception when retrying to open the device
+        # after closing it
         # Close device for safe exit
-        from sinabs.backend.dynapcnn import io
+        # from sinabs.backend.dynapcnn import io
+        # io.close_device(device_name)
 
-        io.close_device(device_name)
-
-        # TODO: trying to map a network again is throwing an exception when trying to open the device
         # dynapcnn_net.to(device=device_name)
 
 
