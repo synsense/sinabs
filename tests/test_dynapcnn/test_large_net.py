@@ -137,13 +137,13 @@ def test_to_device():
             device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
         )
 
-        # TODO: trying to map a network again is throwing an exception when retrying to open the device
-        # after closing it
+        # TODO: this test fails when using speck2e but not speck 2f.
+        # This has been reported in Samna: https://www.wrike.com/workspace.htm?acc=6529583#/inbox/work_item/1674059530
         # Close device for safe exit
-        # from sinabs.backend.dynapcnn import io
-        # io.close_device(device_name)
+        from sinabs.backend.dynapcnn import io
 
-        # dynapcnn_net.to(device=device_name)
+        io.close_device(device_name)
+        dynapcnn_net.to(device=device_name)
 
 
 def test_memory_summary():
