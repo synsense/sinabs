@@ -45,7 +45,7 @@ def build_model():
 
 
 def test_chip_level_monitoring_enable():
-    builder = ChipFactory("speck2b:0").get_config_builder()
+    builder = ChipFactory("speck2edevkit:0").get_config_builder()
     # Get the default config
     config = builder.get_default_config()
 
@@ -68,10 +68,10 @@ def test_chip_level_monitoring_enable():
 
 def test_default_monitoring():
     dynapcnn_net = build_model()
-    builder = ChipFactory("speck2b:0").get_config_builder()
+    builder = ChipFactory("speck2edevkit:0").get_config_builder()
 
     # As a default the last layer should be monitored
-    config = dynapcnn_net.make_config(device="speck2b:0")
+    config = dynapcnn_net.make_config(device="speck2edevkit:0")
     clo = dynapcnn_net.chip_layers_ordering
     assert len(clo) > 0
     # Check that monitoring is off for all layers except last
@@ -85,10 +85,10 @@ def test_default_monitoring():
 
 def test_model_level_monitoring_enable():
     dynapcnn_net = build_model()
-    builder = ChipFactory("speck2b:0").get_config_builder()
+    builder = ChipFactory("speck2edevkit:0").get_config_builder()
 
     # No layers are to be monitored
-    config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers=[])
+    config = dynapcnn_net.make_config(device="speck2edevkit:0", monitor_layers=[])
     all_layers = list(range(9))
     for layer in all_layers:
         assert config.cnn_layers[layer].monitor_enable == False
@@ -96,7 +96,7 @@ def test_model_level_monitoring_enable():
     # Specify layers to monitor - should warn becuase layer 5 has pooling
     with pytest.warns(Warning):
         config = dynapcnn_net.make_config(
-            device="speck2b:0", monitor_layers=["dvs", 5, -1]
+            device="speck2edevkit:0", monitor_layers=["dvs", 5, -1]
         )
     clo = dynapcnn_net.chip_layers_ordering
     assert len(clo) > 0
@@ -108,8 +108,8 @@ def test_model_level_monitoring_enable():
     # Specify layers to monitor - should not warn becuase final layer has no pooling
     with warnings.catch_warnings():
         warnings.simplefilter("error")
-        config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers=[-1])
+        config = dynapcnn_net.make_config(device="speck2edevkit:0", monitor_layers=[-1])
 
     # Monitor all layers
-    config = dynapcnn_net.make_config(device="speck2b:0", monitor_layers="all")
+    config = dynapcnn_net.make_config(device="speck2edevkit:0", monitor_layers="all")
     assert all(config.cnn_layers[i].monitor_enable == True for i in clo)

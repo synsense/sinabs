@@ -1,12 +1,11 @@
-import copy
+from abc import abstractmethod
 from typing import List
 from warnings import warn
 
 import samna
 import torch
-from samna.dynapcnn.configuration import DynapcnnConfiguration
-
 import sinabs
+
 from sinabs.backend.dynapcnn.config_builder import ConfigBuilder
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer, expand_to_pair
 from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
@@ -15,62 +14,27 @@ from sinabs.backend.dynapcnn.mapping import LayerConstraints
 
 class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
+    @abstractmethod
     def get_samna_module(cls):
-        return samna.dynapcnn
+        """
+        Get the samna parent module that hosts all the appropriate sub-modules and classes.
+
+        Returns
+        -------
+        samna module
+        """
 
     @classmethod
-    def get_default_config(cls) -> "DynapcnnConfiguration":
-        return DynapcnnConfiguration()
-
-    @classmethod
-    def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
+    @abstractmethod
+    def get_default_config(cls):
+        """
+        Returns the default configuration for the device type
+        """
 
     @classmethod
     def write_dvs_layer_config(cls, layer: DVSLayer, config: "DvsLayerConfig"):
         for param, value in layer.get_config_dict().items():
             setattr(config, param, value)
-
-    @classmethod
-    def set_kill_bits(cls, layer: DynapcnnLayer, config_dict: dict) -> dict:
-        """This method updates all the kill_bit parameters.
-
-        Args:
-            layer (DynapcnnLayer): The layer of whome the configuration is to be generated
-            config_dict (dict): The dictionary where the parameters need to be added
-
-
-        Returns:
-            dict: returns the updated config_dict.
-        """
-        config_dict = copy.deepcopy(config_dict)
-
-        if layer.conv_layer.bias is not None:
-            (weights, biases) = layer.conv_layer.parameters()
-        else:
-            (weights,) = layer.conv_layer.parameters()
-            biases = torch.zeros(layer.conv_layer.out_channels)
-
-        config_dict["weights_kill_bit"] = (~weights.bool()).tolist()
-        config_dict["biases_kill_bit"] = (~biases.bool()).tolist()
-
-        # - Neuron states
-        if not layer.spk_layer.is_state_initialised():
-            # then we assign no initial neuron state to DYNAP-CNN.
-            f, h, w = layer.get_neuron_shape()
-            neurons_state = torch.zeros(f, w, h)
-        elif layer.spk_layer.v_mem.dim() == 4:
-            # 4-dimensional states should be the norm when there is a batch dim
-            neurons_state = layer.spk_layer.v_mem.transpose(2, 3)[0]
-        else:
-            raise ValueError(
-                f"Current v_mem (shape: {layer.spk_layer.v_mem.shape}) of spiking layer not understood."
-            )
-
-        config_dict["neurons_value_kill_bit"] = (
-            torch.zeros_like(neurons_state).bool().tolist()
-        )
-
-        return config_dict
 
     @classmethod
     def get_dynapcnn_layer_config_dict(cls, layer: DynapcnnLayer):
@@ -112,11 +76,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict["weights"] = weights.int().tolist()
         config_dict["biases"] = biases.int().tolist()
         config_dict["leak_enable"] = biases.bool().any()
-        # config_dict["weights_kill_bit"] = torch.zeros_like(weights).bool().tolist()
-        # config_dict["biases_kill_bit"] = torch.zeros_like(biases).bool().tolist()
 
         # Update parameters from the spiking layer
-
         # - Neuron states
         if not layer.spk_layer.is_state_initialised():
             # then we assign no initial neuron state to DYNAP-CNN.
@@ -155,7 +116,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
                 "threshold_low": min_v_mem,
                 "monitor_enable": False,
                 "neurons_initial_value": neurons_state.int().tolist(),
-                # "neurons_value_kill_bit" : torch.zeros_like(neurons_state).bool().tolist()
             }
         )
         # Update parameters from pooling
@@ -166,9 +126,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
             config_dict["destinations"][0]["enable"] = True
         else:
             pass
-
-        # Set kill bits
-        config_dict = cls.set_kill_bits(layer=layer, config_dict=config_dict)
 
         return config_dict
 
@@ -273,7 +230,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return constraints
 
     @classmethod
-    def monitor_layers(cls, config: "DynapcnnConfiguration", layers: List):
+    def monitor_layers(cls, config, layers: List):
         """Updates the config object in place.
 
         Parameters
@@ -309,15 +266,36 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return config
 
     @classmethod
+    @abstractmethod
     def get_input_buffer(cls):
-        return samna.BasicSourceNode_dynapcnn_event_input_event()
+        """
+        Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph. (It is needed as of samna
+        0.21.0)
+        """
 
     @classmethod
+    @abstractmethod
     def get_output_buffer(cls):
-        return samna.BasicSinkNode_dynapcnn_event_output_event()
+        """
+        Initialize and return the appropriate output buffer object Note that this just the
+        buffer object.
+
+        This does not actually connect the buffer object to the graph.
+        """
 
     @classmethod
-    def reset_states(cls, config: DynapcnnConfiguration, randomize=False):
+    def reset_states(cls, config, randomize=False):
+        """
+        Parameters
+        ----------
+        config:
+            samna config object
+        randomize (bool):
+            If true, the states will be set to random initial values. Else, they will be set to zero
+        """
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape
             # set the config's neuron initial state values into zeros

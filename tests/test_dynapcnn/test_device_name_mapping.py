@@ -6,6 +6,6 @@ def test_device_id_no_index():
 
 
 def test_standardize():
-    assert standardize_device_id("speck2b") == "speck2b:0"
-    assert standardize_device_id("speck2b:00") == "speck2b:0"
-    assert standardize_device_id("speck2b:1") == "speck2b:1"
+    assert standardize_device_id("speck2f") == "speck2f:0"
+    assert standardize_device_id("speck2f:00") == "speck2f:0"
+    assert standardize_device_id("speck2f:1") == "speck2f:1"

@@ -71,8 +71,6 @@ def test_neuron_leak():
         "speck2fdevkit": samna.speck2f.event.ReadNeuronValue,
         "speck2e": samna.speck2e.event.ReadNeuronValue,
         "speck2edevkit": samna.speck2e.event.ReadNeuronValue,
-        "speck2b": samna.speck2b.event.ReadNeuronValue,
-        "dynapcnndevkit": samna.dynapcnn.event.ReadNeuronValue,
     }
 
     snn = nn.Sequential(

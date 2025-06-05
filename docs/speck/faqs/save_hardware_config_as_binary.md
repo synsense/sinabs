@@ -25,5 +25,5 @@ with open("./my_config.bin", "wb") as f:
         f.write((e).to_bytes(1, byteorder='little'))
 ```
 
-More details can be found in [samna documetation.](https://synsense-sys-int.gitlab.io/samna/search.html?q=configuration_to_flash_binary)
+More details can be found in [samna documetation.](https://synsense-sys-int.gitlab.io/samna/0.46.1/reference/speck2f/index.html#samna.speck2f.configuration_to_flash_binary)
 
