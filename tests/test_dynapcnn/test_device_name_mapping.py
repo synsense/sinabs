@@ -5,8 +5,7 @@ def test_device_id_no_index():
     assert parse_device_id("speck") == parse_device_id("speck:0")
 
 
-# TODO: evaluate if we can use another board for this test instead of speck 2b
-# def test_standardize():
-#     assert standardize_device_id("") == ":0"
-#     assert standardize_device_id(":00") == ":0"
-#     assert standardize_device_id(":1") == ":1"
+def test_standardize():
+    assert standardize_device_id("speck2f") == "speck2f:0"
+    assert standardize_device_id("speck2f:00") == "speck2f:0"
+    assert standardize_device_id("speck2f:1") == "speck2f:1"
