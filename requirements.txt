@@ -1,7 +1,7 @@
 pbr
 numpy
 torch>=1.8
-nir
+nir <=1.0.4
 nirtorch
 samna >= 0.33
 

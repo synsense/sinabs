@@ -44,7 +44,7 @@ Please join us on the [#sinabs Discord channel](https://discord.gg/V6FHBZURkg)!
 
 License
 -------
-Sinabs is published under AGPL v3.0. See the LICENSE file for details.
+Sinabs is published under Apache v2.0. See the LICENSE file for details.
 
 
 Contributing to Sinabs
@@ -61,7 +61,7 @@ In case you find this software library useful for your work please consider citi
 @software{sinabs,
 author = {Sheik, Sadique and Lenz, Gregor  and Bauer, Felix and Kuepelioglu, Nogay },
 doi = {10.5281/zenodo.8385545},
-license = {AGPL-3.0},
+license = {Apache-2.0},
 title = {{SINABS: A simple Pytorch based SNN library specialised for Speck}},
 url = {https://github.com/synsense/sinabs}
 }
