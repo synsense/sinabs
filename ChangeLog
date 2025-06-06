@@ -1,7 +1,12 @@
 CHANGES
 =======
 
-v2.0.4
+v3.0.1
+------
+
+* Update the release of the project when `main` branch is updated instead of `develop`
+
+v3.0.0
 ------
 
 * Remove support for older boards following update on Samna 0.46.0
