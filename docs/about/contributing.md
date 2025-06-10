@@ -2,7 +2,7 @@
 
 We welcome developers to build and contribute to sinabs.
 
-Please email sinabs@synsense.ai for a contributors license agreement. 
+Please email support@synsense.ai for a contributors license agreement.
 
 
 ## How do you go about it?
