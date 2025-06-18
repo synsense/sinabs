@@ -6,7 +6,7 @@ Integrate and Fire (IAF)
 """
 
 import torch
-from .utils import plot_evolution
+from utils import plot_evolution
 
 import sinabs.layers as sl
 
