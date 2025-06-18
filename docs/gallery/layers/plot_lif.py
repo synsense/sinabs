@@ -6,7 +6,7 @@ The :class:`~sinabs.layers.LIF` layer. This neuron integrates the input and deca
 """
 
 import torch
-from utils import plot_evolution
+from .utils import plot_evolution
 
 import sinabs.layers as sl
 
