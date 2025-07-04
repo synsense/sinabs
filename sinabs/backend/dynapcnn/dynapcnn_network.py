@@ -371,7 +371,7 @@ class DynapcnnNetwork(nn.Module):
                 self.samna_device.get_model().apply_configuration(config)
                 time.sleep(1)
 
-                # set external slow-clock if needed.
+                # set external slow-clock if needed
                 if slow_clk_frequency is not None:
                     dk_io = self.samna_device.get_io_module()
                     dk_io.set_slow_clk(True)
