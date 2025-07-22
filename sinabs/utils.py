@@ -203,6 +203,12 @@ def validate_memory_mapping_speck(
         padding (Tuple[int, int]): 2D padding size
         input_dimension (Tuple[int, int]): 2D input dimension size. Defaults to [64,64]
         conv_2d (bool): if it is mapping a Conv2D layers. Defaults to True. It won't validate other types of network.
+
+    Return:
+        msg (string): Message indicating layer can be mapped with total size of kernel and neuron memories.
+
+    Raises:
+        Exception: if neuron or kernel memories are higher than available on chip.
     """
 
     if not conv_2d:
@@ -227,7 +233,9 @@ def validate_memory_mapping_speck(
     if kernel_error_msg != "" or neuron_error_msg != "":
         raise Exception(kernel_error_msg + neuron_error_msg)
     else:
-        print(
+        msg = (
             "Layer can be mapped successfully. "
             f"Kernel memory is {kernel:g}Ki and neuron memory is {neuron:g}Ki."
         )
+
+    return msg
