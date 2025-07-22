@@ -1,6 +1,11 @@
 CHANGES
 =======
 
+v3.0.3
+
+* Add function in utils to help identify issues with memory constraints when mapping a network on Speck.
+(https://sinabs.readthedocs.io/v3.0.3/api/utils.html#sinabs.utils.validate_memory_mapping_speck)
+
 v3.0.2
 ------
 
