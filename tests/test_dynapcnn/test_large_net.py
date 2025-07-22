@@ -85,7 +85,6 @@ dynapcnn_out = dynapcnn_net(input_data)
 
 
 def test_same_result():
-    # print(dynapcnn_out)
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
@@ -137,8 +136,6 @@ def test_to_device():
             device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
         )
 
-        # TODO: this test fails when using speck2e but not speck 2f.
-        # This has been reported in Samna: https://www.wrike.com/workspace.htm?acc=6529583#/inbox/work_item/1674059530
         # Close device for safe exit
         from sinabs.backend.dynapcnn import io
 

@@ -188,5 +188,8 @@ def recover_mapping(graph, layer_mapping) -> List[Tuple[int, int]]:
             if edge.flow == 1:
                 mapping.append((i, edge.t - len(layer_mapping) - 1))
     if len(mapping) != len(layer_mapping):
-        raise ValueError("No valid mapping found")
+        raise ValueError(
+            "No valid mapping found. "
+            "For Speck family you can use `utils.validate_memory_mapping_speck()` to get more information."
+        )
     return mapping

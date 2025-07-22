@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import torch
 import torch.nn as nn
 
 import sinabs
+from .validate_memory_speck import ValidateMapping
 
 
 def reset_states(model: nn.Module) -> None:
@@ -179,3 +180,62 @@ def set_batch_size(model: nn.Module, batch_size: int):
         if isinstance(mod, sinabs.layers.SqueezeMixin):
             mod.batch_size = batch_size
             # reset_states(mod)
+
+
+def validate_memory_mapping_speck(
+    input_feature_size: int,
+    output_feature_size: int,
+    kernel_size: Tuple[int, int],
+    stride: Tuple[int, int],
+    padding: Tuple[int, int],
+    input_dimension: Tuple[int, int] = [64, 64],
+    conv_2d: bool = True,
+):
+    """Helper function to verify if it is possible to map a specific layer on to speck.
+        This function validates kernel and neuron memories. It doesnt check for all the network layers together.
+        It considers the mapping of a Conv2D layer only.
+
+    Args:
+        input_feature_size (int): number of input channels
+        output_feature_size (int): number of output channels
+        kernel_size (Tuple[int, int]): 2D kernel size
+        stride (Tuple[int, int]): 2D stride size
+        padding (Tuple[int, int]): 2D padding size
+        input_dimension (Tuple[int, int]): 2D input dimension size. Defaults to [64,64]
+        conv_2d (bool): if it is mapping a Conv2D layers. Defaults to True. It won't validate other types of network.
+
+    Return:
+        msg (string): Message indicating layer can be mapped with total size of kernel and neuron memories.
+
+    Raises:
+        Exception: if neuron or kernel memories are higher than available on chip.
+    """
+
+    if not conv_2d:
+        raise ValueError("This function only validates Conv2D layers.")
+
+    validate = ValidateMapping(
+        input_feature_size,
+        output_feature_size,
+        kernel_size,
+        stride,
+        padding,
+        [input_dimension[0], input_dimension[1]],
+        conv_2d,
+    )
+    (
+        kernel,
+        neuron,
+        kernel_error_msg,
+        neuron_error_msg,
+    ) = validate.calculate_total_memory()
+
+    if kernel_error_msg != "" or neuron_error_msg != "":
+        raise Exception(kernel_error_msg + neuron_error_msg)
+    else:
+        msg = (
+            "Layer can be mapped successfully. "
+            f"Kernel memory is {kernel:g}Ki and neuron memory is {neuron:g}Ki."
+        )
+
+    return msg

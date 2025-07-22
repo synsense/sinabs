@@ -361,8 +361,8 @@ class DynapcnnNetwork(nn.Module):
         try:
             _, is_compatible = self._make_config(device=device_type)
         except ValueError as e:
-            # Catch "No valid mapping found" error
-            if e.args[0] == ("No valid mapping found"):
+            # Catch "No valid mapping found" error, it is the first sentence in the string
+            if e.args[0].find("No valid mapping found.") == 0:
                 return False
             else:
                 raise e
