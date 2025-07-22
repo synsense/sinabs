@@ -3,6 +3,7 @@ import torch.nn as nn
 
 import sinabs
 import sinabs.layers as sl
+import sinabs.utils as utils
 
 
 class SNN(nn.Module):
@@ -50,3 +51,51 @@ def test_zero_grad():
     sinabs.zero_grad(model)
     assert model.net[1].v_mem.grad_fn is None
     assert model.net[1].v_mem.sum() != 0
+
+
+def test_validate_memory_speck_raise_exception():
+    import pytest
+
+    kernel_size = [3, 3]
+    stride = [1, 1]
+    padding = [1, 1]
+    input_feature_size = 64
+    output_feature_size = 65
+    input_dimension = [8, 8]
+
+    with pytest.raises(Exception) as info:
+        utils.validate_memory_mapping_speck(
+            input_feature_size,
+            output_feature_size,
+            kernel_size,
+            stride,
+            padding,
+            input_dimension,
+        )
+    assert (
+        str(info.value)
+        == "Kernel memory is 128Ki and can not be mapped on chip. Kernel memory on chip needs to be at most 64Ki."
+    )
+
+
+def test_validate_memory_speck_no_exception():
+    kernel_size = [3, 3]
+    stride = [1, 1]
+    padding = [1, 1]
+    input_feature_size = 2
+    output_feature_size = 64
+    input_dimension = [8, 8]
+
+    msg = utils.validate_memory_mapping_speck(
+        input_feature_size,
+        output_feature_size,
+        kernel_size,
+        stride,
+        padding,
+        input_dimension,
+    )
+
+    assert (
+        msg
+        == "Layer can be mapped successfully. Kernel memory is 2Ki and neuron memory is 4Ki."
+    )
