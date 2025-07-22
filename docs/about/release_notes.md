@@ -4,6 +4,8 @@
 
 * Merge Release Notes and Changelog.
     * Remove Changelog file as it was not being used.
+* Remove Pipfile and Pipfile.lock files as they were not being used anymore.
+    * Specific/minimal library versions can be found in requirements.txt
 
 ## v3.0.3 (22/07/2025)
 
