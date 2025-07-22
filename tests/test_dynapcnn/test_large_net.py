@@ -131,7 +131,6 @@ def test_to_device():
         pytest.skip("A connected Speck device is required to run this test")
 
     for device_name, _ in devices.items():
-
         dynapcnn_net.to(
             device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
         )
