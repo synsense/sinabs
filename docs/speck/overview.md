@@ -152,7 +152,7 @@ The actual Neuron memory entries is then:
 Where 128Ki neuron exceeds any available neuron memory contrains among 9 layers, thus this layer **CANNOT** be deployed on the chip
 
 If neuron and kernel memories exceeds the hardware resources, when trying to map the layer a "No valid mapping" error will be thrown.
-When working with Speck and Conv2D layers, we offer a tool to help you to validate if the layer can be mapped: :ref:`utils.validate_memory_mapping_speck()`.
+When working with Speck and Conv2D layers, we offer a tool to help you to validate if the layer can be mapped: `utils.validate_memory_mapping_speck()`.
 
 #### Leak operation
 
