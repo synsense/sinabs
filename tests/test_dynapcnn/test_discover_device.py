@@ -29,7 +29,6 @@ def test_is_device_type():
 
 
 def test_get_device_map():
-
     devices = find_open_devices()
 
     if len(devices) == 0:
