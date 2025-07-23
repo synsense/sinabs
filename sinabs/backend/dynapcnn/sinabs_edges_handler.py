@@ -1,5 +1,5 @@
 """
-Implements the pre-processing of edges into blocks of nodes (modules) for future 
+Implements the pre-processing of edges into blocks of nodes (modules) for future
 creation of DynapcnnLayer objects.
 """
 

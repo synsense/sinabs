@@ -192,7 +192,7 @@ def consolidate_dest_pooling(
 
 
 def extract_pooling_from_module(
-    pooling_layer: Union[nn.AvgPool2d, sl.SumPool2d]
+    pooling_layer: Union[nn.AvgPool2d, sl.SumPool2d],
 ) -> Tuple[Tuple[int, int], float]:
     """Extract pooling size and required rescaling factor from pooling module
 

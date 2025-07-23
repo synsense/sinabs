@@ -2,7 +2,7 @@
 ========================================
 Adaptive Leaky Integrate and Fire (ALIF)
 ========================================
-:class:`~sinabs.layers.ALIF` layer with an adaptive threshold based on the output spikes. 
+:class:`~sinabs.layers.ALIF` layer with an adaptive threshold based on the output spikes.
 """
 
 import torch
