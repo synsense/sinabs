@@ -27,7 +27,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         return DynapcnnConfiguration()
 
     @classmethod
-    def get_dvs_layer_config_dict(cls, layer: DVSLayer): ...
+    def get_dvs_layer_config_dict(cls, layer: DVSLayer):
+        ...
 
     @classmethod
     def write_dvs_layer_config(

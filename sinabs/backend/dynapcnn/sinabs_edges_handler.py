@@ -327,7 +327,7 @@ def collect_dynapcnn_layer_info(
         unmatched_layers = {edge[0] for edge in pooling_pooling_edges}
         raise InvalidGraphStructure(
             f"Pooling layers {unmatched_layers} could not be assigned to a "
-            "dynapcnn layer. This is likely due to an unsupported SNN "
+            "DynapCNN layer. This is likely due to an unsupported SNN "
             "architecture. Pooling layers must always be preceded by a "
             "spiking layer (`IAFSqueeze`), another pooling layer, or"
             "DVS input"
@@ -484,8 +484,8 @@ def add_pooling_to_entry(
 
     Parameters
     ----------
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
+    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+        key is unique DynapCNN layer ID, value is dict with nodes of the layer
         Will be updated in-place.
     edge: Tuple of 2 integers, indicating edge between a neuron node and the pooling
         node that starts all provided `pooling_chains`.
@@ -503,7 +503,7 @@ def add_pooling_to_entry(
     except KeyError:
         neuron_layer = indx_2_module_map[edge[0]]
         raise InvalidGraphStructure(
-            f"Spiking layer {neuron_layer} cannot be assigned to a dynapcnn layer. "
+            f"Spiking layer {neuron_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Spiking "
             "layers have to be preceded by a weight layer (`nn.Conv2d` or "
             "`nn.Linear`)."
@@ -659,7 +659,7 @@ def init_dvs_entry(
         except KeyError:
             weight_layer = indx_2_module_map[edge[1]]
             raise InvalidGraphStructure(
-                f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+                f"Weight layer {weight_layer} cannot be assigned to a DynapCNN layer. "
                 "This is likely due to an unsupported SNN architecture. Weight "
                 "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
             )
@@ -726,7 +726,7 @@ def init_dvs_entry_with_pooling(
         except KeyError:
             weight_layer = indx_2_module_map[edge[1]]
             raise InvalidGraphStructure(
-                f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+                f"Weight layer {weight_layer} cannot be assigned to a DynapCNN layer. "
                 "This is likely due to an unsupported SNN architecture. Weight "
                 "layers have to be followed by a spiking layer (`sl.IAFSqueeze`)."
             )
@@ -780,13 +780,13 @@ def set_neuron_layer_destination(
 
     Parameters
     ----------
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
+    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+        key is unique DynapCNN layer ID, value is dict with nodes of the layer
         Will be updated in-place.
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
         Edge source has to be a neuron layer within an existing entry of
         `dynapcnn_layer_info`. Edge target has to be the weight layer of
-        another dynapcnn layer.
+        another DynapCNN layer.
     node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
         Will be updated in-place.
     nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
@@ -798,7 +798,7 @@ def set_neuron_layer_destination(
     except KeyError:
         neuron_layer = indx_2_module_map[edge[0]]
         raise InvalidGraphStructure(
-            f"Spiking layer {neuron_layer} cannot be assigned to a dynapcnn layer. "
+            f"Spiking layer {neuron_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Spiking "
             "layers have to be preceded by a weight layer (`nn.Conv2d` or "
             "`nn.Linear`)."
@@ -808,7 +808,7 @@ def set_neuron_layer_destination(
     except KeyError:
         weight_layer = indx_2_module_map[edge[1]]
         raise InvalidGraphStructure(
-            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+            f"Weight layer {weight_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Weight "
             "layers have to be followed by a spiking layer (`IAFSqueeze`)."
         )
@@ -837,8 +837,8 @@ def set_pooling_layer_destination(
 
     Parameters
     ----------
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
+    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+        key is unique DynapCNN layer ID, value is dict with nodes of the layer
         Will be updated in-place.
     edge: Tuple of 2 integers, indicating edge between two nodes in graph.
         Edge source has to be a pooling layer that is at the end of at least
@@ -856,7 +856,7 @@ def set_pooling_layer_destination(
     except KeyError:
         poolin_layer = indx_2_module_map[edge[0]]
         raise InvalidGraphStructure(
-            f"Layer {poolin_layer} cannot be assigned to a dynapcnn layer. "
+            f"Layer {poolin_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Pooling "
             "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
             "another pooling layer, or DVS input"
@@ -866,7 +866,7 @@ def set_pooling_layer_destination(
     except KeyError:
         weight_layer = indx_2_module_map[edge[1]]
         raise InvalidGraphStructure(
-            f"Weight layer {weight_layer} cannot be assigned to a dynapcnn layer. "
+            f"Weight layer {weight_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Weight "
             "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
             "another pooling layer, or DVS input"
@@ -889,7 +889,7 @@ def set_pooling_layer_destination(
     if not matched:
         pooling_layer = indx_2_module_map[edge[0]]
         raise InvalidGraphStructure(
-            f"Layer {pooling_layer} cannot be assigned to a dynapcnn layer. "
+            f"Layer {pooling_layer} cannot be assigned to a DynapCNN layer. "
             "This is likely due to an unsupported SNN architecture. Pooling "
             "layers have to be preceded by a spiking layer (`IAFSqueeze`), "
             "another pooling layer, or DVS input"

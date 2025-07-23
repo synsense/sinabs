@@ -505,7 +505,7 @@ class GraphExtractor:
         return dvs_layer
 
     def _get_dvs_node_id(self) -> Union[int, None]:
-        """Loop though all modules and return index of `DVSLayer`
+        """Return index of `DVSLayer`
         instance if it exists.
 
         Returns

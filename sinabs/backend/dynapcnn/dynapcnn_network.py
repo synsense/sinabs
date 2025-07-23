@@ -379,7 +379,7 @@ class DynapcnnNetwork(nn.Module):
 
                 builder = ChipFactory(device).get_config_builder()
 
-                # create input source node.
+                # create input source node
                 self.samna_input_buffer = builder.get_input_buffer()
 
                 # create output sink node node.
@@ -703,7 +703,7 @@ class DynapcnnNetwork(nn.Module):
             else:
                 monitor_chip_layers.append(layer2core_map[lyr_idx])
 
-        # enable monitors on the specified layers.
+        # enable monitors on the specified layers
         config_builder.monitor_layers(config, monitor_chip_layers)
 
         if config_modifier is not None:

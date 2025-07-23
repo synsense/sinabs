@@ -35,7 +35,7 @@ class WrongModuleCount(Exception):
 
     def __init__(self, dynapcnnlayer_indx, modules_count):
         super().__init__(
-            f"A DynapcnnLayer {dynapcnnlayer_indx} should have 2 or 3 modules but found {modules_count}."
+            f"A DynapCNNLayer {dynapcnnlayer_indx} should have 2 or 3 modules but found {modules_count}."
         )
 
 
@@ -63,7 +63,7 @@ class InvalidModel(Exception):
         model,
     ):
         super().__init__(
-            f"'model' accepts either a DynapcnnNetwork or a DynapcnnNetworkGraph but {model} was given."
+            f"'model' accepts either a DynapCNNNetwork or a DynapCNNNetworkGraph but {model} was given."
         )
 
 
@@ -105,7 +105,7 @@ class UnknownNode(Exception):
 
     def __init__(self, node):
         super().__init__(
-            f"Node {node} can not be found within any DynapcnnLayer mapper."
+            f"Node {node} could not be found within any DynapCNNLayer mapper."
         )
 
 
@@ -114,7 +114,7 @@ class MaxDestinationsReached(Exception):
 
     def __init__(self, dynapcnnlayer_index):
         super().__init__(
-            f"DynapcnnLayer with index {dynapcnnlayer_index} has more than 2 destinations."
+            f"DynapCNNLayer with index {dynapcnnlayer_index} has more than two destinations, and a maximum of two are allowed"
         )
 
 
