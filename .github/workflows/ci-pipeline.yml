@@ -16,8 +16,8 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ["3.8", "3.10", "3.12",]
-        torch-version: ["1.12.0","2.0.0", "2.6.0"]
+        python-version: ["3.10"]
+        torch-version: ["2.0.0",]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
@@ -27,9 +27,9 @@ jobs:
       - name: Install requirements
         run: |
           sudo apt-get update && sudo apt-get -y install libglu1-mesa
-          pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install .
           pip install -r tests/requirements.txt
+          pip install torch~=${{ matrix.torch-version }} torchvision --index-url https://download.pytorch.org/whl/cpu
       - name: Test with pytest
         run: |
           pytest tests
@@ -63,10 +63,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Setup Python 3.8
+      - name: Setup Python 3.10
         uses: actions/setup-python@v5
         with:
-          python-version: 3.8
+          python-version: "3.10.18"
       - name: Install dependencies
         run: |
           sudo apt-get update && sudo apt-get -y install libglu1-mesa
@@ -80,7 +80,7 @@ jobs:
   build-and-publish:
     needs: documentation
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/') }}
+    if: ${{ github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/') }}
     steps:
       - uses: actions/checkout@v4
         with:
