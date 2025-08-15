@@ -184,6 +184,7 @@ def _extract_sinabs_module(module: torch.nn.Module) -> Optional[nir.NIRNode]:
             return nir.Affine(module.weight.detach(), module.bias.detach())
     elif isinstance(module, torch.nn.Conv1d):
         return nir.Conv1d(
+            input_shape=None,
             weight=module.weight.detach(),
             stride=module.stride,
             padding=module.padding,
