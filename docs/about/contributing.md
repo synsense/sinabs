@@ -2,7 +2,7 @@
 
 We welcome developers to build and contribute to sinabs.
 
-Please email sinabs@synsense.ai for a contributors license agreement. 
+Please email support@synsense.ai for a contributors license agreement.
 
 
 ## How do you go about it?
@@ -33,7 +33,9 @@ $ pytest
 It is critical that your additions have a corresponding test case and *all* current tests pass for a merge request be accepted.
 
 ## Releasing
-Releasing a new version of Sinabs is automated using [Github actions](https://github.com/synsense/sinabs/actions) and [pbr](https://docs.openstack.org/pbr/latest/). When a new commit is pushed on the main branch, a new build will be pushed to [PYPI](https://pypi.org/project/sinabs/#history) based on the latest tag available, provided that all tests have passed. A tag is always associated with a commit (hash) and therefore persists across branches (which also point to commits). If the latest commit is tagged with something like 'v1.2.3' then this will be the release version name. If the release pipeline is started without the release tag being available, the latest commit will not have a tag. pbr then names this something like 'v1.2.4.dev1', to indicate a development release. Overall, if you're a co-maintainer of Sinabs, please follow these steps to create a new release:
+Releasing a new version of Sinabs is automated using [Github actions](https://github.com/synsense/sinabs/actions) and [pbr](https://docs.openstack.org/pbr/latest/). When a new commit is pushed on the main branch, a new build will be pushed to [PYPI](https://pypi.org/project/sinabs/#history) based on the latest tag available, provided that all tests have passed. A tag is always associated with a commit (hash) and therefore persists across branches (which also point to commits). If the latest commit is tagged with something like 'v1.2.3' then this will be the release version name. If the release pipeline is started without the release tag being available, the latest commit will not have a tag. pbr then names this something like 'v1.2.4.dev1', to indicate a development release.
+
+Overall, if you're a co-maintainer of Sinabs, please follow these steps to create a new release:
 
 1. Merge/push all your changes into the develop branch.
 2. Make sure the tests are passing on the develop branch.
@@ -42,3 +44,7 @@ Releasing a new version of Sinabs is automated using [Github actions](https://gi
 5. Merge develop into main and push main.
 
 Once the tests passed on Github actions, a new release will be built and pushed to [PYPI](https://pypi.org/project/sinabs/#history)!
+
+The release of docs need to be updated on [readthedocs projec webpage](https://app.readthedocs.org/projects/sinabs/).
+After releasing the version, synch it with release the docs and the build for the docs will start.
+Default version should be updated accordingly. If not, change it manually in the [project settings page](https://app.readthedocs.org/dashboard/sinabs/edit/).

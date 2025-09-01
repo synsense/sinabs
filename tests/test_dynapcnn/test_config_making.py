@@ -36,13 +36,20 @@ hardware_compatible_model = DynapcnnNetwork(
 
 devices = tuple(ChipFactory.supported_devices.keys())
 devices = [
-    "dynapcnndevkit",
-    "speck2btiny",
     "speck2e",
     "speck2edevkit",
     "speck2fmodule",
 ]
 
+def test_zero_initial_states():
+    for devkit in [
+        "speck2e",
+        "speck2edevkit",
+        "speck2fmodule",
+    ]:
+        config = hardware_compatible_model.make_config("auto", device=devkit)
+        for idx, lyr in enumerate(config.cnn_layers):
+            initial_value = torch.tensor(lyr.neurons_initial_value)
 
 @pytest.mark.parametrize("device", devices)
 def test_zero_initial_states(device):

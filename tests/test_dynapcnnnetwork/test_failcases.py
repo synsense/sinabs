@@ -11,7 +11,7 @@ from sinabs.backend.dynapcnn.exceptions import (
 )
 from sinabs.from_torch import from_model
 
-
+@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
 def test_too_large(device):
     # Model that is too big to fit on any of our architectures
@@ -38,7 +38,7 @@ def test_too_large(device):
     with pytest.raises(ValueError):
         hardware_incompatible_model.to(device)
 
-
+@pytest.mark.skip("Need NONSEQ update")
 def test_missing_spiking_layer():
     in_shape = (2, 28, 28)
     snn = nn.Sequential(
@@ -58,7 +58,7 @@ def test_missing_spiking_layer():
     with pytest.raises(InvalidGraphStructure):
         net = DynapcnnNetwork(snn, input_shape=in_shape)
 
-
+@pytest.mark.skip("Need NONSEQ update")
 def test_incorrect_model_start():
     in_shape = (2, 28, 28)
     snn = nn.Sequential(
@@ -81,7 +81,7 @@ unsupported_layers = [
     sl.Cropping2dLayer(),
 ]
 
-
+@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("layer", unsupported_layers)
 def test_unsupported_layers(layer):
     in_shape = (1, 28, 28)

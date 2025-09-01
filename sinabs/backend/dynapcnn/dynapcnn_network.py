@@ -6,7 +6,6 @@ from warnings import warn
 import samna
 import torch
 import torch.nn as nn
-from samna.dynapcnn.configuration import DynapcnnConfiguration
 from torch import Tensor
 
 import sinabs
@@ -311,7 +310,7 @@ class DynapcnnNetwork(nn.Module):
         ----------
 
         device: String
-            cpu:0, cuda:0, dynapcnndevkit, speck2devkit
+            cpu:0, cuda:0, speck2edevkit
 
         monitor_layers: None/List
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
@@ -415,11 +414,166 @@ class DynapcnnNetwork(nn.Module):
         else:
             raise Exception("Unknown device description.")
 
+    def _make_config(
+        self,
+        chip_layers_ordering: Union[Sequence[int], str] = "auto",
+        device="speck2edevkit:0",
+        monitor_layers: Optional[Union[List, str]] = None,
+        config_modifier=None,
+    ) -> Tuple["SamnaConfiguration", bool]:
+        """Prepare and output the `samna` configuration for this network.
+
+        Parameters
+        ----------
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+
+        device: String
+            speck2edevkit or speck2fdevkit
+
+        monitor_layers: None/List/Str
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+            If this value is left as None, by default the last layer of the model is monitored.
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+
+        Returns
+        -------
+        Configuration object
+            Object defining the configuration for the device
+        Bool
+            True if the configuration is valid for the given device.
+
+        Raises
+        ------
+            ImportError
+                If samna is not available.
+        """
+        config_builder = ChipFactory(device).get_config_builder()
+
+        has_dvs_layer = isinstance(self.sequence[0], DVSLayer)
+
+        # Figure out layer ordering
+        if chip_layers_ordering == "auto":
+            chip_layers_ordering = config_builder.get_valid_mapping(self)
+        else:
+            # Truncate chip_layers_ordering just in case a longer list is passed
+            if has_dvs_layer:
+                chip_layers_ordering = chip_layers_ordering[: len(self.sequence) - 1]
+            chip_layers_ordering = chip_layers_ordering[: len(self.sequence)]
+
+        # Save the chip layers
+        self.chip_layers_ordering = chip_layers_ordering
+        # Update config
+        config = config_builder.build_config(self, chip_layers_ordering)
+        if self.input_shape and self.input_shape[0] == 1:
+            config.dvs_layer.merge = True
+        # Check if any monitoring is enabled and if not, enable monitoring for the last layer
+        if monitor_layers is None:
+            monitor_layers = [-1]
+        elif monitor_layers == "all":
+            num_cnn_layers = len(self.sequence) - int(has_dvs_layer)
+            monitor_layers = list(range(num_cnn_layers))
+
+        # Enable monitors on the specified layers
+        # Find layers corresponding to the chip
+        monitor_chip_layers = [
+            self.find_chip_layer(lyr) for lyr in monitor_layers if lyr != "dvs"
+        ]
+        if "dvs" in monitor_layers:
+            monitor_chip_layers.append("dvs")
+        config_builder.monitor_layers(config, monitor_chip_layers)
+
+        # Fix default factory setting to not return input events (UGLY!! Ideally this should happen in samna)
+        # config.factory_settings.monitor_input_enable = False
+
+        # Apply user config modifier
+        if config_modifier is not None:
+            config = config_modifier(config)
+
+        # Validate config
+        return config, config_builder.validate_configuration(config)
+
+    def make_config(
+        self,
+        chip_layers_ordering: Union[Sequence[int], str] = "auto",
+        device="speck2fdevkit:0",
+        monitor_layers: Optional[Union[List, str]] = None,
+        config_modifier=None,
+    ):
+        """Prepare and output the `samna` DYNAPCNN configuration for this network.
+
+        Parameters
+        ----------
+
+        chip_layers_ordering: sequence of integers or `auto`
+            The order in which the dynapcnn layers will be used. If `auto`,
+            an automated procedure will be used to find a valid ordering.
+            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
+            Note: This list should be the same length as the number of dynapcnn layers in your model.
+
+        device: String
+            speck2edevkit or speck2fdevkit
+
+        monitor_layers: None/List/Str
+            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
+            If you want to monitor the dvs layer for eg.
+            ::
+
+                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                monitor_layers = "all" # If you want to monitor all the layers
+
+            If this value is left as None, by default the last layer of the model is monitored.
+
+        config_modifier:
+            A user configuration modifier method.
+            This function can be used to make any custom changes you want to make to the configuration object.
+
+        Returns
+        -------
+        Configuration object
+            Object defining the configuration for the device
+
+        Raises
+        ------
+            ImportError
+                If samna is not available.
+            ValueError
+                If the generated configuration is not valid for the specified device.
+        """
+        config, is_compatible = self._make_config(
+            chip_layers_ordering=chip_layers_ordering,
+            device=device,
+            monitor_layers=monitor_layers,
+            config_modifier=config_modifier,
+        )
+        # Validate config
+        if is_compatible:
+            print("Network is valid")
+            return config
+        else:
+            raise ValueError(f"Generated config is not valid for {device}")
+
     def is_compatible_with(self, device_type: str) -> bool:
         """Check if the current model is compatible with a given device.
 
         Args:
-            device_type (str): Device type ie speck2b, speck2fmodule
+            device_type (str): Device type, for example: speck2fmodule
 
         Returns:
             bool: True if compatible
@@ -427,10 +581,8 @@ class DynapcnnNetwork(nn.Module):
         try:
             _, is_compatible = self._make_config(device=device_type)
         except ValueError as e:
-            # Catch "No valid mapping found" error
-            if e.args[0] == (
-                "One or more of the DynapcnnLayers could not be mapped to any core."
-            ):
+            # Catch "No valid mapping found" error, it is the first sentence in the string
+            if e.args[0].find("No valid mapping found.") == 0:
                 return False
             else:
                 raise e
@@ -439,11 +591,11 @@ class DynapcnnNetwork(nn.Module):
     def make_config(
         self,
         layer2core_map: Union[Dict[int, int], str] = "auto",
-        device: str = "dynapcnndevkit:0",
+        device: str = "speck2fdevkit:0",
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier: Optional[Callable] = None,
         chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
-    ) -> DynapcnnConfiguration:
+    ):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters
@@ -454,7 +606,7 @@ class DynapcnnNetwork(nn.Module):
             to be passed, with DynapcnnLayer indices as keys and assigned
             core IDs as values. DynapcnnLayer indices have to match those of
             `self.dynapcnn_layers`.
-        - device: (string): dynapcnndevkit, speck2b or speck2devkit
+        - device: (string): speck2devkit
         - monitor_layers: None/List/Str
             A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
             If you want to monitor the dvs layer for eg.
@@ -579,7 +731,7 @@ class DynapcnnNetwork(nn.Module):
         monitor_layers: Optional[Union[List, str]] = None,
         config_modifier: Optional[Callable] = None,
         chip_layers_ordering: Optional[Union[Sequence[int], str]] = None,
-    ) -> Tuple[DynapcnnConfiguration, bool]:
+    ) -> Tuple["DynapcnnConfiguration", bool]:
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
         Parameters

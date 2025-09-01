@@ -62,13 +62,17 @@ def get_demo_dynapcnn_network():
     return dynapcnn_network
 
 
-@pytest.mark.skipif(True, reason="No samna device found!")
+@pytest.mark.skip(
+    "This test was being skiiped all the time and now needs modification in the visualizer"
+)
 def test_jit_compilation():
     dvs_shape = (128, 128)
     spike_collection_interval = 500
     visualizer_id = 3
 
     devices = find_open_devices()
+    if len(devices) == 0:
+        pytest.skip("A connected Speck device is required to run this test")
 
     dynapcnn_network = get_demo_dynapcnn_network()
     for device_name, _ in devices.items():

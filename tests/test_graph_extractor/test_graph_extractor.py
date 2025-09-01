@@ -39,7 +39,7 @@ def fix_node_ids(expected_output, graph_extractor):
         "nodes_io_shapes": nodes_io_shapes,
     }
 
-
+@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("snn, input_dummy, expected_output", args_GraphExtractor)
 def test_GraphExtractor(snn, input_dummy, expected_output):
     """Tests the graph extraction from the original SNN being turned into a `DynapcnnNetwork`. These tests

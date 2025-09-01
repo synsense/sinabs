@@ -77,11 +77,9 @@ hardware_compatible_model = DynapcnnNetwork(
 )
 
 # Chip name
-# Depending on the available hardware you have, you can choose to run the
-# network for example on 'dynapcnndevkit' or 'speck2b' among others. See
-# documentation for full list of supported devices
-# chip_name = "speck2fmodule"
-chip_name = "dynapcnndevkit"
+# Depending on the available hardware you have, you need to update the chip name.
+# See documentation for full list of supported devices
+chip_name = "speck2fmodule"
 
 hardware_compatible_model.to(
     device=chip_name, monitor_layers=[-1]  # Monitor the output layer
@@ -110,8 +108,8 @@ print("Sending events to device")
 evs_out = hardware_compatible_model(input_events)
 
 # Filter readout events
-if chip_name == "dynapcnndevkit":
-    evs_out = list(filter(lambda x: isinstance(x, samna.dynapcnn.event.Spike), evs_out))
+if chip_name == "speck2fdevkit":
+    evs_out = list(filter(lambda x: isinstance(x, samna.speck2f.event.Spike), evs_out))
 
 if len(evs_out) > 0:
     print(

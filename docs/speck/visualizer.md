@@ -137,14 +137,13 @@ In order to visualize the class outputs as images, we need to get the images. Th
 - In order to show a prediction only if there are more than a `threshold` number of events from that output, set the `readout_prediction_threshold`=`threshold`.
 - In order to default to a certain class (in `DVSGesture` example, we use the last `other` class) set `readout_default_return_value`=`class_idx` (int).
 - In order to limit the prediction between some thresholds (i.e. it is meaningless to make a prediction with too low and too high values) set `readout_default_threshold_low` and `readout_default_threshold_high` parameters.
-- In all the chips except for `DynapcnnDevkit` you can monitor the power consumption in 5 different rows. These rows are `io`, `logic`, `ram`, `pixel-digital` and `pixel-analog`.
+- In all the chips you can monitor the power consumption in 5 different rows. These rows are `io`, `logic`, `ram`, `pixel-digital` and `pixel-analog`.
     - `io`: Power consumption of IO unit on the chip.
     - `logic`: Power consumption caused by operations in the chip and communication with spikes.
     - `ram`: Power consumption of `memory` used to store `states` and `weights`.
     - `pixel-digital`: Power consumption of the digital part (i.e. communication via AER) of pixels.
     - `pixel-analog`: Power consumtpion of the analog part. (i.e. pixels.
     ). 
-- `DynapcnnDevkit` does not come with an on-board Dvs sensor, thus does not support the last two. If you want only the first 3 columns, pass `power_monitor_number_of_items`=`3`. If you want columns pass `5`.
 - If you follow the naming conventions for readout images (i.e. `{labelidx}_{labelname}.png`) the feature names are going to be parsed from the image names. However, you can also pass labels manually using `feature_names`=`["class01", "class02", ...]`. That can be used also while labeling `SpikeCountPlot` legend, when `ReadoutLayer` is not preferred.
 - The last layer feature count is going to be automatically extracted from the model. However you can pass it manually `feature_count`=`count`. This can be useful for plotting purposes, when there are other classes that you did not take into account in the model you trained.
 - `extra_arguments`: You can pass the function names and variables for the individual plots for `spike_count`, `readout` and `power_measurement` plots. Available function names and argument types can be found in the following link: [here](https://synsense-sys-int.gitlab.io/samna/reference/viz/imgui/index.html#samna-viz-imgui)

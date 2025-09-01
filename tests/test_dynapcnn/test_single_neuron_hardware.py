@@ -55,7 +55,12 @@ def test_deploy_dynapcnnnetwork():
         n_cores = 5 if "tiny" in device_name else 9
         for core_idx in range(2, n_cores):
             if (
-                device_name in ["speck2e", "speck2edevkit", "speck2f", "speck3"]
+                device_name
+                in [
+                    "speck2e",
+                    "speck2edevkit",
+                    "speck2f",
+                ]
                 and core_idx < 2
             ):
                 continue

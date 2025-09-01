@@ -3,6 +3,7 @@ import torch.nn as nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.from_torch import from_model
+from hw_utils import find_open_devices
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),
@@ -24,7 +25,6 @@ sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
 input_shape = (1, 28, 28)
 
 
-@pytest.mark.skip("Not suitable for automated testing. Depends on available devices")
 def test_multi_device_movement():
     hardware_compatible_model = DynapcnnNetwork(
         sinabs_model.spiking_model.cpu(),
@@ -32,7 +32,14 @@ def test_multi_device_movement():
         input_shape=input_shape,
     )
 
-    hardware_compatible_model.to("speck2edevkit")
+    devices = find_open_devices()
 
-    print("Second attempt")
-    hardware_compatible_model.to("speck2edevkit")
+    if len(devices) == 0:
+        pytest.skip("A connected Speck device is required to run this test")
+
+    for device_name, _ in devices.items():
+        if device_name == "speck2e":
+            hardware_compatible_model.to("speck2e:0")
+
+            print("Second attempt")
+            hardware_compatible_model.to("speck2e:0")

@@ -1,48 +1,51 @@
 # Overview
 
-## DYNAP-CNN and SPECK
+SPECK™ are a family of spiking neural network ASICs, which is designed to focusing on convolution spiking neural network (CSNN) based vision processing tasks.
+Speck™ is the world first neuromorphic device which integrates the DYNAP-CNN neuromorphic processor and a dynamic vision sensor (DVS) into a single SoC.
+Speck™ processor, DYNAP-CNN, is a fully scalable, event-driven neuromorphic processor with up to 0.32M configurable spiking neurons and direct interface with external DVS.
 
-DYNAP-CNN/SPECK are a family of spiking neural network ASICs family, which is designed to focusing on convolution spiking neural network(SCNN) based vision processing tasks. DYNAP-CNN is a fully scalable, event-driven neuromorphic processor with up to 0.32M configurable spiking neurons and direct interface with external DVS. Speck™ is the world first neuromorphic device which integrates the DYNAP-CNN neuromorphic processor and a dynamic vision sensor(DVS) into a single SoC.
+DYNAP-CNN processor can be used directly bypassing the DVS camera integrated on Speck.
 
 ![image.png](/_static/Overview/speck_dynapcnn.png)
 
-
-Currently, __sinabs-dynapcnn__ library provides the interface to serveral available versions of hardwares for DYNAPCNN/SPECK family:
+Currently, __sinabs-dynapcnn__ library provides the interface to serveral available versions of hardwares for SPECK™ family:
 
 | Device Name |Identifier |
 | :----| :----: | 
-| DYNAP-CNN Development Kit |*dynapcnndevkit | 
-| Speck Tiny Development Kit|*speck2btiny|
-| Speck Development Kit |*speck2edevkit|
+| Speck 2E Test Board |*Speck2eTestBoard|
+| Speck 2E Development Kit |*speck2edevkit|
+| Speck 2F Module |*speck2fmodule|
+| Speck 2F Development Kit |*speck2fdevkit|
+| DYNAP-SE2 DevBoard |*dynapse2|
+| DYNAP-SE2 Stack |*dynapse2_stack|
 
 __note__: * stands for the correspond software identifier we assigned to the different devkit
 
 <br />
 
-The general top level diagram of the DYNAP-CNN/SPECK chip is shown as follows:
+The general top level diagram of the SPECK™ chip is shown as follows:
 
 ![top_diagram](/_static/Overview/speck_top_level.png)
 
 
-For DYNAP-CNN dev-kits, it allows the user to interact with the chip using external DVS sensors or pre-defined event data. Speck seriers devkit based on above, it additionally allows the user to use its embeded internal DVS for development.
-
-Currently, Speck/Dynapcnn supports following External DVS sensor with the samna support:
+Sinabs allows you to interact with the DynapCNN processor using external DVS sensors or pre-defined event data, besides its embeded internal DVS for development.
+Currently, Speck supports the following external DVS sensor with the samna support:
 
 * Inivation Davis346
 * Inivation Davis240
 * Inivation DVXplorer
 * Prophesee EVK3-Gen 3.1VGA
 
-# Backend: dynapcnn
+# Backend: Dynapcnn
 
-To interact with these developmentkit, sinabs needs [samna](https://pypi.org/project/samna/) dependency to enables the chip configuration and network setting. As is shown in the figure below, dynapcnn backend provides a simple way to convert the network structure and parameters to the _SammnaConfiguration_ that can be used by samna to setup the chip. 
+To interact with the processor, sinabs needs [samna](https://pypi.org/project/samna/) dependency to enables the chip configuration and network setting. As is shown in the figure below, dynapcnn backend provides a simple way to convert the network structure and parameters to the _SamnaConfiguration_ that can be used by samna to setup the chip.
 
 
 ![sinab-dynapcnn](/_static/Overview/sinabs-dynapcnn-role.png)
 
 # Chip Resources
 
-For all DYNAP-CNN/SPECK family, they using the DYNAP asynchronous computing structure and have the similar computation resources. The detailed features are shown below
+All SPECK™ family chips use the DYNAP asynchronous computing structure and have the similar computation resources. The detailed features are shown below
 
 ## Key Features
 
@@ -73,9 +76,7 @@ An Event noise filter is also included in the pre-processing layer, the filter c
 
 ### DYNAP-CNN Layer
 
-The DYNAP-CNN Layer is the main hard ware representation of the designed spiking neural network structure. One of the main goal of the sinabs-dynapcnn is to provide an efficient, simply way to convert the `torch.Sequential` object to equivalent DYNAP-CNN layer configuration. Details of how to use the sinabs-dynapcnn interact with your designed SNNs, please visit tutorial
-
-
+The DYNAP-CNN Layer is the main hardware representation of the designed spiking neural network structure. One of the main goal of the sinabs-dynapcnn is to provide an efficient, simply way to convert the `torch.Sequential` object to equivalent DYNAP-CNN layer configuration. For more details on how to use the sinabs-dynapcnn to interact with your designed SNNs, please check our tutorials.
 
 #### Feature
 - Max input dimension for the layer: 128x128
@@ -90,15 +91,15 @@ The DYNAP-CNN Layer is the main hard ware representation of the designed spiking
 - Fanout:2
 
 #### Internal Execution Order
-A single chip consists of __9__ configurable computing cores(layers), each layer can be regarded as a combination of (Conv2d Operation --> Spiking Activation --> Sumpooling). These computation has to be configured in exact equivalent execution order. Each layer can be flexiblely configured to be communicate with other layers.
+A single chip consists of __9__ configurable computing cores (layers), each layer can be regarded as a combination of (Conv2d Operation --> Spiking Activation --> Sumpooling). These computation has to be configured in exact equivalent execution order. Each layer can be flexiblely configured to be communicate with other layers.
 
 
 #### Async event-driven feature
-information communication with layers are only in "Event based" format, the layer process the "incomming" event only at whenever a layer recieves it. Each layer can be configured to set 1-2 destination to the other layer. 
+information communication with layers are only in "event based" format, the layer process the "incomming" event only at whenever a layer recieves it. Each layer can be configured to set 1-2 destination to the other layer.
 
 
 #### Memory Constraints and Network Sizing
-Each layer has different memory constraints that split into kernel memory(for weight parameters) and neuron memory(spiking neuron states) as is shown below.  __Note:__ For the entire series of chips, dynapcnn/speck support precision of **8bit** int for kernel parameters and **16bit** int for neuron state precisions.
+Each layer has different memory constraints that split into kernel memory (for weight parameters) and neuron memory (spiking neuron states) as is shown below.  __Note:__ For the entire series of chips, speck support precision of **8bit** int for kernel parameters and **16bit** int for neuron state precisions.
 
 ![memoryconstrains](/_static/Overview/memory_constraints.png)
 
@@ -149,6 +150,9 @@ The actual Neuron memory entries is then:
 {math}`N_{M} = 64 \times 64 \times 32 = 128Ki`
 
 Where 128Ki neuron exceeds any available neuron memory contrains among 9 layers, thus this layer **CANNOT** be deployed on the chip
+
+If neuron and kernel memories exceeds the hardware resources, when trying to map the layer a "No valid mapping" error will be thrown.
+When working with Speck and Conv2D layers, we offer a tool to help you to validate if the layer can be mapped: `utils.validate_memory_mapping_speck()`.
 
 #### Leak operation
 

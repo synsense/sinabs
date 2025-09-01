@@ -234,43 +234,9 @@ def recover_mapping(graph: List[List[FlowGraphEdge]], num_layers: int) -> List[i
             if edge.flow == 1:
                 mapping.append(edge.t - num_layers - 1)
     if len(mapping) != num_layers:
+        # TODO - check if this error message make sense with nonseq implementation
         raise ValueError(
-            "One or more of the DynapcnnLayers could not be mapped to any core."
+            "No valid mapping found. "
+            "For Speck family you can use `utils.validate_memory_mapping_speck()` to get more information."
         )
     return mapping
-
-
-#
-#
-### Chip specific constraints
-# _WEIGHTS_MEMORY_SIZE = [
-#    16 * 1024,  # 0
-#    16 * 1024,  # 1
-#    16 * 1024,  # 2
-#    32 * 1024,  # 3
-#    32 * 1024,  # 4
-#    64 * 1024,  # 5
-#    64 * 1024,  # 6
-#    16 * 1024,  # 7
-#    16 * 1024,
-# ]  # _WEIGHTS_MEMORY_SIZE
-#
-# _NEURONS_MEMORY_SIZE = [
-#    64 * 1024,  # 0
-#    64 * 1024,  # 1
-#    64 * 1024,  # 2
-#    32 * 1024,  # 3
-#    32 * 1024,  # 4
-#    16 * 1024,  # 5
-#    16 * 1024,  # 6
-#    16 * 1024,  # 7
-#    16 * 1024,
-# ]  # 8
-# _BIAS_MEMORY_SIZE = [1024] * 9
-#
-# dynapcnndevkit_constraints = [
-#    LayerConstraints(km, nm, bm) for (km, nm, bm) in zip(_WEIGHTS_MEMORY_SIZE, _NEURONS_MEMORY_SIZE, _BIAS_MEMORY_SIZE)
-# ]
-#
-# speck2_constraints = dynapcnndevkit_constraints
-#

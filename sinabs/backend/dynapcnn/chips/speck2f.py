@@ -7,9 +7,8 @@ from sinabs.backend.dynapcnn.dynapcnn_layer import DynapcnnLayer
 
 from .dynapcnn import DynapcnnConfigBuilder
 
-# Since most of the configuration is identical to DYNAP-CNN, we can simply inherit this class
 
-
+# Inherit DynapCNNConfigBuilder to share implementation with other DynapCNN/Speck devices
 class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_samna_module(cls):
@@ -19,6 +18,11 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
 
+    # TODO: [NONSEQ]
+    # @classmethod
+    # def get_dvs_layer_config(cls) -> "DVSLayerConfig":
+    #     return DVSLayerConfig
+    
     @classmethod
     def get_input_buffer(cls):
         return samna.BasicSourceNode_speck2f_event_input_event()
@@ -52,6 +56,8 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
             layer2core_map=layer2core_map,
             destination_indices=destination_indices,
         )
+
+        # TODO: these might not be necessary given they dont exist for speck
         config_dict.pop("weights_kill_bit")
         config_dict.pop("biases_kill_bit")
         config_dict.pop("neurons_value_kill_bit")

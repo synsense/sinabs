@@ -24,6 +24,7 @@ from .sinabs_edges_handler import (
     handle_batchnorm_nodes,
 )
 from .utils import Edge, topological_sorting
+from warnings import warn
 
 try:
     from nirtorch.graph import TorchGraph
@@ -82,33 +83,41 @@ class GraphExtractor:
             n: b.detach().clone() for n, b in spiking_model.named_buffers()
         }
 
+        self._edges = set()
         # Empty sequentials will cause nirtorch to fail. Treat this case separately
         if isinstance(spiking_model, nn.Sequential) and len(spiking_model) == 0:
             self._name_2_indx_map = dict()
             self._edges = set()
             original_state = {}
-        else:
-            # extract computational graph.
-            nir_graph = nirtorch.extract_nir_graph(
-                spiking_model, dummy_input, model_name=None
-            ).ignore_tensors()
-            if ignore_node_types is not None:
-                for node_type in ignore_node_types:
-                    nir_graph = nir_graph.ignore_nodes(node_type)
 
-            # Map node names to indices
-            self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+        self._name_2_indx_map = []
+        # TODO: nirtorch was updated and this needs to be updated accordingly
+        # else:
+        #     # extract computational graph.
+        #     nir_graph = nirtorch.extract_nir_graph(
+        #         spiking_model, dummy_input, model_name=None
+        #     ).ignore_tensors()
+        #     if ignore_node_types is not None:
+        #         for node_type in ignore_node_types:
+        #             nir_graph = nir_graph.ignore_nodes(node_type)
 
-            # Extract edges list from graph
-            self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
+        #     # Map node names to indices
+        #     self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+
+        #     # Extract edges list from graph
+        #     self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
 
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_named_modules(spiking_model)
 
-        # Merges BatchNorm2d/BatchNorm1d nodes with Conv2d/Linear ones.
-        handle_batchnorm_nodes(
-            self._edges, self._indx_2_module_map, self._name_2_indx_map
-        )
+        if len(self._name_2_indx_map) > 0:
+            # Merges BatchNorm2d/BatchNorm1d nodes with Conv2d/Linear ones.
+            handle_batchnorm_nodes(
+                self._edges, self._indx_2_module_map, self._name_2_indx_map
+            )
+        else:
+            # TODO: [NONSEQ] define behavior
+            warn("not implemented")
 
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
@@ -659,12 +668,16 @@ class GraphExtractor:
             indices. Nodes that were removed are not included.
         """
 
-        # Update name-to-index map based on new node indices
-        self._name_2_indx_map = {
-            name: remapped_nodes[old_idx]
-            for name, old_idx in self._name_2_indx_map.items()
-            if old_idx in remapped_nodes
-        }
+        if len(self._name_2_indx_map) > 0:
+            # Update name-to-index map based on new node indices
+            self._name_2_indx_map = {
+                name: remapped_nodes[old_idx]
+                for name, old_idx in self._name_2_indx_map.items()
+                if old_idx in remapped_nodes
+            }
+        else:
+            # TODO: [NONSEQ] define what to do here
+            warn("[NONSEQ] not implemented")
 
         # Update entry nodes based on new node indices
         self._entry_nodes = {

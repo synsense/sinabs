@@ -1,4 +1,4 @@
-**Speck/DynapCNN**
+**Speck**
 ==================
 
 .. toctree::

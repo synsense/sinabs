@@ -2,15 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List
 
 import samna
-from samna.dynapcnn.configuration import DynapcnnConfiguration
 
-import sinabs
-import sinabs.backend
-import sinabs.backend.dynapcnn
-
-from .dvs_layer import DVSLayer
 from .dynapcnn_layer import DynapcnnLayer
-from .exceptions import InvalidModel
 from .mapping import LayerConstraints, get_valid_mapping
 
 
@@ -18,7 +11,7 @@ class ConfigBuilder(ABC):
     @classmethod
     @abstractmethod
     def get_samna_module(self):
-        """Get the saman parent module that hosts all the appropriate sub-modules and classes.
+        """Get the samna parent module that hosts all the appropriate sub-modules and classes.
 
         Returns
         -------
@@ -41,7 +34,7 @@ class ConfigBuilder(ABC):
         layers: Dict[int, DynapcnnLayer],
         layer2core_map: Dict[int, int],
         destination_map: Dict[int, List[int]],
-    ) -> DynapcnnConfiguration:
+    ):
         """Build the configuration given a model.
 
         Parameters

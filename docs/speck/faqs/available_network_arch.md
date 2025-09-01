@@ -8,18 +8,18 @@ Each core also have the following features:
 1. Each core has an unique index number, the first core's index starts from 0. So the index is in range [0, 8).
 
 2. Each core can **only** define **2 destination cores** as its output destination core(layer).
- See [detail.](https://synsense-sys-int.gitlab.io/samna/reference/dynapcnn/configuration/index.html#samna.dynapcnn.configuration.CNNLayerDestination)
+ See [detail.](https://synsense-sys-int.gitlab.io/samna/0.46.1/reference/speck2f/configuration/index.html#samna.speck2f.configuration.CnnLayerDestination)
 
 3. You can define multiple cores to have one **same destination core**.
 Technically,you can use this feature to achieve a `short-cut`(residual connection) like ResNet does.
-See [detail.](https://synsense-sys-int.gitlab.io/samna/reference/dynapcnn/configuration/index.html#samna.dynapcnn.configuration.CNNLayerDestination.layer)
+See [detail.](https://synsense-sys-int.gitlab.io/samna/0.46.1/reference/speck2f/configuration/index.html#samna.speck2f.configuration.CnnLayerDestination.layer)
 
 4. Each core can optionally apply a `sum-pooling` operation before feeding the output events into the destination core.
-See [detail.](https://synsense-sys-int.gitlab.io/samna/reference/dynapcnn/configuration/index.html#samna.dynapcnn.configuration.CNNLayerDestination.pooling)
+See [detail.](https://synsense-sys-int.gitlab.io/samna/0.46.1/reference/speck2f/configuration/index.html#samna.speck2f.configuration.CnnLayerDestination.pooling)
 
 5. Each core can optionally apply a `channel-shift` operation before feeding the output events into the destination core.
 Technically, you can use this feature to `concatenate` two cores' output events among the channel axis.
-See [detail.](https://synsense-sys-int.gitlab.io/samna/reference/dynapcnn/configuration/index.html#samna.dynapcnn.configuration.CNNLayerDestination.feature_shift)
+See [detail.](https://synsense-sys-int.gitlab.io/samna/0.46.1/reference/speck2f/configuration/index.html#samna.speck2f.configuration.CnnLayerDestination.feature_shift)
 
 6. You can define the order of cores/layers by defining the `destination` index of each core, i.e. the order of the 9 layers on the chip can be customized by yourself.
 We already have this feature in sinabs-dynapcnn. When you deploy an SNN to the devkit, you can do:
@@ -47,7 +47,7 @@ help the user to deploy their networks with more complex architecture to the dev
 ## Can I achieve a "Residual Connection" like ResNet does?
 
 Like mentioned above, "Yes, we can define a residual short-cut on the devkit". However, currently you can only manually
-change the `samna.dynapcnn.configuration.CNNLayerDestination.layer` to achieve this, you can do this if you are very
+change the `samna.speck2f.configuration.CNNLayerDestination.layer` to achieve this, you can do this if you are very
 familiar with the `samna-configuration`. Otherwise,let's wait for a while after the  "network graph extraction feature" is
 completed.
 
@@ -179,7 +179,7 @@ class Network:
 ```
 network = nn.sequential([
                         nn.conv2d(),
-                        nn.BatchNorm2d(), # unspport in speck/dynapcnn
+                        nn.BatchNorm2d(), # unsupport in speck
                         IAFsqueeze(),
                         ])
 ```

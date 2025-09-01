@@ -13,20 +13,13 @@ from .utils import parse_device_id, standardize_device_id
 
 # A map of all device types and their corresponding samna `device_name`
 device_types = {
-    "speck": "speck",
-    "speck2b": "Speck2bTestboard",
-    "speck2devkit": "Speck2DevKit",
-    "speck2btiny": "Speck2bDevKitTiny",
     "speck2e": "Speck2eTestBoard",  # with a capital B for board
     "speck2edevkit": "Speck2eDevKit",
     "speck2fmodule": "Speck2fModuleDevKit",
     "speck2fdevkit": "Speck2fDevKit",
-    "dynapse1devkit": "Dynapse1DevKit",
     "davis346": "Davis 346",
     "davis240": "Davis 240",
     "dvxplorer": "DVXplorer",
-    "pollendevkit": "PollenDevKit",
-    "dynapcnndevkit": "DynapcnnDevKit",
     "dynapse2": "DYNAP-SE2 DevBoard",
     "dynapse2_stack": "DYNAP-SE2 Stack",
 }
@@ -38,96 +31,61 @@ device_map = {}
 def enable_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Enable timestamps of the samna node.
 
     Args
     ----
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
-        device_handle.get_io_module().write_config(0x0003, 1)
-    else:
-        device_handle.get_stop_watch().set_enable_value(True)
+    device_handle.get_stop_watch().start()
 
 
 def disable_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Disable timestamps of the samna node.
 
     Args
     ----
 
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
-        device_handle.get_io_module().write_config(0x0003, 0)
-    else:
-        device_handle.get_stop_watch().set_enable_value(False)
+    device_handle.get_stop_watch().stop()
 
 
 def reset_timestamps(
     device_id: str,
 ) -> None:
-    """Disable timestamps of the samna node.
+    """
+    Reset timestamps of the samna node.
 
     Args
     ----
     device_id: str
         Name of the device to initialize. Required for different existing APIs
-        for Dynapcnndevkit and Speck chips
+        for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
-    device_name, device_idx = parse_device_id(device_id)
     device_info = device_map[device_id]
     device_handle = samna.device.open_device(device_info)
-    if device_name.lower() == "dynapcnndevkit":
-        device_handle.get_io_module().write_config(0x0003, 1)
-    else:
-        device_handle.get_stop_watch().reset()
-
-
-# def events_to_raster(event_list: List, layer: int) -> torch.Tensor:
-#    """
-#    Convert an eventList read from `samna` to a tensor `raster` by filtering only the events specified by `layer`.
-#
-#    Parameters
-#    ----------
-#
-#    event_list: List
-#        A list comprising of events from samna API
-#
-#    layer: int
-#        The index of layer for which the data needs to be converted
-#
-#    Returns
-#    -------
-#
-#    raster: torch.Tensor
-#    """
-#    evs_filtered = filter(
-#        lambda x: isinstance(x, samna.dynapcnn.event.Spike), event_list
-#    )
-#    evs_filtered = filter(lambda x: x.layer == layer, evs_filtered)
-#    raise NotImplementedError
-#    raster = map(rasterize, evs_filtered)
-#    return raster
+    device_handle.get_stop_watch().reset()
 
 
 def events_to_xytp(event_list: List, layer: int) -> np.array:
-    """Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
+    """
+    Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
     `channel`.
 
     Parameters
@@ -147,7 +105,10 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
     """
     evs_filtered = list(
         filter(
-            lambda x: isinstance(x, samna.dynapcnn.event.Spike) and x.layer == layer,
+            lambda x: isinstance(
+                x, (samna.speck2e.event.Spike, samna.speck2f.event.Spike)
+            )
+            and x.layer == layer,
             event_list,
         )
     )
@@ -222,7 +183,7 @@ def discover_device(device_id: str):
     ----
 
     device_id: str
-        Device name/identifier (dynapcnndevkit:0 or speck:0 or dvxplorer:1 ... )
+        Device name/identifier (speck2fdevkit:0 or speck2edevkit:0 or ... )
         The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
 
     Returns
@@ -275,7 +236,7 @@ def close_device(device_id: str):
 
     device_id: str
         device_name:device_id pair given as a string.
-        dynapcnndevkit:0 or speck:0 or dynapcnndevkit:1
+        speck2fdevkit:0 or speck2edevkit:0 or speck2fdevkit:1 or ...
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
