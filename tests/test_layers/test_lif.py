@@ -340,6 +340,7 @@ def test_lif_on_gpu():
     layer = layer.to("cuda")
     layer(input_current.to("cuda"))
 
+
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 def test_lif_recurrent_on_gpu():

@@ -41,6 +41,7 @@ devices = [
     "speck2fmodule",
 ]
 
+
 def test_zero_initial_states():
     for devkit in [
         "speck2e",
@@ -50,6 +51,7 @@ def test_zero_initial_states():
         config = hardware_compatible_model.make_config("auto", device=devkit)
         for idx, lyr in enumerate(config.cnn_layers):
             initial_value = torch.tensor(lyr.neurons_initial_value)
+
 
 @pytest.mark.parametrize("device", devices)
 def test_zero_initial_states(device):

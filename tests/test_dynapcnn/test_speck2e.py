@@ -6,6 +6,7 @@ from sinabs import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 
+
 @pytest.mark.skip("Need NONSEQ update")
 def test_speck2e_coordinates():
     """Generate the configuration for speck2edevkit."""
@@ -15,6 +16,7 @@ def test_speck2e_coordinates():
     network = DynapcnnNetwork(snn, input_shape=(2, 10, 10), dvs_input=True)
     config = network.make_config(device="speck2edevkit:0")
     print(config.to_json())
+
 
 @pytest.mark.skip("Need NONSEQ update")
 def test_dvs_layer_generation():

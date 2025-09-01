@@ -94,6 +94,7 @@ class NetPool2D(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
+
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input", (False, True))
 def test_dvs_no_pooling(dvs_input):
@@ -132,6 +133,7 @@ def test_dvs_no_pooling(dvs_input):
 
 
 args = product((True, False, None), (True, False))
+
 
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,add_input_layer", args)
@@ -211,6 +213,7 @@ class DvsNet(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
+
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
 def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
@@ -242,6 +245,7 @@ def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
         dvs_input=dvs_input,
         flip=kwargs_flip,
     )
+
 
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,merge_polarities", combine_n_binary_choices(2))
@@ -285,6 +289,7 @@ def test_dvs_crop(dvs_input, merge_polarities):
         dvs_input=dvs_input,
         merge_polarities=merge_polarities,
     )
+
 
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,pool", combine_n_binary_choices(2))

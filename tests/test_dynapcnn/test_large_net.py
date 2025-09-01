@@ -83,6 +83,7 @@ dynapcnn_net = DynapcnnNetwork(
 )
 dynapcnn_out = dynapcnn_net(input_data)
 
+
 @pytest.mark.skip("Need NONSEQ update")
 def test_same_result():
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
@@ -91,6 +92,7 @@ def test_same_result():
 def test_auto_config():
     # - Should give an error with the normal layer ordering
     dynapcnn_net.make_config(chip_layers_ordering="auto")
+
 
 @pytest.mark.skip("Need NONSEQ update")
 def test_was_copied():
@@ -161,6 +163,7 @@ def test_memory_summary():
     summary = dynapcnn_net.memory_summary()
 
     print(summary)
+
 
 @pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("out_channels", [1, 2, 12])

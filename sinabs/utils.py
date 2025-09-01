@@ -337,6 +337,7 @@ def collapse_pair(pair: Union[Iterable[T], T]) -> T:
     else:
         return pair
 
+
 def validate_memory_mapping_speck(
     input_feature_size: int,
     output_feature_size: int,

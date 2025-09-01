@@ -46,6 +46,7 @@ def test_conv_layer_synops_hook(kernel_size, stride, padding):
 
 dts = (None, 1, 0.1, 2)
 
+
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook(dt):
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
@@ -81,6 +82,7 @@ def test_model_synops_hook_invalid_pooling(dt):
     inp = torch.rand(8, 2, 32, 32)
     with pytest.warns(Warning):
         model(inp)
+
 
 @pytest.mark.skip("Need Pytorch update")
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")

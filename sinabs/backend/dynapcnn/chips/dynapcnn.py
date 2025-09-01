@@ -39,7 +39,6 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     #     Returns the DVS Layer configuration for the device type
     #     """
 
-
     @classmethod
     def write_dvs_layer_config(
         cls,

@@ -56,6 +56,7 @@ class DynapCnnNetA(nn.Module):
     def forward(self, x):
         return self.seq(x)
 
+
 @pytest.mark.skip("Need NONSEQ update")
 def test_learning():
     sdc = DynapCnnNetA()

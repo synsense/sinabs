@@ -22,7 +22,7 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     # @classmethod
     # def get_dvs_layer_config(cls) -> "DVSLayerConfig":
     #     return DVSLayerConfig
-    
+
     @classmethod
     def get_input_buffer(cls):
         return samna.BasicSourceNode_speck2f_event_input_event()

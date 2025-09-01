@@ -68,6 +68,7 @@ snn.reset_states()
 dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=False)
 dynapcnn_out = dynapcnn_net(input_data)
 
+
 @pytest.mark.skip("Need NONSEQ update")
 def test_same_result():
     # print(dynapcnn_out)

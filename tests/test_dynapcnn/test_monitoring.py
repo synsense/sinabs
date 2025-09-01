@@ -65,6 +65,7 @@ def test_chip_level_monitoring_enable():
     with pytest.warns(Warning):
         builder.monitor_layers(config, ["dvs"])
 
+
 @pytest.mark.skip("Need NONSEQ update")
 def test_default_monitoring():
     dynapcnn_net = build_model()
@@ -72,7 +73,9 @@ def test_default_monitoring():
 
     # As a default the last layer should be monitored
     config = dynapcnn_net.make_config(device="speck2edevkit:0")
-    l2c = dynapcnn_net.layer2core_map # TODO - old code: dynapcnn_net.chip_layers_ordering
+    l2c = (
+        dynapcnn_net.layer2core_map
+    )  # TODO - old code: dynapcnn_net.chip_layers_ordering
     assert len(l2c) > 0
     # Check that monitoring is off for all layers except last
     for layer, core in l2c.items():
@@ -80,6 +83,7 @@ def test_default_monitoring():
             assert config.cnn_layers[core].monitor_enable == True
         else:
             assert config.cnn_layers[core].monitor_enable == False
+
 
 @pytest.mark.skip("Need NONSEQ update")
 def test_model_level_monitoring_enable():
