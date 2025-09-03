@@ -1,7 +1,7 @@
 # Release notes
 
 ## Unreleased
-
+* Update sinabs code to be consistent with Python 3.12 and Numpy > 2.0.
 * Merge Release Notes and Changelog.
     * Remove Changelog file as it was not being used.
 * Remove Pipfile and Pipfile.lock files as they were not being used anymore.

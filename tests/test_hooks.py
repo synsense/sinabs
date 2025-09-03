@@ -51,7 +51,7 @@ dts = (None, 1, 0.1, 2)
 def test_model_synops_hook(dt):
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     correct_synops = torch.load(INPUT_RESULT_DIR / "model_synops.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     hooks.register_synops_hooks(model, dt=dt)
 
     model(inp)
@@ -91,7 +91,7 @@ def test_model_synops_hook_cuda(dt):
     correct_synops = torch.load(
         INPUT_RESULT_DIR / "model_synops.pth", map_location="cuda"
     )
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth").cuda()
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False).cuda()
     hooks.register_synops_hooks(model, dt=dt)
 
     model(inp)
@@ -107,7 +107,7 @@ def test_model_synops_hook_cuda(dt):
 
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
@@ -119,7 +119,7 @@ def test_firing_rate_hook():
 
 def test_firing_rate_per_neuron_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates_per_neuron.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
@@ -131,7 +131,7 @@ def test_firing_rate_per_neuron_hook():
 
 def test_input_diff_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth")
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
     correct_values = torch.load(INPUT_RESULT_DIR / "input_diffs.pth")
     for layer in model:
         if isinstance(layer, (nn.Conv2d, nn.Linear)):

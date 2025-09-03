@@ -113,7 +113,7 @@ def test_iaf_squeezed():
 def test_iaf_recurrent():
     batch_size, time_steps = 10, 100
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
+    n_neurons = np.prod(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5
 
     rec_connect = nn.Sequential(
@@ -155,7 +155,7 @@ def test_iaf_on_gpu():
 def test_iaf_recurrent_on_gpu():
     batch_size, time_steps = 10, 100
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
+    n_neurons = np.prod(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions)
 
     rec_connect = nn.Sequential(
