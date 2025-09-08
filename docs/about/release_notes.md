@@ -1,6 +1,7 @@
 # Release notes
 
-## Unreleased
+## v3.0.4 (08/09/2025)
+
 * Update sinabs code to be consistent with Python 3.12 and Numpy > 2.0.
 * Merge Release Notes and Changelog.
     * Remove Changelog file as it was not being used.
