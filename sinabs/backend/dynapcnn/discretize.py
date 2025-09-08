@@ -287,7 +287,6 @@ def _discretize_conv_spk_(
             conv_bias = torch.zeros(conv_lyr.out_channels)
 
     if spike_lyr is None:
-
         discr_spk = False
 
         if spk_thr is None or spk_thr_low is None:

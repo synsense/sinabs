@@ -198,7 +198,7 @@ def test_lif_input_integration():
     spike_output = layer(input_current)
 
     assert (
-        spike_output.sum() == np.product(input_current.shape) / time_steps
+        spike_output.sum() == np.prod(input_current.shape) / time_steps
     ), "Every neuron should spike exactly once."
     assert (
         spike_output[:, 0].sum() == spike_output.sum()
@@ -229,7 +229,7 @@ def test_lif_recurrent_basic():
     tau_mem = torch.tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
+    n_neurons = np.prod(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1 - alpha)
 
     rec_connect = nn.Sequential(
@@ -347,7 +347,7 @@ def test_lif_recurrent_on_gpu():
     tau_mem = torch.as_tensor(30.0)
     alpha = torch.exp(-1 / tau_mem)
     input_dimensions = (batch_size, time_steps, 2, 10)
-    n_neurons = np.product(input_dimensions[2:])
+    n_neurons = np.prod(input_dimensions[2:])
     input_current = torch.ones(*input_dimensions) * 0.5 / (1 - alpha)
 
     rec_connect = nn.Sequential(

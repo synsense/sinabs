@@ -344,7 +344,6 @@ class DynapcnnNetwork(nn.Module):
         )
         # Validate config
         if is_compatible:
-            print("Network is valid")
             return config
         else:
             raise ValueError(f"Generated config is not valid for {device}")

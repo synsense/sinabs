@@ -123,15 +123,12 @@ def test_to_device():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False
     )
-    dynapcnn_out = dynapcnn_net(input_data)
-
     devices = find_open_devices()
 
     if len(devices) == 0:
         pytest.skip("A connected Speck device is required to run this test")
 
     for device_name, _ in devices.items():
-
         dynapcnn_net.to(
             device=device_name, chip_layers_ordering=[0, 1, 2, 7, 4, 5, 6, 3, 8]
         )
@@ -140,7 +137,6 @@ def test_to_device():
         from sinabs.backend.dynapcnn import io
 
         io.close_device(device_name)
-        dynapcnn_net.to(device=device_name)
 
 
 def test_memory_summary():
