@@ -92,7 +92,7 @@ def test_model_synops_hook_cuda(dt):
     correct_synops = torch.load(
         INPUT_RESULT_DIR / "model_synops.pth", map_location="cuda"
     )
-    model = torch.load(MODEL_DIR / "synop_hook_model.pth").cuda()
+    model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False).cuda()
     hooks.register_synops_hooks(model, dt=dt)
 
     model(inp)
@@ -109,9 +109,7 @@ def test_model_synops_hook_cuda(dt):
 def test_firing_rate_hook():
     inp = torch.load(INPUT_RESULT_DIR / "conv_input.pth")
     model = torch.load(MODEL_DIR / "synop_hook_model.pth", weights_only=False)
-    correct_firing_rates = torch.load(
-        INPUT_RESULT_DIR / "firing_rates.pth",
-    )
+    correct_firing_rates = torch.load(INPUT_RESULT_DIR / "firing_rates.pth")
     for layer in model:
         if isinstance(layer, IAFSqueeze):
             layer.register_forward_hook(hooks.firing_rate_hook)

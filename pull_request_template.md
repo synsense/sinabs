@@ -2,7 +2,7 @@
 - [ ] Tests for the changes have been added (for bug fixes/features)
 - [ ] Docs have been added / updated (for bug fixes / features)
 - [ ] I have performed a self-review of my code
-- [ ] Will this be part of a product update? If yes, please write one line about this on the CHANGELOG.md
+- [ ] Will this be part of a product update? If yes, please write one line about this on docs/about/release_notes.md
 
 
 * **What kind of change does this PR introduce?** (Bug fix, feature, docs update, ...)
