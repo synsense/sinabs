@@ -41,7 +41,7 @@ def construct_dynapcnnlayers_from_mapper(
 def finalize_dcnnl_map(
     dcnnl_map: Dict, dvs_info: Union[Dict, None], rescale_fn: Optional[Callable] = None
 ) -> None:
-    """Finalize dcnnl map by consolidating information
+    """Finalize DynapCNNLayer map by consolidating information
 
     Update dcnnl_map in-place
     - Consolidate chained pooling layers
