@@ -490,7 +490,7 @@ class GraphExtractor:
         (features, height, width) = dvs_input_shape
         if features > 2:
             raise ValueError(
-                f"A DVSLayer istance can have the feature dimension of its inputs with values 1 or 2 but {features} was given."
+                f"A DVSLayer istance can have a max feature dimension of 2 but {features} was given."
             )
 
         # Find new index to be assigned to DVS node
@@ -545,7 +545,7 @@ class GraphExtractor:
         """If a DVSLayer node exists, makes sure it is the only entry node of
         the graph. Checks if its `merge_polarities` attribute matches
         `dummy_input.shape[0]` (the number of features) and, if not, it will be
-        set based on the numeber of features of the input.
+        set based on the number of features of the input.
 
         Args:
             dvs_input_shape (tuple): shape of the DVSLayer input in format
