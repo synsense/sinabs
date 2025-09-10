@@ -15,13 +15,12 @@ def get_new_index(existing_indices: Sequence) -> int:
     `get_new_index([0,1,2,3])`: `4`
     `get_new_index([0,1,3])`: `2`
 
-    Parameters
-    ----------
-    - existing_indices: Sequence of indices
+    Args:
+        existing_indices: Sequence of indices
 
-    Returns
-    -------
-    - int: Smallest number (starting from 0) that is not yet in `existing_indices`.
+    Returns:
+        Smallest positive integer number (starting from 0) that is not yet in
+            `existing_indices`.
     """
     existing_indices = set(existing_indices)
     # Largest possible index is the length of `existing_indices`, if they are
@@ -35,7 +34,7 @@ def get_new_index(existing_indices: Sequence) -> int:
 def reset_states(model: nn.Module) -> None:
     """Helper function to recursively reset all states of spiking layers within the model.
 
-    Parameters:
+    Args:
         model: The torch module
     """
     for layer in model.children():
@@ -48,7 +47,7 @@ def reset_states(model: nn.Module) -> None:
 def zero_grad(model: nn.Module) -> None:
     """Helper function to recursively zero the gradients of all spiking layers within the model.
 
-    Parameters:
+    Args:
         model: The torch module
     """
     for layer in model.children():
@@ -104,7 +103,7 @@ def get_network_activations(
 ) -> List[np.ndarray]:
     """Returns the activity of neurons in each layer of the network.
 
-    Parameters:
+    Args:
         model: Model for which the activations are to be read out
         inp: Input to the model
         bRate: If true returns the rate, else returns spike count
@@ -154,13 +153,14 @@ def normalize_weights(
     `Conversion of Continuous-Valued Deep Networks to Efficient Event-Driven Networks for Image Classification` by Rueckauer et al.
     https://www.frontiersin.org/article/10.3389/fnins.2017.00682
 
-    Parameters:
+    Args:
          ann: Torch module
          sample_data: Input data to normalize the network with
-         output_layers: List of layers to verify activity of normalization. Typically this is a relu layer
+         output_layers: List of layers to verify activity of normalization.
+            Typically this is a relu layer.
          param_layers: List of layers whose parameters preceed `output_layers`
          percentile: A number between 0 and 100 to determine activity to be normalized by
-                     where a 100 corresponds to the max activity of the network. Defaults to 99.
+            where a 100 corresponds to the max activity of the network. Defaults to 99.
     """
     # Network activity storage
     output_data = []
@@ -298,15 +298,10 @@ def get_smallest_compatible_time_dimension(model: nn.Module) -> int:
 def expand_to_pair(value) -> Tuple[int, int]:
     """Expand a given value to a pair (tuple) if an int is passed.
 
-    Parameters
-    ----------
-    value:
-        int
-
-    Returns
-    -------
-    pair:
-        (int, int)
+    Args:
+        value (int):
+    Returns:
+        pair: (int, int)
     """
     return (value, value) if isinstance(value, int) else value
 
@@ -317,17 +312,14 @@ T = TypeVar("T")
 def collapse_pair(pair: Union[Iterable[T], T]) -> T:
     """Collapse an iterable of equal elements by returning only the first
 
-    Parameters
-    ----------
-    pair: Iterable. All elements should be the same.
+    Args:
+        pair: Iterable. All elements should be the same.
 
-    Returns
-    -------
-    First item of `pair`. If `pair` is not iterable it will return `pair` itself.
+    Returns:
+        First item of `pair`. If `pair` is not iterable it will return `pair` itself.
 
-    Raises
-    ------
-    ValueError if not all elements in `pair` are equal.
+    Raises:
+        ValueError if not all elements in `pair` are equal.
     """
     if isinstance(pair, Iterable):
         items = [x for x in pair]

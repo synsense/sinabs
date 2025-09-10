@@ -31,7 +31,7 @@ def from_model(
     analyzed, and a copy is returned, with all ReLUs and NeuromorphicReLUs turned into
     SpikingLayers.
 
-    Parameters:
+    Args:
         model: Torch model
         input_shape: If provided, the layer dimensions are computed. Otherwise they will be computed at the first forward pass.
         spike_threshold: The membrane potential threshold for spiking (same for all layers).

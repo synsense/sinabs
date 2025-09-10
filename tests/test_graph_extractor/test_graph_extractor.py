@@ -5,19 +5,17 @@ from sinabs.backend.dynapcnn.nir_graph_extractor import GraphExtractor
 
 
 def fix_node_ids(expected_output, graph_extractor):
-    """Match node IDs between graph extractor and expected output
+    """Match node IDs between graph extractor and expected output.
 
     Node IDs can be assigned in many ways. This function prevents test
     errors from generated IDs not matching expected output
 
-    Parameters
-    ----------
-    expected_output: Dict with expected output
-    graph_extractor: GraphExtractor instance
+    Args:
+        expected_output: Dict with expected output.
+        graph_extractor: GraphExtractor instance.
 
-    Returns
-    -------
-    Expected outputs with remapped node IDs
+    Returns:
+        Expected outputs with remapped node IDs.
     """
     idx_map = {
         expected_idx: graph_extractor.name_2_indx_map[name]

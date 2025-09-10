@@ -40,16 +40,14 @@ class Speck2FConfigBuilder(DynapcnnConfigBuilder):
     ) -> dict:
         """Generate config dict from DynapcnnLayer instance
 
-        Parameters
-        ----------
-        - layer (DynapcnnLayer): Layer instance from which to generate the config
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_indices (List): Indices of destination layers for `layer`
+        Args:
+            layer (DynapcnnLayer): Layer instance from which to generate the config.
+            layer2core_map (Dict): Keys are layer indices, values are corresponding
+                cores on hardware. Needed to map the destinations.
+            destination_indices (List): Indices of destination layers for `layer`.
 
-        Returns
-        -------
-        - Dict that holds the information to configure the on-chip core
+        Returns:
+            Dictionary that holds the information to configure the on-chip core.
         """
         config_dict = super().get_dynapcnn_layer_config_dict(
             layer=layer,

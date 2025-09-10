@@ -13,18 +13,16 @@ class ConfigBuilder(ABC):
     def get_samna_module(self):
         """Get the samna parent module that hosts all the appropriate sub-modules and classes.
 
-        Returns
-        -------
-        samna module
+        Returns:
+            samna module
         """
 
     @classmethod
     @abstractmethod
     def get_default_config(cls):
         """
-        Returns
-        -------
-        Returns the default configuration for the device type
+        Returns:
+            Default configuration for the device type
         """
 
     @classmethod
@@ -37,15 +35,13 @@ class ConfigBuilder(ABC):
     ):
         """Build the configuration given a model.
 
-        Parameters
-        ----------
-        - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_map (Dict): Indices of destination layers for `layer`.
+        Args:
+            layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
+            layer2core_map (Dict): Keys are layer indices, values are corresponding
+                cores on hardware. Needed to map the destinations.
+            destination_map (Dict): Indices of destination layers for `layer`.
 
-        Returns
-        -------
+        Returns:
             Samna Configuration object
         """
 
@@ -54,8 +50,7 @@ class ConfigBuilder(ABC):
     def get_constraints(cls) -> List[LayerConstraints]:
         """Returns the layer constraints of a the given device.
 
-        Returns
-        -------
+        Returns:
             List[LayerConstraints]
         """
 
@@ -68,13 +63,11 @@ class ConfigBuilder(ABC):
     def map_layers_to_cores(cls, layers: Dict[int, DynapcnnLayer]) -> Dict[int, int]:
         """Find a mapping from DynapcnnLayers onto on-chip cores
 
-        Parameters
-        ----------
-        - layers: Dict with layer indices as keys and DynapcnnLayer instances as values
+        Args:
+            layers: Dict with layer indices as keys and DynapcnnLayer instances as values.
 
-        Returns
-        -------
-        - Dict mapping layer indices (keys) to assigned core IDs (values).
+        Returns:
+            Dict mapping layer indices (keys) to assigned core IDs (values).
         """
 
         return get_valid_mapping(layers, cls.get_constraints())
@@ -83,14 +76,11 @@ class ConfigBuilder(ABC):
     def validate_configuration(cls, config) -> bool:
         """Check if a given configuration is valid.
 
-        Parameters
-        ----------
-        config:
-            Configuration object
+        Args:
+            config: Configuration object.
 
-        Returns
-        -------
-        True if the configuration is valid, else false
+        Returns:
+            True if the configuration is valid, else false
         """
         is_valid, message = cls.get_samna_module().validate_configuration(config)
         if not is_valid:
@@ -121,22 +111,18 @@ class ConfigBuilder(ABC):
     def reset_states(cls, config, randomize=False):
         """Randomize or reset the neuron states.
 
-        Parameters
-        ----------
-            randomize (bool):
-                If true, the states will be set to random initial values. Else they will be set to zero
+        Args:
+            randomize (bool): If true, the states will be set to random initial values.
+                Else they will be set to zero
         """
 
     @classmethod
     def set_all_v_mem_to_zeros(cls, samna_device, layer_id: int) -> None:
         """Reset all memory states to zeros.
 
-        Parameters
-        ----------
-        samna_device:
-            samna device object to erase vmem memory.
-        layer_id:
-            layer index
+        Args:
+            samna_device: samna device object to erase vmem memory.
+            layer_id: layer index
         """
         mod = cls.get_samna_module()
         layer_constraint: LayerConstraints = cls.get_constraints()[layer_id]

@@ -24,18 +24,19 @@ from .utils import Edge, merge_bn
 def remap_edges_after_drop(
     dropped_node: int, source_of_dropped_node: int, edges: Set[Edge]
 ) -> Set[Edge]:
-    """Creates a new set of edges from `edges`. All edges where `dropped_node` is the source node will be used to generate
-    a new edge where `source_of_dropped_node` becomes the source node (the target is kept).
+    """Creates a new set of edges from `edges`. All edges where `dropped_node`
+    is the source node will be used to generate a new edge where
+    `source_of_dropped_node` becomes the source node (the target is kept).
 
-    Parameters
-    ----------
-    - dropped_node (int):
-    - source_of_dropped_node (int):
-    - edges (set): tuples describing the connections between layers in `spiking_model`.
+    Args:
+        dropped_node (int):
+        source_of_dropped_node (int):
+        edges (set): tuples describing the connections between layers in
+            `spiking_model`.
 
-    Returns
-    -------
-    - remapped_edges (set): new set of edges with `source_of_dropped_node` as the source node where `dropped_node` used to be.
+    Returns:
+        New set of edges with `source_of_dropped_node` as the source node where
+        `dropped_node` used to be.
     """
     remapped_edges = set()
 
@@ -51,15 +52,19 @@ def handle_batchnorm_nodes(
     indx_2_module_map: Dict[int, nn.Module],
     name_2_indx_map: Dict[str, int],
 ) -> None:
-    """Merges `BatchNorm2d`/`BatchNorm1d` layers into `Conv2d`/`Linear` ones. The batch norm nodes will be removed from the graph (by updating all variables
-    passed as arguments in-place) after their properties are used to re-scale the weights of the convolutional/linear layers associated with batch
-    normalization via the `weight-batchnorm` edges found in the original graph.
+    """Merges `BatchNorm2d`/`BatchNorm1d` layers into `Conv2d`/`Linear` ones.
+    The batch norm nodes will be removed from the graph (by updating all
+    variables passed as arguments in-place) after their properties are used to
+    re-scale the weights of the convolutional/linear layers associated with
+    batch normalization via the `weight-batchnorm` edges found in the original
+    graph.
 
-    Parameters
-    ----------
-    - edges (set): tuples describing the connections between layers in `spiking_model`.
-    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
-    - name_2_indx_map (dict): Map from node names to unique indices.
+    Args:
+        edges (set): tuples describing the connections between layers in
+            `spiking_model`.
+        indx_2_module_map (dict): the mapping between a node (`key` as an `int`)
+            and its module (`value` as a `nn.Module`).
+        name_2_indx_map (dict): Map from node names to unique indices.
     """
 
     # Gather indexes of the BatchNorm2d/BatchNorm1d nodes.
@@ -122,24 +127,29 @@ def fix_dvs_module_edges(
     name_2_indx_map: Dict[str, int],
     entry_nodes: Set[Edge],
 ) -> None:
-    """All arguments are modified in-place to fix wrong node extractions from NIRtorch when a DVSLayer istance is the first layer in the network.
+    """All arguments are modified in-place to fix wrong node extractions from
+    NIRtorch when a DVSLayer istance is the first layer in the network.
+    Modifies `edges` to re-structure the edges related witht the DVSLayer
+    instance. The DVSLayer's forward method feeds data in the sequence
+    'DVS -> DVS.pool -> DVS.crop -> DVS.flip', so we remove edges involving
+    these nodes (that are internaly implementend in the DVSLayer) from the
+    graph and point the node of DVSLayer to the node where it should send its
+    output to. This is also removes a self-recurrent node with edge '(FlipDims,
+    FlipDims)' that is wrongly extracted.
+    Modifies `indx_2_module_map` and `name_2_indx_map` to remove the internal
+    DVSLayer nodes (Crop2d, FlipDims and DVSLayer's pooling) since these should
+    not be independent nodes in the graph.
+    Modifies `entry_nodes` such that the DVSLayer becomes the only entry node
+    of the graph.
 
-    Modifies `edges` to re-structure the edges related witht the DVSLayer instance. The DVSLayer's forward method feeds data in the
-    sequence 'DVS -> DVS.pool -> DVS.crop -> DVS.flip', so we remove edges involving these nodes (that are internaly implementend in
-    the DVSLayer) from the graph and point the node of DVSLayer to the node where it should send its output to. This is also removes
-    a self-recurrent node with edge '(FlipDims, FlipDims)' that is wrongly extracted.
-
-    Modifies `indx_2_module_map` and `name_2_indx_map` to remove the internal DVSLayer nodes (Crop2d, FlipDims and DVSLayer's pooling) since
-    these should not be independent nodes in the graph.
-
-    Modifies `entry_nodes` such that the DVSLayer becomes the only entry node of the graph.
-
-    Parameters
-    ----------
-    - edges (set): tuples describing the connections between layers in `spiking_model`.
-    - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
-    - name_2_indx_map (dict): Map from node names to unique indices.
-    - entry_nodes (set): IDs of nodes acting as entry points for the network (i.e., receiving external input).
+    Args:
+        edges (set): tuples describing the connections between layers in
+            `spiking_model`.
+        indx_2_module_map (dict): the mapping between a node (`key` as an `int`)
+            and its module (`value` as a `nn.Module`).
+        name_2_indx_map (dict): Map from node names to unique indices.
+        entry_nodes (set): IDs of nodes acting as entry points for the network
+            (i.e., receiving external input).
     """
     # TODO - the 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
     # the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
@@ -243,25 +253,27 @@ def collect_dynapcnn_layer_info(
 
     Validate and sort edges based on the type of nodes they connect.
     Iterate over edges in order of their type. For each neuron->weight edge
-    generate a new dict to collect information for the corresponding dynapcnn layer.
-    Then add pooling based on neuron->pooling type edges. Collect additional pooling
-    from pooling->pooling type edges. Finally set layer destinations based on
-    neuron/pooling->weight type of edges.
+    generate a new dict to collect information for the corresponding dynapcnn
+    layer. Then add pooling based on neuron->pooling type edges. Collect
+    additional pooling from pooling->pooling type edges. Finally set layer
+    destinations based on neuron/pooling->weight type of edges.
 
-    Parameters
-    ----------
-    - indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    - edges (set of tuples): Represent connections between two nodes in computational graph
-    - nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
-    - entry_nodes (set of int): IDs of nodes that receive external input
+    Args:
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        edges (set of tuples): Represent connections between two nodes in
+            computational graph.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes.
+        entry_nodes (set of int): IDs of nodes that receive external input.
 
-    Returns
-    -------
-    dynapcnn_layer_info (dict): Each 'key' is the index of a future 'DynapcnnLayer' and
-        'value' is a dictionary, with keys 'conv', 'neuron', and 'destinations',
-        containing corresponding node ids and modules required to build the layer
-    dvs_layer_info (dict or None): If a DVSLayer is part of the network, this will
-        be a dict containing the layer itself and its destination indices.
+    Returns:
+        A tuple with a dictionary where each 'key' is the index of a future
+        'DynapcnnLayer' and 'value' is a dictionary, with keys 'conv',
+        'neuron', and 'destinations', containing corresponding node ids and
+        modules required to build the layer, and if a DVSLayer is part of the
+        network, another dictionary containing the layer itself and its
+        destination indices. If not, None.
     """
 
     # Sort edges by edge type (type of layers they connect)
@@ -362,18 +374,18 @@ def get_valid_edge_type(
     layers: Dict[int, nn.Module],
     valid_edge_ids: Dict[Tuple[Type, Type], int],
 ) -> int:
-    """Checks if the modules each node in 'edge' represent are a valid connection between a sinabs network to be
-    loaded on Speck and return the edge type
+    """Checks if the modules each node in 'edge' represent are a valid
+    connection between a sinabs network to be loaded on Speck and return the
+    edge type.
 
-    Parameters
-    ----------
-    edge (tuple of two int): The edge whose type is to be inferred
-    layers (Dict): Dict with node IDs as keys and layer instances as values
-    valid_edge_ids: Dict with valid edge-types (tuples of Types) as keys and edge-type-ID as value
+    Args:
+        edge (tuple of two int): The edge whose type is to be inferred.
+        layers (Dict): Dict with node IDs as keys and layer instances as values.
+        valid_edge_ids: Dict with valid edge-types (tuples of Types) as keys
+            and edge-type-ID as value
 
-    Returns
-    ----------
-        edge_type: the edge type specified in 'valid_edges_map' ('None' if edge is not valid).
+    Returns:
+        The edge type specified in 'valid_edges_map' ('None' if edge is not valid).
     """
     source_type = type(layers[edge[0]])
     target_type = type(layers[edge[1]])
@@ -386,15 +398,16 @@ def sort_edges_by_type(
 ) -> Dict[str, Set[Edge]]:
     """Sort edges by the type of nodes they connect
 
-    Parameters
-    ----------
-    edges (set of tuples): Represent connections between two nodes in computational graph
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    Args:
+        edges (set of tuples): Represent connections between two nodes in
+            computational graph.
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
 
-    Returns
-    -------
-    Dict with possible keys "weight-neuron", "neuron-weight", "neuron-pooling", "pooling-pooling",
-        and "pooling-weight". Values are sets of edges corresponding to these types.
+    Returns:
+        Dictionary with possible keys "weight-neuron", "neuron-weight",
+        "neuron-pooling", "pooling-pooling", and "pooling-weight".
+        Values are sets of edges corresponding to these types.
     """
     edges_by_type: Dict[str, Set[Edge]] = dict()
 
@@ -425,21 +438,23 @@ def init_new_dynapcnnlayer_entry(
     node_2_layer_map: Dict[int, int],
     entry_nodes: Set[int],
 ) -> None:
-    """Initiate dict to hold information for new dynapcnn layer based on a "weight->neuron" edge.
-    Change `dynapcnn_layer_info` in-place.
+    """Initiate dict to hold information for new dynapcnn layer based on a
+    "weight->neuron" edge. Change `dynapcnn_layer_info` in-place.
 
-    Parameters
-    ----------
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
-    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be within an existing entry of `dynapcnn_layer_info`.
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    entry_nodes (set of int): IDs of nodes that receive external input
+    Args:
+        dynapcnn_layer_info: Dict with one entry for each future dynapcnn
+            layer. Key is unique dynapcnn layer ID, value is dict with nodes of
+            the layer will be updated in-place.
+        edge: Tuple of 2 integers, indicating edge between two nodes in graph.
+            Edge source has to be within an existing entry of
+            `dynapcnn_layer_info`.
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        entry_nodes (set of int): IDs of nodes that receive external input.
     """
     # Make sure there are no existing entries holding any of the modules connected by `edge`
     assert edge[0] not in node_2_layer_map
@@ -476,26 +491,27 @@ def add_pooling_to_entry(
     indx_2_module_map: Dict[int, nn.Module],
     node_2_layer_map: Dict[int, int],
 ) -> None:
-    """Add or extend destination information with pooling for existing
-    entry in `dynapcnn_layer_info`.
+    """Add or extend destination information with pooling for existing entry in
+    `dynapcnn_layer_info`.
 
-    Correct entry is identified by existing neuron node. Destination information is a
-    dict containing list of IDs and list of modules for each chains of pooling nodes.
+    Correct entry is identified by existing neuron node. Destination information
+    is a dict containing list of IDs and list of modules for each chains of
+    pooling nodes.
 
-    Parameters
-    ----------
-    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
-        key is unique DynapCNN layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
-    edge: Tuple of 2 integers, indicating edge between a neuron node and the pooling
-        node that starts all provided `pooling_chains`.
-        Edge source has to be a neuron node within an existing entry of
-        `dynapcnn_layer_info`, i.e. it has to have been processed already.
-    pooling_chains: List of deque of int. All sequences ("chains") of connected pooling nodes,
-        starting from edge[1]
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
+    Args:
+        dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+            Key is unique DynapCNN layer ID, value is dict with nodes of the
+            layer. Will be updated in-place.
+        edge: Tuple of 2 integers, indicating edge between a neuron node and the
+            pooling node that starts all provided `pooling_chains`. Edge source
+            has to be a neuron node within an existing entry of
+            `dynapcnn_layer_info`, i.e. it has to have been processed already.
+        pooling_chains: List of deque of int. All sequences ("chains") of
+            connected pooling nodes, starting from edge[1].
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
     """
     # Find layer containing edge[0]
     try:
@@ -540,19 +556,20 @@ def dvs_setup(
     node_2_layer_map: Dict[int, int],
     nodes_io_shapes: Dict[int, Dict[str, Tuple[Size, Size]]],
 ) -> Union[None, Dict]:
-    """Generate dict containing information to set up DVS layer
+    """Generate dict containing information to set up DVS layer.
 
-    Parameters
-    ----------
-    edges_by_type (dict of sets of edges): Keys are edge types (str), values are sets of edges.
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    Args:
+        edges_by_type (dict of sets of edges): Keys are edge types (str),
+            values are sets of edges.
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes
 
-    Returns
-    -------
-    dvs_layer_info: Dict containing information about the DVSLayer.
+    Returns:
+        Dictionary containing information about the DVSLayer.
     """
     # Process all outgoing edges of a DVSLayer
     dvs_weight_edges = edges_by_type.get("dvs-weight", set())
@@ -613,19 +630,20 @@ def init_dvs_entry(
     """Initiate dict to hold information for a DVS Layer configuration
     based on "dvs-weight" edges.
 
-    Parameters
-    ----------
-    dvs_weight_edges: Set of edges between two nodes in graph.
-        Edge source has to be a DVSLayer and the same for all edges.
-        Edge target has to be within an existing entry of `dynapcnn_layer_info`.
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    Args:
+        dvs_weight_edges: Set of edges between two nodes in graph.
+            Edge source has to be a DVSLayer and the same for all edges.
+            Edge target has to be within an existing entry of
+            `dynapcnn_layer_info`.
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes
 
-    Returns
-    -------
-    dvs_layer_info: Dict containing information about the DVSLayer.
+    Returns:
+        Dictionary containing information about the DVSLayer.
     """
 
     # Pick any of the edges in set to get the DVS node ID. Should be same for all.
@@ -685,20 +703,21 @@ def init_dvs_entry_with_pooling(
 ) -> Dict:
     """Initiate dict to hold information for a DVS Layer configuration with additional pooling
 
-    Parameters
-    ----------
-    dvs_pooling_edge: Edge from DVSLayer to pooling layer.
-    pooling_weight_edges: Set of edges between pooling layer and weight layer
-        Edge source has to be the target of `dvs_pooling_edge`.
-        Edge targets have to be within an existing entry of `dynapcnn_layer_info`.
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
+    Args:
+        dvs_pooling_edge: Edge from DVSLayer to pooling layer.
+        pooling_weight_edges: Set of edges between pooling layer and weight
+            layer. Edge source has to be the target of `dvs_pooling_edge`.
+            Edge targets have to be within an existing entry of
+            `dynapcnn_layer_info`.
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes
 
-    Returns
-    -------
-    dvs_layer_info: Dict containing information about the DVSLayer.
+    Returns:
+        Dictionary containing information about the DVSLayer.
     """
 
     dvs_node_id, pooling_id = dvs_pooling_edge
@@ -751,11 +770,10 @@ def set_exit_destinations(dynapcnn_layer: Dict) -> None:
     of the network.
     The destination layer will be `None`, and no pooling applied.
 
-    Parameters
-    ----------
-    dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
-        key is unique dynapcnn layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
+    Args:
+        dynapcnn_layer_info: Dict with one entry for each future dynapcnn layer.
+            Key is unique dynapcnn layer ID, value is dict with nodes of the
+            layer. Will be updated in-place.
     """
     for layer_info in dynapcnn_layer.values():
         if not (destinations := layer_info["destinations"]):
@@ -778,19 +796,20 @@ def set_neuron_layer_destination(
 ) -> None:
     """Set destination layer without pooling for existing entry in `dynapcnn_layer_info`.
 
-    Parameters
-    ----------
-    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
-        key is unique DynapCNN layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
-    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be a neuron layer within an existing entry of
-        `dynapcnn_layer_info`. Edge target has to be the weight layer of
-        another DynapCNN layer.
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    Args:
+        dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+            Key is unique DynapCNN layer ID, value is dict with nodes of the
+            layer. Will be updated in-place.
+        edge: Tuple of 2 integers, indicating edge between two nodes in graph.
+            Edge source has to be a neuron layer within an existing entry of
+            `dynapcnn_layer_info`. Edge target has to be the weight layer of
+            another DynapCNN layer.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`
     """
     # Make sure both source (neuron layer) and target (weight layer) have been previously processed
     try:
@@ -835,20 +854,21 @@ def set_pooling_layer_destination(
 ) -> None:
     """Set destination layer with pooling for existing entry in `dynapcnn_layer_info`.
 
-    Parameters
-    ----------
-    dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
-        key is unique DynapCNN layer ID, value is dict with nodes of the layer
-        Will be updated in-place.
-    edge: Tuple of 2 integers, indicating edge between two nodes in graph.
-        Edge source has to be a pooling layer that is at the end of at least
-        one pooling chain within an existing entry of `dynapcnn_layer_info`.
-        Edge target has to be a weight layer within an existing entry of
-        `dynapcnn_layer_info`.
-    node_2_layer_map (dict): Maps each node ID to the ID of the layer it is assigned to.
-        Will be updated in-place.
-    nodes_io_shapes (dict): Map from node ID to dict containing node's in- and output shapes
-    indx_2_module_map (dict): Maps node IDs of the graph as `key` to their associated module as `value`
+    Args:
+        dynapcnn_layer_info: Dict with one entry for each future DynapCNN layer.
+            Key is unique DynapCNN layer ID, value is dict with nodes of the
+            layer. Will be updated in-place.
+        edge: Tuple of 2 integers, indicating edge between two nodes in graph.
+            Edge source has to be a pooling layer that is at the end of at
+            least one pooling chain within an existing entry of
+            `dynapcnn_layer_info`. Edge target has to be a weight layer within
+            an existing entry of `dynapcnn_layer_info`.
+        node_2_layer_map (dict): Maps each node ID to the ID of the layer it is
+            assigned to. Will be updated in-place.
+        nodes_io_shapes (dict): Map from node ID to dict containing node's in-
+            and output shapes
+        indx_2_module_map (dict): Maps node IDs of the graph as `key` to their
+            associated module as `value`
     """
     # Make sure both source (pooling layer) and target (weight layer) have been previously processed
     try:
@@ -907,15 +927,13 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[Deque[int]]:
     Start with `node`, and recursively look for paths of connected nodes
     within `remaining edges.`
 
-    Parameters
-    ----------
-    node (int): ID of current node
-    remaining_edges: Set of remaining edges still to be searched
+    Args:
+        node (int): ID of current node.
+        remaining_edges: Set of remaining edges still to be searched.
 
-    Returns
-    -------
-    paths: List of deque of int, all paths of connected edges starting from `node`.
-    processed_edges: Set of edges that are part of the returned paths
+    Returns:
+        List of deque of int, all paths of connected edges starting from `node`
+        and a set of edges that are part of the returned paths.
     """
     paths = []
     processed_edges = set()
@@ -946,14 +964,12 @@ def trace_paths(node: int, remaining_edges: Set[Edge]) -> List[Deque[int]]:
 def find_edges_by_source(edges: Set[Edge], source: int) -> Set[Edge]:
     """Utility function to find all edges with a given source node.
 
-    Parameters
-    ----------
-    - edges: Set of `Edge` instances to be searched
-    - source (int): Node ID that returned edges should have as source
+    Args:
+        edges: Set of `Edge` instances to be searched.
+        source (int): Node ID that returned edges should have as source.
 
-    Returns
-    -------
-    - Set[Edge]: All sets from `edges` that have `source` as source
+    Returns:
+        All sets from `edges` that have `source` as source.
     """
     return {(src, tgt) for (src, tgt) in edges if src == source}
 
@@ -963,21 +979,20 @@ def verify_layer_info(
 ):
     """Verify that `dynapcnn_layer_info` matches formal requirements.
 
-    - Every layer needs to have at least a `conv`, `neuron`, and `destinations`
-        entry.
-    - If `edge_counts` is provided, also make sure that number of layer matches
-        numbers of edges.
+    Every layer needs to have at least a `conv`, `neuron`, and `destinations`
+    entry.
+    If `edge_counts` is provided, also make sure that number of layer matches
+    numbers of edges.
 
-    Parameters
-    ----------
-    - dynapcnn_layer_info: Dict with information to construct and connect
-        DynapcnnLayer instances
-    - edge_counts: Optional Dict with edge counts for each edge type. If not
-        `None`, will be used to do further verifications on `dynapcnn_layer_info`
+    Args:
+        dynapcnn_layer_info: Dict with information to construct and connect
+            DynapcnnLayer instances
+        edge_counts: Optional Dict with edge counts for each edge type. If not
+        `None`, will be used to do further verifications on
+        `dynapcnn_layer_info`.
 
-    Raises
-    ------
-    - InvalidGraphStructure: if any verification fails.
+    Raises:
+        InvalidGraphStructure: if any verification fails.
     """
 
     # Make sure that each dynapcnn layer has at least a weight layer and a neuron layer

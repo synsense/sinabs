@@ -19,9 +19,8 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         """
         Get the samna parent module that hosts all the appropriate sub-modules and classes.
 
-        Returns
-        -------
-        samna module
+        Returns:
+            samna module
         """
 
     @classmethod
@@ -49,16 +48,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     ) -> None:
         """Write a DVS layer configuration to the conf object.
 
-        Uses the data in `layer` to configure a `DVSLayerConfig` to use the chip's DVS camera.
+        Uses the data in `layer` to configure a `DVSLayerConfig` to use the
+        chip's DVS camera.
 
-        Parameters
-        ----------
-        - layer (DVSLayer): Layer instance from which to generate the config
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_indices (List): Indices of destination layers for `layer`
-        - chip_layer (DVSLayerConfig): Configuration object of the corresponding
-            on-chip core. Will be changed in-place based on `layer`.
+        Args:
+            layer (DVSLayer): Layer instance from which to generate the config.
+            layer2core_map (Dict): Keys are layer indices, values are
+                corresponding cores on hardware. Needed to map the destinations.
+            destination_indices (List): Indices of destination layers for `layer`.
+            chip_layer (DVSLayerConfig): Configuration object of the corresponding
+                on-chip core. Will be changed in-place based on `layer`.
         """
         for param, value in layer.get_config_dict().items():
             setattr(chip_layer, param, value)
@@ -82,16 +81,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     ) -> dict:
         """Generate config dict from DynapcnnLayer instance
 
-        Parameters
-        ----------
-        - layer (DynapcnnLayer): Layer instance from which to generate the config
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_indices (List): Indices of destination layers for `layer`
+        Args:
+            layer (DynapcnnLayer): Layer instance from which to generate the
+                config.
+            layer2core_map (Dict): Keys are layer indices, values are
+                corresponding cores on hardware. Needed to map the destinations.
+            destination_indices (List): Indices of destination layers for
+                `layer`.
 
-        Returns
-        -------
-        - Dict that holds the information to configure the on-chip core
+        Returns:
+            Dictionary that holds the information to configure the on-chip core.
         """
         config_dict = {}
         config_dict["destinations"] = [{}, {}]
@@ -208,14 +207,15 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         Uses the data in `layer` to configure a `CNNLayerConfig` to be
         deployed on chip.
 
-        Parameters
-        ----------
-        - layer (DynapcnnLayer): Layer instance from which to generate the config
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_indices (List): Indices of destination layers for `layer`
-        - chip_layer (CNNLayerConfig): Configuration object of the corresponding
-            on-chip core. Will be changed in-place based on `layer`.
+        Args:
+            layer (DynapcnnLayer): Layer instance from which to generate the
+                config.
+            layer2core_map (Dict): Keys are layer indices, values are
+                corresponding cores on hardware. Needed to map the destinations.
+            destination_indices (List): Indices of destination layers for `layer`.
+            chip_layer (CNNLayerConfig): Configuration object of the
+                corresponding on-chip core. Will be changed in-place based on
+                `layer`.
         """
 
         # extracting from a DynapcnnLayer the config. variables for its CNNLayerConfig.
@@ -250,17 +250,16 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     ) -> "DynapcnnConfiguration":
         """Uses `DynapcnnLayer` objects to configure their equivalent chip cores
 
-        Parameters
-        ----------
-        - layers (Dict): Keys are layer indices, values are DynapcnnLayer instances.
-        - layer2core_map (Dict): Keys are layer indices, values are corresponding
-            cores on hardware. Needed to map the destinations.
-        - destination_map (Dict): Indices of destination layers for `layer`.
+        Args:
+            layers (Dict): Keys are layer indices, values are DynapcnnLayer
+                instances.
+            layer2core_map (Dict): Keys are layer indices, values are
+                corresponding cores on hardware. Needed to map the destinations.
+            destination_map (Dict): Indices of destination layers for `layer`.
 
-        Returns
-        -------
-        - DynapcnnConfiguration: Config object holding the information to configure
-            the chip based on the provided `layers`.
+        Returns:
+            Config object holding the information to configure the chip based
+            on the provided `layers`.
         """
         config = cls.get_default_config()
         config.dvs_layer.pass_sensor_events = False
@@ -337,17 +336,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     def monitor_layers(cls, config, layers: List):
         """Updates the config object in place.
 
-        Parameters
-        ----------
-        config:
-            samna config object
-        monitor_chip_layers:
-            The layers to be monitored on the chip.
+        Args:
+            config: samna config object.
+            monitor_chip_layers: The layers to be monitored on the chip.
 
-        Returns
-        -------
-        config:
-            Returns the modified config. (The config object is modified in place)
+        Returns:
+            Returns the modified config. The config object is modified in place.
         """
         monitor_layers = layers.copy()
         if "dvs" in monitor_layers:
@@ -394,12 +388,10 @@ class DynapcnnConfigBuilder(ConfigBuilder):
     @classmethod
     def reset_states(cls, config, randomize=False):
         """
-        Parameters
-        ----------
-        config:
-            samna config object
-        randomize (bool):
-            If true, the states will be set to random initial values. Else, they will be set to zero
+        Args:
+            config: samna config object.
+            randomize (bool): If true, the states will be set to random initial values.
+                Else, they will be set to zero
         """
         for idx, lyr in enumerate(config.cnn_layers):
             shape = torch.tensor(lyr.neurons_initial_value).shape

@@ -45,36 +45,35 @@ class GraphExtractor:
         each node represents a layer in the model and the list of edges represents how the data flow between
         the layers.
 
-        Parameters
-        ----------
-        - spiking_model (nn.Module): a sinabs-compatible spiking network.
-        - dummy_input (torch.tensor): a random input sample to be fed through the model to acquire both
-            the computational graph (via `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
-            with `(batch, channels, heigh, width)`.
+        Args:
+            spiking_model (nn.Module): a sinabs-compatible spiking network.
+            dummy_input (torch.tensor): a random input sample to be fed through
+                the model to acquire both the computational graph (via
+                `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
+                with `(batch, channels, heigh, width)`.
 
-        Attributes
-        ----------
-        - edges (set of 2-tuples of integers):
-            Tuples describing the connections between layers in `spiking_model`.
-            Each layer (node) is identified by a unique integer ID.
-        - name_2_index_map (dict):
-            Keys are original variable names of layers in `spiking_model`.
-            Values are unique integer IDs.
-        - entry_nodes (set of ints):
-            IDs of nodes acting as entry points for the network, i.e. receiving external input.
-        - indx_2_module_map (dict):
-            Map from layer ID to the corresponding nn.Module instance.
-        - nodes_io_shapes (dict):
-            Map from node ID to dict containing node's in- and output shapes
-        - dvs_input (bool): optional (default as `None`). Whether or not the model
-            should start with a `DVSLayer`.
-        - ignore_node_types (iterable of types): Node types that should be
-            ignored completely from the graph. This can include, for instance,
-            `nn.Dropout2d`, which otherwise can result in wrongly inferred
-            graph structures by NIRTorch. Types such as `nn.Flatten`, or sinabs
-            `Merge` should not be included here, as they are needed to properly
-            handle graph structure and metadata. They can be removed after
-            instantiation with `remove_nodes_by_class`.
+        Attributes:
+            edges (set of 2-tuples of integers): Tuples describing the
+                connections between layers in `spiking_model`. Each layer
+                (node) is identified by a unique integer ID.
+            name_2_index_map (dict): Keys are original variable names of layers
+                in `spiking_model`. Values are unique integer IDs.
+            entry_nodes (set of ints): IDs of nodes acting as entry points for
+                the network, i.e. receiving external input.
+            indx_2_module_map (dict): Map from layer ID to the corresponding
+                nn.Module instance.
+            nodes_io_shapes (dict): Map from node ID to dict containing node's
+                in- and output shapes.
+            dvs_input (bool): optional (default as `None`). Whether or not the
+                model should start with a `DVSLayer`.
+            ignore_node_types (iterable of types): Node types that should be
+                ignored completely from the graph. This can include, for
+                instance, `nn.Dropout2d`, which otherwise can result in wrongly
+                inferred graph structures by NIRTorch. Types such as
+                `nn.Flatten`, or sinabs `Merge` should not be included here, as
+                they are needed to properly handle graph structure and
+                metadata. They can be removed after instantiation with
+                `remove_nodes_by_class`.
         """
 
         # Store state before it is changed due to NIRTorch and
@@ -184,16 +183,16 @@ class GraphExtractor:
 
         This includes construction of the DynapcnnLayer instances
 
-        Parameters:
-        -----------
-        - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading
-            weights to dynapcnn. Set to `False` only for testing purposes.
-        - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-            the same convolutional layer are combined/re-scaled before applying them.
+        Args:
+            discretize (bool): If `True`, discretize the parameters and
+                thresholds. This is needed for uploading weights to dynapcnn.
+                Set to `False` only for testing purposes.
+            weight_rescaling_fn (callable): a method that handles how the
+                re-scaling factor for one or more `SumPool2d` projecting to the
+                same convolutional layer are combined/re-scaled before applying them.
 
-        Returns
-        -------
-        - The DynapcnnNetworkModule based on graph representation of this `GraphExtractor`
+        Returns:
+            The DynapcnnNetworkModule based on graph representation of this `GraphExtractor`
 
         """
         # Make sure all nodes are supported and there are no isolated nodes.
@@ -239,18 +238,18 @@ class GraphExtractor:
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
         """Remove nodes of given classes from graph in place.
 
-        Create a new set of edges, considering layers that `DynapcnnNetwork` will ignore. This
-        is done by setting the source (target) node of an edge where the source (target) node
-        will be dropped as the node that originally targeted this node to be dropped.
+        Create a new set of edges, considering layers that `DynapcnnNetwork`
+        will ignore. This is done by setting the source (target) node of an
+        edge where the source (target) node will be dropped as the node that
+        originally targeted this node to be dropped.
 
         Will change internal attributes `self._edges`, `self._entry_nodes`,
-        `self._name_2_indx_map`, and `self._nodes_io_shapes` to reflect the changes.
+        `self._name_2_indx_map`, and `self._nodes_io_shapes` to reflect the
+        changes.
 
-        Parameters
-        ----------
-        - node_classes (tuple of types):
-            Layer classes that should be removed from the graph.
-
+        Args:
+            node_classes (tuple of types): Layer classes that should be removed
+            from the graph.
         """
         # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
         source2target: Dict[int, Set[int]] = {}
@@ -432,19 +431,19 @@ class GraphExtractor:
     ):
         """Make sure DVS input is properly integrated into graph
 
-        - Decide whether `DVSLayer` instance needs to be added to the graph
-            This is the case when `dvs_input==True` and there is no `DVSLayer` yet.
-        - Make sure edges between DVS related nodes are set properly
-        - Absorb pooling layers in DVS node if applicable
+        Decide whether `DVSLayer` instance needs to be added to the graph. This
+        is the case when `dvs_input==True` and there is no `DVSLayer` yet.
+        Make sure edges between DVS related nodes are set properly.
+        Absorb pooling layers in DVS node if applicable.
 
-        Parameters
-        ----------
-        - input_shape (tuple of three integers): Input shape (features, height, width)
-        - dvs_input (bool or `None` (default)): If `False`, will raise
-            `InvalidModelWithDvsSetup` if a `DVSLayer` is part of the graph. If `True`,
-            a `DVSLayer` will be added to the graph if there is none already. If `None`,
-            the model is considered to be using DVS input only if the graph contains
-            a `DVSLayer`.
+        Args:
+            input_shape (tuple of three integers): Input shape (features,
+                height, width).
+            dvs_input (bool or `None` (default)): If `False`, will raise
+                `InvalidModelWithDvsSetup` if a `DVSLayer` is part of the
+                graph. If `True`, a `DVSLayer` will be added to the graph if
+                there is none already. If `None`, the model is considered to be
+                using DVS input only if the graph contains a `DVSLayer`.
         """
         if self.has_dvs_layer:
             # Make a copy of the layer so that the original version is not
@@ -473,17 +472,19 @@ class GraphExtractor:
         self._validate_dvs_setup(dvs_input_shape=input_shape)
 
     def _add_dvs_node(self, dvs_input_shape: Tuple[int, int, int]) -> DVSLayer:
-        """In-place modification of `self._name_2_indx_map`, `self._indx_2_module_map`, and `self._edges` to accomodate the
-        creation of an extra node in the graph representing the DVS camera of the chip. The DVSLayer node will point to every
-        other node that is up to this point an entry node of the original graph, so `self._entry_nodes` is modified in-place
-        to have only one entry: the index of the DVS node.
+        """In-place modification of `self._name_2_indx_map`,
+        `self._indx_2_module_map`, and `self._edges` to accomodate the creation
+        of an extra node in the graph representing the DVS camera of the chip.
+        The DVSLayer node will point to every other node that is up to this
+        point an entry node of the original graph, so `self._entry_nodes` is
+        modified in-place to have only one entry: the index of the DVS node.
 
-        Parameters
-        ----------
-        - dvs_input_shape (tuple): shape of the DVSLayer input in format `(features, height, width)`
+        Args:
+            dvs_input_shape (tuple): shape of the DVSLayer input in format
+                `(features, height, width)`
 
-        Returns
-        - DVSLayer: A handler to the newly added `DVSLayer` instance
+        Returns:
+            A handler to the newly added `DVSLayer` instance.
         """
 
         (features, height, width) = dvs_input_shape
@@ -517,13 +518,11 @@ class GraphExtractor:
         """Return index of `DVSLayer`
         instance if it exists.
 
-        Returns
-        -------
-        - DVSLayer if exactly one is found, otherwise None
+        Returns:
+            DVSLayer if exactly one is found, otherwise None.
 
-        Raises
-        ------
-        - InvalidGraphStructure if more than one DVSLayer is found
+        Raises:
+            InvalidGraphStructure: if more than one DVSLayer is found.
 
         """
 
@@ -543,13 +542,14 @@ class GraphExtractor:
             )
 
     def _validate_dvs_setup(self, dvs_input_shape: Tuple[int, int, int]) -> None:
-        """If a DVSLayer node exists, makes sure it is the only entry node of the graph. Checks if its `merge_polarities`
-        attribute matches `dummy_input.shape[0]` (the number of features) and, if not, it will be set based on the numeber of
-        features of the input.
+        """If a DVSLayer node exists, makes sure it is the only entry node of
+        the graph. Checks if its `merge_polarities` attribute matches
+        `dummy_input.shape[0]` (the number of features) and, if not, it will be
+        set based on the numeber of features of the input.
 
-        Parameters
-        ----------
-        - dvs_input_shape (tuple): shape of the DVSLayer input in format `(features, height, width)`.
+        Args:
+            dvs_input_shape (tuple): shape of the DVSLayer input in format
+                `(features, height, width)`.
         """
 
         if self.dvs_layer is None:
@@ -577,16 +577,17 @@ class GraphExtractor:
             self.dvs_layer.merge_polarities = True
 
     def _get_name_2_indx_map(self, nir_graph: TorchGraph) -> Dict[str, int]:
-        """Assign unique index to each node and return mapper from name to index.
+        """Assign unique index to each node and return mapper from name to
+        index.
 
-        Parameters
-        ----------
-        - nir_graph (TorchGraph): a NIR graph representation of `spiking_model`.
+        Args:
+            nir_graph (TorchGraph): a NIR graph representation of
+                `spiking_model`.
 
-        Returns
-        ----------
-        - name_2_indx_map (dict): `key` is the original variable name for a layer in
-            `spiking_model` and `value is an integer representing the layer in a standard format.
+        Returns:
+            A dictionary where `key` is the original variable name for a layer
+            in `spiking_model` and `value is an integer representing the layer
+            in a standard format.
         """
 
         return {
@@ -599,14 +600,13 @@ class GraphExtractor:
         """Standardize the representation of TorchGraph` into a list of edges,
         representing nodes by their indices.
 
-        Parameters
-        ----------
-        - nir_graph (TorchGraph): a NIR graph representation of `spiking_model`.
-        - name_2_indx_map (dict): Map from node names to unique indices.
+        Args:
+            nir_graph (TorchGraph): a NIR graph representation of
+                `spiking_model`.
+            name_2_indx_map (dict): Map from node names to unique indices.
 
-        Returns
-        ----------
-        - edges (set): tuples describing the connections between layers in `spiking_model`.
+        Returns:
+            Tuple describing the connections between layers in `spiking_model`.
         """
         return {
             (name_2_indx_map[src.name], name_2_indx_map[tgt.name])
@@ -617,14 +617,13 @@ class GraphExtractor:
     def _get_entry_nodes(self, edges: Set[Edge]) -> Set[Edge]:
         """Find nodes that act as entry points to the graph
 
-        Parameters
-        ----------
-        - edges (set): tuples describing the connections between layers in `spiking_model`.
+        Args:
+            edges (set): tuples describing the connections between layers in
+                `spiking_model`.
 
-        Returns
-        ----------
-        - entry_nodes (set): IDs of nodes acting as entry points for the network
-           (i.e., receiving external input).
+        Returns:
+            IDs of nodes acting as entry points for the network (i.e.,
+            receiving external input).
         """
         if not edges:
             return set()
@@ -635,13 +634,12 @@ class GraphExtractor:
     def _get_named_modules(self, model: nn.Module) -> Dict[int, nn.Module]:
         """Find for each node in the graph what its associated layer in `model` is.
 
-        Parameters
-        ----------
-        - model (nn.Module): the `spiking_model` used as argument to the class instance.
-
-        Returns
-        ----------
-        - indx_2_module_map (dict): the mapping between a node (`key` as an `int`) and its module (`value` as a `nn.Module`).
+        Args:
+            model (nn.Module): the `spiking_model` used as argument to the class
+                instance.
+        Returns:
+            The mapping between a node (`key` as an `int`) and its module
+            (`value` as a `nn.Module`).
         """
 
         indx_2_module_map = dict()
@@ -662,9 +660,8 @@ class GraphExtractor:
     def _update_internal_representation(self, remapped_nodes: Dict[int, int]):
         """Update internal attributes after remapping of nodes
 
-        Parameters
-        ----------
-        remapped_nodes (dict): Maps previous (key) to new (value) node
+        Args:
+            remapped_nodes (dict): Maps previous (key) to new (value) node
             indices. Nodes that were removed are not included.
         """
 
@@ -703,9 +700,8 @@ class GraphExtractor:
     def _sort_graph_nodes(self) -> List[int]:
         """Sort graph nodes topologically.
 
-        Returns
-        -------
-        - sorted_nodes (list of integers): IDs of nodes, sorted.
+        Returns:
+            sorted_nodes (list of integers): IDs of nodes, sorted.
         """
         # Make a temporary copy of edges and include inputs
         temp_edges = self.edges
@@ -716,16 +712,16 @@ class GraphExtractor:
     def _get_nodes_io_shapes(
         self, input_dummy: torch.tensor
     ) -> Dict[int, Dict[str, torch.Size]]:
-        """Iteratively calls the forward method of each `nn.Module` (i.e., a layer/node in the graph) using the topologically
-        sorted nodes extracted from the computational graph of the model being parsed.
+        """Iteratively calls the forward method of each `nn.Module` (i.e., a
+        layer/node in the graph) using the topologically sorted nodes extracted
+        from the computational graph of the model being parsed.
 
-        Parameters
-        ----------
-        - input_dummy (torch.tensor): a sample (random) tensor of the sort of input being fed to the network.
+        Args:
+            input_dummy (torch.tensor): a sample (random) tensor of the sort of
+                input being fed to the network.
 
-        Returns
-        ----------
-        - nodes_io_map (dict): a dictionary mapping nodes to their I/O shapes.
+        Returns:
+            A dictionary mapping nodes to their I/O shapes.
         """
         nodes_io_map = {}
 
@@ -789,30 +785,30 @@ class GraphExtractor:
     def _find_all_sources_of_input_to(self, node: int) -> Set[int]:
         """Finds all source nodes to `node`.
 
-        Parameters
-        ----------
-        - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
-            graph or the original input itself to the network).
+        Args:
+            node (int): the node in the computational graph for which we whish
+                to find the input source (either another node in the graph or
+                the original input itself to the network).
 
-        Returns
-        ----------
-        - input sources (set of int): IDs of the nodes in the computational graph providing the input to `node`.
+        Returns:
+            IDs of the nodes in the computational graph providing the input to `node`.
         """
         return set(src for (src, tgt) in self._edges if tgt == node)
 
     def _find_source_of_input_to(self, node: int) -> int:
         """Finds the first edge `(X, node)` returns `X`.
 
-        Parameters
-        ----------
-        - node (int): the node in the computational graph for which we whish to find the input source (either another node in the
-            graph or the original input itself to the network).
+        Args:
+            node (int): the node in the computational graph for which we whish
+                to find the input source (either another node in the graph or
+                the original input itself to the network).
 
-        Returns
-        ----------
-        - input source (int): ID of the node in the computational graph providing the input to `node`. If `node` is
-            receiving outside input (i.e., it is a starting node) the return will be -1. For example, this will be the case
-            when a network with two independent branches (each starts from a different "input node") merge along the computational graph.
+        Returns:
+            ID of the node in the computational graph providing the input to
+            `node`. If `node` is receiving outside input (i.e., it is a starting
+            node) the return will be -1. For example, this will be the case when
+            a network with two independent branches (each starts from a
+            different "input node") merge along the computational graph.
         """
         sources = self._find_all_sources_of_input_to(node)
         if len(sources) == 0:
@@ -822,11 +818,11 @@ class GraphExtractor:
         return sources.pop()
 
     def _find_merge_arguments(self, node: int) -> Edge:
-        """A `Merge` layer receives two inputs. Return the two inputs to `merge_node` representing a `Merge` layer.
+        """A `Merge` layer receives two inputs. Return the two inputs to
+        `merge_node` representing a `Merge` layer.
 
-        Returns
-        ----------
-        - args (tuple): the IDs of the nodes that provice the input arguments to a `Merge` layer.
+        Returns:
+            The IDs of the nodes that provice the input arguments to a `Merge` layer.
         """
         sources = self._find_all_sources_of_input_to(node)
 
@@ -846,14 +842,13 @@ class GraphExtractor:
         For target nodes of ignored classes, recursively return their valid
         targets.
 
-        Parameters
-        ----------
-        - node (int): ID of node whose targets should be found
-        - ignored_node_classes (tuple of types): Classes of which nodes should be skiped
+        Args:
+            node (int): ID of node whose targets should be found.
+            ignored_node_classes (tuple of types): Classes of which nodes
+                should be skiped
 
-        Returns
-        -------
-        - valid_targets (set of int): Set of all recursively found target IDs
+        Returns:
+            Set of all recursively found valid target IDs.
         """
         targets = set()
         for src, tgt in self.edges:

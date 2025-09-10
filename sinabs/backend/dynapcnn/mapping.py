@@ -30,16 +30,11 @@ def find_chip_layers(
 ) -> List[int]:
     """Find all layers where a given layer configuration fits.
 
-    Parameters
-    ----------
-    layer:
-        DynapcnnLayer
+    Args:
+        layer: DynapcnnLayer.
+        constraints: A list of all the layer's constraints.
 
-    constraints:
-        A list of all the layer's constraints
-
-    Returns
-    -------
+    Returns:
         A list of indices of layers where the given layer fits.
     """
     idx = [i for (i, constraint) in enumerate(constraints) if constraint.fits(layer)]
@@ -52,13 +47,12 @@ def get_valid_mapping(
     """Given a model, find a valid layer ordering for its placement within the constraints
     provided.
 
-    Parameters
-    ----------
-    - model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
-    - constraints: a list of all the layer's constraints.
+    Args:
+        model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
+        constraints: a list of all the layer's constraints.
 
-    Returns
-    - Dict mapping from layer index (key) to assigned core ID (value)
+    Returns:
+        Dict mapping from layer index (key) to assigned core ID (value).
     -------
     """
     # Store layer indices and lists of possible target chips in separate lists
@@ -103,18 +97,16 @@ def edmonds(
 
     Makes a copy of the graph. The original graph is not changed in place.
 
-    Parameters
-    ----------
-    - graph List[List[FlowGraphEdge]]): Flow graph representation. Each list entry
-        corresponds to a node and consists of a list holding the outgoing edges
-        from this node.
-    - source (int): Index of source node within graph
-    - sind (int): Index of sink node within graph
-    - verbose (bool): Print detailed flow information if `True`
+    Args:
+        graph List[List[FlowGraphEdge]]): Flow graph representation. Each list
+            entry corresponds to a node and consists of a list holding the
+            outgoing edges from this node.
+        source (int): Index of source node within graph.
+        sind (int): Index of sink node within graph.
+        verbose (bool): Print detailed flow information if `True`.
 
-    Returns
-    -------
-        List[List[FlowGraphEdge]]: New flow graph with calculated flow
+    Returns:
+        New flow graph with calculated flow. Type is List[List[FlowGraphEdge]].
     """
     graph = deepcopy(graph)
     flow = 0
@@ -158,16 +150,15 @@ def make_flow_graph(
     flows are not computed yet. The flow for the graph generated here needs to
     be populated by calling the method `edmonds`
 
-    Parameters
-    ----------
-    - layer_mapping: List of a list of matching chip core indices for each software layer.
-        Eg. [[1,3], [4, 6, 1]] for a two layer model
-    - num_layers (int): Number of layers on the chip
+    Args:
+        layer_mapping: List of a list of matching chip core indices for each software layer.
+            Eg. [[1,3], [4, 6, 1]] for a two layer model
+        num_layers (int): Number of layers on the chip
 
-    Returns
-    -------
-        List[List[FlowGraphEdge]]: Flow graph representation. Each list entry corresponds
-            to a node and consists of a list holding the outgoing edges from this node.
+    Returns:
+        Flow graph representation. Each list entry corresponds to a node and consists
+        of a list holding the outgoing edges from this node.
+        The returned object is of type List[List[FlowGraphEdge]].
     """
     graph = []
     # add all our nodes
@@ -219,16 +210,14 @@ def make_flow_graph(
 def recover_mapping(graph: List[List[FlowGraphEdge]], num_layers: int) -> List[int]:
     """Based on the flow graph retrieve a layer-to-core mapping
 
-    Parameters
-    ----------
-    - graph List[List[FlowGraphEdge]]): Flow graph representation with flow calculated.
-        Each list entry corresponds to a node and consists of a list holding the
-        outgoing edges from this node.
-    - num_layers (int): Number of software layers
+    Args:
+        graph List[List[FlowGraphEdge]]): Flow graph representation with flow
+            calculated. Each list entry corresponds to a node and consists of a
+            list holding the outgoing edges from this node.
+        num_layers (int): Number of software layers.
 
-    Returns
-    -------
-    List[int]: Assigned core IDs for each layer in order.
+    Returns:
+        Assigned core IDs for each layer in order. Type is List[int].
     """
     mapping = []
     for i in range(1, num_layers + 1):  # `+1` to skip source node

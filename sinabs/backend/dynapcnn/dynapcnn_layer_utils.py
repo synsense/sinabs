@@ -16,15 +16,13 @@ def construct_dynapcnnlayers_from_mapper(
 ) -> Tuple[Dict[int, DynapcnnLayer], Dict[int, Set[int]], List[int]]:
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
-    Parameters
-    ---------
+    Args:
 
-
-    Returns
-    -------
-    - Dict of new DynapcnnLayer instances, with keys corresponding to `dcnnl_map`
-    - Dict mapping to each layer index a set of destination indices
-    - List of layer indices that act as entry points to the network
+    Returns:
+     A tuple containing a dict of new DynapcnnLayer instances, with keys
+    corresponding to `dcnnl_map`, a dict mapping each layer index to a set
+    of destination indices and a list of layer indices that act as entry
+    points to the network.
     """
     finalize_dcnnl_map(dcnnl_map, dvs_layer_info, rescale_fn)
 
@@ -50,11 +48,10 @@ def finalize_dcnnl_map(
     - Determine rescaling of layer weights
     - Fix input shapes
 
-    Parameters
-    ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
-    - rescale_fn: Optional callable that is used to determine layer
-        rescaling in case of conflicting preceeding average pooling
+    Args:
+        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        rescale_fn: Optional callable that is used to determine layer rescaling
+            in case of conflicting preceeding average pooling.
     """
     # Consolidate pooling information for DVS layer
     consolidate_dvs_pooling(dvs_info, dcnnl_map)
@@ -78,10 +75,9 @@ def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
     - For each destination, add cumulative rescale factor to "rescale_factors"
         entry in corresponding entry of `dcnnl_map`.
 
-    Parameters
-    ----------
-    - dvs_info: Dict holding info of DVS layer.
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+    Args:
+        dvs_info: Dict holding info of DVS layer.
+        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
     """
     if dvs_info is None or dvs_info["pooling"] is None:
         # Nothing to do
@@ -145,11 +141,10 @@ def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     - For each destination, add cumulative rescale factor to "rescale_factors"
         entry in corresponding entry of `dcnnl_map`.
 
-    Parameters
-    ----------
-    - layer_info: Dict holding info of single layer. Corresponds to
-        single entry in `dcnnl_map`
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
+    Args:
+        layer_info: Dict holding info of single layer. Corresponds to single
+            entry in `dcnnl_map`.
+        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
     """
     layer_info["pooling_list"] = []
     for destination in layer_info["destinations"]:
@@ -167,16 +162,14 @@ def consolidate_dest_pooling(
     """Consolidate pooling information for consecutive pooling modules
     for single destination.
 
-    Parameters
-    ----------
-    modules: Iterable of pooling modules
+    Args:
+        modules: Iterable of pooling modules.
 
-    Returns
-    -------
-    cumulative_pooling: Tuple of two ints, indicating pooling along
-        vertical and horizontal dimensions for all modules together
-    cumulative_scaling: float, indicating by how much subsequent weights
-        need to be rescaled to account for average pooling being converted
+    Returns:
+        A tuple containing the cumulative_pooling information, a tuple of two ints,
+        indicating pooling along vertical and horizontal dimensions for all modules
+        together and the cumulative_scaling, a float, indicating by how much subsequent
+        weights need to be rescaled to account for average pooling being converted
         to sum pooling, considering all provided modules.
     """
     cumulative_pooling = [1, 1]
@@ -196,15 +189,14 @@ def extract_pooling_from_module(
 ) -> Tuple[Tuple[int, int], float]:
     """Extract pooling size and required rescaling factor from pooling module
 
-    Parameters
-    ----------
-    pooling_layer: pooling module
+    Args:
+        pooling_layer: pooling module.
 
-    Returns
-    -------
-    pooling: Tuple of two ints, indicating pooling along vertical and horizontal dimensions
-    scale_factor: float, indicating by how much subsequent weights need to be rescaled to
-        account for average pooling being converted to sum pooling.
+    Returns:
+        A tuple containing pooling, a tuple of two ints, indicating pooling along
+        vertical and horizontal dimensions and the scale_factor, a float, indicating
+        by how much subsequent weights need to be rescaled to account for average
+        pooling being converted to sum pooling.
     """
     pooling = expand_to_pair(pooling_layer.kernel_size)
 
@@ -232,11 +224,10 @@ def consolidate_layer_scaling(layer_info: Dict, rescale_fn: Optional[Callable] =
     average pooling in preceding layers, requires `rescale_fn` to
     resolve.
 
-    Parameters
-    ----------
-    - layer_info: Dict holding info of single layer.
-    - rescale_fn: Optional callable that is used to determine layer
-        rescaling in case of conflicting preceeding average pooling
+    Args:
+        layer_info: Dict holding info of single layer.
+        rescale_fn: Optional callable that is used to determine layer rescaling
+            in case of conflicting preceeding average pooling.
     """
     if len(layer_info["rescale_factors"]) == 0:
         rescale_factor = 1
@@ -260,14 +251,12 @@ def construct_single_dynapcnn_layer(
     """Instantiate a DynapcnnLayer instance from the information
     in `layer_info'
 
-    Parameters
-    ----------
-    - layer_info: Dict holding info of single layer.
-    - discretize: bool indicating whether layer parameters should be
-        discretized (weights, biases, thresholds)
+    Args:
+        layer_info: Dict holding info of single layer.
+        discretize: bool indicating whether layer parameters should be
+            discretized (weights, biases, thresholds).
 
-    Returns
-    -------
+    Returns:
     """
     return DynapcnnLayer(
         conv=layer_info["conv"]["module"],
@@ -284,14 +273,12 @@ def construct_destination_map(
 ) -> Dict[int, List[int]]:
     """Create a dict that holds destinations for each layer
 
-    Parameters
-    ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
-    - dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations
+    Args:
+        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations.
 
-    Returns
-    -------
-    Dict with layer indices (int) as keys and list of destination indices (int) as values.
+    Returns:
+        Dict with layer indices (int) as keys and list of destination indices (int) as values.
         Layer outputs that are not sent to other dynapcnn layers are considered
         exit points of the network and represented by negative indices.
     """
@@ -322,15 +309,13 @@ def collect_entry_points(
 ) -> Set[int]:
     """Return set of layer indices that are entry points
 
-    Parameters
-    ----------
-    - dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances
-    - dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations
-        If it is not None, it will be the only entry point returned.
+    Args:
+        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations.
+            If it is not None, it will be the only entry point returned.
 
-    Returns
-    -------
-    Set of all layer indices which act as entry points to the network
+    Returns:
+        Set of all layer indices which act as entry points to the network.
     """
     if dvs_layer_info is None:
         return {

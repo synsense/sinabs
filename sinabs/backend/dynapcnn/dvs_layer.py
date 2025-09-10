@@ -13,24 +13,16 @@ class DVSLayer(nn.Module):
     """DVSLayer representing the DVS pixel array on chip and/or the pre-processing. The order of
     processing is as follows MergePolarity -> Pool -> Cut -> Flip.
 
-    Parameters
-    ----------
-    input_shape;
-        Shape of input (height, width)
-    pool:
-        Sum pooling kernel size (height, width)
-    crop:
-        Crop the input to the given ROI ((top, bottom), (left, right))
-    merge_polarities:
-        If true, events from both polarities will be merged.
-    flip_x:
-        Flip the X axis
-    flip_y:
-        Flip the Y axis
-    swap_xy:
-        Swap X and Y dimensions
-    disable_pixel_array:
-        Disable the pixel array. This is useful if you want to use the DVS layer for input preprocessing.
+    Args:
+        input_shape: Shape of input (height, width).
+        pool: Sum pooling kernel size (height, width).
+        crop: Crop the input to the given ROI ((top, bottom), (left, right)).
+        merge_polarities: If true, events from both polarities will be merged.
+        flip_x: Flip the X axis.
+        flip_y: Flip the Y axis.
+        swap_xy: Swap X and Y dimensions.
+        disable_pixel_array: Disable the pixel array. This is useful if you want to use the
+            DVS layer for input preprocessing.
     """
 
     def __init__(
@@ -82,22 +74,15 @@ class DVSLayer(nn.Module):
     ) -> "DVSLayer":
         """Alternative factory method. Generate a DVSLayer from a set of torch layers.
 
-        Parameters
-        ----------
-        input_shape:
-            (channels, height, width)
-        pool_layer:
-            SumPool2d layer
-        crop_layer:
-            Crop2d layer
-        flip_layer:
-            FlipDims layer
-        disable_pixel_array:
-            Whether pixel array of new DVSLayer should be disabled.
+        Args:
+            input_shape: (channels, height, width).
+            pool_layer: SumPool2d layer.
+            crop_layer: Crop2d layer.
+            flip_layer: FlipDims layer.
+            disable_pixel_array: Whether pixel array of new DVSLayer should be disabled.
 
-        Returns
-        -------
-        DVSLayer
+        Returns:
+            DVSLayer
         """
         pool = (1, 1)
         crop = None
@@ -141,9 +126,8 @@ class DVSLayer(nn.Module):
     def input_shape_dict(self) -> dict:
         """The configuration dictionary for the input shape.
 
-        Returns
-        -------
-        dict
+        Returns:
+            dict
         """
         channel_count, input_size_y, input_size_x = self.input_shape
 
@@ -158,9 +142,8 @@ class DVSLayer(nn.Module):
     def get_output_shape_after_pooling(self) -> Tuple[int, int, int]:
         """Get the shape of data just after the pooling layer.
 
-        Returns
-        -------
-        (channel, height, width)
+        Returns:
+            (channel, height, width)
         """
         channel_count, input_size_y, input_size_x = self.input_shape
 
@@ -176,9 +159,8 @@ class DVSLayer(nn.Module):
     def get_output_shape_dict(self) -> dict:
         """Configuration dictionary for output shape.
 
-        Returns
-        -------
-        dict
+        Returns:
+            dict
         """
         (
             channel_count,
@@ -236,9 +218,8 @@ class DVSLayer(nn.Module):
     def get_pooling(self) -> Tuple[int, int]:
         """Pooling kernel shape.
 
-        Returns
-        -------
-        (ky, kx)
+        Returns:
+            (ky, kx)
         """
         return expand_to_pair(self.pool_layer.kernel_size)
 
@@ -246,9 +227,8 @@ class DVSLayer(nn.Module):
         """The coordinates for ROI. Note that this is not the same as crop parameter passed during
         the object construction.
 
-        Returns
-        -------
-        ((top, bottom), (left, right))
+        Returns:
+            ((top, bottom), (left, right))
         """
         _, h, w = self.get_output_shape_after_pooling()
         return (
@@ -259,9 +239,8 @@ class DVSLayer(nn.Module):
     def get_output_shape(self) -> Tuple[int, int, int]:
         """Output shape of the layer.
 
-        Returns
-        -------
-        (channel, height, width)
+        Returns:
+            (channel, height, width)
         """
         channel_count, input_size_y, input_size_x = self.input_shape
 
@@ -287,9 +266,8 @@ class DVSLayer(nn.Module):
     def get_flip_dict(self) -> dict:
         """Configuration dictionary for x, y flip.
 
-        Returns
-        -------
-        dict
+        Returns:
+            dict
         """
 
         return {"x": self.flip_layer.flip_x, "y": self.flip_layer.flip_y}
@@ -297,8 +275,7 @@ class DVSLayer(nn.Module):
     def get_swap_xy(self) -> bool:
         """True if XY has to be swapped.
 
-        Returns
-        -------
-        bool
+        Returns:
+            bool
         """
         return self.flip_layer.swap_xy

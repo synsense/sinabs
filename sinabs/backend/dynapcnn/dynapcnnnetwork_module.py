@@ -18,26 +18,27 @@ class DynapcnnNetworkModule(nn.Module):
     Internally constructs a graph representation based on the provided arguments
     and uses this to pass data through all layers in correct order.
 
-    Parameters
-    ----------
-    - dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
-    - destination_map (dict): Maps layer indices to list of destination indices.
-        Exit destinations are marked by negative integers
-    - entry_points (set): Set of layer indices that act as network entry points.
-    - dvs_node_info (dict): contains information associated with the `DVSLayer` node.
-        `None` if no DVS node exists.
-
-    Attributes
-    ----------
     This class internally builds a graph with `DynapcnnLayer` as nodes and their
     connections as edges. Several data structures help efficient retrieval of
     information required for the forward pass:
-    - _dynapcnnlayer_edges: Set of edges connecting dynapcnn layers. Tuples
-        of indices of source and target layers.
-    - _sorted_nodes: List of layer indices in topological order, to ensure forward
-        calls to layers only happen when required inputs are available.
-    - _node_source_map: Dict with layer indices as keys and list of input layer indices
-        as values.
+
+    Args:
+        dynapcnn_layers (dict): a mapper containing `DynapcnnLayer` instances.
+        destination_map (dict): Maps layer indices to list of destination
+            indices. Exit destinations are marked by negative integers.
+        entry_points (set): Set of layer indices that act as network entry
+            points.
+        dvs_node_info (dict): contains information associated with the
+            `DVSLayer` node. `None` if no DVS node exists.
+
+    Attributes:
+        _dynapcnnlayer_edges: Set of edges connecting dynapcnn layers. Tuples
+            of indices of source and target layers.
+        _sorted_nodes: List of layer indices in topological order, to ensure
+            forward calls to layers only happen when required inputs are
+            available.
+        _node_source_map: Dict with layer indices as keys and list of input
+            layer indices as values.
     """
 
     def __init__(
@@ -107,9 +108,8 @@ class DynapcnnNetworkModule(nn.Module):
     def get_exit_layers(self) -> List[int]:
         """Get layers that act as exit points of the network
 
-        Returns
-        -------
-        - List[int]: Layer indices with at least one exit destination.
+        Returns:
+            Layer indices with at least one exit destination.
         """
         return [
             layer_idx
@@ -120,9 +120,8 @@ class DynapcnnNetworkModule(nn.Module):
     def get_exit_points(self) -> Dict[int, Dict]:
         """Get details of layers that act as exit points of the network
 
-        Returns
-        -------
-        - Dict[int, Dict]: Dict whose keys are layer indices of `dynapcnn_layers`
+        Returns:
+            Dictionary whose keys are layer indices of `dynapcnn_layers`
             with at least one exit destination. Values are list of dicts, providing
             for each exit destination the negative valued ID ('destination_id'),
             the index of that destination within the list of destinations of the
@@ -151,12 +150,11 @@ class DynapcnnNetworkModule(nn.Module):
     ) -> None:
         """Set up data structures to run forward pass through dynapcnn layers
 
-        Parameters
-        ----------
-        - index_layers_topologically (bool): If True, will assign new indices to
-            dynapcnn layers such that they match their topological order within the
-            network graph. This is not necessary but can help understand the network
-            more easily when inspecting it.
+        Args:
+            index_layers_topologically (bool): If True, will assign new indices
+                to dynapcnn layers such that they match their topological order
+                within the network graph. This is not necessary but can help
+                understand the network more easily when inspecting it.
         """
         self._dynapcnnlayer_edges = self.get_dynapcnnlayers_edges()
         self.add_entry_points_edges(self._dynapcnnlayer_edges)
@@ -168,10 +166,11 @@ class DynapcnnNetworkModule(nn.Module):
     def get_dynapcnnlayers_edges(self) -> Set[Edge]:
         """Create edges representing connections between `DynapcnnLayer` instances.
 
-        Returns
-        ----------
-        - dcnnl_edges (Set): a set of edges using the IDs of `DynapcnnLayer` instances. These edges describe the computational
-            graph implemented by the layers of the model (i.e., how the `DynapcnnLayer` instances address each other).
+        Returns:
+            A set of edges using the IDs of `DynapcnnLayer` instances. These
+            edges describe the computational graph implemented by the layers
+            of the model (i.e., how the `DynapcnnLayer` instances address each
+            other).
         """
         dcnnl_edges = set()
 
@@ -187,10 +186,9 @@ class DynapcnnNetworkModule(nn.Module):
         layers which are entry points of the `DynapcnnNetwork`, i.e.
         `handler.entry_node = True`.
 
-        Parameters
-        ----------
-        - dcnnl_edges (Set): tuples representing the output->input mapping between
-            `DynapcnnLayer` instances. Will be changed in place.
+        Args:
+            dcnnl_edges (Set): tuples representing the output->input mapping
+                between `DynapcnnLayer` instances. Will be changed in place.
         """
         for indx in self._entry_points:
             dcnnl_edges.add(("input", indx))
@@ -198,15 +196,13 @@ class DynapcnnNetworkModule(nn.Module):
     def get_node_source_map(self, dcnnl_edges: Set[Edge]) -> Dict[int, List[int]]:
         """From a set of edges, create a dict that maps to each node its sources
 
-        Parameters
-        ----------
-        - dcnnl_edges (Set): tuples representing the output->input mapping between
-        `DynapcnnLayer` instances.
+        Args:
+            dcnnl_edges (Set): tuples representing the output->input mapping
+                between `DynapcnnLayer` instances.
 
-        Returns
-        -------
-        - Dict with layer indices (int) as keys and list of layer indices that
-            map to corresponding layer
+        Returns:
+            Dict with layer indices (int) as keys and list of layer indices that
+            map to corresponding layer.
         """
         sources = dict()
 
@@ -224,31 +220,30 @@ class DynapcnnNetworkModule(nn.Module):
         """Perform a forward pass through all dynapcnn layers
         The `setup_dynapcnnlayer_graph` method has to be executed beforehand.
 
-        Parameters
-        ----------
-        x: Tensor that serves as input to network. Is passed to all layers
-            that are marked as entry points
-        return_complete: bool that indicates whether all layer outputs should
-            be return or only those with no further destinations (default)
+        Args:
+            x: Tensor that serves as input to network. Is passed to all layers
+                that are marked as entry points
+            return_complete: bool that indicates whether all layer outputs
+                should be return or only those with no further destinations
+                (default).
 
-        Returns
-        -------
-        The returned object depends on whether `return_complete` is set and on
-        the network configuration:
-        * If `return_complete` is `True`, all layer outputs will be returned in a
-            dict, with layer indices as keys, and nested dicts as values, which
-            hold destination indices as keys and output tensors as values.
-        * If `return_complete` is `False` and there is only a single destination
-            in the whole network that is marked as exit point (i.e. destination
-            index in dynapcnn layer handler is negative), it will return the
-            output as a single tensor.
-        * If `return_complete` is `False` and no destination in the network
+        Returns:
+            The returned object depends on whether `return_complete` is set and
+            on the network configuration:
+            * If `return_complete` is `True`, all layer outputs will be
+            returned in a dict, with layer indices as keys, and nested dicts as
+            values, which hold destination indices as keys and output tensors
+            as values.
+            * If `return_complete` is `False` and there is only a single
+            destination in the whole network that is marked as exit point (i.e.
+            destination index in dynapcnn layer handler is negative), it will
+            return the output as a single tensor.
+            * If `return_complete` is `False` and no destination in the network
             is marked as exit point, a warning will be raised and the function
             returns an empty dict.
-        * In all other cases a dict will be returned that is of the same
+            * In all other cases a dict will be returned that is of the same
             structure as if `return_complete` is `True`, but only with entries
             where the destination is marked as exit point.
-
         """
         if not hasattr(self, "_sorted_nodes"):
             raise RuntimeError(
@@ -333,10 +328,10 @@ class DynapcnnNetworkModule(nn.Module):
         Will assign new index to dynapcnn layers and update all internal
         attributes accordingly.
 
-        Parameters
-        ----------
-        index_order: List of integers indicating new order of layers:
-            Position of layer index within this list indicates new index
+        Args:
+            index_order: List of integers indicating new order of layers.
+                The position of layer index within this list indicates new
+                index.
         """
         mapping = {old: new for new, old in enumerate(index_order)}
 

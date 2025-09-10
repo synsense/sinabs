@@ -81,16 +81,15 @@ def standardize_device_id(device_id: str) -> str:
 
 
 def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:
-    """Performs a topological sorting (using Kahn's algorithm) of a graph described by a list of edges. An entry node `X`
-    of the graph have to be flagged inside `edges` by a tuple `('input', X)`.
+    """Performs a topological sorting (using Kahn's algorithm) of a graph
+    described by a list of edges. An entry node `X` of the graph have to be
+    flagged inside `edges` by a tuple `('input', X)`.
 
-    Parameters
-    ----------
-    - edges (set): the edges describing the *acyclic* graph.
+    Args:
+        edges (set): the edges describing the *acyclic* graph.
 
-    Returns
-    ----------
-    - topological_order (list): the nodes sorted by the graph's topology.
+    Returns:
+        The nodes sorted by the graph's topology.
     """
 
     graph = defaultdict(list)
@@ -136,16 +135,12 @@ def convert_cropping2dlayer_to_crop2d(
 ) -> Crop2d:
     """Convert a sinabs layer of type Cropping2dLayer to Crop2d layer.
 
-    Parameters
-    ----------
-    layer:
-        Cropping2dLayer
-    input_shape:
-        (height, width) input dimensions
+    Args:
+        layer: Cropping2dLayer.
+        input_shape: (height, width) input dimensions.
 
-    Returns
-    -------
-    Equivalent Crop2d layer
+    Returns:
+        Equivalent Crop2d layer.
     """
     h, w = input_shape
     top = layer.top_crop
@@ -162,18 +157,16 @@ WeightLayer = TypeVar("WeightLayer", nn.Linear, nn.Conv2d)
 def merge_bn(
     weight_layer: WeightLayer, bn: Union[nn.BatchNorm1d, nn.BatchNorm2d]
 ) -> WeightLayer:
-    """Merge a convolutional or linear layer with subsequent batch normalization.
+    """Merge a convolutional or linear layer with subsequent batch
+    normalization.
 
-    Parameters
-    ----------
-        weight_layer: torch.nn.Conv2d or nn.Linear
-            Convolutional or linear layer
-        bn: torch.nn.Batchnorm2d or nn.Batchnorm1d
-            Batch normalization
+    Args:
+        weight_layer: torch.nn.Conv2d or nn.Linear. Convolutional or linear
+            layer
+        bn: torch.nn.Batchnorm2d or nn.Batchnorm1d. Batch normalization.
 
-    Returns
-    -------
-        Weight layer including batch normalization
+    Returns:
+        Weight layer including batch normalization.
     """
     mu = bn.running_mean
     sigmasq = bn.running_var
@@ -206,33 +199,26 @@ def merge_bn(
 def merge_conv_bn(conv: nn.Conv2d, bn: nn.BatchNorm2d) -> nn.Conv2d:
     """Merge a convolutional layer with subsequent batch normalization.
 
-    Parameters
-    ----------
-        conv: torch.nn.Conv2d
-            Convolutional layer
-        bn: torch.nn.Batchnorm2d
-            Batch normalization
+    Args:
+        conv: torch.nn.Conv2d. Convolutional layer.
+        bn: torch.nn.Batchnorm2d. Batch normalization.
 
-    Returns
-    -------
-        torch.nn.Conv2d: Convolutional layer including batch normalization
+    Returns:
+        Convolutional layer including batch normalization.
     """
     return merge_bn(conv, bn)
 
 
 def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
-    """Merge a linear (fully connected) layer with subsequent batch normalization.
+    """Merge a linear (fully connected) layer with subsequent batch
+    normalization.
 
-    Parameters
-    ----------
-        linear: torch.nn.Linear
-            Linear layer
-        bn: torch.nn.BatchNorm1d
-            Batch normalization layer
+    Args:
+        linear: torch.nn.Linear. Linear layer.
+        bn: torch.nn.BatchNorm1d. Batch normalization layer.
 
-    Returns
-    -------
-        torch.nn.Linear: Linear layer including batch normalization
+    Returns:
+        Linear layer including batch normalization.
     """
     return merge_bn(linear, bn)
 
@@ -287,15 +273,13 @@ def infer_input_shape(
     If neither are available, raise an InputConfigurationError.
     If both are the case, verify that the information is consistent.
 
-    Parameters
-    ----------
-    - snn (nn.Module): The SNN whose input shape is to be inferred
-    - input_shape (tuple or None): Explicitly provide input shape.
-        If not None, must be of the format `(channels, height, width)`.
+    Args:
+        snn (nn.Module): The SNN whose input shape is to be inferred.
+        input_shape (tuple or None): Explicitly provide input shape.
+            If not None, must be of the format `(channels, height, width)`.
 
-    Returns
-    -------
-    - tuple: The input shape to `snn`, in the format `(channels, height, width)`
+    Returns:
+        The input shape to `snn`, in the format `(channels, height, width)`
     """
     if input_shape is not None and len(input_shape) != 3:
         raise InputConfigurationError(

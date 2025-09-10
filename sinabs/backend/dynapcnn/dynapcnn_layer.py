@@ -19,14 +19,12 @@ def convert_linear_to_conv(
 ) -> nn.Conv2d:
     """Convert Linear layer to Conv2d.
 
-    Parameters
-    ----------
-    - lin (nn.Linear): linear layer to be converted.
-    - input_shape (tuple): the tensor shape the layer expects.
+    Args:
+        lin (nn.Linear): linear layer to be converted.
+        input_shape (tuple): the tensor shape the layer expects.
 
-    Returns
-    -------
-    - nn.Conv2d: convolutional layer equivalent to `lin`.
+    Returns:
+        convolutional layer equivalent to `lin`.
     """
     in_chan, in_h, in_w = input_shape
     if lin.in_features != in_chan * in_h * in_w:
@@ -60,25 +58,19 @@ class DynapcnnLayer(nn.Module):
     Requires a convolutional layer, a sinabs spiking layer and a list of
     pooling values. The layers are used in the order conv -> spike -> pool.
 
-    Parameters
-    ----------
-        conv: torch.nn.Conv2d or torch.nn.Linear
-            Convolutional or linear layer
-            (linear will be converted to convolutional)
-        spk: sinabs.layers.IAFSqueeze
-            Sinabs IAF layer
-        in_shape: tuple of int
-            The input shape, needed to create dynapcnn configs if the network
-            does not contain an input layer. Convention: (features, height, width)
-        pool: List of integers
-            Each integer entry represents an output (destination on chip) and
-            whether pooling should be applied (values > 1) or not (values equal
-            to 1). The number of entries determines the number of tensors the
-            layer's forward method returns.
-        discretize: bool
-            Whether to discretize parameters.
-        rescale_weights: int
-            Layer weights will be multiplied by this value.
+    Attributes:
+        conv: torch.nn.Conv2d or torch.nn.Linear. Convolutional or linear layer.
+            Linear will be converted to convolutional.
+        spk (sinabs.layers.IAFSqueeze): Sinabs IAF layer.
+        in_shape (tuple of int):  The input shape, needed to create dynapcnn configs
+            if the network does not contain an input layer.
+            Convention: (features, height, width).
+        pool (List of integers): Each integer entry represents an output (destination
+            on chip) and whether pooling should be applied (values > 1) or not
+            (values equal to 1). The number of entries determines the number of tensors
+            the layer's forward method returns.
+        discretize (bool): Whether to discretize parameters.
+        rescale_weights (int): Layer weights will be multiplied by this value.
     """
 
     def __init__(
@@ -189,9 +181,8 @@ class DynapcnnLayer(nn.Module):
     def get_neuron_shape(self) -> Tuple[int, int, int]:
         """Return the output shape of the neuron layer.
 
-        Returns
-        -------
-        - conv_out_shape (tuple): formatted as (features, height, width).
+        Returns:
+            conv_out_shape (tuple): formatted as (features, height, width).
         """
         # same as the convolution's output.
         return self._get_conv_output_shape()
@@ -199,9 +190,7 @@ class DynapcnnLayer(nn.Module):
     def get_output_shape(self) -> List[Tuple[int, int, int]]:
         """Return the output shapes of the layer, including pooling.
 
-        Returns
-        -------
-        - output_shape (list of tuples):
+        Returns:
             One entry per destination, each formatted as (features, height, width).
         """
         neuron_shape = self.get_neuron_shape()
@@ -237,9 +226,8 @@ class DynapcnnLayer(nn.Module):
 
             N_{MT} = f \\cdot 2^{ \\lceil \\log_2\\left(f_y\\right) \\rceil + \\lceil \\log_2\\left(f_x\\right) \\rceil }
 
-        Returns
-        -------
-        A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
+        Returns:
+            A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]

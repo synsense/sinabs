@@ -9,7 +9,7 @@ def replace_module(model: nn.Module, source_class: type, mapper_fn: Callable):
     """A utility function that returns a copy of the model, where specific layers are replaced with
     another type depending on the mapper function.
 
-    Parameters:
+    Args:
         model: A PyTorch model.
         source_class: the layer class to replace. Each find will be passed to mapper_fn
         mapper_fn: A callable that takes as argument the layer to replace and returns the new object.
@@ -31,7 +31,7 @@ def replace_module_(model: nn.Sequential, source_class: type, mapper_fn: Callabl
     """In-place version of replace_module that will step through modules that have children and
     apply the mapper_fn.
 
-    Parameters:
+    Args:
         model: A PyTorch model.
         source_class: the layer class to replace. Each find will be passed to mapper_fn
         mapper_fn: A callable that takes as argument the layer to replace and returns the new object.

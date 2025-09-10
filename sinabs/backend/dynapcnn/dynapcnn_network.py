@@ -35,22 +35,21 @@ class DynapcnnNetwork(nn.Module):
         discretize: bool = True,
         weight_rescaling_fn: Callable = rescale_method_1,
     ):
-        """
-            Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
+        """Given a sinabs spiking network, prepare a dynapcnn-compatible network. This can be used to
         test the network will be equivalent once on DYNAPCNN. This class also provides utilities to
         make the dynapcnn configuration and upload it to DYNAPCNN.
 
-        Parameters
-        ----------
-        - snn (nn.Module): a  implementing a spiking network.
-        - input_shape (tuple or None): a description of the input dimensions
-            as `(features, height, width)`. If `None`, `snn` must contain a
-            `DVSLayer` instance, from which the input shape will be inferred.
-        - batch_size (optional int): If `None`, will try to infer the batch size from the model.
-            If int value is provided, it has to match the actual batch size of the model.
-        - dvs_input (bool): optional (default as `None`). Wether or not dynapcnn receive
-            input from its DVS camera.
-            If a `DVSLayer` is part of `snn`...
+        Attributes:
+            snn (nn.Module): a  implementing a spiking network.
+            input_shape (tuple or None): a description of the input dimensions
+                as `(features, height, width)`. If `None`, `snn` must contain a
+                `DVSLayer` instance, from which the input shape will be inferred.
+            batch_size (optional int): If `None`, will try to infer the batch
+                size from the model. If int value is provided, it has to match
+                the actual batch size of the model.
+            dvs_input (bool): optional (default as `None`). Wether or not dynapcnn
+                receive input from its DVS camera.
+                If a `DVSLayer` is part of `snn`...
                 ... and `dvs_input` is `False`, its `disable_pixel_array` attribute
                     will be set `True`. This means the DVS sensor will be configured
                     upon deployment but its output will not be sent as input
@@ -58,15 +57,17 @@ class DynapcnnNetwork(nn.Module):
                     of the layer will not be changed.
                 ... and `dvs_input` is `True`, `disable_pixel_array` will be set
                     `False`, so that the DVS sensor data is sent to the network.
-            If no `DVSLayer` is part of `snn`...
+                If no `DVSLayer` is part of `snn`...
                 ... and `dvs_input` is `False` or `None`, no `DVSLayer` will be added
                     and the DVS sensor will not be configured upon deployment.
                 ... and `dvs_input` is `True`, a `DVSLayer` instance will be added
                     to the network, with `disable_pixel_array` set to `False`.
-        - discretize (bool): If `True`, discretize the parameters and thresholds. This is needed for uploading
-            weights to dynapcnn. Set to `False` only for testing purposes.
-        - weight_rescaling_fn (callable): a method that handles how the re-scaling factor for one or more `SumPool2d` projecting to
-            the same convolutional layer are combined/re-scaled before applying them.
+            discretize (bool): If `True`, discretize the parameters and thresholds.
+                This is needed for uploading weights to dynapcnn. Set to `False`
+                only for testing purposes.
+            weight_rescaling_fn (callable): a method that handles how the re-scaling
+                factor for one or more `SumPool2d` projecting to the same convolutional
+                layer are combined/re-scaled before applying them.
         """
         super().__init__()
 
@@ -199,31 +200,29 @@ class DynapcnnNetwork(nn.Module):
         pass happens on the devices. Otherwise the device will be simulated by
         passing the data through the `DynapcnnLayer` instances.
 
-        Parameters
-        ----------
-        x: Tensor that serves as input to network. Is passed to all layers
-            that are marked as entry points
-        return_complete: bool that indicates whether all layer outputs should
-            be return or only those with no further destinations (default)
+        Args:
+            x: Tensor that serves as input to network. Is passed to all layers
+                that are marked as entry points
+            return_complete: bool that indicates whether all layer outputs should
+                be return or only those with no further destinations (default)
 
-        Returns
-        -------
-        The returned object depends on whether the network has been deployed
-        on chip. If this is the case, a flat list of samna events is returned,
-        in the order in which the events have been collected.
-        If the data is passed through the `DynapcnnLayer` instances, the output
-        depends on `return_complete` and on the network configuration:
-        * If `return_complete` is `True`, all layer outputs will be returned in a
+        Returns:
+            The returned object depends on whether the network has been deployed
+            on chip. If this is the case, a flat list of samna events is returned,
+            in the order in which the events have been collected.
+            If the data is passed through the `DynapcnnLayer` instances, the output
+            depends on `return_complete` and on the network configuration:
+            * If `return_complete` is `True`, all layer outputs will be returned in a
             dict, with layer indices as keys, and nested dicts as values, which
             hold destination indices as keys and output tensors as values.
-        * If `return_complete` is `False` and there is only a single destination
+            * If `return_complete` is `False` and there is only a single destination
             in the whole network that is marked as final (i.e. destination
             index in dynapcnn layer handler is negative), it will return the
             output as a single tensor.
-        * If `return_complete` is `False` and no destination in the network
+            * If `return_complete` is `False` and no destination in the network
             is marked as final, a warning will be raised and the function
             returns an empty dict.
-        * In all other cases a dict will be returned that is of the same
+            * In all other cases a dict will be returned that is of the same
             structure as if `return_complete` is `True`, but only with entries
             where the destination is marked as final.
         """
@@ -239,9 +238,8 @@ class DynapcnnNetwork(nn.Module):
 
         Note: the method assumes no biases are used.
 
-        Returns
-        ----------
-        - parameters (list): a list of parameters of all convolutional layers in the `DynapcnnNetwok`.
+        Returns:
+            List of parameters of all convolutional layers in the `DynapcnnNetwok`.
         """
         parameters = []
 
@@ -254,9 +252,7 @@ class DynapcnnNetwork(nn.Module):
     def memory_summary(self) -> Dict[str, Dict[int, int]]:
         """Get a summary of the network's memory requirements.
 
-        Returns
-        -------
-        dict:
+        Returns:
             A dictionary with keys kernel, neuron, bias. The values are a dicts.
             Each nested dict has as keys the indices of all dynapcnn_layers and
             as values the corresonding memory values for each layer.
@@ -274,9 +270,8 @@ class DynapcnnNetwork(nn.Module):
     def init_weights(self, init_fn: nn.init = nn.init.xavier_normal_) -> None:
         """Call the weight initialization method `init_fn` on each `DynapcnnLayer.conv_layer.weight.data` in the `DynapcnnNetwork` instance.
 
-        Parameters
-        ----------
-        - init_fn (torch.nn.init): the weight initialization method to be used.
+        Args:
+            init_fn (torch.nn.init): the weight initialization method to be used.
         """
         for layer in self.dynapcnn_layers.values():
             if isinstance(layer, DynapcnnLayer):
@@ -306,43 +301,38 @@ class DynapcnnNetwork(nn.Module):
         so changing a threshold or weight of a model that is deployed will have no effect on the
         model on chip until `to` is called again.
 
-        Parameters
-        ----------
+        Args:
+            device (str): cpu:0, cuda:0, speck2edevkit
+            monitor_layers: None/List. A list of all layers in the module that
+                you want to monitor. Indexing starts with the first non-dvs
+                layer. If you want to monitor the dvs layer for eg.
+                ::
 
-        device: String
-            cpu:0, cuda:0, speck2edevkit
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    monitor_layers = "all" # If you want to monitor all the layers
+                    monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
+            config_modifier: A user configuration modifier method. This function
+                can be used to make any custom changes you want to make to the configuration object.
+            layer2core_map (dict or "auto"): Defines how cores on chip are
+                assigned to DynapcnnLayers. If `auto`, an automated procedure
+                will be used to find a valid ordering. Otherwise a dict needs
+                to be passed, with DynapcnnLayer indices as keys and assigned
+                core IDs as values. DynapcnnLayer indices have to match those of
+                `self.dynapcnn_layers`.
+            chip_layers_ordering: sequence of integers or `auto`. The order in
+                which the dynapcnn layers will be used. If `auto`,an automated
+                procedure will be used to find a valid ordering. A list of
+                layers on the device where you want each of the model's
+                DynapcnnLayers to be placed.
+                The index of the core on chip to which the i-th layer in the
+                model is mapped is the value of the i-th entry in the list.
+                Note: This list should be the same length as the number of
+                dynapcnn layers in your model.
+                Note: This parameter is obsolete and should not be passed
+                anymore. Use `layer2core_map` instead.
 
-        monitor_layers: None/List
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
-
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
-                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
-
-        config_modifier:
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-
-        layer2core_map (dict or "auto"): Defines how cores on chip are
-            assigned to DynapcnnLayers. If `auto`, an automated procedure
-            will be used to find a valid ordering. Otherwise a dict needs
-            to be passed, with DynapcnnLayer indices as keys and assigned
-            core IDs as values. DynapcnnLayer indices have to match those of
-            `self.dynapcnn_layers`.
-
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
-            Note: This parameter is obsolete and should not be passed anymore. Use
-            `layer2core_map` instead.
-
-        Note
+                        Note
         ----
         chip_layers_ordering and monitor_layers are used only when using synsense devices.
         For GPU or CPU usage these options are ignored.
@@ -423,45 +413,37 @@ class DynapcnnNetwork(nn.Module):
     ) -> Tuple["SamnaConfiguration", bool]:
         """Prepare and output the `samna` configuration for this network.
 
-        Parameters
-        ----------
+        Args:
+            chip_layers_ordering: sequence of integers or `auto`.
+                The order in which the dynapcnn layers will be used. If `auto`,
+                an automated procedure will be used to find a valid ordering.
+                A list of layers on the device where you want each of the model's
+                DynapcnnLayers to be placed. The index of the core on chip to which
+                the i-th layer in the model is mapped is the value of the i-th
+                entry in the list. Note: This list should be the same length as the
+                number of dynapcnn layers in your model.
+            device (str): speck2edevkit or speck2fdevkit
+            monitor_layers: A list of all layers in the module that you want to
+                monitor. Indexing starts with the first non-dvs layer. If you
+                want to monitor the dvs layer for eg.
+                ::
 
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            The index of the core on chip to which the i-th layer in the model is mapped is the value of the i-th entry in the list.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    monitor_layers = "all" # If you want to monitor all the layers
 
-        device: String
-            speck2edevkit or speck2fdevkit
+                If this value is left as None, by default the last layer of the model is monitored.
 
-        monitor_layers: None/List/Str
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
+            config_modifier: A user configuration modifier method. This function
+                can be used to make any custom changes you want to make to the configuration object.
 
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
+        Returns:
+            A tuple containing an object defining the configuration for the device
+            and `True` if the configuration is valid for the given device,
+            `False` otherwise.
 
-            If this value is left as None, by default the last layer of the model is monitored.
-
-        config_modifier:
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-
-        Returns
-        -------
-        Configuration object
-            Object defining the configuration for the device
-        Bool
-            True if the configuration is valid for the given device.
-
-        Raises
-        ------
-            ImportError
-                If samna is not available.
+        Raises:
+            ImportError: If samna is not available.
         """
         config_builder = ChipFactory(device).get_config_builder()
 
@@ -517,44 +499,34 @@ class DynapcnnNetwork(nn.Module):
     ):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
-        Parameters
-        ----------
+        Args:
+            chip_layers_ordering: sequence of integers or `auto`. The order in
+                which the dynapcnn layers will be used. If `auto`, an automated
+                procedure will be used to find a valid ordering. A list of
+                layers on the device where you want each of the model's
+                DynapcnnLayers to be placed. Note: This list should be the same
+                length as the number of dynapcnn layers in your model.
+            device (str): speck2edevkit or speck2fdevkit
+            monitor_layers: A list of all layers in the module that you want to
+                monitor. Indexing starts with the first non-dvs layer. If you
+                want to monitor the dvs layer for eg.
+                ::
 
-        chip_layers_ordering: sequence of integers or `auto`
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    monitor_layers = "all" # If you want to monitor all the layers
 
-        device: String
-            speck2edevkit or speck2fdevkit
+                If this value is left as None, by default the last layer of the model is monitored.
+            config_modifier: A user configuration modifier method. This
+                function can be used to make any custom changes you want to
+                make to the configuration object.
 
-        monitor_layers: None/List/Str
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
+        Returns:
+            Object defining the configuration for the device.
 
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
-
-            If this value is left as None, by default the last layer of the model is monitored.
-
-        config_modifier:
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-
-        Returns
-        -------
-        Configuration object
-            Object defining the configuration for the device
-
-        Raises
-        ------
-            ImportError
-                If samna is not available.
-            ValueError
-                If the generated configuration is not valid for the specified device.
+        Raises:
+            ImportError: If samna is not available.
+            ValueError: If the generated configuration is not valid for the specified device.
         """
         config, is_compatible = self._make_config(
             chip_layers_ordering=chip_layers_ordering,
@@ -597,49 +569,44 @@ class DynapcnnNetwork(nn.Module):
     ):
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
-        Parameters
-        ----------
-        - layer2core_map (dict or "auto"): Defines how cores on chip are
-            assigned to DynapcnnLayers. If `auto`, an automated procedure
-            will be used to find a valid ordering. Otherwise a dict needs
-            to be passed, with DynapcnnLayer indices as keys and assigned
-            core IDs as values. DynapcnnLayer indices have to match those of
-            `self.dynapcnn_layers`.
-        - device: (string): speck2devkit
-        - monitor_layers: None/List/Str
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
+        Args:
+            layer2core_map (dict or "auto"): Defines how cores on chip are
+                assigned to DynapcnnLayers. If `auto`, an automated procedure
+                will be used to find a valid ordering. Otherwise a dict needs
+                to be passed, with DynapcnnLayer indices as keys and assigned
+                core IDs as values. DynapcnnLayer indices have to match those of
+                `self.dynapcnn_layers`.
+            device: (string): speck2devkit
+            monitor_layers: A list of all layers in the module that you want to
+                monitor. Indexing starts with the first non-dvs layer. If you
+                want to monitor the dvs layer for eg.
+                ::
 
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
-                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    monitor_layers = "all" # If you want to monitor all the layers
+                    monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
 
-            If this value is left as None, by default the last layer of the model is monitored.
+                If this value is left as None, by default the last layer of the
+                model is monitored.
+            config_modifier (Callable or None): A user configuration modifier
+                method. This function can be used to make any custom changes
+                you want to make to the configuration object.
+            chip_layers_ordering (None, sequence of integers or "auto", obsolete):
+                The order in which the dynapcnn layers will be used. If `auto`,
+                an automated procedure will be used to find a valid ordering.
+                A list of layers on the device where you want each of the model's
+                DynapcnnLayers to be placed. Note: This list should be the same
+                length as the number of dynapcnn layers in your model. Note:
+                This parameter is obsolete and should not be passed anymore.
+                Use `layer2core_map` instead.
 
-        - config_modifier (Callable or None):
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-        - chip_layers_ordering (None, sequence of integers or "auto", obsolete):
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
-            Note: This parameter is obsolete and should not be passed anymore. Use
-            `layer2core_map` instead.
-
-        Returns
-        -------
-        Configuration object
+        Returns:
             Object defining the configuration for the device
 
-        Raises
-        ------
-            ImportError
-                If samna is not available.
-            ValueError
-                If the generated configuration is not valid for the specified device.
+        Raises:
+            ImportError: If samna is not available.
+            ValueError: If the generated configuration is not valid for the specified device.
         """
         config, is_compatible = self._make_config(
             layer2core_map=layer2core_map,
@@ -663,35 +630,29 @@ class DynapcnnNetwork(nn.Module):
     def has_dvs_layer(self) -> bool:
         """Return True if there is a DVSLayer in the network
 
-        Returns
-        -------
-        bool: True if DVSLayer is found within the network.
+        Returns:
+            True if DVSLayer is found within the network.
         """
         return self.dvs_layer is not None
 
     def zero_grad(self, set_to_none: bool = False) -> None:
         """Call `zero_grad` method of each DynapCNN layer
 
-        Parameters
-        ----------
-        - set_to_none (bool): This argument is passed directly to the
-            `zero_grad` method of each DynapCNN layer
+        Args:
+            set_to_none (bool): This argument is passed directly to the
+                `zero_grad` method of each DynapCNN layer
         """
         for lyr in self.dynapcnn_layers.values():
             lyr.zero_grad(set_to_none)
 
     def reset_states(self, randomize=False):
         """Reset the states of the network.
+        Note that setting `randomize` to `True` is only supported for models
+        that have not yet been deployed on a SynSense device.
 
-        Parameters
-        ----------
-        - randomize (bool): If `False` (default), will set all states to 0.
-            Otherwise will set to random values.
-
-        Notes
-        -----
-        - Setting `randomize` to `True` is only supported for models that have
-            not yet been deployed on a SynSense device.
+        Args:
+            randomize (bool): If `False` (default), will set all states to 0.
+                Otherwise will set to random values.
         """
         if hasattr(self, "device") and isinstance(self.device, str):  # pragma: no cover
             device_name, _ = parse_device_id(self.device)
@@ -733,53 +694,46 @@ class DynapcnnNetwork(nn.Module):
     ) -> Tuple["DynapcnnConfiguration", bool]:
         """Prepare and output the `samna` DYNAPCNN configuration for this network.
 
-        Parameters
-        ----------
-        - layer2core_map (dict or "auto"): Defines how cores on chip are
-            assigned to DynapcnnLayers. If `auto`, an automated procedure
-            will be used to find a valid ordering. Otherwise a dict needs
-            to be passed, with DynapcnnLayer indices as keys and assigned
-            core IDs as values. DynapcnnLayer indices have to match those of
-            `self.dynapcnn_layers`.
-        - device: (string): dynapcnndevkit, speck2b or speck2devkit
-        - monitor_layers: None/List/Str
-            A list of all layers in the module that you want to monitor. Indexing starts with the first non-dvs layer.
-            If you want to monitor the dvs layer for eg.
-            ::
+        Args:
+            layer2core_map (dict or "auto"): Defines how cores on chip are
+                assigned to DynapcnnLayers. If `auto`, an automated procedure
+                will be used to find a valid ordering. Otherwise a dict needs
+                to be passed, with DynapcnnLayer indices as keys and assigned
+                core IDs as values. DynapcnnLayer indices have to match those
+                of `self.dynapcnn_layers`.
+            device: (string): dynapcnndevkit, speck2b or speck2devkit
+            monitor_layers: A list of all layers in the module that you want
+                to monitor. Indexing starts with the first non-dvs layer.
+                If you want to monitor the dvs layer for eg.
+                ::
 
-                monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
-                monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
-                monitor_layers = "all" # If you want to monitor all the layers
-                monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
+                    monitor_layers = ["dvs"]  # If you want to monitor the output of the pre-processing layer
+                    monitor_layers = ["dvs", 8] # If you want to monitor preprocessing and layer 8
+                    monitor_layers = "all" # If you want to monitor all the layers
+                    monitor_layers = [-1] # If you want to only monitor exit points of the network (i.e. final layers)
 
-            If this value is left as None, by default the last layer of the model is monitored.
+                If this value is left as None, by default the last layer of the model is monitored.
 
-        - config_modifier (Callable or None):
-            A user configuration modifier method.
-            This function can be used to make any custom changes you want to make to the configuration object.
-        - chip_layers_ordering (None, sequence of integers or "auto", obsolete):
-            The order in which the dynapcnn layers will be used. If `auto`,
-            an automated procedure will be used to find a valid ordering.
-            A list of layers on the device where you want each of the model's DynapcnnLayers to be placed.
-            Note: This list should be the same length as the number of dynapcnn layers in your model.
-            Note: This parameter is obsolete and should not be passed anymore. Use
-            `layer2core_map` instead.
+            config_modifier (Callable or None): A user configuration modifier
+                method. This function can be used to make any custom changes
+                you want to make to the configuration object.
+            chip_layers_ordering (None, sequence of integers or "auto", obsolete):
+                The order in which the dynapcnn layers will be used. If `auto`,
+                an automated procedure will be used to find a valid ordering.
+                A list of layers on the device where you want each of the
+                model's DynapcnnLayers to be placed. Note: This list should be
+                the same length as the number of dynapcnn layers in your model.
+                Note: This parameter is obsolete and should not be passed
+                anymore. Use `layer2core_map` instead.
 
-        Returns
-        -------
-        Configuration object
-            Object defining the configuration for the device
-        Bool
-            True if the configuration is valid for the given device.
+        Returns:
+            An object defining the configuration for the device and a boolean
+            that determines if the configuration is valid for the given device.
 
-
-        Raises
-        ------
-            ImportError
-                If samna is not available.
-            ValueError
-                If no valid mapping between the layers of this object and the cores of
-                the provided device can be found.
+        Raises:
+            ImportError: If samna is not available.
+            ValueError: If no valid mapping between the layers of this object
+                and the cores ofthe provided device can be found.
         """
         config_builder = ChipFactory(device).get_config_builder()
 
