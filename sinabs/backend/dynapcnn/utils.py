@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, List, Optional, Set, Tuple, TypeVar, Union
 
 import torch
 import torch.nn as nn
+import warnings
 
 import sinabs.layers as sl
 
@@ -206,21 +207,10 @@ def merge_conv_bn(conv: nn.Conv2d, bn: nn.BatchNorm2d) -> nn.Conv2d:
     Returns:
         Convolutional layer including batch normalization.
     """
+    warnings.warn(
+        "`merge_conv_bn` is deprecated. Use `merge_bn` instead.", DeprecationWarning
+    )
     return merge_bn(conv, bn)
-
-
-def merge_linear_bn(linear: nn.Linear, bn: nn.BatchNorm1d) -> nn.Linear:
-    """Merge a linear (fully connected) layer with subsequent batch
-    normalization.
-
-    Args:
-        linear: torch.nn.Linear. Linear layer.
-        bn: torch.nn.BatchNorm1d. Batch normalization layer.
-
-    Returns:
-        Linear layer including batch normalization.
-    """
-    return merge_bn(linear, bn)
 
 
 def extend_readout_layer(model: "DynapcnnNetwork") -> "DynapcnnNetwork":
