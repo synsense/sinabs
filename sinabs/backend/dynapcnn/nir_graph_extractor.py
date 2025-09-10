@@ -107,7 +107,7 @@ class GraphExtractor:
         #     self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
 
         # Store the associated `nn.Module` (layer) of each node.
-        self._indx_2_module_map = self._get_named_modules(spiking_model)
+        self._indx_2_module_map = self._get_name2module_map(spiking_model)
 
         if len(self._name_2_indx_map) > 0:
             # Merges BatchNorm2d/BatchNorm1d nodes with Conv2d/Linear ones.
@@ -631,7 +631,7 @@ class GraphExtractor:
         all_sources, all_targets = zip(*edges)
         return set(all_sources) - set(all_targets)
 
-    def _get_named_modules(self, model: nn.Module) -> Dict[int, nn.Module]:
+    def _get_name2module_map(self, model: nn.Module) -> Dict[int, nn.Module]:
         """Find for each node in the graph what its associated layer in `model` is.
 
         Args:
