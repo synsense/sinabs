@@ -150,7 +150,7 @@ def edmonds(
 
 def make_flow_graph(
     layer_mapping: List[List[int]], num_layers: int = 9
-) -> List[List[Edge]]:
+) -> List[List[FlowGraphEdge]]:
     """
     Make a bipartite flow graph (flow network) given all possible chip layers
     for each DynapcnnLayer layer. The goal is to formulate the mapping from
