@@ -123,8 +123,8 @@ def edmonds(
         q.append(source)
         pred = [None for _ in range(len(graph))]
         while len(q) != 0:
-            cur = q.popleft()
-            for edge in graph[cur]:
+            cur = q.popleft()  # current node index
+            for edge in graph[cur]:  # edges to/from current node
                 if pred[edge.t] is None and edge.t != source and edge.cap > edge.flow:
                     pred[edge.t] = edge
                     q.append(edge.t)
@@ -150,11 +150,13 @@ def edmonds(
 
 def make_flow_graph(
     layer_mapping: List[List[int]], num_layers: int = 9
-) -> List[List[FlowGraphEdge]]:
-    """Make a flow graph given all possible chip cores for each software layer.
-
-    Note that the flows are not computed yet. The flow for the graph generated here
-    needs to be populated by calling the method `edmonds`
+) -> List[List[Edge]]:
+    """
+    Make a bipartite flow graph (flow network) given all possible chip layers
+    for each DynapcnnLayer layer. The goal is to formulate the mapping from
+    software layer to chip layer as a bipartite matching problem. Note that the
+    flows are not computed yet. The flow for the graph generated here needs to
+    be populated by calling the method `edmonds`
 
     Parameters
     ----------
