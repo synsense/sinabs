@@ -183,8 +183,7 @@ class DynapcnnNetworkModule(nn.Module):
 
     def add_entry_points_edges(self, dcnnl_edges: Set[Edge]) -> None:
         """Add extra edges `('input', X)` to `dcnnl_edges` for
-        layers which are entry points of the `DynapcnnNetwork`, i.e.
-        `handler.entry_node = True`.
+        layers which are entry points of the `DynapcnnNetwork`.
 
         Args:
             dcnnl_edges (Set): tuples representing the output->input mapping
