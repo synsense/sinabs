@@ -43,7 +43,7 @@ def finalize_dcnnl_map(
 ) -> None:
     """Finalize DynapCNNLayer map by consolidating information
 
-    Update dcnnl_map in-place
+    Update `dcnnl_map` in-place
     - Consolidate chained pooling layers
     - Determine rescaling of layer weights
     - Fix input shapes
@@ -311,7 +311,7 @@ def collect_entry_points(
 
     Args:
         dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-        dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations.
+        dvs_layer_info: Dict holding info about DVSLayer instance and its destinations.
             If it is not None, it will be the only entry point returned.
 
     Returns:
