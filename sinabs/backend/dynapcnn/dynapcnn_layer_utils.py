@@ -275,7 +275,7 @@ def construct_destination_map(
 
     Args:
         dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-        dynapcnn_layer_info: Dict holding info about DVSLayer instance and its destinations.
+        dvs_layer_info: Dict holding info about DVSLayer instance and its destinations.
 
     Returns:
         Dict with layer indices (int) as keys and list of destination indices (int) as values.
