@@ -142,6 +142,12 @@ def fix_dvs_module_edges(
     Modifies `entry_nodes` such that the DVSLayer becomes the only entry node
     of the graph.
 
+    This fix is to imply there's something odd with the extracted adges for the
+    forward pass implemented by the DVSLayer. For now this function is fixing
+    these edges to have them representing the information flow through this
+    layer as **it should be** but the graph tracing of NIR should be looked
+    into to solve the root problem.
+
     Args:
         edges (set): tuples describing the connections between layers in
             `spiking_model`.
@@ -151,9 +157,6 @@ def fix_dvs_module_edges(
         entry_nodes (set): IDs of nodes acting as entry points for the network
             (i.e., receiving external input).
     """
-    # TODO - the 'fix_' is to imply there's something odd with the extracted adges for the forward pass implemented by
-    # the DVSLayer. For now this function is fixing these edges to have them representing the information flow through
-    # this layer as **it should be** but the graph tracing of NIR should be looked into to solve the root problem.
 
     # spot nodes (ie, modules) used in a DVSLayer instance's forward pass (including the DVSLayer node itself).
     dvslayer_nodes = {
