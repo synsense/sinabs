@@ -17,7 +17,7 @@ class ExpLeak(LIF):
 
     where :math:`\\alpha =  e^{-1/tau_{mem}}` and :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters:
+    Args:
         tau_mem: Membrane potential time constant.
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.

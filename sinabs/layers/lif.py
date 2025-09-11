@@ -31,7 +31,7 @@ class LIF(StatefulLayer):
     .. math ::
         \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
 
-    Parameters:
+    Args:
         tau_mem: Membrane potential time constant.
         tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
@@ -50,8 +50,8 @@ class LIF(StatefulLayer):
             attribute `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.
@@ -155,7 +155,7 @@ class LIF(StatefulLayer):
 
     def forward(self, input_data: torch.Tensor) -> torch.Tensor:
         """
-        Parameters:
+        Args:
             input_data: Data to be processed. Expected shape: (batch, time, ...)
 
         Returns:
@@ -254,7 +254,7 @@ class LIFRecurrent(LIF):
     .. math ::
         \\text{if } V_{mem}(t) >= V_{th} \\text{, then } V_{mem} \\rightarrow V_{reset}
 
-    Parameters:
+    Args:
         tau_mem: Membrane potential time constant.
         rec_connect: An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
         tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
@@ -269,8 +269,8 @@ class LIFRecurrent(LIF):
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.
@@ -309,8 +309,8 @@ class LIFRecurrent(LIF):
 
     def forward(self, input_data: torch.Tensor):
         """
-        Parameters:
-            input_data: Data to be processed. Expected shape: (batch, time, ...)
+        Args:
+            input_data: Data to be processed. Expected shape: (batch, time, ...).
 
         Returns:
             Output data with same shape as `input_data`.

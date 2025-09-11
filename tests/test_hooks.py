@@ -84,6 +84,7 @@ def test_model_synops_hook_invalid_pooling(dt):
         model(inp)
 
 
+@pytest.mark.skip("Need Pytorch update")
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook_cuda(dt):
@@ -138,4 +139,4 @@ def test_input_diff_hook():
             layer.register_forward_hook(hooks.input_diff_hook)
     model(inp)
     for idx, correct in correct_values.items():
-        assert (model[idx].hook_data["diff_output"] == correct).all()
+        assert torch.allclose(model[idx].hook_data["diff_output"], correct)

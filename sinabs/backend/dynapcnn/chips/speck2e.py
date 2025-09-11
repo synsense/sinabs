@@ -1,3 +1,5 @@
+from typing import Dict
+
 import samna
 from samna.speck2e.configuration import SpeckConfiguration
 
@@ -15,6 +17,11 @@ class Speck2EConfigBuilder(DynapcnnConfigBuilder):
     @classmethod
     def get_default_config(cls) -> "SpeckConfiguration":
         return SpeckConfiguration()
+
+    # TODO: [NONSEQ]
+    # @classmethod
+    # def get_dvs_layer_config(cls) -> "DVSLayerConfig":
+    #     return SpeckConfiguration().DVSLayerConfig
 
     @classmethod
     def get_input_buffer(cls):

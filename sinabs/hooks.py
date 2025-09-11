@@ -12,7 +12,7 @@ from sinabs.layers import SqueezeMixin, StatefulLayer
 def _extract_single_input(input_data: List[Any]) -> Any:
     """Extract single element of a list.
 
-    Parameters:
+    Args:
         input_data: List that should have only one element
 
     Returns:
@@ -36,14 +36,13 @@ def conv_connection_map(
     """Generate connectivity map for a convolutional layer The map indicates for each element in
     the layer input to how many postsynaptic neurons it connects (i.e. the fanout)
 
-    Parameters:
-        layer: Convolutional layer for which connectivity map is to be
-               generated
+    Args:
+        layer: Convolutional layer for which connectivity map is to be generated
         input_shape: Shape of the input data (N, C, Y, X)
         output_shape: Shape of layer output given `input_shape`
         device: Device on which the connectivity map should reside.
-                Should be the same as that of the input to `layer`.
-                If None, will select device of the weight of `layer`.
+            Should be the same as that of the input to `layer`.
+            If None, will select device of the weight of `layer`.
 
     Returns:
         torch.Tensor: Connectivity map indicating the fanout for each
@@ -78,10 +77,9 @@ def get_hook_data_dict(module: nn.Module) -> Dict:
     """Convenience function to get `hook_data` attribute of a module if it has one and create it
     otherwise.
 
-    Parameters:
+    Args:
         module: The module whose `hook_data` dict is to be fetched.
-                If it does not have an attribute of that name, it
-                will add an empty dict.
+            If it does not have an attribute of that name, it will add an empty dict.
     Returns:
         The `hook_data` attribute of `module`. Should be a Dict.
     """
@@ -107,15 +105,15 @@ def input_diff_hook(
     at each forward pass. Afterwards the data can be accessed with
     `module.hook_data['diff_output']`
 
-    Parameters:
+    If `module` does not already have a `hook_data` attribute, it
+    will be added and the difference value described above  will be
+    stored under the key 'diff_output'. It is a tensor of the same
+    shape as `output`.
+
+    Args:
         module: Either a torch.nn.Conv2d or Linear layer
         input_: List of inputs to the layer. Should hold a single tensor.
         output: The layer's output.
-    Effect:
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and the difference value described above  will be
-        stored under the key 'diff_output'. It is a tensor of the same
-        shape as `output`.
     """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
@@ -147,14 +145,14 @@ def firing_rate_hook(module: StatefulLayer, input_: Any, output: torch.Tensor):
     at each forward pass. Afterwards the data can be accessed with
     `module.hook_data['firing_rate']`
 
-    Parameters:
+    If `module` does not already have a `hook_data` attribute, it
+    will be added and the mean firing rate will be stored under the
+    key 'firing_rate'. It is a scalar value.
+
+    Args:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
         input_: List of inputs to the layer. Ignored here.
         output: The layer's output.
-    Effect:
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and the mean firing rate will be stored under the
-        key 'firing_rate'. It is a scalar value.
     """
     data = get_hook_data_dict(module)
     data["firing_rate"] = output.mean()
@@ -171,16 +169,15 @@ def firing_rate_per_neuron_hook(
     `torch.register_forward_hook`. It will be called automatically
     at each forward pass. Afterwards the data can be accessed with
     `module.hook_data['firing_rate_per_neuron']`
+    If `module` does not already have a `hook_data` attribute, it
+    will be added and the mean firing rate will be stored under the
+    key 'firing_rate_per_neuron'. It is a tensor of the same
+    shape as neurons of the spiking layer.
 
-    Parameters:
+    Args:
         module: A spiking sinabs layer, such as `IAF` or `LIF`.
         input_: List of inputs to the layer. Ignored here.
         output: The layer's output.
-    Effect:
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and the mean firing rate will be stored under the
-        key 'firing_rate_per_neuron'. It is a tensor of the same
-        shape as neurons of the spiking layer.
     """
     data = get_hook_data_dict(module)
     if isinstance(module, SqueezeMixin):
@@ -208,16 +205,16 @@ def conv_layer_synops_hook(
     at each forward pass. Afterwards the data can be accessed with
     `module.hook_data['layer_synops_per_timestep']`
 
-    Parameters:
+    If `module` does not already have a `hook_data` attribute, it
+    will be added and the mean firing rate will be stored under the
+    key 'layer_synops_per_timestep'. It is a scalar value.
+    It will also store a connectivity map under the key 'connection_map',
+    which holds the fanout for each input neuron.
+
+    Args:
         module: A torch.nn.Conv2d layer
         input_: List of inputs to the layer. Must contain exactly one tensor
         output: The layer's output.
-    Effect:
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and the mean firing rate will be stored under the
-        key 'layer_synops_per_timestep'. It is a scalar value.
-        It will also store a connectivity map under the key 'connection_map',
-        which holds the fanout for each input neuron.
     """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
@@ -252,14 +249,14 @@ def linear_layer_synops_hook(
     at each forward pass. Afterwards the data can be accessed with
     `module.hook_data['layer_synops_per_timestep']`
 
-    Parameters:
+    If `module` does not already have a `hook_data` attribute, it
+    will be added and the mean firing rate will be stored under the
+    key 'layer_synops_per_timestep'.
+
+    Args:
         module: A torch.nn.Linear layer.
         input_: List of inputs to the layer. Must contain exactly one tensor
         output: The layer's output.
-    Effect:
-        If `module` does not already have a `hook_data` attribute, it
-        will be added and the mean firing rate will be stored under the
-        key 'layer_synops_per_timestep'.
     """
     data = get_hook_data_dict(module)
     input_ = _extract_single_input(input_)
@@ -308,7 +305,7 @@ class ModelSynopsHook:
       the synaptic operations per second, under the assumption that `dt`
       is the time step in seconds.
 
-    Parameters:
+    Attributes:
       dt: If not None, should be a float that indicates the simulation
           time step in seconds. The synaptic operations will be also
           provided in terms of synops per second.
@@ -320,7 +317,7 @@ class ModelSynopsHook:
         """Forward call of the synops model hook. Should not be called manually but only by PyTorch
         during a forward pass.
 
-        Parameters:
+        Args:
             module: A torch.nn.Sequential
             input_: List of inputs to the module.
             output: The module output.
@@ -380,7 +377,7 @@ def register_synops_hooks(module: nn.Sequential, dt: Optional[float] = None):
     This can be used instead of calling the torch function
     `register_forward_hook` on all layers.
 
-    Parameters:
+    Args:
         module: Sequential model for which the hooks should be registered.
         dt: If not None, should be a float indicating the simulation
             time step in seconds. Will also calculate synaptic operations per second.

@@ -25,9 +25,8 @@ class ChipFactory:
     def __init__(self, device_str: str):
         """Factory class to access config builder and other device specific methods.
 
-        Parameters
-        ----------
-        device_str
+        Args:
+            device_str: name of the device
         """
         self.device_name, self.device_id = parse_device_id(device_str)
         if self.device_name not in self.supported_devices:
@@ -46,30 +45,19 @@ class ChipFactory:
     ) -> List:
         """Convert spike raster to events for DynapcnnNetworks.
 
-        Parameters
-        ----------
+        Args:
+            raster (torch.Tensor): A 4 dimensional tensor of spike events with the
+                dimensions [Time, Channel, Height, Width]
+            layer (int): The index of the layer to route the events to
+            dt (float): Length of time step of the raster in seconds
+            truncate (bool): Limit time-bins with more than one spikes to one spike.
+                Defaults to False.
+            delay_factor (float): Start simulation from this time (in seconds).
+                Defaults to zero.
 
-        raster: torch.Tensor
-            A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
-
-        layer: int
-            The index of the layer to route the events to
-
-        dt: float
-            Length of time step of the raster in seconds
-
-        truncate: bool
-            (default = False) Limit time-bins with more than one spikes to one spike.
-
-        delay_factor: float
-            (default = 0) Start simulation from this time. (in seconds)
-
-
-        Returns
-        -------
-
-        events: List[Spike]
-            A list of events that will be streamed to the device
+        Returns:
+            A list of events that will be streamed to the device.
+            Returned type is List[Spike].
         """
         assert delay_factor >= 0.0, print("Delay factor cannot be a negative value!")
         samna_module = self.get_config_builder().get_samna_module()
@@ -107,26 +95,16 @@ class ChipFactory:
         """Convert series of spikes in a structured array (eg. from aermanager) to events for
         DynaapcnnDevKit.
 
-        Parameters
-        ----------
+        Args:
+            xytp (torch.Tensor):  A numpy structured array with columns x, y, t(timestamp), p(polarity).
+            layer (int): The index of the layer to route the events to.
+            reset_timestamps (bool): If set to True, timestamps will be aligned to start from 0.
+            delay_factor (float): Start simulation from this time, in seconds.
+                Defaults to zero.
 
-        xytp: torch.Tensor
-            A numpy structured array with columns x, y, t(timestamp), p(polarity)
-
-        layer: int
-            The index of the layer to route the events to
-
-        reset_timestamps: Boolean
-            If set to True, timestamps will be aligned to start from 0
-
-        delay_factor: float
-            (default = 0) Start simulation from this time. (in seconds)
-
-        Returns
-        -------
-
-        events: List[Spike]
-            A list of events that will be streamed to the device
+        Returns:
+            A list of events that will be streamed to the device.
+            Returned type is List[Spike].
         """
 
         # Check delay factor as it being negative will crash the method.
@@ -162,21 +140,15 @@ class ChipFactory:
         Convert events from DynapcnnNetworks to spike raster
         Note: Timestamp of first event will be considered as start time.
 
-        Parameters
-        ----------
+        Args:
+            events (List[Spike]): A list of events that will be streamed to the device.
+            dt (float): Length of each time step for rasterization, in seconds.
+            shape (Optional[Tuple]): Shape of the raster to be produced, excluding the
+                time dimension. (Channel, Height, Width). If this is not specified,
+                the shape is inferred based on the max values found in the events.
 
-        events: List[Spike]
-            A list of events that will be streamed to the device
-        dt: float
-            Length of each time step for rasterization (in seconds)
-        shape: Optional[Tuple]
-            Shape of the raster to be produced, excluding the time dimension. (Channel, Height, Width)
-            If this is not specified, the shape is inferred based on the max values found in the events.
-
-        Returns
-        -------
-        raster: torch.Tensor
-            A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width]
+        Returns:
+            A 4 dimensional tensor of spike events with the dimensions [Time, Channel, Height, Width].
         """
         # Timestamps are in microseconds
         timestamps = [event.timestamp for event in events]

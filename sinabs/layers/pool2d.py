@@ -74,7 +74,7 @@ class SpikingMaxPooling2dLayer(nn.Module):
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
         """Returns the shape of output, given an input to this layer.
 
-        Parameters:
+        Args:
             input_shape: (channels, height, width)
 
         Returns:
@@ -95,10 +95,10 @@ class SumPool2d(torch.nn.LPPool2d):
     """Non-spiking sumpooling layer to be used in analogue Torch models. It is identical to
     torch.nn.LPPool2d with p=1.
 
-    Parameters:
-        kernel_size: the size of the window
-        stride: the stride of the window. Default value is kernel_size
-        ceil_mode: when True, will use ceil instead of floor to compute the output shape
+    Args:
+        kernel_size: the size of the window.
+        stride: the stride of the window. Default value is kernel_size.
+        ceil_mode: when True, will use ceil instead of floor to compute the output shape.
     """
 
     def __init__(self, kernel_size, stride=None, ceil_mode=False):

@@ -90,7 +90,7 @@ class SNNAnalyzer:
     can therefore calculate the number of synaptic operations accurately for each layer by
     multiplying the respective connection map with the output.
 
-    Parameters:
+    Args:
         model: Your PyTorch model.
         dt: the number of milliseconds corresponding to a time step in the simulation (default 1.0).
 
@@ -151,8 +151,9 @@ class SNNAnalyzer:
     def get_layer_statistics(self, average: bool = False) -> dict:
         """Outputs a dictionary with statistics for each individual layer.
 
-        Parameters:
-            average (bool): The statistics such as firing rate per neuron, the number of neurons or synops are averaged across batches.
+        Args:
+            average (bool): The statistics such as firing rate per neuron, the number of neurons
+                or synops are averaged across batches.
         """
         spike_dict = {}
         spike_dict["spiking"] = {}
@@ -221,8 +222,9 @@ class SNNAnalyzer:
     def get_model_statistics(self, average: bool = False) -> dict:
         """Outputs a dictionary with statistics that are summarised across all layers.
 
-        Parameters:
-            average (bool): The statistics such as firing rate per neuron or synops are averaged across batches.
+        Args:
+            average (bool): The statistics such as firing rate per neuron or
+                synops are averaged across batches.
         """
         stats_dict = {}
         firing_rates = []
@@ -262,9 +264,10 @@ class SynOpCounter:
     """Counter for the synaptic operations emitted by all Neuromorphic ReLUs in an analog CNN
     model.
 
-    Parameters:
+    Args:
         modules: list of modules, e.g. MyTorchModel.modules()
-        sum_activations: If True (default), returns a single number of synops, otherwise a list of layer synops.
+        sum_activations: If True (default), returns a single number of synops,
+            otherwise a list of layer synops.
 
     Example:
         >>> counter = SynOpCounter(MyTorchModel.modules(), sum_activations=True)

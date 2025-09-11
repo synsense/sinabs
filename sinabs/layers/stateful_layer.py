@@ -8,7 +8,7 @@ class StatefulLayer(torch.nn.Module):
     """A base class that instantiates buffers/states which update at every time step and provides
     helper methods that manage those states.
 
-    Parameters:
+    Args:
         state_names: the PyTorch buffers to initialise. These are not parameters.
     """
 
@@ -97,12 +97,15 @@ class StatefulLayer(torch.nn.Module):
     ):
         """Reset the state/buffers in a layer.
 
-        Parameters:
-            randomize: If true, reset the states between a range provided. Else, the states are reset to zero.
-            value_ranges: A dictionary of key value pairs: buffer_name -> (min, max) for each state that needs to be reset.
-                          The states are reset with a uniform distribution between the min and max values specified.
-                          Any state with an undefined key in this dictionary will be reset between 0 and 1
-                          This parameter is only used if randomize is set to true.
+        Args:
+            randomize: If true, reset the states between a range provided.
+                Else, the states are reset to zero.
+            value_ranges: A dictionary of key value pairs: buffer_name -> (min,
+                max) for each state that needs to be reset. The states are
+                reset with a uniform distribution between the min and max
+                values specified. Any state with an undefined key in this
+                dictionary will be reset between 0 and 1. This parameter is
+                only used if randomize is set to true.
 
         .. note:: If you would like to reset the state with a custom distribution, you can do this individually for each parameter as follows::
 

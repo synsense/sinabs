@@ -46,4 +46,4 @@ def test_auto_mapping_should_not_work():
     graph = make_flow_graph(layer_mapping)
     new_graph = edmonds(graph, 0, len(graph) - 1)
     with pytest.raises(ValueError):
-        mapping = recover_mapping(new_graph, layer_mapping)
+        mapping = recover_mapping(new_graph, len(layer_mapping))
