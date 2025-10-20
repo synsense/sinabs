@@ -17,12 +17,18 @@ def construct_dynapcnnlayers_from_mapper(
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
     Args:
+        dcnnl_map: dict holding info needed to instantiate DynapcnnLayer instances.
+        dvs_layer_info: dict holding info about DVSLayer instance and its destinations.
+        discretize: bool indicating whether layer parameters should be
+            discretized (weights, biases, thresholds).
+        rescale_fn: Optional callable that is used to determine layer rescaling
+            in case of conflicting preceeding average pooling.
 
     Returns:
-     A tuple containing a dict of new DynapcnnLayer instances, with keys
-    corresponding to `dcnnl_map`, a dict mapping each layer index to a set
-    of destination indices and a list of layer indices that act as entry
-    points to the network.
+        A tuple containing a dict of new DynapcnnLayer instances, with keys
+        corresponding to `dcnnl_map`, a dict mapping each layer index to a set
+        of destination indices and a list of layer indices that act as entry
+        points to the network.
     """
     finalize_dcnnl_map(dcnnl_map, dvs_layer_info, rescale_fn)
 
