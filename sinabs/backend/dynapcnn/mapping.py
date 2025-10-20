@@ -151,8 +151,8 @@ def make_flow_graph(
     be populated by calling the method `edmonds`.
 
     Args:
-        layer_mapping: List of a list of matching chip core indices for each software layer.
-            Eg. [[1,3], [4, 6, 1]] for a two layer model
+        layer_mapping: List of a list of matching chip core indices for each DynapCNNLayer instance.
+            Eg. [[1,3], [4, 6, 1]] for a two layer model, where each integer is a core index.
         num_layers (int): Number of layers on the chip.
 
     Returns:
