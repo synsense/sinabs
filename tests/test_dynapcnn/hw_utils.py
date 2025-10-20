@@ -32,6 +32,7 @@ supported_device_types_for_testing = {
     "speck2e": "Speck2eTestBoard",
     "speck2edevkit": "Speck2eDevKit",
     "speck2fmodule": "Speck2fModuleDevKit",
+    "speck2fdevkit": "Speck2fDevKit",
 }
 
 
