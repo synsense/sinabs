@@ -25,9 +25,6 @@ IGNORED_LAYER_TYPES = (nn.Flatten, sl.Merge)
 Edge = Tuple[int, int]  # Define edge-type alias
 
 
-####################################################### Device Related #######################################################
-
-
 def parse_device_id(device_id: str) -> Tuple[str, int]:
     """Parse device id into device type and device index.
 
@@ -76,9 +73,6 @@ def standardize_device_id(device_id: str) -> str:
     """
     device_type, index = parse_device_id(device_id=device_id)
     return get_device_id(device_type=device_type, index=index)
-
-
-####################################################### DynapcnnNetwork Related #######################################################
 
 
 def topological_sorting(edges: Set[Tuple[int, int]]) -> List[int]:

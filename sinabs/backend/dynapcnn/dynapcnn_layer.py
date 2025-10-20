@@ -147,8 +147,6 @@ class DynapcnnLayer(nn.Module):
     def conv_out_shape(self):
         return self._get_conv_output_shape()
 
-    ####################################################### Public Methods #######################################################
-
     def forward(self, x) -> List[torch.Tensor]:
         """Torch forward pass.
 
@@ -246,14 +244,11 @@ class DynapcnnLayer(nn.Module):
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
 
-    ####################################################### Private Methods #######################################################
-
     def _get_conv_output_shape(self) -> Tuple[int, int, int]:
         """Computes the output dimensions of `conv_layer`.
 
-        Returns
-        ----------
-        - output dimensions (tuple): a tuple describing `(output channels, height, width)`.
+        Returns:
+            output dimensions (tuple): a tuple describing `(output channels, height, width)`.
         """
         # get the layer's parameters.
 

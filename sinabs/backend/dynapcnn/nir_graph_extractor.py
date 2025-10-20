@@ -134,8 +134,6 @@ class GraphExtractor:
         # Verify that graph is compatible
         self.verify_graph_integrity()
 
-    ####################################################### Publich Methods #######################################################
-
     @property
     def dvs_layer(self) -> Union[DVSLayer, None]:
         idx = self.dvs_node_id
@@ -292,10 +290,9 @@ class GraphExtractor:
     def get_node_io_shapes(self, node: int) -> Tuple[torch.Size, torch.Size]:
         """Returns the I/O tensors' shapes of `node`.
 
-        Returns
-        ----------
-        - input shape (torch.Size): shape of the input tensor to `node`.
-        - output shape (torch.Size): shape of the output tensor from `node`.
+        Returns:
+            input shape (torch.Size): shape of the input tensor to `node`.
+            output shape (torch.Size): shape of the output tensor from `node`.
         """
         return (
             self._nodes_io_shapes[node]["input"],
@@ -345,9 +342,8 @@ class GraphExtractor:
     def verify_node_types(self):
         """Verify that all nodes are of a supported type.
 
-        Raises
-        ------
-        - UnsupportedLayerType: If any verification fails
+        Raises:
+            UnsupportedLayerType: If any verification fails.
         """
         unsupported_nodes = dict()
         for index, module in self.indx_2_module_map.items():
@@ -405,9 +401,8 @@ class GraphExtractor:
     def verify_no_isolated_nodes(self):
         """Verify that there are no disconnected nodes except for `DVSLayer` instances.
 
-        Raises
-        ------
-        - InvalidGraphStructure when disconnected nodes are detected
+        Raises:
+            InvalidGraphStructure when disconnected nodes are detected.
         """
         for node, module in self.indx_2_module_map.items():
             # Make sure there are no individual, unconnected nodes
@@ -421,8 +416,6 @@ class GraphExtractor:
                     "spiking layers (`IAF` or `IAFSqueeze`), and optioanlly "
                     "pooling layers (`SumPool2d`, `AvgPool2d`)."
                 )
-
-    ####################################################### Pivate Methods #######################################################
 
     def _handle_dvs_input(
         self, input_shape: Tuple[int, int, int], dvs_input: Optional[bool] = None

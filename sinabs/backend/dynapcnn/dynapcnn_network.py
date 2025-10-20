@@ -103,8 +103,6 @@ class DynapcnnNetwork(nn.Module):
         )
         self._dynapcnn_module.setup_dynapcnnlayer_graph(index_layers_topologically=True)
 
-    ####################################################### Public Methods #######################################################
-
     @property
     def all_layers(self):
         return self._dynapcnn_module.all_layers
@@ -681,8 +679,6 @@ class DynapcnnNetwork(nn.Module):
         for layer in self.sequence:
             if isinstance(layer, DynapcnnLayer):
                 layer.spk_layer.reset_states(randomize=randomize)
-
-    ####################################################### Private Methods #######################################################
 
     def _make_config(
         self,
