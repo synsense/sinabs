@@ -2,7 +2,7 @@ from typing import Set, Tuple, Type
 
 default_invalid_structure_string = (
     "Invalid structure found. This is most likely due to an unsupported SNN "
-    "architecture. In general, a dynapcnn network should consist of groups of "
+    "architecture. In general, a DynapCNN network should consist of groups of "
     "a weight layer (conv or linear), a spiking layer (IAFSqueeze), and "
     "optionally a pooling layer."
 )
@@ -24,7 +24,7 @@ class UnexpectedLayer(Exception):
 
 
 class InputConfigurationError(Exception):
-    """Is raised when input to dynapcnn is not configured correctly."""
+    """Is raised when input to DynapCNN is not configured correctly."""
 
     pass
 
@@ -124,7 +124,7 @@ class InvalidLayerLoop(Exception):
 
     def __init__(self, dynapcnnlayerA_index, dynapcnnlayerB_index):
         super().__init__(
-            f"DynapcnnLayer {dynapcnnlayerA_index} can not connect to {dynapcnnlayerB_index} since reverse edge already exists."
+            f"DynapCNNLayer {dynapcnnlayerA_index} can not connect to {dynapcnnlayerB_index} since a reverse edge already exists."
         )
 
 
@@ -134,5 +134,5 @@ class InvalidLayerDestination(Exception):
 
     def __init__(self, dynapcnnlayerA, dynapcnnlayerB):
         super().__init__(
-            f"DynapcnnLayer {dynapcnnlayerA} in one core can not connect to {dynapcnnlayerB} in another core."
+            f"DynapCNNLayer {dynapcnnlayerA} can not connect to {dynapcnnlayerB}."
         )
