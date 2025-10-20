@@ -31,7 +31,7 @@ def find_chip_layers(
     """Find all layers where a given layer configuration fits.
 
     Args:
-        layer: DynapcnnLayer.
+        layer: DynapCNNLayer.
         constraints: A list of all the layer's constraints.
 
     Returns:
@@ -48,7 +48,7 @@ def get_valid_mapping(
     provided.
 
     Args:
-        model: an instance of a DynapcnnNetwork or a DynapcnnNetworkGraph.
+        model: an instance of a DynapCNNNetwork or a DynapCNNNetworkGraph.
         constraints: a list of all the layer's constraints.
 
     Returns:
@@ -64,13 +64,13 @@ def get_valid_mapping(
             chip_layers = find_chip_layers(this_layer, constraints)
             layer_mapping.append(chip_layers)
             layer_indices.append(layer_index)
-        # Make sure only DynapcnnLayers and DVSLayers are passed
+        # Make sure only DynapCNNLayers and DVSLayers are passed
         elif not isinstance(this_layer, DVSLayer):
             raise ValueError(f"Found unexpected layer type: `{type(this_layer)}")
 
     graph = make_flow_graph(layer_mapping, len(constraints))
 
-    # use Edmonds' Algorithm to find suitable cores for each DynapcnnLayer.
+    # use Edmonds' Algorithm to find suitable cores for each DynapCNNLayer.
     new_graph = edmonds(graph, 0, len(graph) - 1)
     netmap = recover_mapping(new_graph, len(layer_mapping))
 
@@ -145,15 +145,15 @@ def make_flow_graph(
 ) -> List[List[FlowGraphEdge]]:
     """
     Make a bipartite flow graph (flow network) given all possible chip layers
-    for each DynapcnnLayer layer. The goal is to formulate the mapping from
-    software layer to chip layer as a bipartite matching problem. Note that the
+    for each DynapCNNLayer layer. The goal is to formulate the mapping from
+    DynapCNNLayer instance to chip layer as a bipartite matching problem. Note that the
     flows are not computed yet. The flow for the graph generated here needs to
-    be populated by calling the method `edmonds`
+    be populated by calling the method `edmonds`.
 
     Args:
         layer_mapping: List of a list of matching chip core indices for each software layer.
             Eg. [[1,3], [4, 6, 1]] for a two layer model
-        num_layers (int): Number of layers on the chip
+        num_layers (int): Number of layers on the chip.
 
     Returns:
         Flow graph representation. Each list entry corresponds to a node and consists
