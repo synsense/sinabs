@@ -51,6 +51,16 @@ class GraphExtractor:
                 the model to acquire both the computational graph (via
                 `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
                 with `(batch, channels, heigh, width)`.
+            dvs_input (bool): optional (default as `None`). Whether or not the
+                model should start with a `DVSLayer`.
+            ignore_node_types (iterable of types): Node types that should be
+                ignored completely from the graph. This can include, for
+                instance, `nn.Dropout2d`, which otherwise can result in wrongly
+                inferred graph structures by NIRTorch. Types such as
+                `nn.Flatten`, or sinabs `Merge` should not be included here, as
+                they are needed to properly handle graph structure and
+                metadata. They can be removed after instantiation with
+                `remove_nodes_by_class`.
 
         Attributes:
             edges (set of 2-tuples of integers): Tuples describing the
@@ -90,7 +100,7 @@ class GraphExtractor:
             original_state = {}
 
         self._name_2_indx_map = []
-        # TODO: nirtorch was updated and this needs to be updated accordingly
+        # TODO[NONSEQ]: nirtorch was updated and this needs to be updated accordingly
         # else:
         #     # extract computational graph.
         #     nir_graph = nirtorch.extract_nir_graph(
