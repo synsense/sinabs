@@ -47,7 +47,7 @@ class GraphExtractor:
 
         Args:
             spiking_model (nn.Module): a sinabs-compatible spiking network.
-            dummy_input (torch.tensor): a random input sample to be fed through
+            dummy_input (torch.tensor): an input sample to be fed through
                 the model to acquire both the computational graph (via
                 `nirtorch`) and the I/O shapes of each node. Its a 4-D shape
                 with `(batch, channels, heigh, width)`.
@@ -177,7 +177,7 @@ class GraphExtractor:
         return {n: module for n, module in self._indx_2_module_map.items()}
 
     def get_dynapcnn_network_module(
-        self, discretize: bool = False, weight_rescaling_fn: Optional[Callable] = None
+        self, discretize: bool = True, weight_rescaling_fn: Optional[Callable] = None
     ) -> DynapcnnNetworkModule:
         """Create DynapcnnNetworkModule based on stored graph representation
 
@@ -185,7 +185,7 @@ class GraphExtractor:
 
         Args:
             discretize (bool): If `True`, discretize the parameters and
-                thresholds. This is needed for uploading weights to dynapcnn.
+                thresholds. This is needed for uploading weights to DynapCNN.
                 Set to `False` only for testing purposes.
             weight_rescaling_fn (callable): a method that handles how the
                 re-scaling factor for one or more `SumPool2d` projecting to the
@@ -236,9 +236,9 @@ class GraphExtractor:
         )
 
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
-        """Remove nodes of given classes from graph in place.
+        """Remove nodes of given classes from the graph, in place.
 
-        Create a new set of edges, considering layers that `DynapcnnNetwork`
+        Create a new set of edges, considering the layers that `DynapcnnNetwork`
         will ignore. This is done by setting the source (target) node of an
         edge where the source (target) node will be dropped as the node that
         originally targeted this node to be dropped.
@@ -305,12 +305,10 @@ class GraphExtractor:
     def verify_graph_integrity(self):
         """Apply checks to verify that graph is supported
 
-        Check that:
-        - Only nodes of specific classes have multiple sources or targets.
+        Note that only nodes of specific classes have multiple sources or targets.
 
-        Raises
-        ------
-        - InvalidGraphStructure: If any verification fails
+        Raises:
+            InvalidGraphStructure: If any verification fails
         """
 
         for node, module in self.indx_2_module_map.items():
@@ -379,7 +377,7 @@ class GraphExtractor:
             layer_str = ", ".join(str(lyr) for lyr in (lif_layers))
             raise UnsupportedLayerType(
                 f"The provided SNN contains LIF layers:\n{layer_str}.\n"
-                "Leaky integrate-and-fire dynamics are not supported by "
+                "Leaky Integrate-and-Fire dynamics are not supported by "
                 "DynapCNN. Use non-leaky `IAF` or `IAFSqueeze` layers "
                 "instead."
             )
