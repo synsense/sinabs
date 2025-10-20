@@ -110,7 +110,6 @@ class DynapcnnLayer(nn.Module):
             # this has to be done after copying but before discretizing
             conv.weight.data = (conv.weight * self._rescale_weights).clone().detach()
 
-        # TODO: Does this really need to be enforced here or upon deployment?
         # check if convolution kernel is a square.
         if conv.kernel_size[0] != conv.kernel_size[1]:
             raise ValueError(
