@@ -17,15 +17,15 @@ def construct_dynapcnnlayers_from_mapper(
     """Construct DynapcnnLayer instances from `dcnnl_map`
 
     Args:
-        dcnnl_map: dict holding info needed to instantiate DynapcnnLayer instances.
-        dvs_layer_info: dict holding info about DVSLayer instance and its destinations.
+        dcnnl_map: dict holding info needed to instantiate `DynapcnnLayer` instances.
+        dvs_layer_info: dict holding info about `DVSLayer` instance and its destinations.
         discretize: bool indicating whether layer parameters should be
             discretized (weights, biases, thresholds).
         rescale_fn: Optional callable that is used to determine layer rescaling
             in case of conflicting preceeding average pooling.
 
     Returns:
-        A tuple containing a dict of new DynapcnnLayer instances, with keys
+        A tuple containing a dict of new `DynapcnnLayer` instances, with keys
         corresponding to `dcnnl_map`, a dict mapping each layer index to a set
         of destination indices and a list of layer indices that act as entry
         points to the network.
@@ -55,7 +55,7 @@ def finalize_dcnnl_map(
     - Fix input shapes
 
     Args:
-        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
         rescale_fn: Optional callable that is used to determine layer rescaling
             in case of conflicting preceeding average pooling.
     """
@@ -83,7 +83,7 @@ def consolidate_dvs_pooling(dvs_info: Union[Dict, None], dcnnl_map: Dict):
 
     Args:
         dvs_info: Dict holding info of DVS layer.
-        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
     """
     if dvs_info is None or dvs_info["pooling"] is None:
         # Nothing to do
@@ -150,7 +150,7 @@ def consolidate_layer_pooling(layer_info: Dict, dcnnl_map: Dict):
     Args:
         layer_info: Dict holding info of single layer. Corresponds to single
             entry in `dcnnl_map`.
-        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
+        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
     """
     layer_info["pooling_list"] = []
     for destination in layer_info["destinations"]:
@@ -280,8 +280,8 @@ def construct_destination_map(
     """Create a dict that holds destinations for each layer
 
     Args:
-        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-        dvs_layer_info: Dict holding info about DVSLayer instance and its destinations.
+        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
+        dvs_layer_info: Dict holding info about `DVSLayer` instance and its destinations.
 
     Returns:
         Dict with layer indices (int) as keys and list of destination indices (int) as values.
@@ -316,8 +316,8 @@ def collect_entry_points(
     """Return set of layer indices that are entry points
 
     Args:
-        dcnnl_map: Dict holding info needed to instantiate DynapcnnLayer instances.
-        dvs_layer_info: Dict holding info about DVSLayer instance and its destinations.
+        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
+        dvs_layer_info: Dict holding info about `DVSLayer` instance and its destinations.
             If it is not None, it will be the only entry point returned.
 
     Returns:
