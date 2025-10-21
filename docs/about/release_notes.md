@@ -4,6 +4,7 @@
 
 * Fix tests crashing in case an unexpected board was found.
 * Fix tests that were not running for speck2fdevkit.
+* Fix error when initializing sinabs without matplotlib: matplotlib is not a sinabs dependency.
 
 ## v3.0.4 (08/09/2025)
 
