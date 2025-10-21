@@ -1,5 +1,12 @@
 # Release notes
 
+* Fix tests crashing in case an unexpected board was found.
+* Fix tests that were not running for speck2fdevkit.
+* Add non sequential map of networks
+    * Deprecate `chip_layers_ordering` from DynapCNNNetwork. Use `layer2core_map` instead.
+    * Deprecate `DynapcnnCompatibleNetwork`. Use `DynapcnnNetwork` instead.
+    * Deprecate `merge_conv_bn` from `sinabs.utils`. Use `merge_bn` instead.
+
 ## v3.0.4 (08/09/2025)
 
 * Update sinabs code to be consistent with Python 3.12 and Numpy > 2.0.
