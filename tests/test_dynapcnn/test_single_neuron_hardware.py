@@ -60,6 +60,7 @@ def test_deploy_dynapcnnnetwork():
                     "speck2e",
                     "speck2edevkit",
                     "speck2f",
+                    "speck2fdevkit",
                 ]
                 and core_idx < 2
             ):

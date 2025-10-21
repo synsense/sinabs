@@ -1,5 +1,10 @@
 # Release notes
 
+## Unreleased
+
+* Fix tests crashing in case an unexpected board was found.
+* Fix tests that were not running for speck2fdevkit.
+
 ## v3.0.4 (08/09/2025)
 
 * Update sinabs code to be consistent with Python 3.12 and Numpy > 2.0.

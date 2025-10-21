@@ -32,6 +32,7 @@ supported_device_types_for_testing = {
     "speck2e": "Speck2eTestBoard",
     "speck2edevkit": "Speck2eDevKit",
     "speck2fmodule": "Speck2fModuleDevKit",
+    "speck2fdevkit": "Speck2fDevKit",
 }
 
 
@@ -42,7 +43,8 @@ def find_open_devices():
     dev_infos = samna.device.get_all_devices()
     dev_dict = {}
     for dev_info in dev_infos:
-        dev_dict.update({reverse_dict[dev_info.device_type_name]: dev_info})
+        if dev_info.device_type_name in reverse_dict:
+            dev_dict.update({reverse_dict[dev_info.device_type_name]: dev_info})
     return dev_dict
 
 
