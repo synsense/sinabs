@@ -92,7 +92,7 @@ class ResidualBlock(nn.Module):
 
 ```
 
-Since currently sinabs-dynapcnn can only parse Sequential like network, we need to some tedious work like below:
+Since currently Sinabs can only parse Sequential like network, we need to do some tedious work like below:
 
 ```python
 # define a Sequential first
@@ -136,7 +136,7 @@ devkit.get_model().apply_configuration(samna_cfg)
 ```
 
 I have to say it is not an elegant solution though, it should help you to achieve an initial Residual Block. We will
-improve this part after sinabs-dynapcnn has the ability for extracting model's graph.
+improve this part after Sinabs has the ability for extracting model's graph.
 
 ## What execution order should I be aware of when I am implementing a sequential structure?
 You should be aware with the internal layer order.
