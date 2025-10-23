@@ -84,7 +84,6 @@ dynapcnn_net = DynapcnnNetwork(
 dynapcnn_out = dynapcnn_net(input_data)
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_same_result():
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
@@ -94,7 +93,6 @@ def test_auto_config():
     dynapcnn_net.make_config(chip_layers_ordering="auto")
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_was_copied():
     from nirtorch.utils import sanitize_name
 
@@ -162,7 +160,6 @@ def test_memory_summary():
     print(summary)
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("out_channels", [1, 2, 12])
 def test_extended_readout_layer(out_channels: int):
     from sinabs.backend.dynapcnn.utils import extend_readout_layer
