@@ -316,12 +316,14 @@ def collect_entry_points(
     """Return set of layer indices that are entry points
 
     Args:
-        dcnnl_map: Dict holding info needed to instantiate `DynapcnnLayer` instances.
-        dvs_layer_info: Dict holding info about `DVSLayer` instance and its destinations.
+        dcnnl_map: dict holding info needed to instantiate `DynapcnnLayer` instances.
+        dvs_layer_info: dict holding info about `DVSLayer` instance and its destinations.
             If it is not None, it will be the only entry point returned.
 
     Returns:
-        Set of all layer indices which act as entry points to the network.
+        Set of all layer indices which act as entry points to the network. When `dvs_layer_info`
+        is provided, the DVS layer is the exclusive entry point into the network and a dictionary
+        `{"dvs"}` is returned instead.
     """
     if dvs_layer_info is None:
         return {
