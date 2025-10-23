@@ -48,12 +48,11 @@ def get_valid_mapping(
     provided.
 
     Args:
-        model: an instance of a DynapCNNNetwork or a DynapCNNNetworkGraph.
-        constraints: a list of all the layer's constraints.
+        layers: Dict with layer indices as keys and DynapcnnLayer instances as values.
+        constraints: A list of all the layer's constraints.
 
     Returns:
         Dict mapping from layer index (key) to assigned core ID (value).
-    -------
     """
     # Store layer indices and lists of possible target chips in separate lists
     layer_indices = []
@@ -227,7 +226,7 @@ def recover_mapping(graph: List[List[FlowGraphEdge]], num_layers: int) -> List[i
     if len(mapping) != num_layers:
         # TODO - check if this error message make sense with nonseq implementation
         raise ValueError(
-            "No valid mapping found. "
+            "No valid mapping found. One or more of the DynapcnnLayers could not be mapped to any core."
             "For Speck family you can use `utils.validate_memory_mapping_speck()` to get more information."
         )
     return mapping
