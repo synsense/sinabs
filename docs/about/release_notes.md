@@ -1,7 +1,10 @@
 # Release notes
 
+## Unreleased
+
 * Fix tests crashing in case an unexpected board was found.
 * Fix tests that were not running for speck2fdevkit.
+* Fix error when initializing sinabs without matplotlib: matplotlib is not a sinabs dependency.
 * Add non sequential map of networks
     * Deprecate `chip_layers_ordering` from DynapCNNNetwork. Use `layer2core_map` instead.
     * Deprecate `DynapcnnCompatibleNetwork`. Use `DynapcnnNetwork` instead.

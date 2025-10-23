@@ -43,7 +43,8 @@ def find_open_devices():
     dev_infos = samna.device.get_all_devices()
     dev_dict = {}
     for dev_info in dev_infos:
-        dev_dict.update({reverse_dict[dev_info.device_type_name]: dev_info})
+        if dev_info.device_type_name in reverse_dict:
+            dev_dict.update({reverse_dict[dev_info.device_type_name]: dev_info})
     return dev_dict
 
 
