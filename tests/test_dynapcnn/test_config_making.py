@@ -35,11 +35,6 @@ hardware_compatible_model = DynapcnnNetwork(
 )
 
 devices = tuple(ChipFactory.supported_devices.keys())
-devices = [
-    "speck2e",
-    "speck2edevkit",
-    "speck2fmodule",
-]
 
 
 def test_zero_initial_states():
@@ -89,3 +84,20 @@ small_hardware_compatible_model = DynapcnnNetwork(
 @pytest.mark.parametrize("device", devices)
 def test_verify_working_config(device):
     assert small_hardware_compatible_model.is_compatible_with(device)
+
+
+# Model that is too big to fit on any of our architectures
+big_ann = deepcopy(ann)
+big_ann.append(nn.ReLU())
+big_ann.append(nn.Linear(10, 999999, bias=False))
+
+hardware_incompatible_model = DynapcnnNetwork(
+    from_model(big_ann, add_spiking_output=True, batch_size=1).cpu(),
+    discretize=True,
+    input_shape=input_shape,
+)
+
+
+@pytest.mark.parametrize("device", devices)
+def test_verify_non_working_config(device):
+    assert not hardware_incompatible_model.is_compatible_with(device)
