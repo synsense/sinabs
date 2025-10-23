@@ -98,23 +98,20 @@ class GraphExtractor:
             self._name_2_indx_map = dict()
             self._edges = set()
             original_state = {}
+        else:
+            nir_graph = nirtorch.graph.extract_torch_graph(
+                spiking_model, dummy_input, model_name=None
+            ).ignore_tensors()
 
-        self._name_2_indx_map = []
-        # TODO[NONSEQ]: nirtorch was updated and this needs to be updated accordingly
-        # else:
-        #     # extract computational graph.
-        #     nir_graph = nirtorch.extract_nir_graph(
-        #         spiking_model, dummy_input, model_name=None
-        #     ).ignore_tensors()
-        #     if ignore_node_types is not None:
-        #         for node_type in ignore_node_types:
-        #             nir_graph = nir_graph.ignore_nodes(node_type)
+            if ignore_node_types is not None:
+                for node_type in ignore_node_types:
+                    nir_graph = nir_graph.ignore_nodes(node_type)
 
-        #     # Map node names to indices
-        #     self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
+            # Map node names to indices
+            self._name_2_indx_map = self._get_name_2_indx_map(nir_graph)
 
-        #     # Extract edges list from graph
-        #     self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
+            # Extract edges list from graph
+            self._edges = self._get_edges_from_nir(nir_graph, self._name_2_indx_map)
 
         # Store the associated `nn.Module` (layer) of each node.
         self._indx_2_module_map = self._get_name2module_map(spiking_model)
@@ -244,57 +241,70 @@ class GraphExtractor:
         )
 
     def remove_nodes_by_class(self, node_classes: Tuple[Type]):
-        """Remove nodes of given classes from the graph, in place.
+        """
+        Remove all nodes of the specified classes from the graph, and update the graph structure in place.
+        When nodes are removed, the function rewires the graph to maintain data flow continuity.
+        Specifically, any incoming edges to the removed nodes are redirected to their valid successors,
+        effectively bypassing the removed nodes.
 
-        Create a new set of edges, considering the layers that `DynapcnnNetwork`
-        will ignore. This is done by setting the source (target) node of an
-        edge where the source (target) node will be dropped as the node that
-        originally targeted this node to be dropped.
+        Example:
+            If the original structure is A → B → C, and B is removed, the resulting connection becomes A → C.
+        If an entry node (a node without predecessors) is removed, its valid successors become new entry nodes.
 
-        Will change internal attributes `self._edges`, `self._entry_nodes`,
-        `self._name_2_indx_map`, and `self._nodes_io_shapes` to reflect the
-        changes.
+        Special handling:
+            For `Flatten` layers: the function updates the input shape of successor nodes to match the
+            shape before flattening. Note that this may lead to incorrect results if multiple `Flatten`
+            layers appear consecutively.
+
+        After modification, the function updates:
+            - The edge set (`self._edges`)
+            - The entry nodes (`self._entry_nodes`)
+            - The node index mapping (`self._name_2_indx_map`)
+            - The stored input/output shapes (`self._nodes_io_shapes`)
 
         Args:
-            node_classes (tuple of types): Layer classes that should be removed
-            from the graph.
+            node_classes (tuple of types): The types of nodes (layers) to remove from the graph.
         """
-        # Compose new graph by creating a dict with all remaining node IDs as keys and set of target node IDs as values
+
+        # Build a mapping of remaining nodes to their valid successors
+        # (i.e., successors not belonging to the classes to be removed)
         source2target: Dict[int, Set[int]] = {}
+
         for node in self.sorted_nodes:
-            if isinstance((mod := self.indx_2_module_map[node]), node_classes):
-                # If an entry node is removed, its targets become entry nodes
+            mod = self.indx_2_module_map[node]
+            if isinstance(mod, node_classes):
+                # If an entry node is removed, promote its valid successors as new entry nodes
                 if node in self.entry_nodes:
                     targets = self._find_valid_targets(node, node_classes)
                     self._entry_nodes.update(targets)
 
-                # Update input shapes of nodes after `Flatten` to the shape before flattening
-                # Note: This is likely to produce incorrect results if multiple Flatten layers
-                # come in sequence.
+                # If removing a Flatten layer, propagate the pre-flatten shape
+                # to the next nodes to maintain correct input shape metadata
                 if isinstance(mod, nn.Flatten):
                     shape_before_flatten = self.nodes_io_shapes[node]["input"]
                     for target_node in self._find_valid_targets(node, node_classes):
                         self._nodes_io_shapes[target_node][
                             "input"
                         ] = shape_before_flatten
-
             else:
+                # Retain this node and connect it to its valid successors
                 source2target[node] = self._find_valid_targets(node, node_classes)
 
-        # remapping nodes indices contiguously starting from 0
+        # Reassign new contiguous indices to the remaining nodes (starting from 0)
         remapped_nodes = {
             old_idx: new_idx
             for new_idx, old_idx in enumerate(sorted(source2target.keys()))
         }
 
-        # Parse new set of edges based on remapped node IDs
+        # Rebuild the edge set using the remapped indices
+
         self._edges = {
             (remapped_nodes[src], remapped_nodes[tgt])
             for src, targets in source2target.items()
             for tgt in targets
         }
 
-        # Update internal graph representation according to changes
+        # Synchronize all internal structures with the updated graph topology
         self._update_internal_representation(remapped_nodes)
 
     def get_node_io_shapes(self, node: int) -> Tuple[torch.Size, torch.Size]:
@@ -310,43 +320,52 @@ class GraphExtractor:
         )
 
     def verify_graph_integrity(self):
-        """Apply checks to verify that graph is supported
-
-        Note that only nodes of specific classes have multiple sources or targets.
-
-        Raises:
-            InvalidGraphStructure: If any verification fails
         """
-
+        Apply consistency checks to verify that the graph structure is valid and supported.
+        This function ensures:
+            - No isolated nodes exist (except for `DVSLayer` instances).
+            - Only certain layer types are allowed to have multiple inputs or outputs.
+            - No self-recurrent edges are present (edges of the form `(x, x)`).
+        Raises:
+            InvalidGraphStructure: If any of the integrity checks fail.
+        """
+        # --- Check for self-recurrent edges -------------------------------------
+        self_recurrent_edges = {(src, tgt) for (src, tgt) in self.edges if src == tgt}
+        if self_recurrent_edges:
+            raise InvalidGraphStructure(
+                f"The graph contains self-recurrent edges: {self_recurrent_edges}. "
+                "Recurrent connections (edges of the form (x, x)) are not supported."
+            )
+        # --- Check node connectivity and input/output structure -----------------
         for node, module in self.indx_2_module_map.items():
-            # Make sure there are no individual, unconnected nodes
+            # Ensure there are no isolated (unconnected) nodes, except for DVSLayer instances
             edges_with_node = {e for e in self.edges if node in e}
             if not edges_with_node and not isinstance(module, DVSLayer):
                 raise InvalidGraphStructure(
-                    f"There is an isolated module of type {type(module)}. Only "
-                    "`DVSLayer` instances can be completely disconnected from "
-                    "any other module. Other than that, layers for DynapCNN "
-                    "consist of groups of weight layers (`Linear` or `Conv2d`), "
-                    "spiking layers (`IAF` or `IAFSqueeze`), and optioanlly "
-                    "pooling layers (`SumPool2d`, `AvgPool2d`)."
+                    f"There is an isolated module of type {type(module)} (node {node}). "
+                    "Only `DVSLayer` instances can be completely disconnected from "
+                    "the rest of the network. Other than that, DynapCNN layers consist "
+                    "of groups of weight layers (`Linear` or `Conv2d`), spiking layers "
+                    "(`IAF` or `IAFSqueeze`), and optionally pooling layers "
+                    "(`SumPool2d`, `AvgPool2d`)."
                 )
-            # Ensure only certain module types have multiple inputs
+            # Ensure only specific module types can have multiple inputs
             if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_INPUTS):
                 sources = self._find_all_sources_of_input_to(node)
                 if len(sources) > 1:
                     raise InvalidGraphStructure(
-                        f"Only nodes of type {LAYER_TYPES_WITH_MULTIPLE_INPUTS} "
-                        f"can have more than one input. Node {node} is of type "
-                        f"{type(module)} and has {len(sources)} inputs."
+                        f"Node {node} of type {type(module)} has {len(sources)} inputs, "
+                        f"but only nodes of type {LAYER_TYPES_WITH_MULTIPLE_INPUTS} "
+                        "are allowed to have multiple inputs."
                     )
-            # Ensure only certain module types have multiple targets
+            # Ensure only specific module types can have multiple outputs
             if not isinstance(module, LAYER_TYPES_WITH_MULTIPLE_OUTPUTS):
                 targets = self._find_valid_targets(node)
                 if len(targets) > 1:
                     raise InvalidGraphStructure(
-                        f"Only nodes of type {LAYER_TYPES_WITH_MULTIPLE_OUTPUTS} "
-                        f"can have more than one output. Node {node} is of type "
-                        f"{type(module)} and has {len(targets)} outputs."
+                        f"Node {node} of type {type(module)} has {len(targets)} outputs, "
+                        f"but only nodes of type {LAYER_TYPES_WITH_MULTIPLE_OUTPUTS} "
+                        "are allowed to have multiple outputs."
                     )
 
     def verify_node_types(self):
