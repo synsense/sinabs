@@ -57,7 +57,6 @@ class DynapCnnNetA(nn.Module):
         return self.seq(x)
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_learning():
     sdc = DynapCnnNetA()
     snn = from_model(sdc.seq, batch_size=1)

@@ -7,7 +7,6 @@ from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_speck2e_coordinates():
     """Generate the configuration for speck2edevkit."""
     ann = nn.Sequential(nn.Conv2d(2, 6, 3), nn.ReLU())
@@ -18,7 +17,6 @@ def test_speck2e_coordinates():
     print(config.to_json())
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_dvs_layer_generation():
     """DVSLayer should be generated is dvs input is enabled even for an empty network."""
     network = DynapcnnNetwork(nn.Sequential(), input_shape=(2, 10, 10), dvs_input=True)

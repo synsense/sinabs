@@ -66,7 +66,6 @@ def test_chip_level_monitoring_enable():
         builder.monitor_layers(config, ["dvs"])
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_default_monitoring():
     dynapcnn_net = build_model()
     builder = ChipFactory("speck2edevkit:0").get_config_builder()
@@ -85,7 +84,6 @@ def test_default_monitoring():
             assert config.cnn_layers[core].monitor_enable == False
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_model_level_monitoring_enable():
     dynapcnn_net = build_model()
     builder = ChipFactory("speck2edevkit:0").get_config_builder()

@@ -34,7 +34,6 @@ def test_neuron_address_calculation():
                 pass
 
 
-@pytest.mark.skip("Need NONSEQ update")
 def test_neuron_leak_config():
     snn = nn.Sequential(
         nn.Conv2d(in_channels=1, out_channels=2, kernel_size=(1, 1), bias=True),
