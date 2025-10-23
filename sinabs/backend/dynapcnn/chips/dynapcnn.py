@@ -30,13 +30,12 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         Returns the default configuration for the device type
         """
 
-    # TODO: [NONSEQ]
-    # @classmethod
-    # @abstractmethod
-    # def get_dvs_layer_config(cls):
-    #     """
-    #     Returns the DVS Layer configuration for the device type
-    #     """
+    @classmethod
+    @abstractmethod
+    def get_dvs_layer_config(cls):
+        """
+        Returns the DVS Layer configuration for the device type
+        """
 
     @classmethod
     def write_dvs_layer_config(
