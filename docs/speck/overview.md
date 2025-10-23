@@ -62,7 +62,7 @@ All SPECK™ family chips use the DYNAP asynchronous computing structure and hav
 * 1x  Readout layer that can does the prediction based on DYNAP-CNN layer output 
 
 ### Event Pre-processing Layer
-The event pre-processing layer receives the input events coming from dvs or an externa source. Depending on the configuration, the layer can perform following operations based on events:
+The event pre-processing layer receives the input events coming from dvs or an external source. Depending on the configuration, the layer can perform following operations based on events:
 
 * Merge/Select the polarity of the input event stream
 * Sum Pool with kerlnel size of 1x1, 2x2, 4x4
@@ -76,7 +76,7 @@ An Event noise filter is also included in the pre-processing layer, the filter c
 
 ### DYNAP-CNN Layer
 
-The DYNAP-CNN Layer is the main hardware representation of the designed spiking neural network structure. One of the main goal of the sinabs-dynapcnn is to provide an efficient, simply way to convert the `torch.Sequential` object to equivalent DYNAP-CNN layer configuration. For more details on how to use the sinabs-dynapcnn to interact with your designed SNNs, please check our tutorials.
+The DYNAP-CNN Layer is the main hardware representation of the designed spiking neural network structure. One of the main goal of Sinabs is to provide an efficient, simply way to convert the `torch.Sequential` object to equivalent DYNAP-CNN layer configuration. For more details on how to use the Sinabs to interact with your designed SNNs, please check our tutorials.
 
 #### Feature
 - Max input dimension for the layer: 128x128
@@ -91,11 +91,11 @@ The DYNAP-CNN Layer is the main hardware representation of the designed spiking 
 - Fanout:2
 
 #### Internal Execution Order
-A single chip consists of __9__ configurable computing cores (layers), each layer can be regarded as a combination of (Conv2d Operation --> Spiking Activation --> Sumpooling). These computation has to be configured in exact equivalent execution order. Each layer can be flexiblely configured to be communicate with other layers.
+A single chip consists of __9__ configurable computing cores (layers), each layer can be regarded as a combination of (Conv2d Operation --> Spiking Activation --> Sumpooling). These computation has to be configured in exact equivalent execution order. Each layer can be flexiblely configured to communicate with other layers.
 
 
 #### Async event-driven feature
-information communication with layers are only in "event based" format, the layer process the "incomming" event only at whenever a layer recieves it. Each layer can be configured to set 1-2 destination to the other layer.
+information communication with layers are only in "event based" format, the layer process the "incoming" event only at whenever a layer recieves it. Each layer can be configured to set 1-2 destination to the other layer.
 
 
 #### Memory Constraints and Network Sizing
@@ -159,11 +159,11 @@ When working with Speck and Conv2D layers, we offer a tool to help you to valida
 Each layer includes a leak generation block, which will update all the configured neuron states with provided leak values with a clock reference signal. Checkout the [tutorial](notebooks/leak_neuron) on how to use leak feature.
 
 #### Congestion banlancer
-In __latest devlopment kit(speck2e)__, each dynapcnn layer is equipped with a congestion banlancer upon its data path input. It is able to drops the incoming events at any time when the convolutional cores is overloaded in processing. 
+In __latest devlopment kit (speck2e)__, each dynapcnn layer is equipped with a congestion banlancer upon its data path input. It is able to drops the incoming events at any time when the convolutional cores is overloaded in processing.
 
 
 #### Decimator
-* In __latest development kit(speck2e)__, each dynapcnn layer is equipped with a decimator block at its output data path. The decimator enables the user reduce the spike rate at the output of a convolution layer. When enabled, the decimator allows 1 spikes to be passed every N output spikes(N=[2,4,8,16,32,128,256,512]).
+* In __latest development kit (speck2e)__, each dynapcnn layer is equipped with a decimator block at its output data path. The decimator enables the user reduce the spike rate at the output of a convolution layer. When enabled, the decimator allows 1 spikes to be passed every N output spikes(N=[2,4,8,16,32,128,256,512]).
 
 ### Readout Layer
 
@@ -172,7 +172,7 @@ The readout layer provides output data via the output serial interface. The time
 
 ### Internal Slow clock
 
-**only avilable in latest speck2e**, a slow clock internally is used to support a number of time-cycle based features. 
+**only available in latest speck2e**, a slow clock internally is used to support a number of time-cycle based features.
 
 * Leak clock, the DYNAPCNN layers including a leak operation that can operate on all the configured neuron states based on the clock setting.
 * DVS pre-processing filter: The DVS filter uses the slow clock as the time reference to update its internal states
