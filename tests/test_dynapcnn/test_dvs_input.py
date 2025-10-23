@@ -95,7 +95,6 @@ class NetPool2D(nn.Module):
         return self.seq(x)
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input", (False, True))
 def test_dvs_no_pooling(dvs_input):
     # - ANN and SNN generation
@@ -135,7 +134,6 @@ def test_dvs_no_pooling(dvs_input):
 args = product((True, False, None), (True, False))
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,add_input_layer", args)
 def test_dvs_pooling_2d(dvs_input, add_input_layer):
     # - ANN and SNN generation
@@ -214,7 +212,6 @@ class DvsNet(nn.Module):
         return self.seq(x)
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("flip_x,flip_y,swap_xy,dvs_input", combine_n_binary_choices(4))
 def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
     # - DYNAP-CNN layer arrangement
@@ -247,7 +244,6 @@ def test_dvs_mirroring(flip_x, flip_y, swap_xy, dvs_input):
     )
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,merge_polarities", combine_n_binary_choices(2))
 def test_dvs_crop(dvs_input, merge_polarities):
     # - DYNAP-CNN layer arrangement
@@ -291,7 +287,6 @@ def test_dvs_crop(dvs_input, merge_polarities):
     )
 
 
-@pytest.mark.skip("Need NONSEQ update")
 @pytest.mark.parametrize("dvs_input,pool", combine_n_binary_choices(2))
 def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
     from torch import nn
