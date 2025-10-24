@@ -84,7 +84,6 @@ def test_model_synops_hook_invalid_pooling(dt):
         model(inp)
 
 
-@pytest.mark.skip("Need Pytorch update")
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
 @pytest.mark.parametrize("dt", dts)
 def test_model_synops_hook_cuda(dt):
