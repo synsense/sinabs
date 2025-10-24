@@ -672,8 +672,8 @@ class DynapcnnNetwork(nn.Module):
                     "Because `layer2core_map` is 'auto', and `chip_layers_ordering` "
                     "is not, will convert `chip_layers_ordering` to a "
                     "dict matching `layer2core_map`. In the future please use "
-                    "`layer2core_map` instead. Please make sure the inferred"
-                    "mapping from DynapcnnLayer index to core index is correct:"
+                    "`layer2core_map` instead. Please make sure the inferred "
+                    "mapping from DynapcnnLayer index to core index is correct: "
                     + pformat(layer2core_map),
                     DeprecationWarning,
                 )

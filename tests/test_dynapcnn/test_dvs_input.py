@@ -114,7 +114,6 @@ def test_dvs_no_pooling(dvs_input):
 
     # - Compare snn and spn outputs
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
-    # TODO: [NONSEQ] this test needs to be updated with nonseq modifications
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
 

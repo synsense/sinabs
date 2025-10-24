@@ -224,9 +224,8 @@ def recover_mapping(graph: List[List[FlowGraphEdge]], num_layers: int) -> List[i
             if edge.flow == 1:
                 mapping.append(edge.t - num_layers - 1)
     if len(mapping) != num_layers:
-        # TODO - check if this error message make sense with nonseq implementation
         raise ValueError(
             "No valid mapping found. One or more of the DynapcnnLayers could not be mapped to any core."
-            "For Speck family you can use `utils.validate_memory_mapping_speck()` to get more information."
+            "For Speck family you can verify if it is a memory issue by using `utils.validate_memory_mapping_speck()` to get more information."
         )
     return mapping
