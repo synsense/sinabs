@@ -121,9 +121,6 @@ class GraphExtractor:
             handle_batchnorm_nodes(
                 self._edges, self._indx_2_module_map, self._name_2_indx_map
             )
-        else:
-            # TODO: [NONSEQ] define behavior
-            warn("not implemented")
 
         # Determine entry points to graph
         self._entry_nodes = self._get_entry_nodes(self._edges)
@@ -606,7 +603,7 @@ class GraphExtractor:
 
         Returns:
             A dictionary where `key` is the original variable name for a layer
-            in `spiking_model` and `value is an integer representing the layer
+            in `spiking_model` and `value` is an integer representing the layer
             in a standard format.
         """
 
@@ -692,9 +689,6 @@ class GraphExtractor:
                 for name, old_idx in self._name_2_indx_map.items()
                 if old_idx in remapped_nodes
             }
-        else:
-            # TODO: [NONSEQ] define what to do here
-            warn("[NONSEQ] not implemented")
 
         # Update entry nodes based on new node indices
         self._entry_nodes = {
