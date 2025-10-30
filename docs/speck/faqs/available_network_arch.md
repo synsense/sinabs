@@ -59,15 +59,16 @@ A network with a merge and a split:
 ![A network with a merge and a split](imgs/network-with-merge-and-split.png)
 
 
+Note: with the graph extracture feature it is possible to implement recurrent neural networks. However, this is not recommended or supported as it can result in deadlock on the chip.
+
 ## Can I achieve a "Residual Connection" like ResNet does?
 
-Like mentioned above, "Yes, we can define a residual short-cut on the devkit". However, currently you can only manually
-change the `samna.speck2f.configuration.CNNLayerDestination.layer` to achieve this, you can do this if you are very
-familiar with the `samna-configuration`. Otherwise,let's wait for a while after the  "network graph extraction feature" is
-completed.
+Like mentioned above, "Yes, we can define a residual short-cut on the devkit". You can manually
+change the `samna.speck2f.configuration.CNNLayerDestination.layer` to achieve this, if you are very
+familiar with the `samna-configuration`.
+You can also make use of our network graph extraction feature, to implement residual networks.
 
-
-## What If I Really Want to Use "Residual Connection"!
+## How to use "Residual Connection" manually?
 
 Alright! Here I will give an example of achieving the "Residual Connection" by manually modify the `samna-configuration`.
 
