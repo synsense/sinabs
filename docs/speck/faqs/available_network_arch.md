@@ -46,18 +46,20 @@ As of `v3.1.0`, we released a network graph extraction feature that helps users 
 Our `Speck` chip, in fact, supports branched architectures. With the graph extraction feature, we support a range of network structures, as shown below:
 
 
-Two independent networks:
+![Two independent networks:](two-independent-networks.png)
 
 ```mermaid
+
 graph TD;
  A --> B;
  B --> C;
  C --> D;
  E --> F;
  F --> G
+
 ```
 
-Two networks with merging outputs
+Two networks with merging outputs:
 
 ```mermaid
 graph TD;
@@ -70,7 +72,7 @@ graph TD;
  D --> H;
 ```
 
-A network with a merge and a split
+A network with a merge and a split:
 
 ```mermaid
 graph TD;
