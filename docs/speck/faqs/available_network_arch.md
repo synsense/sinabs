@@ -46,44 +46,18 @@ As of `v3.1.0`, we released a network graph extraction feature that helps users 
 Our `Speck` chip, in fact, supports branched architectures. With the graph extraction feature, we support a range of network structures, as shown below:
 
 
-![Two independent networks:](two-independent-networks.png)
+Two independent networks:
 
-```mermaid
-
-graph TD;
- A --> B;
- B --> C;
- C --> D;
- E --> F;
- F --> G
-
-```
+![Two independent networks](imgs/two-independent-networks.png)
 
 Two networks with merging outputs:
 
-```mermaid
-graph TD;
- A --> B;
- B --> C;
- C --> D;
- E --> F;
- F --> G;
- G --> H;
- D --> H;
-```
+![Two networks with merging outputs](imgs/two-networks-merging-output.png)
 
 A network with a merge and a split:
 
-```mermaid
-graph TD;
- A --> B;
- B --> C;
- C --> D;
- B --> F;
- F --> G;
- G --> H;
- D --> H;
-```
+![A network with a merge and a split](imgs/network-with-merge-and-split.png)
+
 
 ## Can I achieve a "Residual Connection" like ResNet does?
 
