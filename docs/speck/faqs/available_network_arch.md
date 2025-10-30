@@ -39,10 +39,49 @@ dynapcnn.to(devcie="your device", chip_layers_ordering=[2, 5, 7, 1])
 
 ## What network structure can I define?
 
-Currently, `sinabs-dynapcnn` can only parse a `torch.nn.Sequential` like architecture. So it is recommended to
-use a `Sequential` like network. We are developing a network graph extraction feature at the present, which will
-help the user to deploy their networks with more complex architecture to the devkit.
+`Sinabs` can parse a `torch.nn.Sequential` like architecture, so it is recommended to
+use a `Sequential` like network.
 
+As of `v3.1.0`, we released a network graph extraction feature that helps users deploy their networks with more complex architectures into the devkit.
+Our `Speck` chip, in fact, supports branched architectures. With the graph extraction feature, we support a range of network structures, as shown below:
+
+
+Two independent networks:
+
+```mermaid
+graph TD;
+ A --> B;
+ B --> C;
+ C --> D;
+ E --> F;
+ F --> G
+```
+
+Two networks with merging outputs
+
+```mermaid
+graph TD;
+ A --> B;
+ B --> C;
+ C --> D;
+ E --> F;
+ F --> G;
+ G --> H;
+ D --> H;
+```
+
+A network with a merge and a split
+
+```mermaid
+graph TD;
+ A --> B;
+ B --> C;
+ C --> D;
+ B --> F;
+ F --> G;
+ G --> H;
+ D --> H;
+```
 
 ## Can I achieve a "Residual Connection" like ResNet does?
 
@@ -57,6 +96,7 @@ completed.
 Alright! Here I will give an example of achieving the "Residual Connection" by manually modify the `samna-configuration`.
 
 Let's say you want an architecture like below:
+
 
 ```python
 from torch import nn
