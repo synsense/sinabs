@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 import torch.nn as nn
+import pylab
+
 
 from .layers import StatefulLayer
 from .synopcounter import SNNAnalyzer
@@ -136,8 +138,6 @@ class Network(torch.nn.Module):
                 - ann_activity: output activity of the ann layers
                 - snn_activity: output activity of the snn layers
         """
-        import pylab
-
         analog_activations, spike_rates, name_list = self.compare_activations(
             data, name_list=name_list, compute_rate=compute_rate
         )
@@ -162,16 +162,18 @@ class Network(torch.nn.Module):
     ):
         """Reset all neuron states in the submodules.
 
-        Parameters
-        ----------
-        randomize: Bool
-            If true, reset the states between a range provided. Else, the states are reset to zero.
-        value_ranges: Optional[List[Dict[str, Tuple[float, float]]]]
-            A list of value_range dictionaries with the same length as the total stateful layers in the module.
-            Each dictionary is a key value pair: buffer_name -> (min, max) for each state that needs to be reset.
-            The states are reset with a uniform distribution between the min and max values specified.
-            Any state with an undefined key in this dictionary will be reset between 0 and 1
-            This parameter is only used if randomize is set to true.
+        Args:
+            randomize (bool): If true, reset the states between a range
+                provided. Else, the states are reset to zero.
+            value_ranges (Optional[List[Dict[str, Tuple[float, float]]]]): A
+                list of value_range dictionaries with the same length as the
+                total stateful layers in the module. Each dictionary is a key
+                value pair: buffer_name -> (min, max) for each state that needs
+                to be reset.
+                The states are reset with a uniform distribution between the min
+                and max values specified. Any state with an undefined key in
+                this dictionary will be reset between 0 and 1.
+                This parameter is only used if randomize is set to true.
         """
 
         if value_ranges:

@@ -9,7 +9,7 @@ ArrayLike = Union[np.ndarray, List, Tuple]
 class Cropping2dLayer(nn.Module):
     """Crop input image by.
 
-    Parameters:
+    Args:
         cropping: ((top, bottom), (left, right))
     """
 
@@ -38,7 +38,7 @@ class Cropping2dLayer(nn.Module):
     def get_output_shape(self, input_shape: Tuple) -> Tuple:
         """Retuns the output dimensions.
 
-        Parameters:
+        Args:
             input_shape: (channels, height, width)
 
         Returns:

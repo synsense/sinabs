@@ -25,6 +25,7 @@ ann = nn.Sequential(
 )
 
 sinabs_model = from_model(ann, add_spiking_output=True, batch_size=1)
+# Make sure all states are zero
 input_shape = (1, 28, 28)
 
 hardware_compatible_model = DynapcnnNetwork(
@@ -32,6 +33,8 @@ hardware_compatible_model = DynapcnnNetwork(
     discretize=True,
     input_shape=input_shape,
 )
+
+devices = tuple(ChipFactory.supported_devices.keys())
 
 
 def test_zero_initial_states():
@@ -44,12 +47,20 @@ def test_zero_initial_states():
         for idx, lyr in enumerate(config.cnn_layers):
             initial_value = torch.tensor(lyr.neurons_initial_value)
 
-            shape = initial_value.shape
-            zeros = torch.zeros(shape, dtype=torch.int)
 
-            assert (
-                initial_value.all() == zeros.all()
-            ), f"Initial values of layer{idx} neuron states is not zeros!"
+@pytest.mark.parametrize("device", devices)
+def test_zero_initial_states(device):
+    devkit = device
+    config = hardware_compatible_model.make_config("auto", device=devkit)
+    for idx, lyr in enumerate(config.cnn_layers):
+        initial_value = torch.tensor(lyr.neurons_initial_value)
+
+        shape = initial_value.shape
+        zeros = torch.zeros(shape, dtype=torch.int)
+
+        assert (
+            initial_value.all() == zeros.all()
+        ), f"Initial values of layer{idx} neuron states is not zeros!"
 
 
 small_ann = nn.Sequential(
@@ -70,7 +81,7 @@ small_hardware_compatible_model = DynapcnnNetwork(
 )
 
 
-@pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
+@pytest.mark.parametrize("device", devices)
 def test_verify_working_config(device):
     assert small_hardware_compatible_model.is_compatible_with(device)
 
@@ -87,6 +98,6 @@ hardware_incompatible_model = DynapcnnNetwork(
 )
 
 
-@pytest.mark.parametrize("device", tuple(ChipFactory.supported_devices.keys()))
+@pytest.mark.parametrize("device", devices)
 def test_verify_non_working_config(device):
     assert not hardware_incompatible_model.is_compatible_with(device)

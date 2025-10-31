@@ -6,7 +6,7 @@ from typing import Optional
 class MembraneReset:
     """Reset the membrane potential v_mem to a given value after it spiked.
 
-    Parameters:
+    Args:
         reset_value: fixed value that a neuron should be reset to. Defaults to zero.
 
     Example:
@@ -27,9 +27,9 @@ class MembraneReset:
 class MembraneSubtract:
     """Subtract the spiking threshold from the membrane potential for every neuron that spiked.
 
-    Parameters:
+    Args:
         subtract_value: optional value that will be subtraced from
-                        v_mem if it spiked. Defaults to spiking threshold if None.
+            v_mem if it spiked. Defaults to spiking threshold if None.
 
     Example:
         >>> layer = sinabs.layers.LIF(reset_fn=MembraneSubtract(subtract_value=None), ...)

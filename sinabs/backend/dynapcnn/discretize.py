@@ -19,21 +19,14 @@ def discretize_conv_spike(
     This function takes a 2D convolutional and a spiking layer and returns a
     copy of each, with discretized weights, bias and threshold.
 
-    Parameters
-    ----------
-    conv_lyr: nn.Conv2d
-        Convolutional layer
-    spike_lyr: sl.IAF
-        Spiking layer
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+        conv_lyr (nn.Conv2d):  Convolutional layer.
+        spike_lyr (sl.IAF):  Spiking layer.
+        to_int (bool): Use integer types for discretized parameter.
 
-    Returns
-    -------
-    nn.Conv2d
-        Discretized copy of convolutional layer
-    sl.IAF
-        Discretized copy of spiking layer
+    Returns:
+        Tuple containing a discretized copy of convolutional layer and
+        a discretized copy of spiking layer.
     """
     conv_lyr_copy = deepcopy(conv_lyr)
     spike_lyr_copy = deepcopy(spike_lyr)
@@ -48,21 +41,14 @@ def discretize_conv_spike_(
     This function takes a 2D convolutional and a spiking layer and discretizes
     weights, bias and threshold in-place.
 
-    Parameters
-    ----------
-    conv_lyr: nn.Conv2d
-        Convolutional layer
-    spike_lyr: sl.IAF
-        Spiking layer
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+        conv_lyr (nn.Conv2d): Convolutional layer.
+        spike_lyr (sl.IAF): Spiking layer.
+        to_int (bool): Use integer types for discretized parameter.
 
-    Returns
-    -------
-    nn.Conv2d
-        Discretized convolutional layer
-    sl.IAF
-        Discretized spiking layer
+    Returns:
+        A tuple containing a discretized convolutional layer and a
+        discretized spiking layer.
     """
 
     return _discretize_conv_spk_(conv_lyr, spike_lyr, to_int=to_int)
@@ -74,28 +60,20 @@ def discretize_conv(
     spk_thr_low: float,
     spk_state: Optional[torch.Tensor] = None,
     to_int: bool = True,
-):
+) -> nn.Conv2d:
     """Discretize convolutional layer.
 
     This function takes a 2D convolutional layer and parameters of a subsequent
     spiking layer to return a discretized copy of the convolutional layer.
 
-    Parameters
-    ----------
-    layer: nn.Conv2d
-        Convolutional layer
-    spk_thr: float
-        Upper threshold of subsequent spiking layer
-    spk_thr_low: float
-        Lower threshold of subsequent spiking layer
-    spk_state: torch.Tensor or None
-        State of spiking layer.
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+        layer (nn.Conv2d): Convolutional layer.
+        spk_thr (float): Upper threshold of subsequent spiking layer.
+        spk_thr_low (float): Lower threshold of subsequent spiking layer.
+        spk_state (torch.Tensor): State of spiking layer. Defaults to None.
+        to_int (bool): Use integer types for discretized parameter. Defaults to True.
 
-    Returns
-    -------
-    nn.Conv2d
+    Returns:
         Discretized copy of convolutional layer
     """
     lyr_copy = deepcopy(layer)
@@ -115,28 +93,20 @@ def discretize_conv_(
     spk_thr_low: float,
     spk_state: Optional[torch.Tensor] = None,
     to_int: bool = True,
-):
+) -> nn.Conv2d:
     """Discretize convolutional layer, in-place.
 
     This function discretizes a 2D convolutional layer in-place, based on
     parameters of a subsequent spiking layer.
 
-    Parameters
-    ----------
-    layer: nn.Conv2d
-        Convolutional layer
-    spk_thr: float
-        Upper threshold of subsequent spiking layer
-    spk_thr_low: float
-        Lower threshold of subsequent spiking layer
-    spk_state: torch.Tensor or None
-        State of spiking layer.
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+        layer (nn.Conv2d): Convolutional layer.
+        spk_thr (float):  Upper threshold of subsequent spiking layer.
+        spk_thr_low (float): Lower threshold of subsequent spiking layer.
+        spk_state (torch.Tensor): State of spiking layer. Defaults to None.
+        to_int (bool): Use integer types for discretized parameter. Defaults to True.
 
-    Returns
-    -------
-    nn.Conv2d
+    Returns:
         Discretized convolutional layer
     """
     layer_discr, __ = _discretize_conv_spk_(
@@ -154,26 +124,20 @@ def discretize_spk(
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
-):
+) -> sl.IAF:
     """Discretize spiking layer.
 
     This function takes a spiking layer and parameters of a preceding
     convolutional layer to return a discretized copy of the spiking layer.
 
-    Parameters
-    ----------
-    layer: sl.IAF
-        Spiking layer
-    conv_weight: torch.Tensor
-        Weight tensor of preceding convolutional layer
-    conv_bias: torch.Tensor or None
-        Bias of preceding convolutional layer
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+    layer (sl.IAF): Spiking layer.
+    conv_weight (torch.Tensor):  Weight tensor of preceding convolutional layer.
+    conv_bias (torch.Tensor): Bias of preceding convolutional layer.
+        Optional argument, defaults to None.
+    to_int (bool): Use integer types for discretized parameter.
 
-    Returns
-    -------
-    sl.IAF
+    Returns:
         Discretized copy of spiking layer
     """
     lyr_copy = deepcopy(layer)
@@ -188,26 +152,20 @@ def discretize_spk_(
     conv_weight: torch.Tensor,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
-):
+) -> sl.IAF:
     """Discretize spiking layer in-place.
 
     This function discretizes a spiking layer in-place, based on parameters of a
     preceding convolutional layer.
 
-    Parameters
-    ----------
-    layer: sl.IAF
-        Spiking layer
-    conv_weight: torch.Tensor
-        Weight tensor of preceding convolutional layer
-    conv_bias: torch.Tensor or None
-        Bias of preceding convolutional layer
-    to_int: bool
-        Use integer types for discretized parameter
+    Args:
+        layer (sl.IAF): Spiking layer.
+        conv_weight (torch.Tensor): Weight tensor of preceding convolutional layer.
+        conv_bias (torch.Tensor): Bias of preceding convolutional layer.
+            Optional argument, defaults to None.
+        to_int (bool): Use integer types for discretized parameter.
 
-    Returns
-    -------
-    sl.IAF
+    Returns:
         Discretized spiking
     """
     __, layer_discr = _discretize_conv_spk_(
@@ -225,7 +183,7 @@ def _discretize_conv_spk_(
     conv_weight: Optional[torch.Tensor] = None,
     conv_bias: Optional[torch.Tensor] = None,
     to_int: bool = True,
-):
+) -> Tuple[nn.Conv2d, sl.IAF]:
     """Discretize convolutional and spiking layer.
 
     Determine and apply a suitable scaling factor for weight and bias of
@@ -234,34 +192,27 @@ def _discretize_conv_spk_(
     providing layers, respective parameters can be provided directly. If a layer
     is not provided, `None` will be returned instead of its discrete version.
 
-    Parameters
-    ----------
-        conv_lyr: nn.Conv2d or None
-            Convolutional layer
-        spike_lyr: sl.IAF or None
-            Spiking layer
-        spk_thr: float or None
-            Upper threshold of spiking layer. Has to be provided if `spike_lyr` is `None`.
+    Args:
+        conv_lyr (nn.Conv2d): Convolutional layer. Optional argument, defaults to None.
+        spike_lyr (sl.IAF): Spiking layer. Optional argument, defaults to None.
+        spk_thr (float): Upper threshold of spiking layer. Optional argument, defaults
+            to None. Has to be provided if `spike_lyr` is `None`.
             Is ignored otherwise.
-        spk_thr_low: float or None
-            Lower threshold of spiking layer. Has to be provided if `spike_lyr` is `None`.
+        spk_thr_low (float): Lower threshold of spiking layer. Optional argument,
+            defaults to None. Has to be provided if `spike_lyr` is `None`.
             Is ignored otherwise.
-        spk_state: torch.Tensor or None
-            State of spiking layer. Ignored if `spike_lyr` is not `None`.
-        conv_weight: torch.Tensor or None
-            Weight of convolutional layer. Has to be provided if `conv_lyr` is `None`.
+        spk_state (torch.Tensor): State of spiking layer. Optional argument
+            defaults to None. Ignored if `spike_lyr` is not `None`.
+        conv_weight (torch.Tensor): Weight of convolutional layer. Optional argument,
+            defaults to None. Has to be provided if `conv_lyr` is `None`.
             Is ignored otherwise.
-        conv_bias: torch.Tensor or None
-            Bias of convolutional layer. Ignored if `conv_lyr` is not `None`.
-        to_int: bool
-            Use integer types for discretized parameters.
+        conv_bias (torch.Tensor): Bias of convolutional layer. Optional argument,
+            defaults to None. Ignored if `conv_lyr` is not `None`.
+        to_int (bool): Use integer types for discretized parameters.
 
-    Returns
-    -------
-        nn.Conv2d or None
-            Discretized convolutional layer if `conv_lyr` is not `None`, else `None`
-        sl.IAF or None
-            Discretized spiking layer if `spk_lyr` is not `None`, else `None`
+    Returns:
+            Discretized convolutional layer if `conv_lyr` is not `None`, else `None`.
+            and discretized spiking layer if `spk_lyr` is not `None`, else `None`
     """
 
     if conv_lyr is None:
@@ -360,17 +311,12 @@ def determine_discretization_scale(obj: torch.Tensor, bit_precision: int) -> flo
     Determine how much the values of a torch tensor can be scaled in order to fit
     the given precision
 
-    Parameters
-    ----------
-        obj: torch.Tensor
-            Tensor that is to be scaled
-        bit_precision: int
-            The precision in bits
+    Args:
+        obj (torch.Tensor): Tensor that is to be scaled.
+        bit_precision (int): The precision in bits.
 
-    Returns
-    -------
-        float
-            The scaling factor
+    Returns:
+        The scaling factor
     """
 
     # Discrete range
@@ -397,19 +343,14 @@ def discretize_tensor(
 ) -> torch.Tensor:
     """Scale a torch.Tensor and cast it to discrete integer values.
 
-    Parameters
-    ----------
-        obj: torch.Tensor
-            Tensor that is to be discretized
-        scaling: float
-            Scaling factor to be applied before discretization
-        to_int: bool
-            If False, round the values, but don't cast to Int. (Default True).
+    Args:
+        obj (torch.Tensor): Tensor that is to be discretized.
+        scaling (float): Scaling factor to be applied before discretization.
+        to_int (bool): If False, round the values, but don't cast to Int.
+            Defaults to True.
 
-    Returns
-    -------
-        torch.Tensor
-            Scaled and discretized copy of `obj`.
+    Returns:
+        Scaled and discretized copy of `obj`.
     """
 
     # Scale the values
@@ -427,17 +368,12 @@ def discretize_tensor(
 def discretize_scalar(obj: float, scaling: float) -> int:
     """Scale a float and cast it to discrete integer values.
 
-    Parameters
-    ----------
-        obj: float
-            Value that is to be discretized
-        scaling: float
-            Scaling factor to be applied before discretization
+    Args:
+        obj (float): Value that is to be discretized.
+        scaling (float): Scaling factor to be applied before discretization.
 
-    Returns
-    -------
-        int
-            Scaled and discretized copy of `obj`.
+    Returns:
+        Scaled and discretized copy of `obj`.
     """
 
     # Scale the values

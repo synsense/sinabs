@@ -18,7 +18,6 @@ def test_maxpool_function():
     lyr = SpikingMaxPooling2dLayer(pool_size=(2, 3), strides=None)
 
     tsrInput = (torch.rand(10, 1, 2, 3) > 0.8).float()
-    # print(tsrInput.sum(0))
     tsrInput[:, 0, 0, 2] = 1
     tsrOut = lyr(tsrInput)
 

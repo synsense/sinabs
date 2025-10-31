@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import pytest
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 from sinabs.from_torch import from_model

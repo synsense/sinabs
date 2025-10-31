@@ -38,19 +38,19 @@ class ALIF(StatefulLayer):
         i(t+1) = \\alpha_{syn} i(t) (1-\\alpha_{syn}) + input
 
 
-    Parameters:
+    Args:
         tau_mem: Membrane potential time constant.
         tau_adapt: Spike threshold time constant.
         tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         adapt_scale: The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
         spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
-                  a spike threshold and a surrogate gradient function and returns spikes. Be aware
-                  that the class itself is passed here (because torch.autograd methods are static)
-                  rather than an object instance.
+            a spike threshold and a surrogate gradient function and returns spikes. Be aware
+            that the class itself is passed here (because torch.autograd methods are static)
+            rather than an object instance.
         reset_fn: A function that defines how the membrane potential is reset after a spike.
         surrogate_grad_fn: Choose how to define gradients for the spiking non-linearity during the
-                           backward pass. This is a function of membrane potential.
+            backward pass. This is a function of membrane potential.
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
@@ -58,8 +58,8 @@ class ALIF(StatefulLayer):
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.
@@ -137,7 +137,7 @@ class ALIF(StatefulLayer):
 
     def forward(self, input_data: torch.Tensor):
         """
-        Parameters:
+        Args:
             input_data: Data to be processed. Expected shape: (batch, time, ...)
 
         Returns:
@@ -244,7 +244,7 @@ class ALIFRecurrent(ALIF):
     .. math ::
         i(t+1) = \\alpha_{syn} i(t) (1-\\alpha_{syn}) + input
 
-    Parameters:
+    Args:
         tau_mem: Membrane potential time constant.
         tau_adapt: Spike threshold time constant.
         rec_connect: An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
@@ -252,12 +252,12 @@ class ALIFRecurrent(ALIF):
         adapt_scale: The amount that the spike threshold is bumped up for every spike, after which it decays back to the initial threshold.
         spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
         spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
-                  a spike threshold and a surrogate gradient function and returns spikes. Be aware
-                  that the class itself is passed here (because torch.autograd methods are static)
-                  rather than an object instance.
+            a spike threshold and a surrogate gradient function and returns spikes. Be aware
+            that the class itself is passed here (because torch.autograd methods are static)
+            rather than an object instance.
         reset_fn: A function that defines how the membrane potential is reset after a spike.
         surrogate_grad_fn: Choose how to define gradients for the spiking non-linearity during the
-                           backward pass. This is a function of membrane potential.
+            backward pass. This is a function of membrane potential.
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         train_alphas: When True, the discrete decay factor exp(-1/tau) is used for training rather than tau itself.
@@ -265,8 +265,8 @@ class ALIFRecurrent(ALIF):
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.
@@ -311,7 +311,7 @@ class ALIFRecurrent(ALIF):
 
     def forward(self, input_data: torch.Tensor):
         """
-        Parameters:
+        Args:
             input_data: Data to be processed. Expected shape: (batch, time, ...)
 
         Returns:

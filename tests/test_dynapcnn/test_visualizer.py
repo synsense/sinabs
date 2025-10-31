@@ -53,14 +53,12 @@ def get_demo_dynapcnn_network():
     import torch.nn as nn
 
     import sinabs
-    from sinabs.backend.dynapcnn import DynapcnnCompatibleNetwork
+    from sinabs.backend.dynapcnn import DynapcnnNetwork
 
     ann = nn.Sequential(nn.Conv2d(2, 8, (3, 3)), nn.ReLU(), nn.AvgPool2d((2, 2)))
     snn = sinabs.from_model(ann, input_shape=(2, 64, 64), batch_size=1)
 
-    dynapcnn_network = DynapcnnCompatibleNetwork(
-        snn=snn, input_shape=(2, 64, 64), dvs_input=True
-    )
+    dynapcnn_network = DynapcnnNetwork(snn=snn, input_shape=(2, 64, 64), dvs_input=True)
     return dynapcnn_network
 
 
