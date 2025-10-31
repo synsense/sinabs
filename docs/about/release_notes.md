@@ -2,14 +2,14 @@
 
 ## v3.1.0 (31/10/2025)
 
-* Fix tests crashing in case an unexpected board was found.
-* Fix tests that were not running for speck2fdevkit.
-* Fix error when initializing sinabs without matplotlib: matplotlib is not a sinabs dependency.
-* Add mapping of non-sequential networks
+* Add mapping of non-sequential networks:
     * Now, layers in Sinabs models can receive inputs from and send outputs to multiple layers.
     * Deprecate `chip_layers_ordering` from DynapCNNNetwork. Use `layer2core_map` instead.
     * Deprecate `DynapcnnCompatibleNetwork`. Use `DynapcnnNetwork` instead.
     * Deprecate `merge_conv_bn` from `sinabs.utils`. Use `merge_bn` instead.
+* Fix tests crashing in case an unexpected board was found.
+* Fix tests that were not running for speck2fdevkit.
+* Fix error when initializing sinabs without matplotlib: matplotlib is not a sinabs dependency.
 
 ## v3.0.4 (08/09/2025)
 
