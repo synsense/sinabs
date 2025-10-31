@@ -53,9 +53,9 @@ def test_neuron_leak_config():
         snn=snn, discretize=True, dvs_input=True, input_shape=(1, 64, 64)
     )
     samna_cfg = dynapcnn.make_config(device="speck2fmodule")
-    chip_layers_order = dynapcnn.chip_layers_ordering
+    layer2core_map = dynapcnn.layer2core_map
 
-    for lyr, channel_num in zip(chip_layers_order, [2, 8, 16]):
+    for lyr, channel_num in zip(layer2core_map.values(), [2, 8, 16]):
         assert samna_cfg.cnn_layers[lyr].leak_enable is True
         assert len(samna_cfg.cnn_layers[lyr].biases) == channel_num
 
@@ -122,6 +122,8 @@ def test_neuron_leak():
                 pre_neuron_state = neuron_states.get((c, x, y), 127)
                 assert (
                     pre_neuron_state > out_ev.neuron_state
+                    # If `pre_neuron_state` is already at minimum, it can't leak further
+                    or pre_neuron_state == -127
                 ), "Neuron V_Mem doesn't decrease!"
                 neuron_states.update({(c, x, y): out_ev.neuron_state})
                 print(f"c:{c}, x:{x}, y:{y}, vmem:{out_ev.neuron_state}")

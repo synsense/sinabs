@@ -104,7 +104,7 @@ for synops_per_layer, limit in zip(synops_of_every_layer, synops_upper_limit):
     synops_loss += torch.nn.functional.relu(residual)
 ```
 4. Switch on the 
-   ["decimator"](https://synsense-sys-int.gitlab.io/samna/reference/speck2e/configuration/index.html?highlight=decimation#samna.speck2e.configuration.CnnLayerConfig.output_decimator_enable)
+   ["decimator"](https://synsense-sys-int.gitlab.io/samna/0.48.0/reference/speck2e/configuration/index.html#samna.speck2e.configuration.CnnLayerConfig.output_decimator_enable)
    on your DynapCNN Core. In the devkit, each DynapCNN Core is equipped with a decimator block at its data path output.
    The decimator block enables the user to reduce the spike rate at the output of a DynapCNN Core. By default,
    the decimator is disabled, and the code below shows an example of enabling the decimator of the chip by modifying
@@ -126,7 +126,7 @@ samna_cfg.cnn_layers[layer_idx].output_decimator_enable = True
 samna_cfg.cnn_layers[layer_idx].output_decimator_interval = 0b001
 ```
 
-more details about the "decimator" can be found [here.](https://synsense-sys-int.gitlab.io/samna/reference/speck2f/configuration/index.html?highlight=output_decimator#samna.speck2f.configuration.CnnLayerConfig.output_decimator_interval)
+more details about the "decimator" can be found [here.](https://synsense-sys-int.gitlab.io/samna/0.48.0/reference/speck2e/configuration/index.html#samna.speck2e.configuration.CnnLayerConfig.output_decimator_interval)
 
 ## The Reset Mechanism Of Neuron Membrane Potential
 Our devkit provides two types of reset mechanism for the spiking neuron's membrane potential.
@@ -141,7 +141,7 @@ If you use an ANN-to-SNN conversion, then you should choose the second one strat
 If you train an SNN with a "reset to 0" strategy, then you should choose the first one strategy.
 
 The `samna configuration` for each layer has a boolean attribute called 
-["return_to_zero"](https://synsense-sys-int.gitlab.io/samna/reference/speck2f/configuration/index.html?highlight=return_to_zero#samna.speck2f.configuration.CnnLayerConfig.return_to_zero).
+["return_to_zero"](https://synsense-sys-int.gitlab.io/samna/0.48.0/reference/speck2e/configuration/index.html#samna.speck2e.configuration.CnnLayerConfig.return_to_zero).
 - If it is set to be `True`, then the hardware execute the first resetting strategy. 
 - If it is set to be `False`, the hardware execute the second strategy.
 

@@ -1,11 +1,9 @@
 """This should test cases of dynapcnn compatible networks with dvs input."""
 
 from itertools import product
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union
 
-import numpy as np
 import pytest
-import samna
 import torch
 from torch import nn
 
@@ -13,7 +11,7 @@ from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
 from sinabs.backend.dynapcnn.exceptions import *
 from sinabs.from_torch import from_model
-from sinabs.layers import IAF
+from sinabs.layers import IAFSqueeze
 
 INPUT_SHAPE = (2, 16, 16)
 input_data = torch.rand(1, *INPUT_SHAPE, requires_grad=False) * 100.0
@@ -30,7 +28,7 @@ def verify_dvs_config(
     origin: Tuple[int, int] = (0, 0),
     cut: Optional[Tuple[int, int]] = None,
     destination: Optional[int] = None,
-    dvs_input: bool = True,
+    dvs_input: Union[bool, None] = True,
     flip: Optional[dict] = None,
     merge_polarities: bool = False,
 ):
@@ -42,9 +40,9 @@ def verify_dvs_config(
         return
 
     if destination is None:
-        assert dvs.destinations[0].enable == False
+        assert not dvs.destinations[0].enable
     else:
-        assert dvs.destinations[0].enable == True
+        assert dvs.destinations[0].enable
         assert dvs.destinations[0].layer == destination
     if cut is None:
         assert dvs.cut.y == origin[0] + INPUT_SHAPE[1] // pooling[0] - 1
@@ -80,12 +78,14 @@ class NetNoPooling(nn.Module):
 
 
 class NetPool2D(nn.Module):
-    def __init__(self, input_layer: bool = False):
+    def __init__(self, add_input_layer: bool = False):
         super().__init__()
-        layers = []
+        if add_input_layer:
+            layers = [DVSLayer(input_shape=INPUT_SHAPE[1:])]
+        else:
+            layers = []
         layers += [
-            nn.AvgPool2d(kernel_size=(2, 2)),
-            nn.AvgPool2d(kernel_size=(1, 2)),
+            nn.AvgPool2d(kernel_size=(2, 4)),
             nn.Conv2d(2, 4, kernel_size=2, stride=2),
             nn.ReLU(),
         ]
@@ -106,7 +106,7 @@ def test_dvs_no_pooling(dvs_input):
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
 
     # If there is no pooling, a DVSLayer should only be added if `dvs_input` is True
-    assert isinstance(spn.sequence[0], DVSLayer) == dvs_input
+    assert spn.has_dvs_layer() == dvs_input
 
     # - Make sure missing input shapes cause exception
     with pytest.raises(InputConfigurationError):
@@ -116,6 +116,7 @@ def test_dvs_no_pooling(dvs_input):
     spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
+
     assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
@@ -129,36 +130,52 @@ def test_dvs_no_pooling(dvs_input):
     )
 
 
-@pytest.mark.parametrize("dvs_input", (False, True))
-def test_dvs_pooling_2d(dvs_input):
+args = product((True, False, None), (True, False))
+
+
+@pytest.mark.parametrize("dvs_input,add_input_layer", args)
+def test_dvs_pooling_2d(dvs_input, add_input_layer):
     # - ANN and SNN generation
-    ann = NetPool2D(input_layer=True)
+    ann = NetPool2D(add_input_layer=add_input_layer)
     snn = from_model(ann.seq, batch_size=1)
     snn.eval()
 
     # - SPN generation
+    if not dvs_input and not add_input_layer:
+        # No DVS layer is part of the SNN nor being added to it. The pooling layer should cause an exception
+        with pytest.raises(InvalidGraphStructure):
+            spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
+        return
+
+    # If `add_input_layer` is False but `dvs_input` is `True`, a DVS layer will
+    # be added to the DynapcnnNetwork upon instantiation
     spn = DynapcnnNetwork(snn, dvs_input=dvs_input, input_shape=INPUT_SHAPE)
+    assert spn.has_dvs_layer()
 
-    # When there is pooling, a DVSLayer should also be added if `dvs_input` is True
-    assert isinstance(spn.sequence[0], DVSLayer)
+    if not add_input_layer:
+        # - Make sure missing input shapes cause exception
+        with pytest.raises(InputConfigurationError):
+            spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
 
-    # - Make sure missing input shapes cause exception
-    with pytest.raises(InputConfigurationError):
-        spn = DynapcnnNetwork(snn, dvs_input=dvs_input)
-
-    # - Compare snn and spn outputs
-    spn_float = DynapcnnNetwork(snn, discretize=False, input_shape=INPUT_SHAPE)
+    # - Compare snn and spn outputs. - Always add DVS so that pooling layer is properly handled
+    spn_float = DynapcnnNetwork(
+        snn, dvs_input=True, discretize=False, input_shape=INPUT_SHAPE
+    )
     snn_out = snn(input_data).squeeze()
     spn_out = spn_float(input_data).squeeze()
     assert torch.equal(snn_out.detach(), spn_out)
 
     # - Verify DYNAP-CNN config
-    target_layers = [5]
-    config = spn.make_config(chip_layers_ordering=target_layers)
+    # Get index of only DynapcnnLayer to map it to core 5
+    cnn_layer_idx = next(spn.dynapcnn_layers.__iter__())
+    target_dest = 5
+    config = spn.make_config(layer2core_map={cnn_layer_idx: target_dest})
+    if dvs_input is None:
+        dvs_input = not snn.spiking_model[0].disable_pixel_array
     verify_dvs_config(
         config,
         input_shape=INPUT_SHAPE,
-        destination=target_layers[0],
+        destination=target_dest,
         dvs_input=dvs_input,
         pooling=(2, 4),
     )
@@ -186,7 +203,7 @@ class DvsNet(nn.Module):
                 **kwargs_flip,
             ),
             nn.Conv2d(n_channels_in, 4, kernel_size=2, stride=2),
-            IAF(),
+            IAFSqueeze(batch_size=1),
         ]
         self.seq = nn.Sequential(*layers)
 
@@ -290,6 +307,13 @@ def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
     ]
 
     snn = nn.Sequential(*layer_list)
+
+    if pool and not dvs_input:
+        with pytest.raises(InvalidGraphStructure):
+            dynapcnn = DynapcnnNetwork(
+                snn=snn, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True
+            )
+        return
 
     dynapcnn = DynapcnnNetwork(
         snn=snn, input_shape=(1, 128, 128), dvs_input=dvs_input, discretize=True

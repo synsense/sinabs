@@ -10,7 +10,7 @@ There are 4 different plots in `samnagui` that are available for use.
 - <b>Line Plot:</b> A plot that allows visualization of the events produced by the model running on the chip. Additionally this is used when we display power consumption measurements.
 - <b>Image Plot:</b> A plot that allows you to display an image. Internally we have used this plot to display an image denoting a predicted output class. 
 
-Documentation is available under the following link: [samna.ui documentation](https://synsense-sys-int.gitlab.io/samna/reference/ui/index.html)
+Documentation is available under the following link: [samna.ui documentation](https://synsense-sys-int.gitlab.io/samna/0.48.0/gui/index.html)
 
 ## Useful `samna` nodes for visualizing and Just-In-Time (JIT) compiled nodes.
 ### Nodes
@@ -28,7 +28,7 @@ Events that are related to DVS events from the sensor are:
 <t>`set_feature_count(feature_count: int)`
 - `MajorityReadoutNode`: Among the events produced by `SpikeCollectionNode` selects the most active output channel. Used alongside the `ImagePlot`.
 
-These nodes are available for different chips. Further documentation can be found in the following link: [samna-available-filters](https://synsense-sys-int.gitlab.io/samna/filters.html) 
+These nodes are available for different chips.
 
 ### Just-In-Time compiled nodes
 The nodes mentioned above are also available for any devboard under `samna.graph.Jit{nameOfNode}`. 

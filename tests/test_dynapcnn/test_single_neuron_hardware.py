@@ -42,9 +42,9 @@ def test_deploy_dynapcnnnetwork():
     model = get_ones_network()
 
     sinabs.reset_states(model)
-    assert model.sequence[0].conv_layer.weight.sum() == 127
-    assert model.sequence[0].spk_layer.spike_threshold == 127
-    assert model.sequence[0].spk_layer.v_mem.sum() == 0
+    assert model.dynapcnn_layers[0].conv_layer.weight.sum() == 127
+    assert model.dynapcnn_layers[0].spk_layer.spike_threshold == 127
+    assert model.dynapcnn_layers[0].spk_layer.v_mem.sum() == 0
     model_output = model(torch.ones((1, 1, 1, 1)))
     assert model_output.sum() == 1
 
@@ -60,6 +60,7 @@ def test_deploy_dynapcnnnetwork():
                     "speck2e",
                     "speck2edevkit",
                     "speck2f",
+                    "speck2fdevkit",
                 ]
                 and core_idx < 2
             ):
