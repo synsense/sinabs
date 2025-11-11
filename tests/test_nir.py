@@ -18,6 +18,20 @@ def test_iaf():
     assert iaf.batch_size == converted.model.batch_size
 
 
+def test_conv1d():
+    batch_size = 2
+    conv1d = nn.Conv1d(16, 16, 3)
+    graph = to_nir(conv1d, torch.randn(batch_size, 16, 32))
+    converted = from_nir(graph, batch_size=batch_size)
+
+    assert len(graph.nodes) == 1 + 2
+    assert isinstance(graph.nodes["model"], nir.Conv1d)
+    assert len(graph.edges) == 0 + 2
+    assert conv1d.kernel_size == converted.model.kernel_size
+    assert conv1d.stride == converted.model.stride
+    assert conv1d.padding == converted.model.padding
+    assert conv1d.dilation == converted.model.dilation
+
 def test_conv2d():
     batch_size = 2
     conv2d = nn.Conv2d(1, 3, 2)
