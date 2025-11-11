@@ -293,7 +293,7 @@ def test_snn_analyzer_statistics():
     ), "Mean of layer 1 and 3 firing rates is not equal to calculated model firing rate."
 
     # parameter layer checks
-    param_layer_stats["0"]["synops"] == input_.mean(0).sum() * np.product(
+    param_layer_stats["0"]["synops"] == input_.mean(0).sum() * np.prod(
         model[0].kernel_size
     ) * model[0].out_channels
     assert param_layer_stats["0"]["num_timesteps"] == num_timesteps

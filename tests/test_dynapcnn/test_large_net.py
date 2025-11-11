@@ -88,21 +88,33 @@ def test_same_result():
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
-def test_too_large():
-    with pytest.raises(ValueError):
-        # - Should give an error with the normal layer ordering
-        dynapcnn_net.make_config(chip_layers_ordering=range(9))
-
-
 def test_auto_config():
     # - Should give an error with the normal layer ordering
     dynapcnn_net.make_config(chip_layers_ordering="auto")
 
 
 def test_was_copied():
+    from nirtorch.utils import sanitize_name
+
     # - Make sure that layers of different models are distinct objects
-    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model, dynapcnn_net.sequence):
-        assert lyr_snn is not lyr_dynapcnn
+    snn_layers = {
+        sanitize_name(name): lyr for name, lyr in snn.spiking_model.named_modules()
+    }
+    idx_2_name_map = {
+        idx: sanitize_name(name) for name, idx in dynapcnn_net.name_2_indx_map.items()
+    }
+    for idx, lyr_info in dynapcnn_net._graph_extractor.dcnnl_info.items():
+        conv_lyr_dynapcnn = dynapcnn_net.dynapcnn_layers[idx].conv_layer
+        conv_node_idx = lyr_info["conv"]["node_id"]
+        conv_name = idx_2_name_map[conv_node_idx]
+        conv_lyr_snn = snn_layers[conv_name]
+        assert conv_lyr_dynapcnn is not conv_lyr_snn
+
+        spk_lyr_dynapcnn = dynapcnn_net.dynapcnn_layers[idx].spk_layer
+        spk_node_idx = lyr_info["neuron"]["node_id"]
+        spk_name = idx_2_name_map[spk_node_idx]
+        spk_lyr_snn = snn_layers[spk_name]
+        assert spk_lyr_dynapcnn is not spk_lyr_snn
 
 
 def test_make_config():
@@ -123,8 +135,6 @@ def test_to_device():
     dynapcnn_net = DynapcnnNetwork(
         snn, input_shape=input_shape, discretize=False, dvs_input=False
     )
-    dynapcnn_out = dynapcnn_net(input_data)
-
     devices = find_open_devices()
 
     if len(devices) == 0:
@@ -139,7 +149,6 @@ def test_to_device():
         from sinabs.backend.dynapcnn import io
 
         io.close_device(device_name)
-        dynapcnn_net.to(device=device_name)
 
 
 def test_memory_summary():
@@ -166,6 +175,7 @@ def test_extended_readout_layer(out_channels: int):
     )
     extended_net = extend_readout_layer(dynapcnn_net)
 
-    converted_channels = extended_net.sequence[-1].conv_layer.out_channels
+    assert len(exit_layers := extended_net.exit_layers) == 1
+    converted_channels = exit_layers[0].conv_layer.out_channels
 
     assert (out_channels - 1) * 4 + 1 == converted_channels

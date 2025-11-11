@@ -1,5 +1,6 @@
 import numpy as np
 import torch.nn as nn
+import pytest
 
 from sinabs import from_model
 from sinabs.backend.dynapcnn import DynapcnnNetwork
@@ -18,6 +19,5 @@ def test_speck2e_coordinates():
 
 def test_dvs_layer_generation():
     """DVSLayer should be generated is dvs input is enabled even for an empty network."""
-    ann = nn.Sequential()
     network = DynapcnnNetwork(nn.Sequential(), input_shape=(2, 10, 10), dvs_input=True)
-    assert isinstance(network.sequence[0], DVSLayer)
+    assert isinstance(network.dvs_layer, DVSLayer)

@@ -54,7 +54,7 @@ import samna
 speck = samna.device.open_device("Speck2fModuleDevKit")
 ```
 
-All devices that supported by samna can be found at [here.](https://synsense-sys-int.gitlab.io/samna/install.html#discover-supported-devices)
+All devices that supported by samna can be found at [here.](https://synsense-sys-int.gitlab.io/samna/0.48.0/install.html#supported-devices)
 
 ## How Do I Reset The Device
 

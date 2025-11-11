@@ -7,15 +7,15 @@ from torch import nn
 class Img2SpikeLayer(nn.Module):
     """Layer to convert images to spikes.
 
-    Parameters:
-        image_shape: tuple image shape
-        tw: int Time window length
-        max_rate: maximum firing rate of neurons
-        layer_name: string layer name
-        norm: the supposed maximum value of the input (default 255.0)
-        squeeze: whether to remove singleton dimensions from the input
+    Args:
+        image_shape: tuple image shape.
+        tw: int Time window length.
+        max_rate: maximum firing rate of neurons.
+        layer_name: string layer name.
+        norm: the supposed maximum value of the input (default 255.0).
+        squeeze: whether to remove singleton dimensions from the input.
         negative_spikes: whether to allow negative spikes in response
-                         to negative input
+            to negative input.
     """
 
     def __init__(
@@ -60,7 +60,7 @@ class Img2SpikeLayer(nn.Module):
 class Sig2SpikeLayer(torch.nn.Module):
     """Layer to convert analog Signals to spikes.
 
-    Parameters:
+    Args:
         channels_in: number of channels in the analog signal
         tw: int number of time steps for each sample of the signal (up sampling)
         layer_name: string layer name

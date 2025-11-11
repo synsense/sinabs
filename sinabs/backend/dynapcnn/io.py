@@ -34,11 +34,9 @@ def enable_timestamps(
     """
     Enable timestamps of the samna node.
 
-    Args
-    ----
-    device_id: str
-        Name of the device to initialize. Required for different existing APIs
-        for Speck chips
+    Args:
+        device_id: Name of the device to initialize. Required for different
+            existing APIs for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
@@ -52,12 +50,9 @@ def disable_timestamps(
     """
     Disable timestamps of the samna node.
 
-    Args
-    ----
-
-    device_id: str
-        Name of the device to initialize. Required for different existing APIs
-        for Speck chips
+    Args:
+        device_id: Name of the device to initialize. Required for different
+            existing APIs for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
@@ -71,11 +66,9 @@ def reset_timestamps(
     """
     Reset timestamps of the samna node.
 
-    Args
-    ----
-    device_id: str
-        Name of the device to initialize. Required for different existing APIs
-        for Speck chips
+    Args:
+        device_id: Name of the device to initialize. Required for different
+            existing APIs for Speck chips
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
@@ -88,19 +81,11 @@ def events_to_xytp(event_list: List, layer: int) -> np.array:
     Convert an eventList read from `samna` to a numpy structured array of `x`, `y`, `t`,
     `channel`.
 
-    Parameters
-    ----------
+    Args:
+        event_list: A list comprising of events from samna API.
+        layer: The index of layer for which the data needs to be converted.
 
-    event_list: List
-        A list comprising of events from samna API
-
-    layer: int
-        The index of layer for which the data needs to be converted
-
-    Returns
-    -------
-
-    xytc: np.array
+    Returns:
         A numpy structured array with columns `x`, `y`, `t`, `channel`.
     """
     evs_filtered = list(
@@ -161,16 +146,11 @@ def get_device_map() -> Dict:
 def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
     """Check if a DeviceInfo object is of a given device type `dev_type`
 
-    Args
-    ----
-
-    dev_info: samna.device.DeviceInfo
-        Device info object
-    dev_type: str
-        Device type as a string
+    Args:
+        dev_info: samna.device.DeviceInfo. Device info object.
+        dev_type: Device type as a string.
 
     Returns:
-    --------
         bool
     """
     return dev_info.device_type_name == device_types[dev_type]
@@ -179,17 +159,13 @@ def is_device_type(dev_info: samna.device.DeviceInfo, dev_type: str) -> bool:
 def discover_device(device_id: str):
     """Discover a samna device by device_name:device_id pair.
 
-    Args
-    ----
+    Args:
+        device_id: Device name/identifier (speck2fdevkit:0 or speck2edevkit:0)
+            The convention is similar to that of pytorch GPU identifier i.e.,
+            cuda:0 , cuda:1 etc.
 
-    device_id: str
-        Device name/identifier (speck2fdevkit:0 or speck2edevkit:0 or ... )
-        The convention is similar to that of pytorch GPU identifier ie cuda:0 , cuda:1 etc.
-
-    Returns
-    -------
-
-    device_info: samna.device.DeviceInfo
+    Returns:
+        samna.device.DeviceInfo
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
@@ -199,21 +175,21 @@ def discover_device(device_id: str):
 def open_device(device_id: str):
     """Open device function.
 
-    Args
-    ----
+    Args:
+        device_id: device_name:device_id pair given as a string
 
-    device_id: str
-        device_name:device_id pair given as a string
-
-    Returns
-    -------
-
-    device_handle: samna.device.*
+    Returns:
         Device handle received from samna.
     """
     device_id = standardize_device_id(device_id=device_id)
     device_map = get_device_map()
-    device_info = device_map[device_id]
+    try:
+        device_info = device_map[device_id]
+    except KeyError:
+        msg = f"Device {device_id} has not been found. Make sure it is connected."
+        if device_map:
+            msg += "The following devices are available:\n" + "\n".join(device_map)
+        raise IOError(msg)
     device_handle = samna.device.open_device(device_info)
 
     if device_handle is not None:
@@ -225,12 +201,9 @@ def open_device(device_id: str):
 def close_device(device_id: str):
     """Close a device by device identifier.
 
-    Args
-    ----
-
-    device_id: str
-        device_name:device_id pair given as a string.
-        speck2fdevkit:0 or speck2edevkit:0 or speck2fdevkit:1 or ...
+    Args:
+        device_id: device_name:device_id pair given as a string.
+            speck2fdevkit:0 or speck2edevkit:0 or speck2fdevkit:1 or ...
     """
     device_id = standardize_device_id(device_id=device_id)
     device_info = device_map[device_id]
@@ -277,22 +250,15 @@ def calculate_neuron_address(
     """Calculate the neuron address on the devkit. This function is designed for ReadNeuronValue
     event to help the user check the neuron value of the SNN on the devkit.
 
-    Args
-    ----
+    Args:
+        x: x coordinate of the neuron
+        y: y coordinate of the neuron
+        c: channel index of the neuron
+        feature_map_size: Tuple[int, int, int] the size of the feature map
+            [channel, height, width]
 
-    x: int
-        x coordinate of the neuron
-    y: int
-        y coordinate of the neuron
-    c: int
-        channel index of the neuron
-    feature_map_size: Tuple[int, int, int]
-        the size of the feature map [channel, height, width]
-
-    Returns
-    ----
-
-    neuron_address: int
+    Returns:
+        neuron_address: int
     """
     # calculate how many bits it takes based on the feature map size
     channel, height, width = feature_map_size
@@ -317,22 +283,16 @@ def calculate_neuron_address(
 def neuron_address_to_cxy(
     address: int, feature_map_size: Tuple[int, int, int]
 ) -> Tuple:
-    """Calculate the c, x, y, coordinate of a neuron when the address of the NeuronValue event is
-    given.
+    """Calculate the c, x, y, coordinate of a neuron when the address of the
+    NeuronValue event is given.
 
-    Args
-    ----
+    Args:
+        address (int): the neuron address of the NeuronValue event
+        feature_map_size: Tuple[int, int, int] the size of the feature map
+            [channel, height, width]
 
-    address: int
-        the neuron address of the NeuronValue event
-    feature_map_size: Tuple[int, int, int]
-        the size of the feature map [channel, height, width]
-
-    Returns
-    ----
-
-    neuron_cxy: Tuple[int, int, int]
-        the [channel, x, y] of the neuron
+    Returns:
+        neuron_cxy: Tuple[int, int, int] the [channel, x, y] of the neuron
     """
     # calculate how many bits it takes based on the feature map size
     channel, height, width = feature_map_size

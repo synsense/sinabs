@@ -1,5 +1,4 @@
 import pytest
-import samna
 import torch
 from torch import nn
 
@@ -13,7 +12,6 @@ input_shape = (2, 16, 16)
 input_data = torch.rand(1, *input_shape, requires_grad=False) * 100.0
 
 
-# --- UTILITIES --- #
 def reset_states(seq):
     for s in seq:
         if isinstance(s, IAFSqueeze):
@@ -23,8 +21,6 @@ def reset_states(seq):
 
 def networks_equal_output(input_data, snn):
     snn.eval()
-    snn_out = snn(input_data).squeeze()  # forward pass
-    reset_states(snn)
 
     spn = DynapcnnNetwork(
         snn,
@@ -32,19 +28,17 @@ def networks_equal_output(input_data, snn):
         discretize=False,
         dvs_input=True,
     )
-    print(spn)
+
+    snn_out = snn(input_data).squeeze()  # forward pass
     spn_out = spn(input_data).squeeze()
 
-    print(snn_out.sum(), spn_out.sum())
     assert torch.equal(snn_out, spn_out)
 
     # this will give an error if the config is not compatible
     config = spn.make_config()
-    print(spn.chip_layers_ordering)
     return config
 
 
-# --- TESTS --- #
 def test_with_class():
     torch.manual_seed(0)
 
@@ -61,10 +55,9 @@ def test_with_class():
 
     snn = from_model(Net().seq, batch_size=1)
     snn.eval()
-    snn_out = snn(input_data).squeeze()  # forward pass
-
-    snn.reset_states()
     spn = DynapcnnNetwork(snn, input_shape=input_data.shape[1:], discretize=False)
+
+    snn_out = snn(input_data).squeeze()  # forward pass
     spn_out = spn(input_data).squeeze()
 
     assert torch.equal(snn_out, spn_out)
@@ -201,27 +194,26 @@ def test_no_spk_ending():
         nn.Linear(512, 2),
     )
 
-    from sinabs.backend.dynapcnn.exceptions import MissingLayer
+    from sinabs.backend.dynapcnn.exceptions import InvalidGraphStructure
 
-    with pytest.raises(MissingLayer):
+    with pytest.raises(InvalidGraphStructure):
         DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 
 def test_no_spk_middle():
+    from sinabs.backend.dynapcnn.exceptions import InvalidEdge
+
     seq = nn.Sequential(
         nn.Flatten(), nn.Linear(512, 10), nn.Linear(10, 2), IAFSqueeze(batch_size=1)
     )
 
-    with pytest.raises(TypeError):
+    with pytest.raises(InvalidEdge):
         DynapcnnNetwork(seq, input_shape=input_data.shape[1:], discretize=False)
 
 
 def test_no_conv_layers():
-    seq = nn.Sequential()
-
     from sinabs.backend.dynapcnn.dvs_layer import DVSLayer
-    from sinabs.backend.dynapcnn.utils import infer_input_shape
 
-    net = DynapcnnNetwork(snn=seq, input_shape=(2, 10, 10), dvs_input=True)
-
-    assert isinstance(net.sequence[0], DVSLayer)
+    net = DynapcnnNetwork(
+        nn.Sequential(DVSLayer(input_shape=(10, 10))), input_shape=(2, 10, 10)
+    )

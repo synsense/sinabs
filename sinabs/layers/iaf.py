@@ -22,24 +22,24 @@ class IAF(LIF):
 
     where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters:
+    Args:
         spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
         spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
-                  a spike threshold and a surrogate gradient function and returns spikes. Be aware
-                  that the class itself is passed here (because torch.autograd methods are static)
-                  rather than an object instance.
+            a spike threshold and a surrogate gradient function and returns spikes. Be aware
+            that the class itself is passed here (because torch.autograd methods are static)
+            rather than an object instance.
         reset_fn: A function that defines how the membrane potential is reset after a spike.
         surrogate_grad_fn: Choose how to define gradients for the spiking non-linearity during the
-                           backward pass. This is a function of membrane potential.
+            backward pass. This is a function of membrane potential.
         tau_syn: Synaptic decay time constants. If None, no synaptic dynamics are used, which is the default.
         min_v_mem: Lower bound for membrane potential v_mem, clipped at every time step.
         shape: Optionally initialise the layer state with given shape. If None, will be inferred from input_size.
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute
-                       `recordings`. Default is False.
+            `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.
@@ -99,7 +99,7 @@ class IAFRecurrent(LIFRecurrent):
 
     where :math:`\\sum z(t)` represents the sum of all input currents at time :math:`t`.
 
-    Parameters:
+    Args:
         rec_connect: An nn.Module which defines the recurrent connectivity, e.g. nn.Linear
         spike_threshold: Spikes are emitted if v_mem is above that threshold. By default set to 1.0.
         spike_fn: Choose a Sinabs or custom torch.autograd.Function that takes a dict of states,
@@ -115,8 +115,8 @@ class IAFRecurrent(LIFRecurrent):
         record_states: When True, will record all internal states such as v_mem or i_syn in a dictionary attribute `recordings`. Default is False.
 
     Shape:
-        - Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
-        - Output: Same as input.
+        Input: :math:`(Batch, Time, Channel, Height, Width)` or :math:`(Batch, Time, Channel)`
+        Output: Same as input.
 
     Attributes:
         v_mem: The membrane potential resets according to reset_fn for every spike.

@@ -1,7 +1,4 @@
 from typing import Tuple
-from matplotlib import pyplot as plt
-from matplotlib import colors
-
 import numpy as np
 
 
@@ -66,8 +63,6 @@ class ValidateMapping:
             "neuron", neuron_memory, "kernel", kernel_memory
         )
 
-        print(kernel_error_msg)
-        print(neuron_error_msg)
         return (
             kernel_memory / 1024,
             neuron_memory / 1024,

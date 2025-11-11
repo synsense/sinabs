@@ -2,7 +2,6 @@ import pytest
 import torch.nn as nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
-from sinabs.backend.dynapcnn.mapping import edmonds, make_flow_graph, recover_mapping
 from sinabs.from_torch import from_model
 from hw_utils import find_open_devices
 

@@ -72,15 +72,16 @@ def test_default_monitoring():
 
     # As a default the last layer should be monitored
     config = dynapcnn_net.make_config(device="speck2edevkit:0")
-    clo = dynapcnn_net.chip_layers_ordering
-    assert len(clo) > 0
+    l2c = (
+        dynapcnn_net.layer2core_map
+    )  # TODO - old code: dynapcnn_net.chip_layers_ordering
+    assert len(l2c) > 0
     # Check that monitoring is off for all layers except last
-    for layer in clo[:-1]:
-        if layer == "dvs":
-            assert config.dvs_layer.monitor_enable == False
+    for layer, core in l2c.items():
+        if layer in dynapcnn_net.exit_layer_ids:
+            assert config.cnn_layers[core].monitor_enable == True
         else:
-            assert config.cnn_layers[layer].monitor_enable == False
-    assert config.cnn_layers[clo[-1]].monitor_enable == True
+            assert config.cnn_layers[core].monitor_enable == False
 
 
 def test_model_level_monitoring_enable():
@@ -98,12 +99,13 @@ def test_model_level_monitoring_enable():
         config = dynapcnn_net.make_config(
             device="speck2edevkit:0", monitor_layers=["dvs", 5, -1]
         )
-    clo = dynapcnn_net.chip_layers_ordering
-    assert len(clo) > 0
+    l2c = dynapcnn_net.layer2core_map
+    assert len(l2c) > 0
 
     assert config.dvs_layer.monitor_enable == True
-    assert config.cnn_layers[clo[5]].monitor_enable == True
-    assert config.cnn_layers[clo[-1]].monitor_enable == True
+    assert config.cnn_layers[l2c[5]].monitor_enable == True
+    for idx in dynapcnn_net.exit_layer_ids:
+        assert config.cnn_layers[l2c[idx]].monitor_enable == True
 
     # Specify layers to monitor - should not warn becuase final layer has no pooling
     with warnings.catch_warnings():
@@ -112,4 +114,4 @@ def test_model_level_monitoring_enable():
 
     # Monitor all layers
     config = dynapcnn_net.make_config(device="speck2edevkit:0", monitor_layers="all")
-    assert all(config.cnn_layers[i].monitor_enable == True for i in clo)
+    assert all(config.cnn_layers[i].monitor_enable == True for i in l2c.values())

@@ -1,40 +1,76 @@
 from copy import deepcopy
-from typing import Dict, Optional, Tuple, Union
-from warnings import warn
+from functools import partial
+from typing import List, Tuple
 
 import numpy as np
 import torch
 from torch import nn
 
-import sinabs.activation
 import sinabs.layers as sl
 
 from .discretize import discretize_conv_spike_
-from .dvs_layer import expand_to_pair
+
+# Define sum pooling functional as power-average pooling with power 1
+sum_pool2d = partial(nn.functional.lp_pool2d, norm_type=1)
+
+
+def convert_linear_to_conv(
+    lin: nn.Linear, input_shape: Tuple[int, int, int]
+) -> nn.Conv2d:
+    """Convert Linear layer to Conv2d.
+
+    Args:
+        lin (nn.Linear): linear layer to be converted.
+        input_shape (tuple): the tensor shape the layer expects.
+
+    Returns:
+        convolutional layer equivalent to `lin`.
+    """
+    in_chan, in_h, in_w = input_shape
+    if lin.in_features != in_chan * in_h * in_w:
+        raise ValueError(
+            "Shape of linear layer weight does not match provided input shape"
+        )
+
+    layer = nn.Conv2d(
+        in_channels=in_chan,
+        kernel_size=(in_h, in_w),
+        out_channels=lin.out_features,
+        padding=0,
+        bias=lin.bias is not None,
+    )
+
+    if lin.bias is not None:
+        layer.bias.data = lin.bias.data.clone().detach()
+
+    layer.weight.data = (
+        lin.weight.data.clone()
+        .detach()
+        .reshape((lin.out_features, in_chan, in_h, in_w))
+    )
+
+    return layer
 
 
 class DynapcnnLayer(nn.Module):
-    """Create a DynapcnnLayer object representing a dynapcnn layer.
+    """Create a DynapcnnLayer object representing a layer on DynapCNN or Speck.
 
-    Requires a convolutional layer, a sinabs spiking layer and an optional
-    pooling value. The layers are used in the order conv -> spike -> pool.
+    Requires a convolutional layer, a sinabs spiking layer and a list of
+    pooling values. The layers are used in the order conv -> spike -> pool.
 
-    Parameters
-    ----------
-        conv: torch.nn.Conv2d or torch.nn.Linear
-            Convolutional or linear layer (linear will be converted to convolutional)
-        spk: sinabs.layers.IAFSqueeze
-            Sinabs IAF layer
-        in_shape: tuple of int
-            The input shape, needed to create dynapcnn configs if the network does not
-            contain an input layer. Convention: (features, height, width)
-        pool: int or None
-            Integer representing the sum pooling kernel and stride. If `None`, no
-            pooling will be applied.
-        discretize: bool
-            Whether to discretize parameters.
-        rescale_weights: int
-            Layer weights will be divided by this value.
+    Attributes:
+        conv: torch.nn.Conv2d or torch.nn.Linear. Convolutional or linear layer.
+            Linear will be converted to convolutional.
+        spk (sinabs.layers.IAFSqueeze): Sinabs IAF layer.
+        in_shape (tuple of int):  The input shape, needed to create dynapcnn configs
+            if the network does not contain an input layer.
+            Convention: (features, height, width).
+        pool (List of integers): Each integer entry represents an output (destination
+            on chip) and whether pooling should be applied (values > 1) or not
+            (values equal to 1). The number of entries determines the number of tensors
+            the layer's forward method returns.
+        discretize (bool): Whether to discretize parameters.
+        rescale_weights (int): Layer weights will be multiplied by this value.
     """
 
     def __init__(
@@ -42,126 +78,136 @@ class DynapcnnLayer(nn.Module):
         conv: nn.Conv2d,
         spk: sl.IAFSqueeze,
         in_shape: Tuple[int, int, int],
-        pool: Optional[sl.SumPool2d] = None,
+        pool: List[int],
         discretize: bool = True,
         rescale_weights: int = 1,
     ):
         super().__init__()
 
-        self.input_shape = in_shape
+        self.in_shape = in_shape
+        self.pool = pool
+        self._discretize = discretize
+        self._rescale_weights = rescale_weights
 
+        if not isinstance(spk, sl.IAFSqueeze):
+            raise TypeError(
+                f"Unsupported spiking layer type {type(spk)}. "
+                "Only `IAFSqueeze` layers are supported."
+            )
         spk = deepcopy(spk)
+
+        # Convert `nn.Linear` to `nn.Conv2d`.
         if isinstance(conv, nn.Linear):
-            conv = self._convert_linear_to_conv(conv)
-            if spk.is_state_initialised():
-                # Expand dims
-                spk.v_mem = spk.v_mem.data.unsqueeze(-1).unsqueeze(-1)
+            conv = convert_linear_to_conv(conv, in_shape)
+            if spk.is_state_initialised() and (ndim := spk.v_mem.ndim) < 4:
+                for __ in range(4 - ndim):
+                    # Expand spatial dimensions
+                    spk.v_mem = spk.v_mem.data.unsqueeze(-1)
         else:
             conv = deepcopy(conv)
 
-        if rescale_weights != 1:
+        if self._rescale_weights != 1:
             # this has to be done after copying but before discretizing
-            conv.weight.data = (conv.weight / rescale_weights).clone().detach()
+            conv.weight.data = (conv.weight * self._rescale_weights).clone().detach()
 
-        self.discretize = discretize
-        if discretize:
-            # int conversion is done while writing the config.
+        # check if convolution kernel is a square.
+        if conv.kernel_size[0] != conv.kernel_size[1]:
+            raise ValueError(
+                "The kernel of a `nn.Conv2d` must have the same height and width."
+            )
+        for pool_size in pool:
+            if pool_size[0] != pool_size[1]:
+                raise ValueError("Only square pooling kernels are supported")
+
+        # int conversion is done while writing the config.
+        if self._discretize:
             conv, spk = discretize_conv_spike_(conv, spk, to_int=False)
 
-        self.conv_layer = conv
-        self.spk_layer = spk
-        if pool is not None:
-            if pool.kernel_size[0] != pool.kernel_size[1]:
-                raise ValueError("Only square kernels are supported")
-            self.pool_layer = deepcopy(pool)
-        else:
-            self.pool_layer = None
+        self.conv = conv
+        self.spk = spk
 
-    def _convert_linear_to_conv(self, lin: nn.Linear) -> nn.Conv2d:
-        """Convert Linear layer to Conv2d.
+    @property
+    def conv_layer(self):
+        return self.conv
 
-        Parameters
-        ----------
-            lin: nn.Linear
-                Linear layer to be converted
+    @property
+    def spk_layer(self):
+        return self.spk
 
-        Returns
-        -------
-            nn.Conv2d
-                Convolutional layer equivalent to `lin`.
+    @property
+    def discretize(self):
+        return self._discretize
+
+    @property
+    def rescale_weights(self):
+        return self._rescale_weights
+
+    @property
+    def conv_out_shape(self):
+        return self._get_conv_output_shape()
+
+    def forward(self, x) -> List[torch.Tensor]:
+        """Torch forward pass.
+
+        ...
         """
 
-        in_chan, in_h, in_w = self.input_shape
+        returns = []
 
-        if lin.in_features != in_chan * in_h * in_w:
-            raise ValueError("Shapes don't match.")
+        x = self.conv_layer(x)
+        x = self.spk_layer(x)
 
-        layer = nn.Conv2d(
-            in_channels=in_chan,
-            kernel_size=(in_h, in_w),
-            out_channels=lin.out_features,
-            padding=0,
-            bias=lin.bias is not None,
-        )
+        for pool in self.pool:
+            if pool == 1:
+                # no pooling is applied.
+                returns.append(x)
+            else:
+                # sum pooling of `(pool, pool)` is applied.
+                pool_out = sum_pool2d(x, kernel_size=pool)
+                returns.append(pool_out)
 
-        if lin.bias is not None:
-            layer.bias.data = lin.bias.data.clone().detach()
+        if len(returns) == 1:
+            return returns[0]
+        else:
+            return tuple(returns)
 
-        layer.weight.data = (
-            lin.weight.data.clone()
-            .detach()
-            .reshape((lin.out_features, in_chan, in_h, in_w))
-        )
-
-        return layer
+    def zero_grad(self, set_to_none: bool = False) -> None:
+        """Call `zero_grad` method of spiking layer"""
+        return self.spk.zero_grad(set_to_none)
 
     def get_neuron_shape(self) -> Tuple[int, int, int]:
         """Return the output shape of the neuron layer.
 
-        Returns
-        -------
-        features, height, width
+        Returns:
+            conv_out_shape (tuple): formatted as (features, height, width).
         """
+        # same as the convolution's output.
+        return self._get_conv_output_shape()
 
-        def get_shape_after_conv(layer: nn.Conv2d, input_shape):
-            (ch_in, h_in, w_in) = input_shape
-            (kh, kw) = expand_to_pair(layer.kernel_size)
-            (pad_h, pad_w) = expand_to_pair(layer.padding)
-            (stride_h, stride_w) = expand_to_pair(layer.stride)
+    def get_output_shape(self) -> List[Tuple[int, int, int]]:
+        """Return the output shapes of the layer, including pooling.
 
-            def out_len(in_len, k, s, p):
-                return (in_len - k + 2 * p) // s + 1
-
-            out_h = out_len(h_in, kh, stride_h, pad_h)
-            out_w = out_len(w_in, kw, stride_w, pad_w)
-            ch_out = layer.out_channels
-            return ch_out, out_h, out_w
-
-        conv_out_shape = get_shape_after_conv(
-            self.conv_layer, input_shape=self.input_shape
-        )
-        return conv_out_shape
-
-    def get_output_shape(self) -> Tuple[int, int, int]:
+        Returns:
+            One entry per destination, each formatted as (features, height, width).
+        """
         neuron_shape = self.get_neuron_shape()
         # this is the actual output shape, including pooling
-        if self.pool_layer is not None:
-            pool = expand_to_pair(self.pool_layer.kernel_size)
-            return (
+        output_shape = []
+        for pool in self.pool:
+            output_shape.append(
                 neuron_shape[0],
-                neuron_shape[1] // pool[0],
-                neuron_shape[2] // pool[1],
+                neuron_shape[1] // pool,
+                neuron_shape[2] // pool,
             )
-        else:
-            return neuron_shape
+        return output_shape
 
     def summary(self) -> dict:
+        """Returns a summary of the convolution's/pooling's kernel sizes and the output shape of the spiking layer."""
+
         return {
-            "pool": (
-                None if self.pool_layer is None else list(self.pool_layer.kernel_size)
-            ),
+            "pool": (self.pool),
             "kernel": list(self.conv_layer.weight.data.shape),
-            "neuron": self.get_neuron_shape(),
+            "neuron": self._get_conv_output_shape(),  # neuron layer output has the same shape as the convolution layer ouput.
         }
 
     def memory_summary(self):
@@ -177,13 +223,18 @@ class DynapcnnLayer(nn.Module):
 
             N_{MT} = f \\cdot 2^{ \\lceil \\log_2\\left(f_y\\right) \\rceil + \\lceil \\log_2\\left(f_x\\right) \\rceil }
 
-        Returns
-        -------
-        A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
+        Returns:
+            A dictionary with keys kernel, neuron and bias and the corresponding memory sizes
         """
         summary = self.summary()
         f, c, h, w = summary["kernel"]
-        f, neuron_height, neuron_width = self.get_neuron_shape()
+        (
+            f,
+            neuron_height,
+            neuron_width,
+        ) = (
+            self._get_conv_output_shape()
+        )  # neuron layer output has the same shape as the convolution layer ouput.
 
         return {
             "kernel": c * pow(2, np.ceil(np.log2(h * w)) + np.ceil(np.log2(f))),
@@ -192,13 +243,28 @@ class DynapcnnLayer(nn.Module):
             "bias": 0 if self.conv_layer.bias is None else len(self.conv_layer.bias),
         }
 
-    def forward(self, x):
-        """Torch forward pass."""
-        x = self.conv_layer(x)
-        x = self.spk_layer(x)
-        if self.pool_layer is not None:
-            x = self.pool_layer(x)
-        return x
+    def _get_conv_output_shape(self) -> Tuple[int, int, int]:
+        """Computes the output dimensions of `conv_layer`.
 
-    def zero_grad(self, set_to_none: bool = False) -> None:
-        return self.spk_layer.zero_grad(set_to_none)
+        Returns:
+            output dimensions (tuple): a tuple describing `(output channels, height, width)`.
+        """
+        # get the layer's parameters.
+
+        out_channels = self.conv_layer.out_channels
+        kernel_size = self.conv_layer.kernel_size
+        stride = self.conv_layer.stride
+        padding = self.conv_layer.padding
+        dilation = self.conv_layer.dilation
+
+        # compute the output height and width.
+        out_height = (
+            (self.in_shape[1] + 2 * padding[0] - dilation[0] * (kernel_size[0] - 1) - 1)
+            // stride[0]
+        ) + 1
+        out_width = (
+            (self.in_shape[2] + 2 * padding[1] - dilation[1] * (kernel_size[1] - 1) - 1)
+            // stride[1]
+        ) + 1
+
+        return (out_channels, out_height, out_width)

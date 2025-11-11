@@ -3,8 +3,10 @@
 It will include testing of the network equivalence, and of the correct output configuration.
 """
 
+import pytest
 import samna
 import torch
+from nirtorch.utils import sanitize_name
 from torch import nn
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
@@ -68,17 +70,34 @@ dynapcnn_out = dynapcnn_net(input_data)
 
 
 def test_same_result():
-    # print(dynapcnn_out)
     assert torch.equal(dynapcnn_out.squeeze(), snn_out.squeeze())
 
 
 def test_auto_config():
-    # - Should give an error with the normal layer ordering
     dynapcnn_net = DynapcnnNetwork(snn, input_shape=input_shape, discretize=True)
     dynapcnn_net.make_config(chip_layers_ordering=[0, 1, 2, 3, 4])
+    dynapcnn_net.make_config(layer2core_map="auto")
 
 
-def test_was_copied():
+def test_deep_copy():
     # - Make sure that layers of different models are distinct objects
-    for lyr_snn, lyr_dynapcnn in zip(snn.spiking_model, dynapcnn_net.sequence):
-        assert lyr_snn is not lyr_dynapcnn
+    # "Sanitize" all layer names, for compatibility with older nirtorch versions
+    snn_layers = {
+        sanitize_name(name): lyr for name, lyr in snn.spiking_model.named_modules()
+    }
+
+    idx_2_name_map = {
+        idx: sanitize_name(name) for name, idx in dynapcnn_net.name_2_indx_map.items()
+    }
+    for idx, lyr_info in dynapcnn_net._graph_extractor.dcnnl_info.items():
+        conv_lyr_dynapcnn = dynapcnn_net.dynapcnn_layers[idx].conv_layer
+        conv_node_idx = lyr_info["conv"]["node_id"]
+        conv_name = idx_2_name_map[conv_node_idx]
+        conv_lyr_snn = snn_layers[conv_name]
+        assert conv_lyr_dynapcnn is not conv_lyr_snn
+
+        spk_lyr_dynapcnn = dynapcnn_net.dynapcnn_layers[idx].spk_layer
+        spk_node_idx = lyr_info["neuron"]["node_id"]
+        spk_name = idx_2_name_map[spk_node_idx]
+        spk_lyr_snn = snn_layers[spk_name]
+        assert spk_lyr_dynapcnn is not spk_lyr_snn
