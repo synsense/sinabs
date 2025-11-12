@@ -32,6 +32,7 @@ def test_conv1d():
     assert conv1d.padding == converted.model.padding
     assert conv1d.dilation == converted.model.dilation
 
+
 def test_conv2d():
     batch_size = 2
     conv2d = nn.Conv2d(1, 3, 2)
