@@ -1,5 +1,8 @@
 # Release notes
 
+## Unreleased
+* Fix NIR export of Conv1d layer which expected an input_shape parameter.
+
 ## v3.1.0 (31/10/2025)
 
 * Add mapping of non-sequential networks:
