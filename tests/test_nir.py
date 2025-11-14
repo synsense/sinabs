@@ -105,3 +105,18 @@ def test_2dcnn_network():
     nir_graph = to_nir(orig_model, torch.rand(1, 2, 10, 10))
 
     loaded_model = from_nir(nir_graph, batch_size=1)
+
+
+def test_conv1d():
+    batch_size = 2
+    conv1d = nn.Conv1d(16, 16, 3)
+    graph = to_nir(conv1d, torch.randn(batch_size, 16, 32))
+    converted = from_nir(graph, batch_size=batch_size)
+
+    assert len(graph.nodes) == 1 + 2
+    assert isinstance(graph.nodes["model"], nir.Conv1d)
+    assert len(graph.edges) == 0 + 2
+    assert conv1d.kernel_size == converted.model.kernel_size
+    assert conv1d.stride == converted.model.stride
+    assert conv1d.padding == converted.model.padding
+    assert conv1d.dilation == converted.model.dilation

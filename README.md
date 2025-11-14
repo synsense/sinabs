@@ -49,7 +49,7 @@ Sinabs is published under Apache v2.0. See the LICENSE file for details.
 
 Contributing to Sinabs
 ------------------------
-Checkout the [contributing](https://sinabs.readthedocs.io/en/develop/about/contributing.html) page for more info.
+Checkout the [contributing](https://sinabs.readthedocs.io/develop/about/contributing.html) page for more info.
 
 
 Citation
