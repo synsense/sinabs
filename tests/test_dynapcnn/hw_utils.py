@@ -62,9 +62,12 @@ def reset_all_connected_boards():
     import samna
 
     devs = samna.device.get_unopened_devices()
+    reverse_dict = {v: k for k, v in supported_device_types_for_testing.items()}
+
     if len(devs) > 0:  # check if the connected board is found.
         for device in devs:
-            handle = samna.device.open_device(device)
-            handle.reset_board_soft(True)
-            samna.device.close_device(handle)
-            print(f"Resetted board: {device.device_type_name}")
+            if device.device_type_name in reverse_dict:
+                handle = samna.device.open_device(device)
+                handle.reset_board_soft(True)
+                samna.device.close_device(handle)
+                print(f"Resetted board: {device.device_type_name}")
