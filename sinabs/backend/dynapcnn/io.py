@@ -133,8 +133,11 @@ def get_device_map() -> Dict:
     # Group by device_type_name
     device_groups = groupby(devices, lambda x: x.device_type_name)
     # Switch keys from samna's device_type_name to device_type names
+    # -- guarantee is a supported device
     device_groups = {
-        device_type_map[k]: sort_devices(list(v)) for k, v in device_groups
+        device_type_map[k]: sort_devices(list(v))
+        for k, v in device_groups
+        if k in device_type_map
     }
     # Flat map
     for dev_type, dev_list in device_groups.items():
