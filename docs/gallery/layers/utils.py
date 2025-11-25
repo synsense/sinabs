@@ -1,8 +1,14 @@
+"""
+==============================
+Utility Function
+==============================
+Utility function for plots in the documentation.
+"""
+
 import matplotlib.pyplot as plt
 import torch
 
 import sinabs
-import sinabs.layers as sl
 
 
 def plot_evolution(neuron_model: sinabs.layers, input: torch.Tensor):

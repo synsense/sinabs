@@ -31,7 +31,6 @@ sphinx_gallery_conf = {
     # "backreferences_dir": "gen_modules/backreferences",
     "doc_module": ("sinabs",),
     "download_all_examples": False,
-    "ignore_pattern": r"utils\.py",
 }
 
 # Napoleon settings
