@@ -10,6 +10,7 @@ import torch
 
 import sinabs
 
+
 def plot_evolution(neuron_model: sinabs.layers, input: torch.Tensor):
     neuron_model.reset_states()
     output = neuron_model(input)
