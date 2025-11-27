@@ -1,5 +1,12 @@
 # Release notes
 
+## Unreleased
+
+* Fix NIR export of Conv1d layer which expected an input_shape parameter.
+* Fix broken link on documentation.
+* Fix missing plots on `Neuron Models` gallery.
+* Fix `open_device` function that would thrown an error if an unsupported SynSense device was connected to the computer.
+
 ## v3.1.0 (31/10/2025)
 
 * Add mapping of non-sequential networks:
