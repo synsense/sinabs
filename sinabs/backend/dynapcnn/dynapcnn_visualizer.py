@@ -418,7 +418,9 @@ class DynapcnnVisualizer:
                 + " should contain value `dvs`. "
             )
 
-        last_layer = dynapcnn_network.chip_layers_ordering[-1]
+        last_layer = dynapcnn_network.layer2core_map[
+            dynapcnn_network.exit_layer_ids[-1]
+        ]
 
         if not config.cnn_layers[last_layer].monitor_enable:
             raise ValueError(
@@ -568,7 +570,9 @@ class DynapcnnVisualizer:
             dynapcnn_network (DynapcnnNetwork): DynapcnnNetwork object
 
         """
-        last_layer = dynapcnn_network.chip_layers_ordering[-1]
+        last_layer = dynapcnn_network.layer2core_map[
+            dynapcnn_network.exit_layer_ids[-1]
+        ]
         config = dynapcnn_network.samna_config
         model_output_feature_count = config.cnn_layers[
             last_layer

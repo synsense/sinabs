@@ -1,6 +1,11 @@
 # Release notes
 
-## Unreleased
+## v3.1.2 (12/12/2025)
+
+* Update use of visualizer in Sinabs tutorials, previous tutorials were using a deprecated visualizer version.
+* Fix issue with `chip_layers_ordering` in the visualizer. `chip_layers_ordering` was deprecated in Sinabs 3.1.0 and `layer2core_map` needs to be used instead.
+
+## v3.1.1 (27/11/2025)
 
 * Fix NIR export of Conv1d layer which expected an input_shape parameter.
 * Fix broken link on documentation.
