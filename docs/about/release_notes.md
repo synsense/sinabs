@@ -6,6 +6,8 @@
 * Fix broken link on documentation.
 * Fix missing plots on `Neuron Models` gallery.
 * Fix `open_device` function that would thrown an error if an unsupported SynSense device was connected to the computer.
+* Update use of visualizer in Sinabs tutorials, previous tutorials were using a deprecated visualizer version
+* Fix issue with `chip_layers_ordering` in the visualizer. `chip_layers_ordering` was deprecated in Sinabs 3.1.0 and `layer2core_map` needs to be used instead.
 
 ## v3.1.0 (31/10/2025)
 
