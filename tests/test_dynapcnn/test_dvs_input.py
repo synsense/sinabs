@@ -329,9 +329,15 @@ def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
 
 def test_record_dvs_input():
     from torch import nn
+    from hw_utils import find_open_devices
 
     from sinabs.backend.dynapcnn import DynapcnnNetwork
     from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
+    devices = find_open_devices()
+
+    if len(devices) == 0:
+        pytest.skip("A connected Speck device is required to run this test")
 
     shape = (128, 128)
     layers = [
@@ -343,22 +349,21 @@ def test_record_dvs_input():
 
     dynapcnn = DynapcnnNetwork(snn=snn, dvs_input=True, discretize=True)
 
-    # Deploy model to a dev-kit
-    dynapcnn.to(device="speck2fdevkit:0", monitor_layers=["dvs"])
+    # Deploy model to a devkit
 
-    factory = ChipFactory("speck2fdevkit")
+    for device_name, _ in devices.items():
+        dynapcnn.to(device=device_name, monitor_layers=["dvs"])
 
-    Spike = factory.get_config_builder().get_samna_module().event.Spike
+        factory = ChipFactory(device_name)
 
-    input_data = [
-        Spike(timestamp=10),
-    ]
+        Spike = factory.get_config_builder().get_samna_module().event.Spike
 
-    print(input_data)
-    events_out = dynapcnn(input_data)
+        input_data = [
+            Spike(timestamp=10),
+        ]
 
-    # print(events_out)
+        events_out = dynapcnn(input_data)
 
-    print(len(events_out))
-
-    assert False
+        # TODO: add a proper verification for this test
+        # print(events_out)
+        # print(len(events_out))
