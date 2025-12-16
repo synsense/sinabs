@@ -325,3 +325,40 @@ def test_whether_dvs_mirror_cfg_is_all_switched_off(dvs_input, pool):
         assert samna_cfg.dvs_layer.mirror.x is False
         assert samna_cfg.dvs_layer.mirror.y is False
         assert samna_cfg.dvs_layer.mirror_diagonal is False
+
+
+def test_record_dvs_input():
+    from torch import nn
+
+    from sinabs.backend.dynapcnn import DynapcnnNetwork
+    from sinabs.backend.dynapcnn.chip_factory import ChipFactory
+
+    shape = (128, 128)
+    layers = [
+        DVSLayer(
+            input_shape=shape,
+        ),
+    ]
+    snn = nn.Sequential(*layers)
+
+    dynapcnn = DynapcnnNetwork(snn=snn, dvs_input=True, discretize=True)
+
+    # Deploy model to a dev-kit
+    dynapcnn.to(device="speck2fdevkit:0", monitor_layers=["dvs"])
+
+    factory = ChipFactory("speck2fdevkit")
+
+    Spike = factory.get_config_builder().get_samna_module().event.Spike
+
+    input_data = [
+        Spike(timestamp=10),
+    ]
+
+    print(input_data)
+    events_out = dynapcnn(input_data)
+
+    # print(events_out)
+
+    print(len(events_out))
+
+    assert False
