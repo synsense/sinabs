@@ -455,7 +455,7 @@ class DynapcnnVisualizer:
 
         # Streamer graph
         # Dvs node
-        (_, dvs_member_filter, _, streamer_node) = self.streamer_graph.sequential(
+        _, dvs_member_filter, _, streamer_node = self.streamer_graph.sequential(
             [
                 dynapcnn_network.samna_device.get_model_source_node(),
                 samna.graph.JitMemberSelect(),
@@ -526,7 +526,7 @@ class DynapcnnVisualizer:
         ## Readout node
         if "r" in self.gui_type:
             if self.readout_node == "JitMajorityReadout":
-                (_, majority_readout_node, _) = self.streamer_graph.sequential(
+                _, majority_readout_node, _ = self.streamer_graph.sequential(
                     [
                         spike_collection_node,
                         samna.graph.JitMajorityReadout(samna.ui.Event),
@@ -544,7 +544,7 @@ class DynapcnnVisualizer:
                     self.readout_default_threshold_high
                 )
             else:
-                (_, majority_readout_node, _) = self.streamer_graph.sequential(
+                _, majority_readout_node, _ = self.streamer_graph.sequential(
                     [
                         spike_collection_node,
                         self.readout_node,
