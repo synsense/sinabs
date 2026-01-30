@@ -89,7 +89,7 @@ def test_jit_compilation():
             streamer_graph = samna.graph.EventFilterGraph()
             # Streamer graph
             # Dvs node
-            (_, dvs_member_filter, _, streamer_node) = streamer_graph.sequential(
+            _, dvs_member_filter, _, streamer_node = streamer_graph.sequential(
                 [
                     # samna.graph.JitSource(samna.speck2e.event.OutputEvent),
                     dynapcnn_network.samna_device.get_model_source_node(),

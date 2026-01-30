@@ -101,7 +101,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         dimensions["input_shape"]["feature_count"] = channel_count
 
         # dimensions["output_feature_count"] already done in conv2d_to_dict
-        (f, h, w) = layer.get_neuron_shape()
+        f, h, w = layer.get_neuron_shape()
         dimensions["output_shape"]["size"] = {}
         dimensions["output_shape"]["feature_count"] = f
         dimensions["output_shape"]["size"]["x"] = w
@@ -121,7 +121,7 @@ class DynapcnnConfigBuilder(ConfigBuilder):
         config_dict["dimensions"] = dimensions
         # Update parameters from convolution
         if layer.conv_layer.bias is not None:
-            (weights, biases) = layer.conv_layer.parameters()
+            weights, biases = layer.conv_layer.parameters()
         else:
             (weights,) = layer.conv_layer.parameters()
             biases = torch.zeros(layer.conv_layer.out_channels)

@@ -80,7 +80,7 @@ class SpikingMaxPooling2dLayer(nn.Module):
         Returns:
             (channelsOut, height_out, width_out)
         """
-        (channels, height, width) = input_shape
+        channels, height, width = input_shape
 
         height_out = conv_output_size(
             height + sum(self.padding[2:]), self.pool_size[0], self.strides[0]

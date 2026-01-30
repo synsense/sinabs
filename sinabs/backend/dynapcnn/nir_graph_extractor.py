@@ -504,7 +504,7 @@ class GraphExtractor:
             A handler to the newly added `DVSLayer` instance.
         """
 
-        (features, height, width) = dvs_input_shape
+        features, height, width = dvs_input_shape
         if features > 2:
             raise ValueError(
                 f"A DVSLayer istance can have a max feature dimension of 2 but {features} was given."
@@ -578,7 +578,7 @@ class GraphExtractor:
                 f"A DVSLayer node exists and there are {nb_entries} entry nodes in the graph: the DVSLayer should be the only entry node."
             )
 
-        (features, _, _) = dvs_input_shape
+        features, _, _ = dvs_input_shape
 
         if features > 2:
             raise ValueError(
