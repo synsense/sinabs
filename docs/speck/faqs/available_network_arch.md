@@ -45,11 +45,6 @@ use a `Sequential` like network.
 As of `v3.1.0`, we released a network graph extraction feature that helps users deploy their networks with more complex architectures into the devkit.
 Our `Speck` chip, in fact, supports branched architectures. With the graph extraction feature, we support a range of network structures, as shown below:
 
-
-Two independent networks:
-
-![Two independent networks](imgs/two-independent-networks.png)
-
 Two networks with merging outputs:
 
 ![Two networks with merging outputs](imgs/two-networks-merging-output.png)
