@@ -1,5 +1,11 @@
 # Release notes
 
+## v3.1.3 (04/02/2026)
+
+* Add tests for mapping non-sequential networks
+* Fix networks used for tests, they didnt meet the hardware constraints
+* Update documentation with the non-sequential networks types that have a test
+
 ## v3.1.2 (12/12/2025)
 
 * Update use of visualizer in Sinabs tutorials, previous tutorials were using a deprecated visualizer version.
