@@ -81,39 +81,38 @@ class SNN(nn.Module):
 
     def forward(self, x):
         # conv 1 - A/0
-        convA_out = self.conv_A(x)  # node 0
-        iaf_A_out = self.iaf_A(convA_out)  # node 1
+        convA_out = self.conv_A(x)
+        iaf_A_out = self.iaf_A(convA_out)
 
         # conv 2 - B/1
-        conv_B_out = self.conv_B(iaf_A_out)  # node 2
-        iaf_B_out = self.iaf2_B(conv_B_out)  # node 3
-        pool_B_out = self.pool_B(iaf_B_out)  # node 4
+        conv_B_out = self.conv_B(iaf_A_out)
+        iaf_B_out = self.iaf2_B(conv_B_out)
+        pool_B_out = self.pool_B(iaf_B_out)
 
         # conv 3 - C/2
-        conv_C_out = self.conv_C(pool_B_out)  # node 5
-        iaf_C_out = self.iaf_C(conv_C_out)  # node 7
-        pool_C_out = self.pool_C(iaf_C_out)  # node 8
+        conv_C_out = self.conv_C(pool_B_out)
+        iaf_C_out = self.iaf_C(conv_C_out)
+        pool_C_out = self.pool_C(iaf_C_out)
 
         # conv 4 - D/4
-        conv_D_out = self.conv_D(pool_C_out)  # node 9
-        iaf_D_out = self.iaf_D(conv_D_out)  # node 10
-
+        conv_D_out = self.conv_D(pool_C_out)
+        iaf_D_out = self.iaf_D(conv_D_out)
         # fc 1 - E/3
-        conv_E_out = self.conv_E(pool_B_out)  # node 6
-        iaf3_E_out = self.iaf3_E(conv_E_out)  # node 12
-        pool_E_out = self.pool_E(iaf3_E_out)  # node 13
+        conv_E_out = self.conv_E(pool_B_out)
+        iaf3_E_out = self.iaf3_E(conv_E_out)
+        pool_E_out = self.pool_E(iaf3_E_out)
 
         # fc 2 - F/6
-        conv_F_out = self.conv_F(pool_E_out)  # node 14
-        iaf_F_out = self.iaf_F(conv_F_out)  # node 15
+        conv_F_out = self.conv_F(pool_E_out)
+        iaf_F_out = self.iaf_F(conv_F_out)
 
         # fc 2 - G/5
-        flat_D_out = self.flat_D(iaf_D_out)  # node 11
-        flat_F_out = self.flat_F(iaf_F_out)  # node 16
+        flat_D_out = self.flat_D(iaf_D_out)
+        flat_F_out = self.flat_F(iaf_F_out)
 
-        merge1_out = self.merge1(flat_D_out, flat_F_out)  # node 19
-        fc3_out = self.fc3(merge1_out)  # node 17
-        iaf3_fc_out = self.iaf3_fc(fc3_out)  # node 18
+        merge1_out = self.merge1(flat_D_out, flat_F_out)
+        fc3_out = self.fc3(merge1_out)
+        iaf3_fc_out = self.iaf3_fc(fc3_out)
 
         return iaf3_fc_out
 
