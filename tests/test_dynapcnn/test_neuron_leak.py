@@ -3,12 +3,7 @@ import time
 import pytest
 import samna
 import torch
-from hw_utils import (
-    find_open_devices,
-    get_ones_network,
-    is_any_samna_device_connected,
-    is_device_connected,
-)
+from tests.hw_utils import find_open_devices, is_any_samna_device_connected
 from torch import nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork

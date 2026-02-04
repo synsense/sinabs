@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from sinabs.backend.dynapcnn import DynapcnnNetwork
 from sinabs.from_torch import from_model
-from hw_utils import find_open_devices
+from tests.hw_utils import find_open_devices
 
 ann = nn.Sequential(
     nn.Conv2d(1, 20, 5, 1, bias=False),

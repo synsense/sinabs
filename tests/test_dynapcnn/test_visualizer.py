@@ -3,9 +3,8 @@ from typing import Callable, Union
 
 import pytest
 import samna
-from custom_jit_filters import majority_readout_filter as custom_filter
-from hw_utils import find_open_devices, is_any_samna_device_connected
-
+from .custom_jit_filters import majority_readout_filter as custom_filter
+from tests.hw_utils import find_open_devices
 from sinabs.backend.dynapcnn.dynapcnn_visualizer import DynapcnnVisualizer
 
 

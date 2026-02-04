@@ -1,9 +1,8 @@
 import pytest
-from hw_utils import (
+from tests.hw_utils import (
     find_open_devices,
     get_ones_network,
     is_any_samna_device_connected,
-    is_device_connected,
     reset_all_connected_boards,
 )
 
