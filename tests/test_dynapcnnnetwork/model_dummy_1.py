@@ -13,49 +13,49 @@ class SNN(nn.Module):
     def __init__(self, batch_size) -> None:
         super().__init__()
 
-        self.conv1 = nn.Conv2d(2, 10, 2, 1, bias=False)  # node 0
+        self.conv1 = nn.Conv2d(2, 10, 2, 1, bias=False)
         self.iaf1 = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
-        )  # node 1
-        self.pool1 = nn.AvgPool2d(3, 3)  # node 2
-        self.pool1a = nn.AvgPool2d(4, 4)  # node 3
+        )
+        self.pool1 = nn.AvgPool2d(2, 2)
+        self.pool1a = nn.AvgPool2d(2, 2)
 
-        self.conv2 = nn.Conv2d(10, 10, 4, 1, bias=False)  # node 4
+        self.conv2 = nn.Conv2d(10, 10, 1, 1, bias=False)
         self.iaf2 = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
-        )  # node 6
+        )
 
-        self.conv3 = nn.Conv2d(10, 1, 2, 1, bias=False)  # node 8
+        self.conv3 = nn.Conv2d(10, 1, 2, 1, bias=False)
         self.iaf3 = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
-        )  # node 9
+        )
 
         self.flat = nn.Flatten()
 
-        self.fc1 = nn.Linear(49, 500, bias=False)  # node 10
+        self.fc1 = nn.Linear(225, 200, bias=False)
         self.iaf4 = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
-        )  # node 11
+        )
 
-        self.fc2 = nn.Linear(500, 10, bias=False)  # node 12
+        self.fc2 = nn.Linear(200, 10, bias=False)
         self.iaf5 = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
-        )  # node 13
+        )
 
         self.adder = Merge()
 
@@ -67,14 +67,13 @@ class SNN(nn.Module):
 
         conv2_out = self.conv2(pool1_out)
         iaf2_out = self.iaf2(conv2_out)
-
         conv3_out = self.conv3(self.adder(pool1a_out, iaf2_out))
         iaf3_out = self.iaf3(conv3_out)
-
         flat_out = self.flat(iaf3_out)
 
         fc1_out = self.fc1(flat_out)
         iaf4_out = self.iaf4(fc1_out)
+
         fc2_out = self.fc2(iaf4_out)
         iaf5_out = self.iaf5(fc2_out)
 

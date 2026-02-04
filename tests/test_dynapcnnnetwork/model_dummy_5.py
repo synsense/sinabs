@@ -1,5 +1,5 @@
 """
-implementing "two independendt networks" in https://github.com/synsense/sinabs/issues/181
+implementing "two independent networks" in https://github.com/synsense/sinabs/issues/181
 TODO: This is not working yet
 """
 
@@ -15,6 +15,7 @@ class SNN(nn.Module):
         super().__init__()
 
         self.conv_A = nn.Conv2d(2, 4, 2, 1, bias=False)
+
         self.iaf_A = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
@@ -136,15 +137,14 @@ class SNN(nn.Module):
         fc3_out1 = self.fc3(iaf2_fc_out1)
         iaf3_fc3_out1 = self.iaf3_fc(fc3_out1)
 
-
         # FC 8 - H
         fc1_out2 = self.fc1(flat_brach2_out)
         iaf2_fc_out2 = self.iaf1_fc(fc1_out2)
 
         fc2_out2 = self.fc2(iaf2_fc_out2)
-        iaf3_fc3_out2 = self.iaf2_fc(fc2_out2)
+        iaf2_fc3_out2 = self.iaf2_fc(fc2_out2)
 
-        fc3_out_2 = self.fc3(iaf3_fc3_out2)
+        fc3_out_2 = self.fc3(iaf2_fc3_out2)
         iaf3_fc3_out2 = self.iaf3_fc(fc3_out_2)
 
         return iaf3_fc3_out1, iaf3_fc3_out2
