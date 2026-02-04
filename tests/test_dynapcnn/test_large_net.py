@@ -14,7 +14,7 @@ from torch import nn
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
 from sinabs.from_torch import from_model
 from sinabs.layers import NeuromorphicReLU
-from hw_utils import find_open_devices
+from tests.hw_utils import find_open_devices
 
 
 class DynapCnnNetA(nn.Module):

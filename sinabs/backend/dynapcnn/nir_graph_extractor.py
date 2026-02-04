@@ -504,7 +504,7 @@ class GraphExtractor:
             A handler to the newly added `DVSLayer` instance.
         """
 
-        (features, height, width) = dvs_input_shape
+        features, height, width = dvs_input_shape
         if features > 2:
             raise ValueError(
                 f"A DVSLayer istance can have a max feature dimension of 2 but {features} was given."
@@ -578,7 +578,7 @@ class GraphExtractor:
                 f"A DVSLayer node exists and there are {nb_entries} entry nodes in the graph: the DVSLayer should be the only entry node."
             )
 
-        (features, _, _) = dvs_input_shape
+        features, _, _ = dvs_input_shape
 
         if features > 2:
             raise ValueError(
@@ -752,7 +752,7 @@ class GraphExtractor:
                 # different input sources to a core to have the same output shapes.
                 if any(inp.shape != inputs[0].shape for inp in inputs):
                     raise ValueError(
-                        f"Layer `sinabs.layers.merge.Merge` (node {node}) requires input tensors with the same shape"
+                        f"Layer `sinabs.layers.merge.Merge` (node {node}) requires input tensors with the same shape."
                     )
 
                 # forward input through the node.
@@ -828,6 +828,7 @@ class GraphExtractor:
         if len(sources) == 0:
             return -1
         if len(sources) > 1:
+            # return -1 #TODO: why throw a runtime error when the documentation explicitly say -1 in case of more than one input node?
             raise RuntimeError(f"Node {node} has more than 1 input")
         return sources.pop()
 

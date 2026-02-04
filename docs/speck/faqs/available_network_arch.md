@@ -39,27 +39,30 @@ dynapcnn.to(devcie="your device", chip_layers_ordering=[2, 5, 7, 1])
 
 ## What network structure can I define?
 
-`Sinabs` can parse a `torch.nn.Sequential` like architecture, so it is recommended to
-use a `Sequential` like network.
+`Sinabs` can parse a `torch.nn.Sequential` like architecture, so it is recommended to use a `Sequential` like network.
 
 As of `v3.1.0`, we released a network graph extraction feature that helps users deploy their networks with more complex architectures into the devkit.
 Our `Speck` chip, in fact, supports branched architectures. With the graph extraction feature, we support a range of network structures, as shown below:
-
-
-Two independent networks:
-
-![Two independent networks](imgs/two-independent-networks.png)
-
-Two networks with merging outputs:
-
-![Two networks with merging outputs](imgs/two-networks-merging-output.png)
 
 A network with a merge and a split:
 
 ![A network with a merge and a split](imgs/network-with-merge-and-split.png)
 
+Two networks with merging outputs:
+
+![Two networks with merging outputs](imgs/two-networks-merging-output.png)
+
+A network with residual connections:
+
+![A network with residual connections](imgs/network-with-residual-connection.png)
+
+A more complex network:
+
+![A more complex network](imgs/complex-network.png)
 
 Note: with the graph extracture feature it is possible to implement recurrent neural networks. However, this is not recommended or supported as it can result in deadlock on the chip.
+
+Note2: the use of two parallel network although supported by our chip was not fully considered in our sinabs implementation.
 
 ## How to make use of the graph extraction feature?
 
@@ -68,64 +71,70 @@ For general architectures, users need to define their classes, by defining at le
 Here is an example to define a network with a merge and a split:
 
 ```python
+import torch
 import torch.nn as nn
 
 from sinabs.activation.surrogate_gradient_fn import PeriodicExponential
 from sinabs.layers import IAFSqueeze, Merge, SumPool2d
 
+
 class SNN(nn.Module):
     def __init__(self, batch_size) -> None:
         super().__init__()
-
-        self.conv1 = nn.Conv2d(2, 1, 2, 1, bias=False)
-        self.iaf1 = IAFSqueeze(
+        # -- graph node A --
+        self.conv_A = nn.Conv2d(2, 4, 2, 1, bias=False)
+        self.iaf_A = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-
-        self.conv2 = nn.Conv2d(1, 1, 2, 1, bias=False)
-        self.iaf2 = IAFSqueeze(
+        # -- graph node B --
+        self.conv_B = nn.Conv2d(4, 4, 2, 1, bias=False)
+        self.iaf2_B = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-        self.pool2 = SumPool2d(2, 2)
-
-        self.conv3 = nn.Conv2d(1, 1, 2, 1, bias=False)
-        self.iaf3 = IAFSqueeze(
+        self.pool_B = SumPool2d(2, 2)
+        # -- graph node C --
+        self.conv_C = nn.Conv2d(4, 4, 2, 1, bias=False)
+        self.iaf_C = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-        self.pool3 = SumPool2d(2, 2)
-        self.pool3a = SumPool2d(5, 5)
-
-        self.conv4 = nn.Conv2d(1, 1, 2, 1, bias=False)
-        self.iaf4 = IAFSqueeze(
+        self.pool_C = SumPool2d(2, 2)
+        # -- graph node D --
+        self.conv_D = nn.Conv2d(4, 4, 2, 1, bias=False)
+        self.iaf_D = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-        self.pool4 = SumPool2d(3, 3)
-
-        self.flat1 = nn.Flatten()
-        self.flat2 = nn.Flatten()
-
-        self.conv5 = nn.Conv2d(1, 1, 2, 1, bias=False)
-        self.iaf5 = IAFSqueeze(
+        # -- graph node E --
+        self.conv_E = nn.Conv2d(4, 4, 2, 1, bias=False)
+        self.iaf3_E = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-
-        self.fc2 = nn.Linear(25, 10, bias=False)
-        self.iaf2_fc = IAFSqueeze(
+        self.pool_E = SumPool2d(2, 2)
+        # -- graph node F --
+        self.conv_F = nn.Conv2d(4, 4, 2, 1, bias=False)
+        self.iaf_F = IAFSqueeze(
+            batch_size=batch_size,
+            min_v_mem=-1.0,
+            spike_threshold=1.0,
+            surrogate_grad_fn=PeriodicExponential(),
+        )
+        # -- graph node G --
+        self.fc3 = nn.Linear(144, 10, bias=False)
+        self.iaf3_fc = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
             spike_threshold=1.0,
@@ -134,43 +143,47 @@ class SNN(nn.Module):
 
         # -- merges --
         self.merge1 = Merge()
-        self.merge2 = Merge()
+
+        # -- falts --
+        self.flat_D = nn.Flatten()
+        self.flat_F = nn.Flatten()
 
     def forward(self, x):
         # conv 1 - A/0
-        con1_out = self.conv1(x)
-        iaf1_out = self.iaf1(con1_out)
+        convA_out = self.conv_A(x)
+        iaf_A_out = self.iaf_A(convA_out)
 
         # conv 2 - B/1
-        conv2_out = self.conv2(iaf1_out)
-        iaf2_out = self.iaf2(conv2_out)
-        pool2_out = self.pool2(iaf2_out)
+        conv_B_out = self.conv_B(iaf_A_out)
+        iaf_B_out = self.iaf2_B(conv_B_out)
+        pool_B_out = self.pool_B(iaf_B_out)
 
         # conv 3 - C/2
-        conv3_out = self.conv3(iaf1_out)
-        iaf3_out = self.iaf3(conv3_out)
-        pool3_out = self.pool3(iaf3_out)
-        pool3a_out = self.pool3a(iaf3_out)
+        conv_C_out = self.conv_C(pool_B_out)
+        iaf_C_out = self.iaf_C(conv_C_out)
+        pool_C_out = self.pool_C(iaf_C_out)
 
-        # conv 4 - D/3
-        merge1_out = self.merge1(pool2_out, pool3_out)
-        conv4_out = self.conv4(merge1_out)
-        iaf4_out = self.iaf4(conv4_out)
-        pool4_out = self.pool4(iaf4_out)
-        flat1_out = self.flat1(pool4_out)
+        # conv 4 - D/4
+        conv_D_out = self.conv_D(pool_C_out)
+        iaf_D_out = self.iaf_D(conv_D_out)
+        # fc 1 - E/3
+        conv_E_out = self.conv_E(pool_B_out)
+        iaf3_E_out = self.iaf3_E(conv_E_out)
+        pool_E_out = self.pool_E(iaf3_E_out)
 
-        # conv 5 - E/4
-        conv5_out = self.conv5(pool3a_out)
-        iaf5_out = self.iaf5(conv5_out)
-        flat2_out = self.flat2(iaf5_out)
+        # fc 2 - F/6
+        conv_F_out = self.conv_F(pool_E_out)
+        iaf_F_out = self.iaf_F(conv_F_out)
 
-        # fc 2 - F/5
-        merge2_out = self.merge2(flat2_out, flat1_out)
+        # fc 2 - G/5
+        flat_D_out = self.flat_D(iaf_D_out)
+        flat_F_out = self.flat_F(iaf_F_out)
 
-        fc2_out = self.fc2(merge2_out)
-        iaf2_fc_out = self.iaf2_fc(fc2_out)
+        merge1_out = self.merge1(flat_D_out, flat_F_out)
+        fc3_out = self.fc3(merge1_out)
+        iaf3_fc_out = self.iaf3_fc(fc3_out)
 
-        return iaf2_fc_out
+        return iaf3_fc_out
 ```
 
 ## Can I achieve a "Residual Connection" like ResNet does?
@@ -180,9 +193,9 @@ change the `samna.speck2f.configuration.CNNLayerDestination.layer` to achieve th
 familiar with the `samna-configuration`.
 You can also make use of our network graph extraction feature, to implement residual networks.
 
-## How to use "Residual Connection" manually?
+## How can I define "Residual Connection" manually?
 
-Alright! Here I will give an example of achieving the "Residual Connection" by manually modify the `samna-configuration`.
+You can also achieve "Residual Connection" by manually modify the `samna-configuration`.
 
 Let's say you want an architecture like below:
 
@@ -221,7 +234,7 @@ class ResidualBlock(nn.Module):
 
 ```
 
-Since currently Sinabs can only parse Sequential like network, we need to do some tedious work like below:
+You can write it like:
 
 ```python
 # define a Sequential first
@@ -264,8 +277,8 @@ devkit.get_model().apply_configuration(samna_cfg)
 
 ```
 
-I have to say it is not an elegant solution though, it should help you to achieve an initial Residual Block. We will
-improve this part after Sinabs has the ability for extracting model's graph.
+It is a lot of manual work but it will let you have your Residual Block.
+We recommend to use our network graph extraction feature for residual connections.
 
 ## What execution order should I be aware of when I am implementing a sequential structure?
 You should be aware with the internal layer order.

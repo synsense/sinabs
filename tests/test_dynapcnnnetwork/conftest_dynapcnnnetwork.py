@@ -14,6 +14,11 @@ from .model_dummy_4 import batch_size as batch_size_4
 from .model_dummy_4 import expected_output as expected_output_4
 from .model_dummy_4 import input_shape as input_shape_4
 from .model_dummy_4 import snn as snn_4
+from .model_dummy_5 import batch_size as batch_size_5
+from .model_dummy_5 import expected_output as expected_output_5
+from .model_dummy_5 import input_shape as input_shape_5
+from .model_dummy_5 import snn as snn_5
+
 from .model_dummy_seq import (
     expected_seq_1,
     expected_seq_2,
@@ -29,4 +34,14 @@ args_DynapcnnNetworkTest = [
     (snn_4, input_shape_4, batch_size_4, expected_output_4),
     (seq_1, input_shape_seq, 1, expected_seq_1),
     (seq_2, input_shape_seq, 1, expected_seq_2),
+]
+
+args_DynapcnnNetworkMappingTest = [
+    (snn_1, input_shape_1, batch_size_1),
+    (snn_2, input_shape_2, batch_size_2),
+    (snn_3, input_shape_3, batch_size_3),
+    (snn_4, input_shape_4, batch_size_4),
+    (seq_1, input_shape_seq, 1),
+    (seq_2, input_shape_seq, 1),
+    # (snn_5, input_shape_5, batch_size_5), #TODO: forward method needs implementation
 ]

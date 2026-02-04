@@ -38,7 +38,7 @@ class SNN(nn.Module):
             surrogate_grad_fn=PeriodicExponential(),
         )
         self.pool3 = SumPool2d(2, 2)
-        self.pool3a = SumPool2d(5, 5)
+        self.pool3a = SumPool2d(2, 2)
 
         self.conv4 = nn.Conv2d(1, 1, 2, 1, bias=False)
         self.iaf4 = IAFSqueeze(
@@ -47,7 +47,7 @@ class SNN(nn.Module):
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
-        self.pool4 = SumPool2d(3, 3)
+        self.pool4 = SumPool2d(2, 2)
 
         self.flat1 = nn.Flatten()
         self.flat2 = nn.Flatten()
@@ -59,8 +59,9 @@ class SNN(nn.Module):
             spike_threshold=1.0,
             surrogate_grad_fn=PeriodicExponential(),
         )
+        self.pool5 = SumPool2d(2, 2)
 
-        self.fc2 = nn.Linear(25, 10, bias=False)
+        self.fc2 = nn.Linear(49, 10, bias=False)
         self.iaf2_fc = IAFSqueeze(
             batch_size=batch_size,
             min_v_mem=-1.0,
@@ -98,7 +99,8 @@ class SNN(nn.Module):
         # conv 5 - E/4
         conv5_out = self.conv5(pool3a_out)
         iaf5_out = self.iaf5(conv5_out)
-        flat2_out = self.flat2(iaf5_out)
+        pool5_out = self.pool5(iaf5_out)
+        flat2_out = self.flat2(pool5_out)
 
         # fc 2 - F/5
         merge2_out = self.merge2(flat2_out, flat1_out)
