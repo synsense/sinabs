@@ -2,7 +2,7 @@ import pytest
 import samna
 
 from sinabs.backend.dynapcnn import io
-from hw_utils import find_open_devices
+from tests.hw_utils import find_open_devices
 
 
 def test_is_device_type():

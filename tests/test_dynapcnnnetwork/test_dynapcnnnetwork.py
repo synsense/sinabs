@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from sinabs.backend.dynapcnn.dynapcnn_network import DynapcnnNetwork
-from .hw_utils import find_open_devices, supported_device_types_for_testing
+from tests.hw_utils import find_open_devices, supported_device_types_for_testing
 
 from .conftest_dynapcnnnetwork import (
     args_DynapcnnNetworkTest,
