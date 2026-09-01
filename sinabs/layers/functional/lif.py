@@ -29,19 +29,34 @@ def lif_forward_single(
     # Decay the membrane potential and add the input currents which are normalised by tau
     state["v_mem"] = alpha_mem * state["v_mem"] + synaptic_input
 
+    # Clip v_mem at its lower bound *before* generating the output. When there
+    # is no spike function (e.g. ExpLeak, or LIF/IAF with spike_fn=None) the
+    # output IS v_mem, so clipping only after the branch below left the
+    # returned tensor below min_v_mem even though the stored state was
+    # clipped -- see #236. min_v_mem is a floor and a spike is triggered by
+    # v_mem crossing the upper spike_threshold, so this does not affect
+    # which neurons spike.
+    if min_v_mem is not None:
+        state["v_mem"] = (
+            torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
+        )
+
     # generate spikes and adjust v_mem
     if spike_fn:
         input_tensors = [state[name] for name in spike_fn.required_states]
         spikes = spike_fn.apply(*input_tensors, spike_threshold, surrogate_grad_fn)
         state = reset_fn(spikes, state, spike_threshold)
+        # re-clip after the reset so the stored state on the spiking path is
+        # byte-for-byte what it was before this change (a no-op whenever
+        # min_v_mem <= 0, which is every documented use).
+        if min_v_mem is not None:
+            state["v_mem"] = (
+                torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
+            )
     else:
         spikes = state["v_mem"].clone()
         state = state.copy()
 
-    if min_v_mem is not None:
-        state["v_mem"] = (
-            torch.nn.functional.relu(state["v_mem"] - min_v_mem) + min_v_mem
-        )
     return spikes, state
 
 

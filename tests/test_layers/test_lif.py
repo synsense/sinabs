@@ -373,6 +373,47 @@ def test_min_v_mem():
     assert not (layer.v_mem < -0.5).any()
 
 
+def test_min_v_mem_clips_the_output_without_spike_fn():
+    """Regression for #236: when there is no spike function the layer output
+    *is* v_mem, so it must also respect min_v_mem -- not only the stored
+    state. Previously the clip ran after v_mem had already been copied to
+    the output."""
+    from sinabs.layers import IAF, ExpLeak
+
+    tau_mem = torch.tensor(30.0)
+    alpha = torch.exp(-1 / tau_mem)
+    x = torch.rand(10, 5, 2, 7, 7) / -(1 - alpha)  # drives v_mem well below -0.5
+
+    for name, layer in (
+        ("LIF(spike_fn=None)", LIF(tau_mem=tau_mem, min_v_mem=-0.5, spike_fn=None)),
+        ("ExpLeak", ExpLeak(tau_mem=tau_mem, min_v_mem=-0.5)),
+        ("IAF(spike_fn=None)", IAF(min_v_mem=-0.5, spike_fn=None)),
+    ):
+        out = layer(x)
+        assert (
+            out.min().item() >= -0.5 - 1e-6
+        ), f"{name}: output {out.min().item()} fell below min_v_mem=-0.5"
+        # the stored state was already correct before the fix -- keep checking it
+        assert layer.v_mem.min().item() >= -0.5 - 1e-6
+
+
+def test_min_v_mem_does_not_change_the_spiking_path():
+    """The fix must not change which neurons spike or the stored state on the
+    spiking (default spike_fn) path."""
+    torch.manual_seed(0)
+    tau_mem = torch.tensor(20.0)
+    alpha = torch.exp(-1 / tau_mem)
+    x = torch.rand(4, 20, 3, 5, 5) / (1 - alpha)  # positive -> real spikes
+
+    a = LIF(tau_mem=tau_mem, min_v_mem=-0.5)
+    b = LIF(tau_mem=tau_mem)  # no floor
+    sa_out = a(x)
+    sb_out = b(x)
+    assert sa_out.sum() > 0  # something actually spiked
+    assert torch.equal(sa_out, sb_out)  # min_v_mem must not alter spikes here
+    assert a.v_mem.min().item() >= -0.5 - 1e-6
+
+
 params = product((20.0, None), (True, False))
 
 
