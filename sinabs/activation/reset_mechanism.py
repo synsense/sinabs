@@ -18,7 +18,8 @@ class MembraneReset:
     def __call__(self, spikes, state, spike_threshold):
         new_state = state.copy()
         new_state["v_mem"] = (
-            new_state["v_mem"] * (spikes == 0).float() + self.reset_value
+            new_state["v_mem"] * (spikes == 0).float()
+            + self.reset_value * (spikes != 0).float()
         )
         return new_state
 

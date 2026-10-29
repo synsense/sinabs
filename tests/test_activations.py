@@ -33,10 +33,22 @@ from sinabs.activation import (
             torch.tensor([0.0, 0.3]),
         ),
         (
+            SingleSpike,
+            MembraneReset(reset_value=-0.5),
+            torch.tensor([1.0, 0.0]),
+            torch.tensor([-0.5, 0.3]),
+        ),
+        (
             MultiSpike,
             MembraneSubtract(),
             torch.tensor([2.0, 0.0]),
             torch.tensor([0.5, 0.3]),
+        ),
+        (
+            MultiSpike,
+            MembraneReset(reset_value=0.2),
+            torch.tensor([2.0, 0.0]),
+            torch.tensor([0.2, 0.3]),
         ),
         (
             MultiSpike,
