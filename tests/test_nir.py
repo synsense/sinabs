@@ -1,9 +1,12 @@
 import nir
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
 
 import sinabs.layers as sl
 from sinabs import from_nir, to_nir
+from sinabs.activation import MembraneReset, SingleSpike
 
 
 def test_iaf():
@@ -120,3 +123,73 @@ def test_conv1d():
     assert conv1d.stride == converted.model.stride
     assert conv1d.padding == converted.model.padding
     assert conv1d.dilation == converted.model.dilation
+
+
+def test_lif_time_constants_roundtrip():
+    batch_size = 2
+    for norm_input in [True, False]:
+        lif = sl.LIFSqueeze(
+            tau_mem=torch.tensor([5.0, 10.0, 20.0]),
+            batch_size=batch_size,
+            norm_input=norm_input,
+            spike_fn=SingleSpike,
+            reset_fn=MembraneReset(),
+        )
+        graph = to_nir(lif, torch.randn(batch_size, 3), dt=1e-3)
+        node = graph.nodes["model"]
+        assert np.allclose(node.tau, [5e-3, 10e-3, 20e-3])
+        assert np.allclose(node.r, 1.0 if norm_input else [5.0, 10.0, 20.0])
+
+        converted = from_nir(graph, batch_size=batch_size, dt=1e-3).model
+        assert torch.allclose(converted.tau_mem, lif.tau_mem)
+        assert converted.norm_input == norm_input
+
+        lif.reset_states()
+        x = 3 * torch.rand(batch_size * 20, 3)
+        assert torch.equal(lif(x), converted(x))
+
+
+def test_import_snntorch_style_lif():
+    # snnTorch exports Leaky(beta=0.9) with dt=1e-4, tau=dt/(1-beta), r=tau/dt
+    graph = nir.NIRGraph.from_list(
+        nir.LIF(
+            tau=np.full(3, 1e-3),
+            r=np.full(3, 10.0),
+            v_leak=np.zeros(3),
+            v_threshold=np.ones(3),
+            v_reset=np.zeros(3),
+        )
+    )
+    lif = from_nir(graph, batch_size=1, dt=1e-4).lif
+    assert torch.allclose(lif.tau_mem, torch.full((3,), 10.0))
+    assert not lif.norm_input
+    assert isinstance(lif.reset_fn, MembraneReset)
+
+    with pytest.raises(ValueError):
+        # The same graph read with the wrong dt cannot be represented
+        from_nir(graph, batch_size=1, dt=1.0)
+
+
+def test_write_and_read_exported_cnn(tmp_path):
+    model = nn.Sequential(
+        nn.Conv2d(2, 8, kernel_size=3, padding=1),
+        sl.IAFSqueeze(batch_size=1),
+        sl.SumPool2d(2),
+        nn.Flatten(),
+        nn.Linear(8 * 5 * 5, 5),
+        sl.LIFSqueeze(tau_mem=10.0, batch_size=1),
+    )
+    graph = to_nir(model, torch.rand(1, 2, 10, 10))
+    nir.write(tmp_path / "model.nir", graph)
+    converted = from_nir(nir.read(tmp_path / "model.nir"), batch_size=1)
+    out = converted(torch.rand(1, 2, 10, 10))
+    out = out[0] if isinstance(out, tuple) else out
+    assert out.shape == (1, 5)
+
+
+def test_conv1d_imported_as_float32():
+    conv1d = nn.Conv1d(4, 4, 3)
+    x = torch.randn(2, 4, 16)
+    converted = from_nir(to_nir(conv1d, x), batch_size=2)
+    assert converted.model.weight.dtype == torch.float32
+    assert torch.allclose(conv1d(x), converted.model(x))

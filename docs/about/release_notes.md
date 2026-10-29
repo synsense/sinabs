@@ -1,5 +1,11 @@
 # Release notes
 
+## Unreleased
+
+* Fix NIR conversion of LIF, LI and IF neurons: add a `dt` argument to `from_nir` and `to_nir` so that time constants are converted between NIR time units and Sinabs time steps, map the NIR resistance `r` to `norm_input`, and import NIR resets as `MembraneReset` with `SingleSpike`.
+* Fix `from_nir` loading `Conv1d` weights as float64 and failing on parameters read from `.nir` files.
+* Fix `to_nir` graphs with convolutions that could not be written with `nir.write`.
+
 ## v3.1.3 (04/02/2026)
 
 * Add tests for mapping non-sequential networks
